@@ -1,0 +1,206 @@
+import Anthropic from '@anthropic-ai/sdk';
+
+export interface GeneratedFlashcard {
+  id: string;
+  front: string;
+  back: string;
+  topic: string;
+}
+
+export interface GeneratedNoteSection {
+  heading: string;
+  content: string;
+  keyPoints?: string[];
+}
+
+export interface GeneratedNote {
+  title: string;
+  summary: string;
+  sections: GeneratedNoteSection[];
+}
+
+export interface GeneratedQuizQuestion {
+  id: string;
+  question: string;
+  options: [string, string, string, string];
+  correct: 0 | 1 | 2 | 3;
+  explanation: string;
+}
+
+export type GenerationType = 'flashcards' | 'notes' | 'quiz';
+
+const PROMPTS: Record<GenerationType, (subject: string, text: string) => string> = {
+  flashcards: (subject, text) => `You are an expert study material creator for university-level ${subject} students.
+
+Based on the study material below, create exactly 12 high-quality flashcards covering the most important concepts, definitions, and relationships. Focus on exam-relevant content.
+
+Return ONLY a valid JSON object — no markdown, no commentary:
+{
+  "flashcards": [
+    { "front": "Concise question or term", "back": "Clear answer or definition", "topic": "Specific sub-topic" }
+  ]
+}
+
+Study material:
+${text}`,
+
+  notes: (subject, text) => `You are an expert academic note-taker for university-level ${subject}.
+
+Based on the study material below, create comprehensive structured notes. Extract all key concepts, definitions, frameworks, and relationships.
+
+Return ONLY a valid JSON object — no markdown, no commentary:
+{
+  "title": "Descriptive title of the material",
+  "summary": "2-3 sentence executive summary",
+  "sections": [
+    {
+      "heading": "Section heading",
+      "content": "Main explanation paragraph for this section (2-4 sentences)",
+      "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
+    }
+  ]
+}
+
+Create 4-7 sections covering all major topics. Study material:
+${text}`,
+
+  quiz: (subject, text) => `You are an expert exam question writer for university-level ${subject}.
+
+Based on the study material below, create exactly 10 multiple-choice questions. Each question should test understanding, not just recall. Include plausible distractors.
+
+Return ONLY a valid JSON object — no markdown, no commentary:
+{
+  "questions": [
+    {
+      "question": "Clear, specific question",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct": 0,
+      "explanation": "Why this is correct and others are wrong (1-2 sentences)"
+    }
+  ]
+}
+
+The "correct" field is the 0-based index of the correct option. Study material:
+${text}`,
+};
+
+function parseJSON(raw: string): unknown {
+  let text = raw.trim();
+  // Strip markdown code fences
+  const fence = text.match(/^```(?:json)?\n?([\s\S]*?)\n?```$/);
+  if (fence) text = fence[1].trim();
+  return JSON.parse(text);
+}
+
+export async function generateFromText(
+  apiKey: string,
+  text: string,
+  type: GenerationType,
+  subjectTitle: string
+): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const truncated = text.slice(0, 10000);
+  const prompt = PROMPTS[type](subjectTitle, truncated);
+
+  const message = await client.messages.create({
+    model: 'claude-opus-4-7',
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const block = message.content[0];
+  if (block.type !== 'text') throw new Error('Unexpected response type from API');
+
+  const parsed = parseJSON(block.text) as Record<string, unknown>;
+
+  if (type === 'flashcards') {
+    const cards = parsed['flashcards'] as Array<{ front: string; back: string; topic: string }>;
+    return cards.map((fc, i) => ({
+      id: `gen-${Date.now()}-${i}`,
+      front: fc.front,
+      back: fc.back,
+      topic: fc.topic ?? subjectTitle,
+    }));
+  }
+
+  if (type === 'notes') {
+    return parsed as unknown as GeneratedNote;
+  }
+
+  const questions = parsed['questions'] as Array<{
+    question: string;
+    options: [string, string, string, string];
+    correct: number;
+    explanation: string;
+  }>;
+  return questions.map((q, i) => ({
+    id: `gen-${Date.now()}-${i}`,
+    question: q.question,
+    options: q.options,
+    correct: q.correct as 0 | 1 | 2 | 3,
+    explanation: q.explanation,
+  }));
+}
+
+export async function generateFromImage(
+  apiKey: string,
+  base64: string,
+  mediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif',
+  type: GenerationType,
+  subjectTitle: string
+): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+
+  const typeInstructions = {
+    flashcards: `Create exactly 12 flashcards from the content in this image. Return ONLY JSON: { "flashcards": [{ "front": "...", "back": "...", "topic": "..." }] }`,
+    notes: `Create structured notes from the content in this image. Return ONLY JSON: { "title": "...", "summary": "...", "sections": [{ "heading": "...", "content": "...", "keyPoints": ["..."] }] }`,
+    quiz: `Create exactly 10 multiple-choice quiz questions from the content in this image. Return ONLY JSON: { "questions": [{ "question": "...", "options": ["A","B","C","D"], "correct": 0, "explanation": "..." }] }`,
+  };
+
+  const message = await client.messages.create({
+    model: 'claude-opus-4-7',
+    max_tokens: 4096,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: `You are an expert study material creator for ${subjectTitle} students.\n\n${typeInstructions[type]}` },
+        ],
+      },
+    ],
+  });
+
+  const block = message.content[0];
+  if (block.type !== 'text') throw new Error('Unexpected response type from API');
+
+  const parsed = parseJSON(block.text) as Record<string, unknown>;
+
+  if (type === 'flashcards') {
+    const cards = parsed['flashcards'] as Array<{ front: string; back: string; topic: string }>;
+    return cards.map((fc, i) => ({
+      id: `gen-img-${Date.now()}-${i}`,
+      front: fc.front,
+      back: fc.back,
+      topic: fc.topic ?? subjectTitle,
+    }));
+  }
+
+  if (type === 'notes') {
+    return parsed as unknown as GeneratedNote;
+  }
+
+  const questions = parsed['questions'] as Array<{
+    question: string;
+    options: [string, string, string, string];
+    correct: number;
+    explanation: string;
+  }>;
+  return questions.map((q, i) => ({
+    id: `gen-img-${Date.now()}-${i}`,
+    question: q.question,
+    options: q.options,
+    correct: q.correct as 0 | 1 | 2 | 3,
+    explanation: q.explanation,
+  }));
+}
