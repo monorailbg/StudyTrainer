@@ -1,31 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --color-navy: #0f1623;
-  --color-navy-light: #1a2436;
-  --color-navy-mid: #243048;
-  --color-gold: #c9a84c;
-  --color-gold-light: #e2c47a;
-  --color-gold-dim: #8a6e30;
-  --color-charcoal: #2c3548;
-  --color-slate: #4a5568;
-  --color-mist: #8896a8;
-  --color-snow: #f0f4f8;
-  --font-serif: 'DM Serif Display', Georgia, serif;
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
+/* ── Reset ──────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
-  font-family: var(--font-sans);
-  background-color: #0f1623;
+  margin: 0;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  background-color: #07111f;
   color: #f0f4f8;
   min-height: 100vh;
-  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 #root {
@@ -36,54 +23,60 @@ body {
 
 h1, h2, h3 {
   font-family: 'DM Serif Display', Georgia, serif;
+  font-weight: 400;
 }
 
-.flip-card {
-  perspective: 1000px;
-}
-
+/* ── Flip card ──────────────────────────────────────────────────────────────── */
+.flip-card { perspective: 1200px; }
 .flip-card-inner {
   position: relative;
   width: 100%;
   height: 100%;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
   transform-style: preserve-3d;
 }
-
-.flip-card-inner.flipped {
-  transform: rotateY(180deg);
-}
-
+.flip-card-inner.flipped { transform: rotateY(180deg); }
 .flip-card-front,
 .flip-card-back {
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+.flip-card-back { transform: rotateY(180deg); }
 
-.flip-card-back {
-  transform: rotateY(180deg);
-}
-
+/* ── Highlight ──────────────────────────────────────────────────────────────── */
 .highlight-keyword {
-  background-color: rgba(201, 168, 76, 0.2);
+  background-color: rgba(212, 168, 67, 0.18);
   color: #e2c47a;
   border-radius: 2px;
   padding: 0 2px;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #07111f; }
+::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2d4465; }
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .flip-card-inner { transition-duration: 0.01ms !important; }
 }
-::-webkit-scrollbar-track {
-  background: #1a2436;
+
+/* ── Focus styles (accessibility) ──────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #d4a843;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
-::-webkit-scrollbar-thumb {
-  background: #4a5568;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #8896a8;
+
+/* ── Number style ──────────────────────────────────────────────────────────── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: 'IBM Plex Mono', monospace;
 }
