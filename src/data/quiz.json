@@ -1,0 +1,210 @@
+[
+  {
+    "id": "q-001",
+    "topic": "International Trade",
+    "question": "According to the theory of comparative advantage, countries should specialise in producing goods where they have:",
+    "options": [
+      "The lowest absolute production costs",
+      "The lowest opportunity cost relative to other countries",
+      "The highest available natural resources",
+      "The largest domestic market demand"
+    ],
+    "correctIndex": 1,
+    "explanation": "Comparative advantage is based on opportunity cost, not absolute cost. A country should specialise where its opportunity cost of production is lowest relative to trading partners — even if it is less efficient at producing everything."
+  },
+  {
+    "id": "q-002",
+    "topic": "International Trade",
+    "question": "Which of the following best describes a tariff?",
+    "options": [
+      "A limit on the quantity of a good that can be imported",
+      "A government subsidy paid to domestic exporters",
+      "A tax imposed on imported goods",
+      "A bilateral agreement to eliminate trade barriers"
+    ],
+    "correctIndex": 2,
+    "explanation": "A tariff is a tax on imported goods, making them more expensive and less competitive than domestic alternatives. It generates government revenue and protects domestic industries but raises prices for consumers."
+  },
+  {
+    "id": "q-003",
+    "topic": "International Trade",
+    "question": "If Country A's terms of trade improve, this means:",
+    "options": [
+      "Country A is importing fewer goods than before",
+      "Country A can obtain more imports per unit of exports",
+      "Country A has reduced its trade deficit",
+      "Country A has depreciated its currency"
+    ],
+    "correctIndex": 1,
+    "explanation": "Terms of trade = (Export price index / Import price index) × 100. An improvement means export prices have risen relative to import prices, so each unit exported buys more imports — a welfare gain."
+  },
+  {
+    "id": "q-004",
+    "topic": "International Trade",
+    "question": "The Heckscher-Ohlin theorem predicts that a capital-abundant country will:",
+    "options": [
+      "Export labour-intensive goods",
+      "Import all manufactured goods",
+      "Export capital-intensive goods",
+      "Impose tariffs on capital imports"
+    ],
+    "correctIndex": 2,
+    "explanation": "H-O theory states countries export goods that intensively use their abundant factor. A capital-abundant country has relatively cheap capital, giving it comparative advantage in capital-intensive production."
+  },
+  {
+    "id": "q-005",
+    "topic": "Marketing",
+    "question": "Which element of the marketing mix relates to distribution channels?",
+    "options": [
+      "Product",
+      "Price",
+      "Promotion",
+      "Place"
+    ],
+    "correctIndex": 3,
+    "explanation": "'Place' in the 4Ps refers to how and where the product reaches the customer — including distribution channels, logistics, retail locations, and online availability."
+  },
+  {
+    "id": "q-006",
+    "topic": "Marketing",
+    "question": "A company segments its market by age, income, and gender. Which type of segmentation is this?",
+    "options": [
+      "Geographic segmentation",
+      "Psychographic segmentation",
+      "Demographic segmentation",
+      "Behavioural segmentation"
+    ],
+    "correctIndex": 2,
+    "explanation": "Demographic segmentation divides the market by measurable population characteristics: age, gender, income, education, occupation, and family size. It is the most widely used segmentation base."
+  },
+  {
+    "id": "q-007",
+    "topic": "Marketing",
+    "question": "Which stage of the Product Life Cycle typically sees the highest level of profits?",
+    "options": [
+      "Introduction",
+      "Growth",
+      "Maturity",
+      "Decline"
+    ],
+    "correctIndex": 2,
+    "explanation": "During Maturity, sales are at their peak and production costs have fallen due to economies of scale. Competition intensifies, but profit margins are still strong before declining. Profit peaks at or just before maturity."
+  },
+  {
+    "id": "q-008",
+    "topic": "Marketing",
+    "question": "Brand equity is BEST described as:",
+    "options": [
+      "The total assets owned by a brand",
+      "The premium value a brand commands due to consumer perception",
+      "The number of products in a brand's portfolio",
+      "The difference between a brand's revenue and costs"
+    ],
+    "correctIndex": 1,
+    "explanation": "Brand equity is the added value a brand name gives to a product beyond its functional attributes. Strong brand equity enables premium pricing, greater loyalty, and higher market share."
+  },
+  {
+    "id": "q-009",
+    "topic": "Finance",
+    "question": "A project with a positive Net Present Value (NPV) should:",
+    "options": [
+      "Always be rejected regardless of strategic fit",
+      "Be accepted as it adds value to the firm",
+      "Be accepted only if NPV exceeds the IRR",
+      "Be evaluated further using the payback period only"
+    ],
+    "correctIndex": 1,
+    "explanation": "A positive NPV means the investment's returns exceed the cost of capital — it creates shareholder value. The NPV rule states: accept all positive NPV projects, as they increase firm value."
+  },
+  {
+    "id": "q-010",
+    "topic": "Finance",
+    "question": "Which statement about the Internal Rate of Return (IRR) is correct?",
+    "options": [
+      "It is the rate that maximises the NPV of a project",
+      "It is always equal to the WACC",
+      "It is the discount rate at which NPV equals zero",
+      "It ignores the time value of money"
+    ],
+    "correctIndex": 2,
+    "explanation": "IRR is the discount rate that makes NPV = 0. If IRR > WACC (cost of capital), the project is viable. It represents the break-even rate of return on an investment."
+  },
+  {
+    "id": "q-011",
+    "topic": "Finance",
+    "question": "A stock with a beta of 1.5 is considered:",
+    "options": [
+      "Less volatile than the market",
+      "Equal in volatility to the market",
+      "More volatile than the market",
+      "A risk-free asset"
+    ],
+    "correctIndex": 2,
+    "explanation": "Beta measures systematic risk relative to the market. β = 1: moves with market. β > 1: amplifies market movements (more volatile). A β of 1.5 means the stock moves 1.5× the market on average."
+  },
+  {
+    "id": "q-012",
+    "topic": "Finance",
+    "question": "According to the Efficient Market Hypothesis (semi-strong form), which of the following can earn consistent excess returns?",
+    "options": [
+      "Technical analysts using chart patterns",
+      "Fundamental analysts using public financial statements",
+      "Insider traders with non-public information",
+      "No investor can consistently earn excess returns"
+    ],
+    "correctIndex": 2,
+    "explanation": "Under the semi-strong EMH, prices reflect all publicly available information, so neither technical nor fundamental analysis yields consistent excess returns. Only insiders with private information could theoretically outperform (though this is illegal)."
+  },
+  {
+    "id": "q-013",
+    "topic": "Economics",
+    "question": "If PED = -2.5 for a product, and the firm raises its price by 10%, what happens to total revenue?",
+    "options": [
+      "Total revenue increases by 25%",
+      "Total revenue decreases",
+      "Total revenue remains unchanged",
+      "Total revenue increases by 10%"
+    ],
+    "correctIndex": 1,
+    "explanation": "With elastic demand (|PED| > 1), a price increase causes a proportionally larger fall in quantity demanded, so total revenue (P × Q) decreases. The % fall in Qd (25%) exceeds the % rise in price (10%)."
+  },
+  {
+    "id": "q-014",
+    "topic": "Economics",
+    "question": "Which of the following is an example of a negative externality?",
+    "options": [
+      "A factory installing solar panels",
+      "A firm polluting a river during production",
+      "A company offering free training to employees",
+      "A government subsidising public transport"
+    ],
+    "correctIndex": 1,
+    "explanation": "A negative externality occurs when a third party suffers costs from economic activity without compensation. Industrial pollution is the classic example — costs are borne by society, not the producer."
+  },
+  {
+    "id": "q-015",
+    "topic": "Economics",
+    "question": "In a Nash Equilibrium:",
+    "options": [
+      "All players achieve their maximum possible payoff",
+      "No player can improve their outcome by changing strategy alone",
+      "Players always cooperate to maximise joint welfare",
+      "The dominant strategy always prevails"
+    ],
+    "correctIndex": 1,
+    "explanation": "Nash Equilibrium is a state where each player's strategy is optimal given the strategies of all others. No individual player has an incentive to deviate unilaterally — it is a stable outcome, though not necessarily optimal for all players collectively."
+  },
+  {
+    "id": "q-016",
+    "topic": "Economics",
+    "question": "Expansionary monetary policy typically involves:",
+    "options": [
+      "Raising interest rates to reduce inflation",
+      "Increasing government spending on public services",
+      "Lowering interest rates and increasing money supply",
+      "Reducing the money supply to strengthen the currency"
+    ],
+    "correctIndex": 2,
+    "explanation": "Expansionary monetary policy aims to stimulate economic activity by lowering interest rates (making borrowing cheaper) and increasing the money supply (e.g. through quantitative easing). This encourages investment and consumption."
+  }
+]

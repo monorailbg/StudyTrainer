@@ -1,0 +1,58 @@
+[
+  {
+    "id": "note-001",
+    "title": "Introduction to International Trade",
+    "chapter": "Chapter 1",
+    "subject": "International Trade",
+    "rawUrl": ""
+  },
+  {
+    "id": "note-002",
+    "title": "Trade Policy & Protectionism",
+    "chapter": "Chapter 2",
+    "subject": "International Trade",
+    "rawUrl": ""
+  },
+  {
+    "id": "note-003",
+    "title": "Global Marketing Strategy",
+    "chapter": "Chapter 1",
+    "subject": "Marketing",
+    "rawUrl": ""
+  },
+  {
+    "id": "note-004",
+    "title": "Consumer Behaviour",
+    "chapter": "Chapter 2",
+    "subject": "Marketing",
+    "rawUrl": ""
+  },
+  {
+    "id": "note-005",
+    "title": "Corporate Finance Fundamentals",
+    "chapter": "Chapter 1",
+    "subject": "Finance",
+    "rawUrl": ""
+  },
+  {
+    "id": "note-006",
+    "title": "Capital Markets & Valuation",
+    "chapter": "Chapter 2",
+    "subject": "Finance",
+    "rawUrl": ""
+  },
+  {
+    "id": "note-007",
+    "title": "Microeconomics: Markets & Prices",
+    "chapter": "Chapter 1",
+    "subject": "Economics",
+    "rawUrl": ""
+  },
+  {
+    "id": "note-008",
+    "title": "Macroeconomics: Growth & Policy",
+    "chapter": "Chapter 2",
+    "subject": "Economics",
+    "rawUrl": ""
+  }
+]

@@ -1,0 +1,65 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface StudyStore {
+  flashcardsStudied: string[];
+  flashcardsKnown: string[];
+  quizScores: { topic: string; score: number; total: number; date: string }[];
+  notesRead: string[];
+  markFlashcardStudied: (id: string) => void;
+  markFlashcardKnown: (id: string) => void;
+  markFlashcardReview: (id: string) => void;
+  addQuizScore: (topic: string, score: number, total: number) => void;
+  markNoteRead: (id: string) => void;
+  resetProgress: () => void;
+}
+
+export const useStore = create<StudyStore>()(
+  persist(
+    (set) => ({
+      flashcardsStudied: [],
+      flashcardsKnown: [],
+      quizScores: [],
+      notesRead: [],
+
+      markFlashcardStudied: (id) =>
+        set((s) => ({
+          flashcardsStudied: s.flashcardsStudied.includes(id)
+            ? s.flashcardsStudied
+            : [...s.flashcardsStudied, id],
+        })),
+
+      markFlashcardKnown: (id) =>
+        set((s) => ({
+          flashcardsKnown: s.flashcardsKnown.includes(id)
+            ? s.flashcardsKnown
+            : [...s.flashcardsKnown, id],
+          flashcardsStudied: s.flashcardsStudied.includes(id)
+            ? s.flashcardsStudied
+            : [...s.flashcardsStudied, id],
+        })),
+
+      markFlashcardReview: (id) =>
+        set((s) => ({
+          flashcardsKnown: s.flashcardsKnown.filter((k) => k !== id),
+        })),
+
+      addQuizScore: (topic, score, total) =>
+        set((s) => ({
+          quizScores: [
+            ...s.quizScores,
+            { topic, score, total, date: new Date().toISOString() },
+          ],
+        })),
+
+      markNoteRead: (id) =>
+        set((s) => ({
+          notesRead: s.notesRead.includes(id) ? s.notesRead : [...s.notesRead, id],
+        })),
+
+      resetProgress: () =>
+        set({ flashcardsStudied: [], flashcardsKnown: [], quizScores: [], notesRead: [] }),
+    }),
+    { name: 'study-trainer-progress' }
+  )
+);

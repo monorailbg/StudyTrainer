@@ -1,0 +1,170 @@
+[
+  {
+    "id": "fc-001",
+    "topic": "International Trade",
+    "chapter": "Chapter 1",
+    "front": "Comparative Advantage",
+    "back": "A country has a comparative advantage in producing a good if it can produce that good at a lower opportunity cost than other countries. Even if a country is less efficient at producing all goods, it can still benefit from specialisation and trade."
+  },
+  {
+    "id": "fc-002",
+    "topic": "International Trade",
+    "chapter": "Chapter 1",
+    "front": "Absolute Advantage",
+    "back": "A country has an absolute advantage when it can produce more of a good than another country using the same amount of resources. Proposed by Adam Smith — countries should specialise in goods where they hold absolute advantage."
+  },
+  {
+    "id": "fc-003",
+    "topic": "International Trade",
+    "chapter": "Chapter 2",
+    "front": "Terms of Trade",
+    "back": "The ratio at which a country's exports are exchanged for imports. Calculated as: (Index of export prices / Index of import prices) × 100. A rising ToT means a country gets more imports per unit of exports."
+  },
+  {
+    "id": "fc-004",
+    "topic": "International Trade",
+    "chapter": "Chapter 2",
+    "front": "Heckscher-Ohlin Theorem",
+    "back": "Countries export goods that intensively use their abundant factors of production and import goods that intensively use their scarce factors. A labour-abundant country exports labour-intensive goods."
+  },
+  {
+    "id": "fc-005",
+    "topic": "International Trade",
+    "chapter": "Chapter 3",
+    "front": "Trade Balance",
+    "back": "The difference between a country's exports and imports of goods and services. A trade surplus exists when exports exceed imports; a trade deficit when imports exceed exports."
+  },
+  {
+    "id": "fc-006",
+    "topic": "International Trade",
+    "chapter": "Chapter 3",
+    "front": "Protectionism",
+    "back": "Government policies that restrict imports to protect domestic industries. Tools include tariffs, import quotas, subsidies, and non-tariff barriers (e.g. regulations, standards)."
+  },
+  {
+    "id": "fc-007",
+    "topic": "Marketing",
+    "chapter": "Chapter 1",
+    "front": "Marketing Mix (4Ps)",
+    "back": "The set of controllable marketing tools: Product (what is offered), Price (cost to customer), Place (distribution channels), Promotion (communication strategy). Extended to 7Ps with People, Process, Physical Evidence for services."
+  },
+  {
+    "id": "fc-008",
+    "topic": "Marketing",
+    "chapter": "Chapter 1",
+    "front": "Market Segmentation",
+    "back": "Dividing a broad target market into subsets of consumers who have common needs and priorities. Bases include: geographic, demographic, psychographic, and behavioural segmentation."
+  },
+  {
+    "id": "fc-009",
+    "topic": "Marketing",
+    "chapter": "Chapter 2",
+    "front": "Brand Equity",
+    "back": "The commercial value derived from consumer perception of a brand rather than the product itself. High brand equity allows premium pricing and greater market share. Built through awareness, associations, perceived quality, and loyalty."
+  },
+  {
+    "id": "fc-010",
+    "topic": "Marketing",
+    "chapter": "Chapter 2",
+    "front": "Product Life Cycle",
+    "back": "The progression of a product through four stages: Introduction (high cost, low revenue), Growth (rapid sales), Maturity (peak sales, competition), Decline (falling sales). Marketing strategy adapts at each stage."
+  },
+  {
+    "id": "fc-011",
+    "topic": "Marketing",
+    "chapter": "Chapter 3",
+    "front": "Customer Lifetime Value (CLV)",
+    "back": "The total net profit a company earns from a customer over the entire relationship. CLV = Average Purchase Value × Purchase Frequency × Customer Lifespan. Used to determine how much to invest in customer acquisition."
+  },
+  {
+    "id": "fc-012",
+    "topic": "Marketing",
+    "chapter": "Chapter 3",
+    "front": "Positioning",
+    "back": "The process of establishing a brand's image or identity in the minds of target customers relative to competitors. Effective positioning is based on a unique value proposition and is communicated consistently."
+  },
+  {
+    "id": "fc-013",
+    "topic": "Finance",
+    "chapter": "Chapter 1",
+    "front": "Net Present Value (NPV)",
+    "back": "The difference between the present value of cash inflows and outflows over a period of time. NPV > 0 means the investment adds value. Formula: NPV = Σ [CFt / (1+r)^t] - Initial Investment."
+  },
+  {
+    "id": "fc-014",
+    "topic": "Finance",
+    "chapter": "Chapter 1",
+    "front": "Internal Rate of Return (IRR)",
+    "back": "The discount rate that makes the NPV of all cash flows from a project equal to zero. If IRR > cost of capital (WACC), the project should be accepted. Used to rank investment projects."
+  },
+  {
+    "id": "fc-015",
+    "topic": "Finance",
+    "chapter": "Chapter 2",
+    "front": "WACC (Weighted Average Cost of Capital)",
+    "back": "The average rate a company is expected to pay to finance its assets, weighted by the proportion of each capital source. WACC = (E/V × Re) + (D/V × Rd × (1-Tc)). Used as the discount rate in DCF analysis."
+  },
+  {
+    "id": "fc-016",
+    "topic": "Finance",
+    "chapter": "Chapter 2",
+    "front": "Leverage",
+    "back": "The use of borrowed capital (debt) to increase potential return on investment. Financial leverage magnifies both profits and losses. Measured by Debt-to-Equity ratio. High leverage increases financial risk."
+  },
+  {
+    "id": "fc-017",
+    "topic": "Finance",
+    "chapter": "Chapter 3",
+    "front": "Efficient Market Hypothesis (EMH)",
+    "back": "The theory that asset prices fully reflect all available information. Three forms: Weak (prices reflect historical data), Semi-strong (prices reflect all public info), Strong (prices reflect all info including insider). Implies outperforming the market consistently is impossible."
+  },
+  {
+    "id": "fc-018",
+    "topic": "Finance",
+    "chapter": "Chapter 3",
+    "front": "Beta (β)",
+    "back": "A measure of a stock's volatility relative to the overall market. β = 1: moves with market. β > 1: more volatile than market. β < 1: less volatile. Used in CAPM: Expected Return = Rf + β(Rm - Rf)."
+  },
+  {
+    "id": "fc-019",
+    "topic": "Economics",
+    "chapter": "Chapter 1",
+    "front": "Price Elasticity of Demand (PED)",
+    "back": "Measures the responsiveness of quantity demanded to a change in price. PED = (% change in Qd) / (% change in P). |PED| > 1: elastic demand; |PED| < 1: inelastic demand. Determines pricing strategy and revenue impact."
+  },
+  {
+    "id": "fc-020",
+    "topic": "Economics",
+    "chapter": "Chapter 1",
+    "front": "Opportunity Cost",
+    "back": "The value of the next best alternative forgone when making an economic decision. Fundamental to economic reasoning — every choice involves a trade-off. Underpins comparative advantage and resource allocation decisions."
+  },
+  {
+    "id": "fc-021",
+    "topic": "Economics",
+    "chapter": "Chapter 2",
+    "front": "GDP (Gross Domestic Product)",
+    "back": "The total monetary value of all goods and services produced within a country's borders in a specific time period. Measured via: Expenditure (C+I+G+NX), Income, or Output approach. Real GDP adjusts for inflation."
+  },
+  {
+    "id": "fc-022",
+    "topic": "Economics",
+    "chapter": "Chapter 2",
+    "front": "Monetary Policy",
+    "back": "Actions by a central bank to control the money supply and interest rates to achieve macroeconomic goals. Expansionary policy (lower rates, QE) stimulates growth; contractionary policy (higher rates) combats inflation."
+  },
+  {
+    "id": "fc-023",
+    "topic": "Economics",
+    "chapter": "Chapter 3",
+    "front": "Market Failure",
+    "back": "When the free market fails to allocate resources efficiently. Causes include: externalities (positive/negative), public goods, information asymmetry, and monopoly power. Justifies government intervention."
+  },
+  {
+    "id": "fc-024",
+    "topic": "Economics",
+    "chapter": "Chapter 3",
+    "front": "Nash Equilibrium",
+    "back": "In game theory, a stable state where no player can improve their outcome by unilaterally changing their strategy, given the strategies of others. Named after John Nash. Key concept in oligopoly and strategic behaviour analysis."
+  }
+]
