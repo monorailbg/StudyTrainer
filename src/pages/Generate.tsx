@@ -16,13 +16,15 @@ import { QuizViewer } from '../components/QuizViewer';
 
 function friendlyError(raw: string): string {
   if (!raw) return 'Generation failed. Check your API key and try again.';
-  if (raw.includes('429') || raw.includes('quota') || raw.toLowerCase().includes('rate'))
-    return 'Rate limit reached. Wait a moment and try again, or check your Gemini API quota.';
-  if (raw.includes('403') || raw.includes('API_KEY') || raw.toLowerCase().includes('api key') || raw.toLowerCase().includes('invalid'))
-    return 'Invalid API key. Make sure you pasted a valid Gemini API key.';
+  if (raw.includes('limit: 0'))
+    return 'Your API key has no free-tier quota. Make sure you created the key at aistudio.google.com — not the Google Cloud Console.';
+  if (raw.includes('429'))
+    return 'Rate limit reached. Wait 30 seconds and try again.';
+  if (raw.includes('403') || raw.toLowerCase().includes('invalid') || raw.toLowerCase().includes('api key'))
+    return 'Invalid API key. Paste your key from aistudio.google.com/apikey.';
   if (raw.includes('400'))
     return 'Bad request. The file may be too large or in an unsupported format.';
-  return 'Generation failed. Check your API key and try again.';
+  return `Generation failed: ${raw.slice(0, 120)}`;
 }
 
 // ── Icons ──────────────────────────────────────────────────────────────────

@@ -17,13 +17,15 @@ import { QuizViewer } from '../components/QuizViewer';
 
 function subjectFriendlyError(raw?: string): string {
   if (!raw) return 'Generation failed. Check your API key and try again.';
-  if (raw.includes('429') || raw.includes('quota') || raw.toLowerCase().includes('rate'))
-    return 'Rate limit reached. Wait a moment and try again.';
+  if (raw.includes('limit: 0'))
+    return 'API key has no free-tier quota. Create a key at aistudio.google.com/apikey.';
+  if (raw.includes('429'))
+    return 'Rate limit reached. Wait 30 seconds and try again.';
   if (raw.includes('403') || raw.toLowerCase().includes('invalid') || raw.toLowerCase().includes('api key'))
-    return 'Invalid API key. Check your Gemini API key.';
+    return 'Invalid API key. Check your key at aistudio.google.com/apikey.';
   if (raw.includes('400'))
     return 'File too large or unsupported format.';
-  return 'Generation failed. Check your API key and try again.';
+  return `Generation failed: ${raw.slice(0, 120)}`;
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────

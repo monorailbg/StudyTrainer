@@ -67,7 +67,9 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    if (String(err).includes('429')) {
+    const msg = String(err);
+    // Only retry transient rate limits — not quota=0 (pointless to wait)
+    if (msg.includes('429') && !msg.includes('limit: 0')) {
       await new Promise(r => setTimeout(r, extractRetryDelay(err)));
       return fn();
     }
