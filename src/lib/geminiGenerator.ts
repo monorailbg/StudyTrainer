@@ -55,6 +55,26 @@ function processResult(
   }));
 }
 
+// ── Retry helper ──────────────────────────────────────────────────────────
+
+function extractRetryDelay(err: unknown): number {
+  const msg = String(err);
+  const match = msg.match(/retry\s+in\s+([\d.]+)s/i);
+  return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 32_000;
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (String(err).includes('429')) {
+      await new Promise(r => setTimeout(r, extractRetryDelay(err)));
+      return fn();
+    }
+    throw err;
+  }
+}
+
 // ── Prompts ────────────────────────────────────────────────────────────────
 
 const FILE_PROMPTS: Record<GenerationType, (subject: string) => string> = {
@@ -182,10 +202,12 @@ export async function generateFromFile(
   const base64 = await fileToBase64(file);
   const prompt = FILE_PROMPTS[type](subjectTitle);
 
-  const result = await model.generateContent([
-    { inlineData: { data: base64, mimeType: file.type } },
-    prompt,
-  ]);
+  const result = await withRetry(() =>
+    model.generateContent([
+      { inlineData: { data: base64, mimeType: file.type } },
+      prompt,
+    ])
+  );
 
   const parsed = parseJSON(result.response.text()) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
@@ -203,7 +225,7 @@ export async function generateFromTopic(
 
   const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level);
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   const parsed = parseJSON(result.response.text()) as Record<string, unknown>;
   return processResult(parsed, type, topic);
 }

@@ -63,7 +63,7 @@ const T = {
     gen_btn_quiz: 'Quiz',
     gen_go: 'Generate',
     gen_extracting: 'Extracting text...',
-    gen_generating: 'Generating with Claude...',
+    gen_generating: 'Generating with Gemini...',
     gen_done_fc: 'Flashcards ready',
     gen_done_notes: 'Notes ready',
     gen_done_quiz: 'Quiz ready',
