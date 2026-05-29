@@ -101,12 +101,12 @@ export function FlashcardViewer({ cards, color }: { cards: GeneratedFlashcard[];
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-2 justify-center">
+      <div className="flex items-center gap-3 justify-center">
         <button
           onClick={prev}
           disabled={index === 0}
-          className="h-9 px-4 text-sm font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-          style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '7px' }}
+          className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
+          style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
           aria-label="Previous card"
         >
           ← Prev
@@ -114,17 +114,17 @@ export function FlashcardViewer({ cards, color }: { cards: GeneratedFlashcard[];
 
         <button
           onClick={flip}
-          className="h-9 px-5 text-sm font-medium transition-colors duration-150 cursor-pointer"
-          style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.3)', borderRadius: '7px' }}
+          className="h-10 px-7 text-sm font-semibold transition-all duration-150 cursor-pointer btn-accent"
+          style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
         >
-          Flip
+          Flip card
         </button>
 
         <button
           onClick={next}
           disabled={index === cards.length - 1}
-          className="h-9 px-4 text-sm font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-          style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '7px' }}
+          className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
+          style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
           aria-label="Next card"
         >
           Next →

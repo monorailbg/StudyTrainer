@@ -148,8 +148,8 @@ function TiltCard({ children, className, style }: {
     const x = ((e.clientX - rect.left) / rect.width - 0.5) * 7;
     const y = ((e.clientY - rect.top) / rect.height - 0.5) * -5;
     el.style.transform = `perspective(800px) rotateX(${y}deg) rotateY(${x}deg) translateY(-3px)`;
-    el.style.boxShadow = '0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 16px rgba(0,0,0,0.5), 0 24px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(61,126,255,0.2)';
-    el.style.borderColor = 'rgba(61,126,255,0.3)';
+    el.style.boxShadow = '0 1px 0 rgba(255,255,255,0.08) inset, 0 8px 20px rgba(0,0,0,0.55), 0 24px 52px rgba(0,0,0,0.4), 0 0 0 1px rgba(61,126,255,0.25)';
+    el.style.borderColor = 'rgba(61,126,255,0.35)';
   }
 
   function handleMouseLeave() {
@@ -195,7 +195,7 @@ function Stat({ label, value, sub, progress }: {
         </div>
       )}
       {progress !== undefined && (
-        <div className="mt-3 h-px overflow-hidden" style={{ background: '#30363D', borderRadius: '1px' }}>
+        <div className="mt-3 overflow-hidden" style={{ height: '2px', background: '#30363D', borderRadius: '1px' }}>
           <div
             className="h-full"
             style={{
@@ -225,8 +225,8 @@ function CoreCard({ subject }: { subject: typeof CORE_SUBJECTS[0] }) {
       <div className="p-5">
         <div className="flex items-start gap-3 mb-4">
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: subject.color + '1A' }}
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5"
+            style={{ backgroundColor: subject.color + '22', border: `1px solid ${subject.color}30` }}
           >
             <Icon color={subject.color} />
           </div>
@@ -265,11 +265,11 @@ function CoreCard({ subject }: { subject: typeof CORE_SUBJECTS[0] }) {
             <Link
               key={label}
               to={to}
-              className="flex-1 flex items-center justify-center h-7 text-[11px] font-medium no-underline transition-all duration-150 rounded"
+              className="flex-1 flex items-center justify-center h-8 text-[11px] font-semibold no-underline transition-all duration-150 rounded"
               style={{
-                backgroundColor: subject.color + '15',
+                backgroundColor: subject.color + '1A',
                 color: subject.color,
-                border: `1px solid ${subject.color}30`,
+                border: `1px solid ${subject.color}40`,
               }}
             >
               {label}
@@ -292,8 +292,8 @@ function ExtendedCard({ subject }: { subject: typeof EXTENDED_SUBJECTS[0] }) {
       <TiltCard className="card-panel p-4 h-full">
         <div className="flex items-start justify-between mb-3">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: subject.color + '1A' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center [&>svg]:w-[18px] [&>svg]:h-[18px]"
+            style={{ backgroundColor: subject.color + '22', border: `1px solid ${subject.color}30` }}
           >
             <Icon color={subject.color} />
           </div>
@@ -348,21 +348,21 @@ function ModeCard({ to, iconBg, iconPath, title, desc, stat, statColor }: {
   return (
     <Link to={to} className="no-underline block h-full">
       <TiltCard className="card-panel p-5 h-full flex flex-col">
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4 flex-shrink-0" style={{ background: iconBg }}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 flex-shrink-0" style={{ background: iconBg, border: `1px solid ${statColor}22` }}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
             {iconPath}
           </svg>
         </div>
-        <div className="text-sm font-semibold mb-1.5" style={{ fontFamily: "'Sora', sans-serif", color: '#E6EDF3' }}>
+        <div className="text-[15px] font-semibold mb-1.5" style={{ fontFamily: "'Sora', sans-serif", color: '#E6EDF3' }}>
           {title}
         </div>
-        <div className="text-xs leading-relaxed flex-1" style={{ color: '#8B949E' }}>
+        <div className="text-[13px] leading-relaxed flex-1" style={{ color: '#8B949E' }}>
           {desc}
         </div>
         <div className="mt-4 inline-flex">
           <span
-            className="text-[11px] font-medium px-2.5 py-1 rounded"
-            style={{ background: `${statColor}18`, color: statColor, border: `1px solid ${statColor}30` }}
+            className="text-[11px] font-semibold px-3 py-1 rounded-full"
+            style={{ background: `${statColor}22`, color: statColor, border: `1px solid ${statColor}45` }}
           >
             {stat}
           </span>

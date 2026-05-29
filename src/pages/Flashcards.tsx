@@ -209,6 +209,7 @@ export default function Flashcards() {
                     ? 'bg-green-900/20 text-green-400 border-green-400/50'
                     : 'border-green-500/30 text-green-400 hover:bg-green-500/10'
                 }`}
+                style={isKnown ? { boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 0 0 1px rgba(74,222,128,0.12), 0 2px 10px rgba(74,222,128,0.2)' } : {}}
               >
                 {isKnown ? '✓ Known' : 'Mark as Known'}
               </button>

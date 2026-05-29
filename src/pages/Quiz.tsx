@@ -40,6 +40,7 @@ export default function Quiz() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [timedOut, setTimedOut] = useState(false);
   const [shakingIdx, setShakingIdx] = useState<number | null>(null);
+  const [hoveredOption, setHoveredOption] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const currentQ = quizQuestions[currentIndex];
@@ -165,11 +166,12 @@ export default function Quiz() {
                 <button
                   key={m}
                   onClick={() => setQuizMode(m)}
-                  className={`flex-1 p-5 rounded-3xl text-left cursor-pointer border-2 transition-all duration-200 ${
+                  className={`flex-1 p-5 rounded-3xl text-left cursor-pointer border transition-all duration-200 ${
                     quizMode === m
-                      ? 'bg-md-secondary-container border-md-secondary text-md-on-secondary-container'
+                      ? 'bg-md-primary-container text-md-on-primary-container'
                       : 'bg-md-surface-container-high border-md-outline-variant text-md-on-surface hover:border-md-outline'
                   }`}
+                  style={quizMode === m ? { borderColor: 'rgba(61,126,255,0.4)', boxShadow: '0 0 0 1px rgba(61,126,255,0.15), 0 4px 16px rgba(61,126,255,0.12)' } : {}}
                 >
                   <div className="font-display text-lg mb-1">
                     {m === 'practice' ? 'Practice Mode' : 'Timed Mode'}
@@ -227,7 +229,7 @@ export default function Quiz() {
 
           <button
             onClick={startQuiz}
-            className="w-full h-12 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-200 hover:brightness-110"
+            className="w-full h-12 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-150 btn-accent"
             style={{ backgroundColor: '#3D7EFF', color: '#E6EDF3' }}
           >
             Start Quiz →
@@ -306,7 +308,7 @@ export default function Quiz() {
           {wrongAnswers.length > 0 && (
             <button
               onClick={() => { setRetryWrong(true); setMode('setup'); }}
-              className="flex-1 h-11 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-200 hover:brightness-110"
+              className="flex-1 h-11 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-150 btn-accent"
               style={{ backgroundColor: '#1D3461', color: '#93B8FF' }}
             >
               Retry {wrongAnswers.length} Wrong →
@@ -396,8 +398,13 @@ export default function Quiz() {
               textCol = '#f87171';
               badgeBg = '#f87171';
             } else if (!isAnswered) {
-              bg = 'var(--color-md-surface-container-high)';
-              border = 'var(--color-md-outline-variant)';
+              if (hoveredOption === i) {
+                bg = 'rgba(255,255,255,0.045)';
+                border = '#484F58';
+              } else {
+                bg = 'var(--color-md-surface-container-high)';
+                border = 'var(--color-md-outline-variant)';
+              }
             } else {
               bg = 'var(--color-md-surface-container-low)';
               border = 'var(--color-md-outline-variant)';
@@ -409,8 +416,10 @@ export default function Quiz() {
                 key={i}
                 onClick={() => handleSelect(i)}
                 disabled={isAnswered}
-                className={`flex items-center gap-3 w-full text-left px-4 py-3.5 rounded-2xl border transition-all duration-200 cursor-pointer disabled:cursor-default text-sm${isWrong && shakingIdx === i ? ' anim-shake' : ''}`}
+                className={`flex items-center gap-3 w-full text-left px-4 py-3.5 rounded-2xl border transition-all duration-150 cursor-pointer disabled:cursor-default text-sm${isWrong && shakingIdx === i ? ' anim-shake' : ''}`}
                 style={{ backgroundColor: bg, borderColor: border, color: textCol }}
+                onMouseEnter={() => !isAnswered && setHoveredOption(i)}
+                onMouseLeave={() => setHoveredOption(null)}
               >
                 <span
                   className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold border transition-all duration-200"
@@ -462,7 +471,7 @@ export default function Quiz() {
       {isAnswered && (
         <button
           onClick={handleNext}
-          className="w-full h-12 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-200 hover:brightness-110"
+          className="w-full h-12 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-150 btn-accent"
           style={{ backgroundColor: '#3D7EFF', color: '#E6EDF3' }}
         >
           {currentIndex >= quizQuestions.length - 1 ? 'See Results →' : 'Next Question →'}
