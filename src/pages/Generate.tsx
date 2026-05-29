@@ -170,7 +170,7 @@ export default function Generate() {
           ) : (
             <>
               <span style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', color: '#94a3b8', fontWeight: 500, flexShrink: 0 }}>
-                Anthropic API key
+                Gemini API key
               </span>
               <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '240px' }}>
                 <input
