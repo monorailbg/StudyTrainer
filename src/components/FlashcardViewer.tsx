@@ -11,63 +11,61 @@ export function FlashcardViewer({ cards, color }: { cards: GeneratedFlashcard[];
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '11px', color: '#4a5a6e', fontVariantNumeric: 'tabular-nums' }}>
+      {/* Counter + topic */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="tabular-nums text-md-on-surface-variant text-xs">
           {index + 1} / {cards.length}
         </div>
-        <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', color: color, fontWeight: 500 }}>
+        <div className="text-xs font-medium" style={{ color }}>
           {card.topic}
         </div>
       </div>
 
+      {/* Flip card */}
       <div
-        className="flip-card"
-        style={{ cursor: 'pointer', marginBottom: '24px' }}
+        className="flip-card cursor-pointer mb-6"
         onClick={() => setFlipped(f => !f)}
         role="button"
         tabIndex={0}
         aria-label={flipped ? 'Show question' : 'Show answer'}
         onKeyDown={e => e.key === 'Enter' && setFlipped(f => !f)}
       >
-        <div className={`flip-card-inner${flipped ? ' flipped' : ''}`} style={{ minHeight: '220px' }}>
-          <div className="flip-card-front" style={{
-            backgroundColor: '#0d1a2e',
-            border: `1px solid ${color}28`,
-            borderTop: `3px solid ${color}`,
-            borderRadius: '14px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '44px 40px',
-            gap: '14px',
-          }}>
-            <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '10px', color: '#4a5a6e', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+        <div className={`flip-card-inner${flipped ? ' flipped' : ''}`} style={{ minHeight: '240px' }}>
+          {/* Front */}
+          <div
+            className="flip-card-front rounded-3xl flex flex-col items-center justify-center p-10 gap-3 border"
+            style={{
+              backgroundColor: '#1D1B20',
+              borderColor: color + '30',
+              borderTopWidth: '3px',
+              borderTopColor: color,
+            }}
+          >
+            <div className="text-md-on-surface-variant text-[10px] tracking-widest uppercase">
               Question
             </div>
-            <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: '1.3rem', color: '#f0f4f8', textAlign: 'center', lineHeight: 1.45, maxWidth: '560px' }}>
+            <div className="font-display text-md-on-surface text-xl text-center leading-relaxed max-w-xl">
               {card.front}
             </div>
-            <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '11px', color: '#2d4465', marginTop: '4px' }}>
+            <div className="text-md-outline text-xs mt-1">
               click to reveal answer
             </div>
           </div>
-          <div className="flip-card-back" style={{
-            backgroundColor: '#0d1a2e',
-            border: `1px solid ${color}50`,
-            borderTop: `3px solid ${color}`,
-            borderRadius: '14px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '44px 40px',
-            gap: '14px',
-          }}>
-            <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '10px', color: '#4a5a6e', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+
+          {/* Back */}
+          <div
+            className="flip-card-back rounded-3xl flex flex-col items-center justify-center p-10 gap-3 border"
+            style={{
+              backgroundColor: '#211F26',
+              borderColor: color + '50',
+              borderTopWidth: '3px',
+              borderTopColor: color,
+            }}
+          >
+            <div className="text-md-on-surface-variant text-[10px] tracking-widest uppercase">
               Answer
             </div>
-            <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '15px', color: '#f0f4f8', textAlign: 'center', lineHeight: 1.65, maxWidth: '560px' }}>
+            <div className="text-md-on-surface text-[15px] text-center leading-relaxed max-w-xl">
               {card.back}
             </div>
           </div>
@@ -75,41 +73,26 @@ export function FlashcardViewer({ cards, color }: { cards: GeneratedFlashcard[];
       </div>
 
       {/* Progress bar */}
-      <div style={{ height: '2px', backgroundColor: '#1e2d45', borderRadius: '0', marginBottom: '20px' }}>
-        <div style={{
-          height: '100%',
-          width: `${((index + 1) / cards.length) * 100}%`,
-          backgroundColor: color,
-          transition: 'width 0.25s ease-out',
-        }} />
+      <div className="h-0.5 bg-md-outline-variant rounded-full mb-5 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: `${((index + 1) / cards.length) * 100}%`, backgroundColor: color }}
+        />
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+      {/* Controls */}
+      <div className="flex gap-3 justify-center">
         <button
           onClick={prev}
           disabled={index === 0}
-          style={{
-            height: '40px', padding: '0 24px', borderRadius: '8px',
-            backgroundColor: '#162236', border: '1px solid #1e2d45',
-            color: index === 0 ? '#2d4465' : '#94a3b8',
-            cursor: index === 0 ? 'default' : 'pointer',
-            fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', fontWeight: 500,
-            transition: 'color 0.15s',
-          }}
+          className="h-10 px-6 rounded-full text-sm font-medium border transition-all duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-default bg-md-surface-container text-md-on-surface border-md-outline-variant hover:bg-md-surface-container-high"
         >
           ← Prev
         </button>
         <button
           onClick={next}
           disabled={index === cards.length - 1}
-          style={{
-            height: '40px', padding: '0 24px', borderRadius: '8px',
-            backgroundColor: '#162236', border: '1px solid #1e2d45',
-            color: index === cards.length - 1 ? '#2d4465' : '#94a3b8',
-            cursor: index === cards.length - 1 ? 'default' : 'pointer',
-            fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', fontWeight: 500,
-            transition: 'color 0.15s',
-          }}
+          className="h-10 px-6 rounded-full text-sm font-medium border transition-all duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-default bg-md-surface-container text-md-on-surface border-md-outline-variant hover:bg-md-surface-container-high"
         >
           Next →
         </button>

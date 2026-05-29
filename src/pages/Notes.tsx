@@ -150,11 +150,7 @@ function highlightText(text: string, query: string) {
   const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
   const parts = text.split(regex);
   return parts.map((part, i) =>
-    regex.test(part) ? (
-      <mark key={i} className="highlight-keyword">{part}</mark>
-    ) : (
-      part
-    )
+    regex.test(part) ? <mark key={i} className="highlight-keyword">{part}</mark> : part
   );
 }
 
@@ -184,42 +180,24 @@ export default function Notes() {
     : noteContent;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10 flex gap-6" style={{ minHeight: 'calc(100vh - 64px)' }}>
+    <div className="max-w-7xl mx-auto px-6 py-10 flex gap-5" style={{ minHeight: 'calc(100vh - 64px)' }}>
       {/* Sidebar */}
-      <aside
-        style={{
-          width: '280px',
-          flexShrink: 0,
-          backgroundColor: '#1a2436',
-          border: '1px solid #243048',
-          borderRadius: '12px',
-          padding: '20px',
-          alignSelf: 'flex-start',
-          position: 'sticky',
-          top: '80px',
-        }}
-      >
-        <div style={{ color: '#8896a8', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'IBM Plex Sans, sans-serif', marginBottom: '14px' }}>
+      <aside className="w-72 flex-shrink-0 bg-md-surface-container rounded-3xl p-5 border border-md-outline-variant self-start sticky top-20">
+        <div className="text-md-on-surface-variant text-[10px] tracking-[0.2em] uppercase mb-4 font-medium">
           Notes Library
         </div>
 
-        {/* Subject filter */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        {/* Subject filter chips */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
           {subjects.map((s) => (
             <button
               key={s}
               onClick={() => setSelectedSubject(s)}
-              style={{
-                backgroundColor: selectedSubject === s ? 'rgba(201,168,76,0.15)' : '#243048',
-                color: selectedSubject === s ? '#c9a84c' : '#8896a8',
-                border: `1px solid ${selectedSubject === s ? '#c9a84c' : 'transparent'}`,
-                borderRadius: '4px',
-                padding: '3px 10px',
-                fontSize: '11px',
-                cursor: 'pointer',
-                fontFamily: 'IBM Plex Sans, sans-serif',
-                fontWeight: 500,
-              }}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium border transition-all duration-200 cursor-pointer ${
+                selectedSubject === s
+                  ? 'bg-md-primary-container text-md-on-primary-container border-md-primary/30'
+                  : 'bg-transparent text-md-on-surface-variant border-md-outline-variant hover:bg-md-surface-container-high'
+              }`}
             >
               {s}
             </button>
@@ -235,25 +213,19 @@ export default function Notes() {
               <button
                 key={note.id}
                 onClick={() => handleSelectNote(note)}
-                style={{
-                  textAlign: 'left',
-                  backgroundColor: isSelected ? 'rgba(201,168,76,0.1)' : 'transparent',
-                  border: `1px solid ${isSelected ? 'rgba(201,168,76,0.3)' : 'transparent'}`,
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                  cursor: 'pointer',
-                  width: '100%',
-                }}
+                className={`text-left rounded-2xl px-3 py-2.5 w-full cursor-pointer border transition-all duration-200 ${
+                  isSelected
+                    ? 'bg-md-secondary-container border-md-secondary-container text-md-on-secondary-container'
+                    : 'bg-transparent border-transparent text-md-on-surface hover:bg-md-surface-container-high'
+                }`}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {isRead && (
-                    <span style={{ color: '#6dab8a', fontSize: '10px' }}>✓</span>
-                  )}
-                  <span style={{ color: isSelected ? '#c9a84c' : '#f0f4f8', fontSize: '13px', fontFamily: 'IBM Plex Sans, sans-serif', fontWeight: isSelected ? 600 : 400 }}>
+                <div className="flex items-center gap-1.5">
+                  {isRead && <span className="text-green-400 text-[10px]">✓</span>}
+                  <span className={`text-sm ${isSelected ? 'font-semibold' : 'font-normal'}`}>
                     {note.title}
                   </span>
                 </div>
-                <div style={{ color: '#4a5568', fontSize: '11px', marginTop: '2px', fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                <div className="text-md-on-surface-variant text-[11px] mt-0.5">
                   {note.chapter} · {note.subject}
                 </div>
               </button>
@@ -263,55 +235,35 @@ export default function Notes() {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, minWidth: 0 }}>
+      <main className="flex-1 min-w-0">
         {selectedNote ? (
           <>
             {/* Note header */}
             <div className="mb-6">
-              <div style={{ color: '#8896a8', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'IBM Plex Sans, sans-serif', marginBottom: '6px' }}>
+              <div className="text-md-on-surface-variant text-[10px] tracking-[0.2em] uppercase mb-1.5 font-medium">
                 {selectedNote.subject} · {selectedNote.chapter}
               </div>
-              <h1 style={{ fontFamily: 'DM Serif Display, serif', fontSize: 'clamp(1.6rem, 2.5vw, 2.2rem)', color: '#f0f4f8', margin: '0 0 16px' }}>
+              <h1 className="font-display text-md-on-surface m-0 mb-4" style={{ fontSize: 'clamp(1.6rem, 2.5vw, 2.2rem)' }}>
                 {selectedNote.title}
               </h1>
 
-              {/* Search */}
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              {/* Search + download */}
+              <div className="flex gap-3 items-center">
                 <input
                   type="text"
                   placeholder="Search within notes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    backgroundColor: '#1a2436',
-                    border: '1px solid #243048',
-                    borderRadius: '6px',
-                    color: '#f0f4f8',
-                    padding: '8px 14px',
-                    fontSize: '13px',
-                    width: '280px',
-                    fontFamily: 'IBM Plex Sans, sans-serif',
-                    outline: 'none',
-                  }}
+                  className="md-input !w-72 !py-2.5 !text-sm"
                 />
                 {selectedNote.rawUrl && (
                   <a
                     href={selectedNote.rawUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                      backgroundColor: 'rgba(201,168,76,0.1)',
-                      color: '#c9a84c',
-                      border: '1px solid rgba(201,168,76,0.3)',
-                      borderRadius: '6px',
-                      padding: '8px 14px',
-                      fontSize: '13px',
-                      fontFamily: 'IBM Plex Sans, sans-serif',
-                      fontWeight: 500,
-                      textDecoration: 'none',
-                    }}
+                    className="h-10 px-5 rounded-full text-sm font-medium border no-underline flex items-center border-md-outline-variant text-md-on-surface hover:bg-md-surface-container transition-all duration-200"
                   >
-                    ↓ Download PDF
+                    ↓ PDF
                   </a>
                 )}
               </div>
@@ -319,18 +271,16 @@ export default function Notes() {
 
             {/* Table of contents */}
             {noteContent.length > 0 && (
-              <div
-                style={{ backgroundColor: '#1a2436', border: '1px solid #243048', borderRadius: '10px', padding: '16px 20px', marginBottom: '28px' }}
-              >
-                <div style={{ color: '#8896a8', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'IBM Plex Sans, sans-serif', marginBottom: '10px' }}>
+              <div className="bg-md-surface-container rounded-3xl px-6 py-4 border border-md-outline-variant mb-7">
+                <div className="text-md-on-surface-variant text-[10px] tracking-[0.2em] uppercase mb-3 font-medium">
                   Contents
                 </div>
-                <ol style={{ margin: 0, padding: '0 0 0 16px' }}>
+                <ol className="m-0 pl-4">
                   {noteContent.map((section, i) => (
-                    <li key={i} style={{ color: '#7c9fc4', fontSize: '13px', fontFamily: 'IBM Plex Sans, sans-serif', marginBottom: '4px', cursor: 'pointer' }}
-                      onClick={() => {
-                        document.getElementById(`section-${i}`)?.scrollIntoView({ behavior: 'smooth' });
-                      }}
+                    <li
+                      key={i}
+                      className="text-md-primary text-sm mb-1 cursor-pointer hover:underline"
+                      onClick={() => document.getElementById(`section-${i}`)?.scrollIntoView({ behavior: 'smooth' })}
                     >
                       {section.heading}
                     </li>
@@ -341,30 +291,28 @@ export default function Notes() {
 
             {/* Sections */}
             {filteredContent.length > 0 ? (
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-5">
                 {filteredContent.map((section, i) => (
                   <div
                     key={i}
                     id={`section-${i}`}
-                    style={{ backgroundColor: '#1a2436', border: '1px solid #243048', borderRadius: '12px', padding: '28px 32px' }}
+                    className="bg-md-surface-container rounded-3xl px-8 py-7 border border-md-outline-variant"
                   >
-                    <h2 style={{ fontFamily: 'DM Serif Display, serif', fontSize: '1.35rem', color: '#c9a84c', margin: '0 0 14px', letterSpacing: '-0.3px' }}>
+                    <h2 className="font-display text-md-primary text-xl m-0 mb-3 tracking-tight">
                       {highlightText(section.heading, searchQuery)}
                     </h2>
-                    <p style={{ color: '#d0d8e4', fontSize: '14px', lineHeight: '1.75', fontFamily: 'IBM Plex Sans, sans-serif', marginBottom: '18px' }}>
+                    <p className="text-md-on-surface text-sm leading-relaxed mb-4">
                       {highlightText(section.body, searchQuery)}
                     </p>
-                    <div
-                      style={{ borderLeft: '3px solid #c9a84c', paddingLeft: '16px' }}
-                    >
-                      <div style={{ color: '#8896a8', fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'IBM Plex Sans, sans-serif', marginBottom: '8px' }}>
+                    <div className="border-l-2 border-md-primary pl-4">
+                      <div className="text-md-on-surface-variant text-[10px] tracking-[0.15em] uppercase mb-2 font-medium">
                         Key Points
                       </div>
-                      <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                      <ul className="m-0 p-0 list-none">
                         {section.bullets.map((bullet, j) => (
-                          <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                            <span style={{ color: '#c9a84c', marginTop: '2px', flexShrink: 0 }}>▸</span>
-                            <span style={{ color: '#d0d8e4', fontSize: '13px', fontFamily: 'IBM Plex Sans, sans-serif', lineHeight: '1.6' }}>
+                          <li key={j} className="flex items-start gap-2 mb-1.5">
+                            <span className="text-md-primary text-xs mt-0.5 flex-shrink-0">▸</span>
+                            <span className="text-md-on-surface-variant text-sm leading-relaxed">
                               {highlightText(bullet, searchQuery)}
                             </span>
                           </li>
@@ -375,25 +323,24 @@ export default function Notes() {
                 ))}
               </div>
             ) : (
-              <div style={{ backgroundColor: '#1a2436', border: '1px solid #243048', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'DM Serif Display, serif', color: '#f0f4f8', fontSize: '1.2rem', marginBottom: '8px' }}>
+              <div className="bg-md-surface-container rounded-3xl p-12 border border-md-outline-variant text-center">
+                <div className="font-display text-md-on-surface text-xl mb-2">
                   No sections match "{searchQuery}"
                 </div>
-                <button onClick={() => setSearchQuery('')} style={{ color: '#c9a84c', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-md-primary text-sm bg-transparent border-none cursor-pointer hover:underline"
+                >
                   Clear search
                 </button>
               </div>
             )}
           </>
         ) : (
-          <div
-            style={{ backgroundColor: '#1a2436', border: '1px solid #243048', borderRadius: '16px', padding: '80px 40px', textAlign: 'center' }}
-          >
-            <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📄</div>
-            <h2 style={{ fontFamily: 'DM Serif Display, serif', color: '#f0f4f8', fontSize: '1.5rem', marginBottom: '10px' }}>
-              Select a Note to Study
-            </h2>
-            <p style={{ color: '#8896a8', fontSize: '14px', fontFamily: 'IBM Plex Sans, sans-serif', maxWidth: '400px', margin: '0 auto' }}>
+          <div className="bg-md-surface-container rounded-3xl p-20 border border-md-outline-variant text-center">
+            <div className="text-5xl mb-5">📄</div>
+            <h2 className="font-display text-md-on-surface text-2xl mb-2">Select a Note to Study</h2>
+            <p className="text-md-on-surface-variant text-sm max-w-md mx-auto">
               Choose from the library on the left. Each note includes a structured summary with key bullet points and a searchable full-text view.
             </p>
           </div>

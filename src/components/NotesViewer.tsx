@@ -6,17 +6,11 @@ export function NotesViewer({ notes }: { notes: GeneratedNote }) {
   return (
     <div>
       {/* Summary header */}
-      <div style={{
-        backgroundColor: '#0d1a2e',
-        border: '1px solid #1e2d45',
-        borderRadius: '14px 14px 0 0',
-        padding: '28px 32px',
-        borderBottom: 'none',
-      }}>
-        <h2 style={{ fontFamily: 'DM Serif Display, serif', fontSize: '1.5rem', color: '#f0f4f8', margin: '0 0 12px', lineHeight: 1.3 }}>
+      <div className="bg-md-surface-container rounded-t-3xl px-8 py-7 border border-md-outline-variant border-b-0">
+        <h2 className="font-display text-md-on-surface text-2xl m-0 mb-3 leading-snug">
           {notes.title}
         </h2>
-        <p style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '14px', color: '#94a3b8', lineHeight: 1.65, margin: 0, maxWidth: '65ch' }}>
+        <p className="text-md-on-surface-variant text-sm leading-relaxed m-0 max-w-prose">
           {notes.summary}
         </p>
       </div>
@@ -25,44 +19,31 @@ export function NotesViewer({ notes }: { notes: GeneratedNote }) {
       {notes.sections.map((section, i) => (
         <div
           key={i}
-          style={{
-            backgroundColor: i % 2 === 0 ? '#0d1a2e' : '#0b1829',
-            border: '1px solid #1e2d45',
-            borderTop: 'none',
-            borderRadius: i === total - 1 ? '0 0 14px 14px' : '0',
-            padding: '22px 32px',
-          }}
+          className={`border border-md-outline-variant border-t-0 px-8 py-6 ${
+            i === total - 1 ? 'rounded-b-3xl' : ''
+          } ${i % 2 === 0 ? 'bg-md-surface-container' : 'bg-md-surface-container-low'}`}
         >
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-            <div style={{
-              flexShrink: 0,
-              width: '24px',
-              height: '24px',
-              borderRadius: '6px',
-              backgroundColor: '#162236',
-              border: '1px solid #1e2d45',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginTop: '1px',
-            }}>
-              <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '10px', color: '#4a5a6e', fontVariantNumeric: 'tabular-nums' }}>
+          <div className="flex gap-4 items-start">
+            {/* Section number badge */}
+            <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-md-primary-container flex items-center justify-center mt-0.5">
+              <span className="tabular-nums text-[10px] font-semibold text-md-on-primary-container">
                 {String(i + 1).padStart(2, '0')}
               </span>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h3 style={{ fontFamily: 'DM Serif Display, serif', fontSize: '1.05rem', color: '#f0f4f8', margin: '0 0 8px', lineHeight: 1.35 }}>
+
+            <div className="flex-1 min-w-0">
+              <h3 className="font-display text-md-on-surface text-base m-0 mb-2 leading-snug">
                 {section.heading}
               </h3>
-              <p style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '14px', color: '#94a3b8', lineHeight: 1.65, margin: '0 0 12px', maxWidth: '65ch' }}>
+              <p className="text-md-on-surface-variant text-sm leading-relaxed m-0 mb-3 max-w-prose">
                 {section.content}
               </p>
               {section.keyPoints && section.keyPoints.length > 0 && (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
                   {section.keyPoints.map((pt, j) => (
-                    <li key={j} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#d4a843', fontSize: '11px', lineHeight: '20px', flexShrink: 0, fontWeight: 600 }}>▸</span>
-                      <span style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', color: '#94a3b8', lineHeight: 1.5 }}>
+                    <li key={j} className="flex gap-2.5 items-start">
+                      <span className="text-md-primary text-xs leading-5 flex-shrink-0 font-semibold">▸</span>
+                      <span className="text-md-on-surface-variant text-sm leading-relaxed">
                         {pt}
                       </span>
                     </li>
