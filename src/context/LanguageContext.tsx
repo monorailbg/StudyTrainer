@@ -9,6 +9,7 @@ const T = {
     nav_flashcards: 'Flashcards',
     nav_notes: 'Notes',
     nav_quiz: 'Quiz',
+    nav_generate: 'Generate',
     tagline: 'Study Platform',
     // Dashboard
     dash_title: 'Study Dashboard',
@@ -81,6 +82,7 @@ const T = {
     nav_flashcards: 'フラッシュカード',
     nav_notes: 'ノート',
     nav_quiz: 'クイズ',
+    nav_generate: '生成',
     tagline: '学習プラットフォーム',
     dash_title: '学習ダッシュボード',
     dash_sub: '全科目のフラッシュカード・ノート・クイズの進捗を管理します。',

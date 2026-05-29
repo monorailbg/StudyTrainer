@@ -77,6 +77,7 @@ const navItems = [
   { to: '/flashcards', labelKey: 'nav_flashcards' as const },
   { to: '/notes', labelKey: 'nav_notes' as const },
   { to: '/quiz', labelKey: 'nav_quiz' as const },
+  { to: '/generate', labelKey: 'nav_generate' as const },
 ];
 
 export default function Navbar() {

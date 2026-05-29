@@ -142,6 +142,120 @@ export async function generateFromText(
   }));
 }
 
+const LEVEL_MAP: Record<string, string> = {
+  introductory: 'introductory (first-year university)',
+  intermediate: 'intermediate (second-year university)',
+  advanced: 'advanced (final year / master\'s level)',
+};
+
+const TOPIC_PROMPTS: Record<GenerationType, (topic: string, context: string, level: string) => string> = {
+  flashcards: (topic, context, level) =>
+    `You are an expert study material creator for university students.
+
+Create exactly 12 flashcards on: "${topic}"${context ? ` — relevant to ${context}` : ''}.
+Level: ${LEVEL_MAP[level] ?? level}.
+
+Focus on key definitions, frameworks, relationships, and exam-critical concepts.
+
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "flashcards": [
+    { "front": "Concise question or term", "back": "Clear answer or explanation", "topic": "Sub-topic category" }
+  ]
+}`,
+
+  notes: (topic, context, level) =>
+    `You are an expert academic note-taker for university students.
+
+Create comprehensive structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
+Level: ${LEVEL_MAP[level] ?? level}.
+
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "title": "Descriptive title",
+  "summary": "2-3 sentence overview",
+  "sections": [
+    {
+      "heading": "Section heading",
+      "content": "Explanation paragraph (2-4 sentences)",
+      "keyPoints": ["Key point 1", "Key point 2", "Key point 3"]
+    }
+  ]
+}
+
+Create 4-7 sections covering all major aspects.`,
+
+  quiz: (topic, context, level) =>
+    `You are an expert exam question writer for university students.
+
+Create exactly 10 multiple-choice questions on: "${topic}"${context ? ` for a ${context} course` : ''}.
+Level: ${LEVEL_MAP[level] ?? level}.
+
+Test understanding and application, not recall alone. Include plausible distractors.
+
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "questions": [
+    {
+      "question": "Clear, specific question",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct": 0,
+      "explanation": "Why this is correct (1-2 sentences)"
+    }
+  ]
+}`,
+};
+
+export async function generateFromTopic(
+  apiKey: string,
+  topic: string,
+  type: GenerationType,
+  subjectContext = '',
+  level = 'intermediate'
+): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level);
+
+  const message = await client.messages.create({
+    model: 'claude-opus-4-7',
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const block = message.content[0];
+  if (block.type !== 'text') throw new Error('Unexpected response type from API');
+
+  const parsed = parseJSON(block.text) as Record<string, unknown>;
+
+  if (type === 'flashcards') {
+    const cards = parsed['flashcards'] as Array<{ front: string; back: string; topic: string }>;
+    return cards.map((fc, i) => ({
+      id: `topic-${Date.now()}-${i}`,
+      front: fc.front,
+      back: fc.back,
+      topic: fc.topic ?? topic,
+    }));
+  }
+
+  if (type === 'notes') {
+    return parsed as unknown as GeneratedNote;
+  }
+
+  const questions = parsed['questions'] as Array<{
+    question: string;
+    options: [string, string, string, string];
+    correct: number;
+    explanation: string;
+  }>;
+  return questions.map((q, i) => ({
+    id: `topic-${Date.now()}-${i}`,
+    question: q.question,
+    options: q.options,
+    correct: q.correct as 0 | 1 | 2 | 3,
+    explanation: q.explanation,
+  }));
+}
+
 export async function generateFromImage(
   apiKey: string,
   base64: string,

@@ -11,6 +11,9 @@ import {
   type GeneratedNote,
   type GeneratedQuizQuestion,
 } from '../lib/generator';
+import { FlashcardViewer } from '../components/FlashcardViewer';
+import { NotesViewer } from '../components/NotesViewer';
+import { QuizViewer } from '../components/QuizViewer';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -83,12 +86,6 @@ const KeyIcon = ({ color }: { color: string }) => (
   </svg>
 );
 
-const CheckIcon = ({ color }: { color: string }) => (
-  <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
-    <path d="M3 8l3.5 3.5L13 5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 const EmptyIcon = ({ color, mode }: { color: string; mode: Mode }) => {
   if (mode === 'flashcards') return (
     <svg viewBox="0 0 64 64" width="64" height="64" fill="none" aria-hidden="true">
@@ -127,314 +124,6 @@ const Spinner = ({ color }: { color: string }) => (
     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
   </svg>
 );
-
-// ── Generated Flashcards View ─────────────────────────────────────────────
-
-function FlashcardView({ cards, color }: { cards: GeneratedFlashcard[]; color: string }) {
-  const [index, setIndex] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const card = cards[index];
-
-  return (
-    <div>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '20px',
-      }}>
-        <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '11px', color: '#4a5a6e', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-          {index + 1} / {cards.length}
-        </div>
-        <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', color: '#4a5a6e' }}>
-          {card.topic}
-        </div>
-      </div>
-
-      {/* Flip card */}
-      <div
-        className="flip-card"
-        style={{ cursor: 'pointer', marginBottom: '24px' }}
-        onClick={() => setFlipped(f => !f)}
-        role="button"
-        tabIndex={0}
-        aria-label="Flip card"
-        onKeyDown={e => e.key === 'Enter' && setFlipped(f => !f)}
-      >
-        <div className={`flip-card-inner${flipped ? ' flipped' : ''}`} style={{ minHeight: '200px' }}>
-          <div className="flip-card-front" style={{
-            backgroundColor: '#0d1a2e',
-            border: `1px solid ${color}30`,
-            borderTop: `3px solid ${color}`,
-            borderRadius: '14px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '40px 32px',
-            gap: '12px',
-          }}>
-            <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '10px', color: '#4a5a6e', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-              Question
-            </div>
-            <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: '1.3rem', color: '#f0f4f8', textAlign: 'center', lineHeight: 1.4 }}>
-              {card.front}
-            </div>
-            <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '11px', color: '#2d4465', marginTop: '8px' }}>
-              click to reveal
-            </div>
-          </div>
-          <div className="flip-card-back" style={{
-            backgroundColor: '#0d1a2e',
-            border: `1px solid ${color}50`,
-            borderTop: `3px solid ${color}`,
-            borderRadius: '14px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '40px 32px',
-            gap: '12px',
-          }}>
-            <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '10px', color: '#4a5a6e', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-              Answer
-            </div>
-            <div style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '15px', color: '#f0f4f8', textAlign: 'center', lineHeight: 1.6 }}>
-              {card.back}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-        <button
-          onClick={() => { setIndex(i => Math.max(0, i - 1)); setFlipped(false); }}
-          disabled={index === 0}
-          style={{
-            height: '40px', padding: '0 20px', borderRadius: '8px',
-            backgroundColor: '#162236', border: '1px solid #1e2d45',
-            color: index === 0 ? '#2d4465' : '#94a3b8',
-            cursor: index === 0 ? 'default' : 'pointer',
-            fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', fontWeight: 500,
-          }}
-        >
-          ← Prev
-        </button>
-        <button
-          onClick={() => { setIndex(i => Math.min(cards.length - 1, i + 1)); setFlipped(false); }}
-          disabled={index === cards.length - 1}
-          style={{
-            height: '40px', padding: '0 20px', borderRadius: '8px',
-            backgroundColor: '#162236', border: '1px solid #1e2d45',
-            color: index === cards.length - 1 ? '#2d4465' : '#94a3b8',
-            cursor: index === cards.length - 1 ? 'default' : 'pointer',
-            fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', fontWeight: 500,
-          }}
-        >
-          Next →
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Generated Notes View ──────────────────────────────────────────────────
-
-function NotesView({ notes }: { notes: GeneratedNote }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-      <div style={{
-        backgroundColor: '#0d1a2e',
-        border: '1px solid #1e2d45',
-        borderRadius: '14px 14px 0 0',
-        padding: '24px 28px',
-        borderBottom: 'none',
-      }}>
-        <h2 style={{ fontFamily: 'DM Serif Display, serif', fontSize: '1.4rem', color: '#f0f4f8', margin: '0 0 10px' }}>
-          {notes.title}
-        </h2>
-        <p style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '14px', color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
-          {notes.summary}
-        </p>
-      </div>
-
-      {notes.sections.map((section, i) => (
-        <div
-          key={i}
-          style={{
-            backgroundColor: '#0d1a2e',
-            border: '1px solid #1e2d45',
-            borderTop: i === 0 ? '1px solid #1e2d45' : 'none',
-            borderRadius: i === notes.sections.length - 1 ? '0 0 14px 14px' : '0',
-            padding: '20px 28px',
-          }}
-        >
-          <h3 style={{ fontFamily: 'DM Serif Display, serif', fontSize: '1.05rem', color: '#f0f4f8', margin: '0 0 8px' }}>
-            {section.heading}
-          </h3>
-          <p style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '14px', color: '#94a3b8', lineHeight: 1.65, margin: '0 0 12px' }}>
-            {section.content}
-          </p>
-          {section.keyPoints && section.keyPoints.length > 0 && (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {section.keyPoints.map((pt, j) => (
-                <li key={j} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <span style={{ color: '#d4a843', fontSize: '12px', lineHeight: '20px', flexShrink: 0 }}>▸</span>
-                  <span style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', color: '#94a3b8', lineHeight: 1.5 }}>
-                    {pt}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Generated Quiz View ───────────────────────────────────────────────────
-
-function QuizView({ questions, color }: { questions: GeneratedQuizQuestion[]; color: string }) {
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [submitted, setSubmitted] = useState(false);
-
-  const score = submitted
-    ? questions.filter(q => answers[q.id] === q.correct).length
-    : 0;
-
-  const reset = () => { setAnswers({}); setSubmitted(false); };
-
-  return (
-    <div>
-      {submitted && (
-        <div style={{
-          backgroundColor: '#0d1a2e',
-          border: `1px solid ${color}40`,
-          borderRadius: '12px',
-          padding: '16px 20px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '2rem', color, fontVariantNumeric: 'tabular-nums' }}>
-              {score}
-            </span>
-            <span style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '14px', color: '#4a5a6e' }}>
-              / {questions.length}
-            </span>
-          </div>
-          <button
-            onClick={reset}
-            style={{
-              height: '36px', padding: '0 16px', borderRadius: '8px',
-              backgroundColor: '#162236', border: '1px solid #2d4465',
-              color: '#94a3b8', cursor: 'pointer',
-              fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', fontWeight: 600,
-            }}
-          >
-            Reset
-          </button>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {questions.map((q, qi) => {
-          const chosen = answers[q.id];
-          const isAnswered = chosen !== undefined;
-          const isCorrect = submitted && chosen === q.correct;
-
-          return (
-            <div
-              key={q.id}
-              style={{
-                backgroundColor: '#0d1a2e',
-                border: `1px solid ${submitted && isAnswered ? (isCorrect ? '#4ade8040' : '#f8717140') : '#1e2d45'}`,
-                borderRadius: '12px',
-                padding: '20px',
-                transition: 'border-color 0.2s',
-              }}
-            >
-              <div style={{
-                fontFamily: 'IBM Plex Sans, sans-serif',
-                fontSize: '14px', fontWeight: 500, color: '#f0f4f8',
-                marginBottom: '14px', lineHeight: 1.5,
-              }}>
-                <span style={{ color: '#4a5a6e', fontWeight: 400, marginRight: '8px' }}>{qi + 1}.</span>
-                {q.question}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {q.options.map((opt, oi) => {
-                  const isChosen = chosen === oi;
-                  const isRight = submitted && oi === q.correct;
-                  let borderColor = '#1e2d45';
-                  let bgColor = '#162236';
-                  let textColor = '#94a3b8';
-                  if (isChosen && !submitted) { borderColor = color + '60'; bgColor = color + '14'; textColor = '#f0f4f8'; }
-                  if (isRight) { borderColor = '#4ade8040'; bgColor = '#4ade8014'; textColor = '#4ade80'; }
-                  if (submitted && isChosen && !isRight) { borderColor = '#f8717140'; bgColor = '#f8717114'; textColor = '#f87171'; }
-
-                  return (
-                    <button
-                      key={oi}
-                      disabled={submitted}
-                      onClick={() => setAnswers(a => ({ ...a, [q.id]: oi }))}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        width: '100%', textAlign: 'left',
-                        padding: '10px 14px', borderRadius: '8px',
-                        backgroundColor: bgColor, border: `1px solid ${borderColor}`,
-                        color: textColor, cursor: submitted ? 'default' : 'pointer',
-                        fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px',
-                        transition: 'all 0.15s', minHeight: '44px',
-                      }}
-                    >
-                      <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: `1.5px solid ${borderColor}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600 }}>
-                        {submitted && isRight ? <CheckIcon color="#4ade80" /> : String.fromCharCode(65 + oi)}
-                      </span>
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {submitted && isAnswered && !isCorrect && q.explanation && (
-                <div style={{
-                  marginTop: '12px', padding: '10px 14px',
-                  backgroundColor: '#162236', borderRadius: '8px',
-                  fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', color: '#94a3b8', lineHeight: 1.5,
-                }}>
-                  <span style={{ color: '#d4a843', fontWeight: 600 }}>Explanation: </span>
-                  {q.explanation}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {!submitted && Object.keys(answers).length === questions.length && (
-        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-          <button
-            onClick={() => setSubmitted(true)}
-            style={{
-              height: '44px', padding: '0 32px', borderRadius: '8px',
-              backgroundColor: '#d4a843', border: 'none',
-              color: '#07111f', cursor: 'pointer',
-              fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '14px', fontWeight: 600,
-            }}
-          >
-            Check Answers
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
@@ -923,7 +612,7 @@ export default function SubjectPage() {
                     {/* Status */}
                     {genState.status === 'done' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px' }}>
-                        <CheckIcon color="#4ade80" />
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><path d="M3 8l3.5 3.5L13 5" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         <span style={{ color: '#4ade80' }}>
                           {genState.type === 'flashcards' ? t('gen_done_fc') : genState.type === 'notes' ? t('gen_done_notes') : t('gen_done_quiz')}
                         </span>
@@ -984,7 +673,7 @@ export default function SubjectPage() {
                 {t('gen_regenerate')} →
               </button>
             </div>
-            <FlashcardView cards={generatedContent.flashcards} color={subject.color} />
+            <FlashcardViewer cards={generatedContent.flashcards} color={subject.color} />
           </div>
         ) : (
           <EmptyStudyState mode="flashcards" color={subject.color} onUpload={() => setActiveMode('upload')} t={t} />
@@ -1006,7 +695,7 @@ export default function SubjectPage() {
                 {t('gen_regenerate')} →
               </button>
             </div>
-            <NotesView notes={generatedContent.notes} />
+            <NotesViewer notes={generatedContent.notes} />
           </div>
         ) : (
           <EmptyStudyState mode="notes" color={subject.color} onUpload={() => setActiveMode('upload')} t={t} />
@@ -1028,7 +717,7 @@ export default function SubjectPage() {
                 {t('gen_regenerate')} →
               </button>
             </div>
-            <QuizView questions={generatedContent.quiz} color={subject.color} />
+            <QuizViewer questions={generatedContent.quiz} color={subject.color} />
           </div>
         ) : (
           <EmptyStudyState mode="quiz" color={subject.color} onUpload={() => setActiveMode('upload')} t={t} />
