@@ -116,22 +116,22 @@ function extractRetryDelay(err: unknown): number {
   return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 32_000;
 }
 
-async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    const msg = String(err);
-    const isRateLimit = msg.includes('429');
-    const isQuotaExhausted =
-      msg.includes('RESOURCE_EXHAUSTED') ||
-      msg.includes('limit: 0') ||
-      msg.toLowerCase().includes('quota exceeded');
-    if (isRateLimit && !isQuotaExhausted) {
-      await new Promise(r => setTimeout(r, extractRetryDelay(err)));
-      return fn();
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 4): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const is429 = String(err).includes('429');
+      if (is429 && attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, extractRetryDelay(err)));
+        continue;
+      }
+      throw err;
     }
-    throw err;
   }
+  throw lastErr;
 }
 
 // ── Prompts ────────────────────────────────────────────────────────────────
