@@ -8,9 +8,25 @@ import type {
 const MODEL = 'gemini-2.0-flash';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
+const LS_KEY = 'gemini_api_key';
+
+export function getStoredApiKey(): string {
+  return (import.meta.env.VITE_GEMINI_API_KEY as string | undefined)
+    ?? localStorage.getItem(LS_KEY)
+    ?? '';
+}
+
+export function setStoredApiKey(key: string) {
+  localStorage.setItem(LS_KEY, key.trim());
+}
+
+export function clearStoredApiKey() {
+  localStorage.removeItem(LS_KEY);
+}
+
 function getApiKey(): string {
-  const key = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-  if (!key) throw new Error('VITE_GEMINI_API_KEY is not set in .env');
+  const key = getStoredApiKey();
+  if (!key) throw new Error('Gemini API key not set. Enter it in the banner above.');
   return key;
 }
 

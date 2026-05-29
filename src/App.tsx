@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { LanguageProvider } from './context/LanguageContext';
 import Navbar from './components/Navbar';
+import { ApiKeyBanner } from './components/ApiKeyBanner';
 import Home from './pages/Home';
 import Flashcards from './pages/Flashcards';
 import Notes from './pages/Notes';
@@ -13,6 +14,7 @@ export default function App() {
     <LanguageProvider>
       <BrowserRouter>
         <Navbar />
+        <ApiKeyBanner />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/flashcards" element={<Flashcards />} />
