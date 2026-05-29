@@ -113,7 +113,8 @@ async function callGemini(parts: Part[]): Promise<string> {
 function extractRetryDelay(err: unknown): number {
   const msg = String(err);
   const match = msg.match(/retry\s+in\s+([\d.]+)s/i);
-  return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 32_000;
+  // Default 65s covers the 60-second RPM window with margin
+  return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 65_000;
 }
 
 async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 4): Promise<T> {

@@ -16,15 +16,21 @@ function friendlyError(raw: string): string {
   if (!raw) return 'Generation failed.';
   if (raw.includes('VITE_GEMINI_API_KEY') || raw.includes('not set'))
     return 'Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.';
-  if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('limit: 0') || raw.toLowerCase().includes('quota'))
-    return 'API quota exhausted. Your Gemini free-tier limit may be reached.';
-  if (raw.includes('429'))
-    return 'Rate limit reached. Wait 30 seconds and try again.';
   if (raw.includes('403') || raw.includes('API_KEY_INVALID') || raw.toLowerCase().includes('api key'))
     return 'Invalid API key. Check VITE_GEMINI_API_KEY in your .env file.';
+  if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('limit: 0')) {
+    const isPerMinute = raw.toLowerCase().includes('per minute') || raw.toLowerCase().includes('rpm') || raw.includes('429');
+    if (isPerMinute)
+      return 'Per-minute rate limit hit (Gemini free tier: 15 req/min). The system retried automatically — if this keeps happening, wait 2 minutes before trying again.';
+    return 'Daily quota reached. The Gemini free tier allows 1,500 requests per day. Try again tomorrow or check your usage at ai.google.dev.';
+  }
+  if (raw.toLowerCase().includes('quota'))
+    return 'Quota limit reached. Check your Gemini API usage at ai.google.dev.';
+  if (raw.includes('429'))
+    return 'Rate limit hit. Wait 60 seconds and try again.';
   if (raw.includes('400'))
     return 'Bad request — topic too long or unsupported content.';
-  return `Generation failed: ${raw.slice(0, 120)}`;
+  return `Generation failed: ${raw.slice(0, 160)}`;
 }
 
 const SparkleIcon = ({ color = '#3D7EFF' }: { color?: string }) => (
@@ -243,7 +249,12 @@ export default function Generate() {
       {/* Error */}
       {status === 'error' && (
         <div className="bg-red-500/10 border border-red-500/25 rounded-2xl px-5 py-4 text-red-400 text-sm mb-6">
-          {friendlyError(error)}
+          <div>{friendlyError(error)}</div>
+          {error && (
+            <div className="mt-2 text-[11px] opacity-50 break-all" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+              {error.slice(0, 220)}
+            </div>
+          )}
         </div>
       )}
 
