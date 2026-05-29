@@ -15,15 +15,17 @@ import { QuizViewer } from '../components/QuizViewer';
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function friendlyError(raw: string): string {
-  if (!raw) return 'Generation failed. Check your API key and try again.';
-  if (raw.includes('limit: 0'))
-    return 'Your API key has no free-tier quota. Make sure you created the key at aistudio.google.com — not the Google Cloud Console.';
+  if (!raw) return 'Generation failed.';
+  if (raw.includes('VITE_GEMINI_API_KEY') || raw.includes('not set'))
+    return 'Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.';
+  if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('limit: 0') || raw.toLowerCase().includes('quota'))
+    return 'API quota exhausted. Your Gemini free-tier limit may be reached.';
   if (raw.includes('429'))
     return 'Rate limit reached. Wait 30 seconds and try again.';
-  if (raw.includes('403') || raw.toLowerCase().includes('invalid') || raw.toLowerCase().includes('api key'))
-    return 'Invalid API key. Paste your key from aistudio.google.com/apikey.';
+  if (raw.includes('403') || raw.includes('API_KEY_INVALID') || raw.toLowerCase().includes('api key'))
+    return 'Invalid API key. Check VITE_GEMINI_API_KEY in your .env file.';
   if (raw.includes('400'))
-    return 'Bad request. The file may be too large or in an unsupported format.';
+    return 'Bad request — topic too long or unsupported content.';
   return `Generation failed: ${raw.slice(0, 120)}`;
 }
 
@@ -33,13 +35,6 @@ const SparkleIcon = ({ color = '#d4a843' }: { color?: string }) => (
   <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden="true">
     <path d="M10 2v4M10 14v4M2 10h4M14 10h4" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
     <path d="M4.22 4.22l2.83 2.83M12.95 12.95l2.83 2.83M4.22 15.78l2.83-2.83M12.95 7.05l2.83-2.83" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
-  </svg>
-);
-
-const KeyIcon = () => (
-  <svg viewBox="0 0 20 20" width="13" height="13" fill="none" aria-hidden="true">
-    <circle cx="7.5" cy="10" r="4.5" stroke="#4ade80" strokeWidth="1.4" />
-    <path d="M11.5 10h7M15.5 10v2.5" stroke="#4ade80" strokeWidth="1.4" strokeLinecap="round" />
   </svg>
 );
 
@@ -71,11 +66,6 @@ interface Result {
 export default function Generate() {
   useLang();
 
-  // API key
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini-api-key') ?? '');
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [showKeyForm, setShowKeyForm] = useState(false);
-
   // Form state
   const [topic, setTopic] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
@@ -89,16 +79,7 @@ export default function Generate() {
 
   const subject = ALL_SUBJECTS.find(s => s.id === selectedSubjectId);
   const accentColor = subject?.color ?? '#d4a843';
-  const canGenerate = !!apiKey && topic.trim().length >= 3;
-
-  const saveApiKey = () => {
-    const trimmed = apiKeyInput.trim();
-    if (!trimmed) return;
-    setApiKey(trimmed);
-    localStorage.setItem('gemini-api-key', trimmed);
-    setApiKeyInput('');
-    setShowKeyForm(false);
-  };
+  const canGenerate = topic.trim().length >= 3;
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
@@ -108,7 +89,6 @@ export default function Generate() {
 
     try {
       const output = await generateFromTopic(
-        apiKey,
         topic.trim(),
         contentType,
         subject?.title ?? '',
@@ -164,70 +144,6 @@ export default function Generate() {
         overflow: 'hidden',
         marginBottom: '28px',
       }}>
-
-        {/* API key row */}
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #1e2d45', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {apiKey && !showKeyForm ? (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <KeyIcon />
-                <span style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', color: '#4ade80', fontWeight: 500 }}>
-                  API key active
-                </span>
-              </div>
-              <button onClick={() => setShowKeyForm(true)} style={{
-                background: 'none', border: 'none', color: '#4a5a6e', cursor: 'pointer',
-                fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', textDecoration: 'underline', padding: 0,
-              }}>
-                change
-              </button>
-            </>
-          ) : (
-            <>
-              <span style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', color: '#94a3b8', fontWeight: 500, flexShrink: 0 }}>
-                Gemini API key
-              </span>
-              <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '240px' }}>
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={e => setApiKeyInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && saveApiKey()}
-                  placeholder="sk-ant-..."
-                  style={{
-                    flex: 1, height: '36px', padding: '0 12px',
-                    backgroundColor: '#162236', border: '1px solid #4a5568',
-                    borderRadius: '7px', color: '#f0f4f8',
-                    fontFamily: 'IBM Plex Mono, monospace', fontSize: '12px', outline: 'none',
-                  }}
-                  onFocus={e => (e.target.style.borderColor = '#d4a843')}
-                  onBlur={e => (e.target.style.borderColor = '#4a5568')}
-                />
-                <button onClick={saveApiKey} disabled={!apiKeyInput.trim()} style={{
-                  height: '36px', padding: '0 14px', borderRadius: '7px',
-                  backgroundColor: apiKeyInput.trim() ? '#d4a843' : '#162236',
-                  border: 'none',
-                  color: apiKeyInput.trim() ? '#07111f' : '#2d4465',
-                  cursor: apiKeyInput.trim() ? 'pointer' : 'default',
-                  fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', fontWeight: 600,
-                  transition: 'all 0.15s', flexShrink: 0,
-                }}>
-                  Save
-                </button>
-                {apiKey && (
-                  <button onClick={() => setShowKeyForm(false)} style={{
-                    height: '36px', padding: '0 12px', borderRadius: '7px',
-                    backgroundColor: '#162236', border: '1px solid #1e2d45',
-                    color: '#4a5a6e', cursor: 'pointer',
-                    fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '12px', flexShrink: 0,
-                  }}>
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
 
         {/* Topic input */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #1e2d45' }}>

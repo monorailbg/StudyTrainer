@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import type {
   GeneratedFlashcard,
   GeneratedNote,
@@ -6,7 +5,14 @@ import type {
   GenerationType,
 } from './generator';
 
-const MODEL = 'gemini-1.5-flash';
+const MODEL = 'gemini-2.0-flash';
+const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+function getApiKey(): string {
+  const key = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+  if (!key) throw new Error('VITE_GEMINI_API_KEY is not set in .env');
+  return key;
+}
 
 function parseJSON(raw: string): unknown {
   let text = raw.trim();
@@ -55,6 +61,37 @@ function processResult(
   }));
 }
 
+// ── Gemini REST call ───────────────────────────────────────────────────────
+
+type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
+
+async function callGemini(parts: Part[]): Promise<string> {
+  const key = getApiKey();
+  const url = `${API_BASE}/${MODEL}:generateContent?key=${key}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts }] }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as {
+      error?: { message?: string; status?: string };
+    };
+    const msg = err.error?.message ?? res.statusText;
+    const status = err.error?.status ?? '';
+    throw new Error(`${res.status} ${status}: ${msg}`);
+  }
+
+  const data = await res.json() as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Empty response from Gemini');
+  return text;
+}
+
 // ── Retry helper ──────────────────────────────────────────────────────────
 
 function extractRetryDelay(err: unknown): number {
@@ -68,8 +105,12 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
     return await fn();
   } catch (err) {
     const msg = String(err);
-    // Only retry transient rate limits — not quota=0 (pointless to wait)
-    if (msg.includes('429') && !msg.includes('limit: 0')) {
+    const isRateLimit = msg.includes('429');
+    const isQuotaExhausted =
+      msg.includes('RESOURCE_EXHAUSTED') ||
+      msg.includes('limit: 0') ||
+      msg.toLowerCase().includes('quota exceeded');
+    if (isRateLimit && !isQuotaExhausted) {
       await new Promise(r => setTimeout(r, extractRetryDelay(err)));
       return fn();
     }
@@ -193,41 +234,33 @@ Return ONLY valid JSON — no markdown, no preamble:
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export async function generateFromFile(
-  apiKey: string,
   file: File,
   type: GenerationType,
   subjectTitle: string
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: MODEL });
-
   const base64 = await fileToBase64(file);
   const prompt = FILE_PROMPTS[type](subjectTitle);
 
-  const result = await withRetry(() =>
-    model.generateContent([
-      { inlineData: { data: base64, mimeType: file.type } },
-      prompt,
+  const text = await withRetry(() =>
+    callGemini([
+      { inline_data: { mime_type: file.type, data: base64 } },
+      { text: prompt },
     ])
   );
 
-  const parsed = parseJSON(result.response.text()) as Record<string, unknown>;
+  const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
 }
 
 export async function generateFromTopic(
-  apiKey: string,
   topic: string,
   type: GenerationType,
   subjectContext = '',
   level = 'intermediate'
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: MODEL });
-
   const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level);
 
-  const result = await withRetry(() => model.generateContent(prompt));
-  const parsed = parseJSON(result.response.text()) as Record<string, unknown>;
+  const text = await withRetry(() => callGemini([{ text: prompt }]));
+  const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, topic);
 }
