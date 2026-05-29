@@ -13,6 +13,19 @@ import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
 
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function subjectFriendlyError(raw?: string): string {
+  if (!raw) return 'Generation failed. Check your API key and try again.';
+  if (raw.includes('429') || raw.includes('quota') || raw.toLowerCase().includes('rate'))
+    return 'Rate limit reached. Wait a moment and try again.';
+  if (raw.includes('403') || raw.toLowerCase().includes('invalid') || raw.toLowerCase().includes('api key'))
+    return 'Invalid API key. Check your Gemini API key.';
+  if (raw.includes('400'))
+    return 'File too large or unsupported format.';
+  return 'Generation failed. Check your API key and try again.';
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface UploadedFile {
@@ -618,7 +631,7 @@ export default function SubjectPage() {
 
                     {genState.status === 'error' && (
                       <span style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', color: '#f87171' }}>
-                        {t('gen_error')}
+                        {subjectFriendlyError(genState.error)}
                       </span>
                     )}
                   </div>

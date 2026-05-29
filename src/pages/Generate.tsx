@@ -12,6 +12,19 @@ import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
 
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function friendlyError(raw: string): string {
+  if (!raw) return 'Generation failed. Check your API key and try again.';
+  if (raw.includes('429') || raw.includes('quota') || raw.toLowerCase().includes('rate'))
+    return 'Rate limit reached. Wait a moment and try again, or check your Gemini API quota.';
+  if (raw.includes('403') || raw.includes('API_KEY') || raw.toLowerCase().includes('api key') || raw.toLowerCase().includes('invalid'))
+    return 'Invalid API key. Make sure you pasted a valid Gemini API key.';
+  if (raw.includes('400'))
+    return 'Bad request. The file may be too large or in an unsupported format.';
+  return 'Generation failed. Check your API key and try again.';
+}
+
 // ── Icons ──────────────────────────────────────────────────────────────────
 
 const SparkleIcon = ({ color = '#d4a843' }: { color?: string }) => (
@@ -378,8 +391,7 @@ export default function Generate() {
           fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', color: '#f87171',
           marginBottom: '24px',
         }}>
-          Generation failed. Check your API key and try again.
-          {error && <span style={{ color: '#f87171aa', marginLeft: '8px', fontSize: '11px' }}>{error}</span>}
+          {friendlyError(error)}
         </div>
       )}
 
