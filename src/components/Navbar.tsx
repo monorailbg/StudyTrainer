@@ -11,9 +11,14 @@ const JapanFlag = () => (
 const UKFlag = () => (
   <svg viewBox="0 0 60 30" width="20" height="14" style={{ borderRadius: '2px', display: 'block' }} aria-label="English">
     <rect width="60" height="30" fill="#012169" />
+    {/* St Andrew's Cross – white diagonals */}
     <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6" />
-    <path d="M37.5,0 L60,15 M0,15 L22.5,30" stroke="#C8102E" strokeWidth="4" />
-    <path d="M22.5,0 L0,15 M60,15 L37.5,30" stroke="#C8102E" strokeWidth="4" />
+    {/* St Patrick's Cross – counterchanged red diagonals */}
+    {/* ↘ diagonal: upper half offset toward top, lower half offset toward bottom */}
+    <path d="M4.5,0 L30.9,13.2 M29.1,16.8 L55.5,30" stroke="#C8102E" strokeWidth="3" />
+    {/* ↙ diagonal: upper half offset toward top, lower half offset toward bottom */}
+    <path d="M55.5,0 L29.1,13.2 M30.9,16.8 L4.5,30" stroke="#C8102E" strokeWidth="3" />
+    {/* St George's Cross */}
     <rect y="11" width="60" height="8" fill="#fff" />
     <rect x="26" width="8" height="30" fill="#fff" />
     <rect y="12.5" width="60" height="5" fill="#C8102E" />
