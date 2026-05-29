@@ -39,6 +39,7 @@ export default function Quiz() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [timeLeft, setTimeLeft] = useState(30);
   const [timedOut, setTimedOut] = useState(false);
+  const [shakingIdx, setShakingIdx] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const currentQ = quizQuestions[currentIndex];
@@ -79,6 +80,10 @@ export default function Quiz() {
     if (selectedOption !== null || timedOut) return;
     clearInterval(timerRef.current!);
     const correct = optionIndex === currentQ.correctIndex;
+    if (!correct) {
+      setShakingIdx(optionIndex);
+      setTimeout(() => setShakingIdx(null), 400);
+    }
     setSelectedOption(optionIndex);
     setShowExplanation(true);
     setAnswers((prev) => [...prev, {
@@ -210,7 +215,7 @@ export default function Quiz() {
                   type="checkbox"
                   checked={retryWrong}
                   onChange={(e) => setRetryWrong(e.target.checked)}
-                  style={{ accentColor: '#D0BCFF', width: '16px', height: '16px' }}
+                  style={{ accentColor: '#3D7EFF', width: '16px', height: '16px' }}
                 />
                 <span className="text-md-on-surface text-sm">
                   Retry wrong answers only
@@ -223,7 +228,7 @@ export default function Quiz() {
           <button
             onClick={startQuiz}
             className="w-full h-12 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-200 hover:brightness-110"
-            style={{ backgroundColor: '#D0BCFF', color: '#381E72' }}
+            style={{ backgroundColor: '#3D7EFF', color: '#E6EDF3' }}
           >
             Start Quiz →
           </button>
@@ -236,7 +241,7 @@ export default function Quiz() {
 
   if (mode === 'results') {
     const grade = pct >= 80 ? 'Excellent' : pct >= 60 ? 'Good' : pct >= 40 ? 'Fair' : 'Needs Work';
-    const gradeColor = pct >= 80 ? '#4ade80' : pct >= 60 ? '#D0BCFF' : pct >= 40 ? '#60a5fa' : '#f87171';
+    const gradeColor = pct >= 80 ? '#4ade80' : pct >= 60 ? '#3D7EFF' : pct >= 40 ? '#60a5fa' : '#f87171';
 
     return (
       <div className="max-w-3xl mx-auto px-6 py-10">
@@ -248,7 +253,7 @@ export default function Quiz() {
         <div
           className="rounded-3xl p-10 text-center mb-5 border-2"
           style={{
-            backgroundColor: '#1D1B20',
+            backgroundColor: '#161B22',
             borderColor: gradeColor + '50',
           }}
         >
@@ -271,7 +276,7 @@ export default function Quiz() {
           <div className="flex flex-col gap-4">
             {topicBreakdown.map(({ topic, correct, total: t }) => {
               const topicPct = t > 0 ? Math.round((correct / t) * 100) : 0;
-              const barColor = topicPct >= 75 ? '#4ade80' : topicPct >= 50 ? '#D0BCFF' : '#f87171';
+              const barColor = topicPct >= 75 ? '#4ade80' : topicPct >= 50 ? '#3D7EFF' : '#f87171';
               return (
                 <div key={topic}>
                   <div className="flex justify-between items-center mb-1.5">
@@ -302,7 +307,7 @@ export default function Quiz() {
             <button
               onClick={() => { setRetryWrong(true); setMode('setup'); }}
               className="flex-1 h-11 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-200 hover:brightness-110"
-              style={{ backgroundColor: '#4F378B', color: '#EADDFF' }}
+              style={{ backgroundColor: '#1D3461', color: '#93B8FF' }}
             >
               Retry {wrongAnswers.length} Wrong →
             </button>
@@ -318,7 +323,7 @@ export default function Quiz() {
   const isAnswered = selectedOption !== null || timedOut;
   const isCorrect = selectedOption === currentQ?.correctIndex;
   const timerPct = (timeLeft / 30) * 100;
-  const timerColor = timeLeft > 15 ? '#4ade80' : timeLeft > 8 ? '#D0BCFF' : '#f87171';
+  const timerColor = timeLeft > 15 ? '#4ade80' : timeLeft > 8 ? '#3D7EFF' : '#f87171';
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
@@ -404,7 +409,7 @@ export default function Quiz() {
                 key={i}
                 onClick={() => handleSelect(i)}
                 disabled={isAnswered}
-                className="flex items-center gap-3 w-full text-left px-4 py-3.5 rounded-2xl border transition-all duration-200 cursor-pointer disabled:cursor-default text-sm"
+                className={`flex items-center gap-3 w-full text-left px-4 py-3.5 rounded-2xl border transition-all duration-200 cursor-pointer disabled:cursor-default text-sm${isWrong && shakingIdx === i ? ' anim-shake' : ''}`}
                 style={{ backgroundColor: bg, borderColor: border, color: textCol }}
               >
                 <span
@@ -412,7 +417,7 @@ export default function Quiz() {
                   style={{
                     borderColor: border,
                     backgroundColor: (isRight || isWrong) ? badgeBg : 'transparent',
-                    color: (isRight || isWrong) ? '#141218' : textCol,
+                    color: (isRight || isWrong) ? '#0D1117' : textCol,
                   }}
                 >
                   {String.fromCharCode(65 + i)}
@@ -458,7 +463,7 @@ export default function Quiz() {
         <button
           onClick={handleNext}
           className="w-full h-12 rounded-full text-sm font-semibold border-0 cursor-pointer transition-all duration-200 hover:brightness-110"
-          style={{ backgroundColor: '#D0BCFF', color: '#381E72' }}
+          style={{ backgroundColor: '#3D7EFF', color: '#E6EDF3' }}
         >
           {currentIndex >= quizQuestions.length - 1 ? 'See Results →' : 'Next Question →'}
         </button>

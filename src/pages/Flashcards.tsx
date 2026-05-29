@@ -92,7 +92,7 @@ export default function Flashcards() {
             type="checkbox"
             checked={!showKnown}
             onChange={() => { setShowKnown((v) => !v); setIndex(0); setFlipped(false); }}
-            style={{ accentColor: '#D0BCFF' }}
+            style={{ accentColor: '#3D7EFF' }}
           />
           Hide known cards
         </label>
@@ -137,23 +137,25 @@ export default function Flashcards() {
             <div className={`flip-card-inner ${flipped ? 'flipped' : ''}`}>
               {/* Front */}
               <div
-                className="flip-card-front rounded-3xl flex flex-col items-center justify-center p-10 text-center relative border-2"
+                className="flip-card-front rounded-3xl flex flex-col items-center justify-center p-10 text-center relative"
                 style={{
-                  backgroundColor: '#1D1B20',
-                  borderColor: isKnown ? 'rgba(74,222,128,0.35)' : 'var(--color-md-outline-variant)',
+                  background: '#161B22',
+                  border: `1px solid ${isKnown ? 'rgba(46,160,67,0.4)' : '#30363D'}`,
+                  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',
                 }}
               >
-                <div className="text-md-on-surface-variant text-[10px] tracking-[0.2em] uppercase mb-5">
+                <div className="text-[10px] tracking-[0.12em] uppercase mb-5 font-medium" style={{ color: '#8B949E' }}>
                   Term / Concept
                 </div>
-                <div className="font-display text-md-on-surface leading-snug" style={{ fontSize: 'clamp(1.4rem, 2.5vw, 2rem)' }}>
+                <div className="text-md-on-surface leading-snug" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)' }}>
                   {card.front}
                 </div>
-                <div className="text-md-outline text-xs mt-8">
-                  Click to reveal definition
+                <div className="text-xs mt-8 flex items-center gap-1.5" style={{ color: '#484F58' }}>
+                  <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>Space</kbd>
+                  to reveal
                 </div>
                 {isKnown && (
-                  <div className="absolute top-4 right-4 bg-green-900/20 text-green-400 text-[10px] px-2.5 py-1 rounded-full font-semibold border border-green-400/25">
+                  <div className="absolute top-4 right-4 text-[10px] px-2.5 py-1 rounded font-semibold" style={{ background: 'rgba(46,160,67,0.12)', color: '#56D364', border: '1px solid rgba(46,160,67,0.25)' }}>
                     ✓ Known
                   </div>
                 )}
@@ -161,8 +163,8 @@ export default function Flashcards() {
 
               {/* Back */}
               <div
-                className="flip-card-back rounded-3xl flex flex-col items-center justify-center p-10 text-center border-2 border-md-primary/50"
-                style={{ backgroundColor: '#211F26' }}
+                className="flip-card-back rounded-3xl flex flex-col items-center justify-center p-10 text-center"
+                style={{ background: 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)', border: '1px solid rgba(61,126,255,0.35)', boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.4)' }}
               >
                 <div className="text-md-primary text-[10px] tracking-[0.2em] uppercase mb-4">
                   Definition

@@ -27,7 +27,7 @@ function friendlyError(raw: string): string {
   return `Generation failed: ${raw.slice(0, 120)}`;
 }
 
-const SparkleIcon = ({ color = '#D0BCFF' }: { color?: string }) => (
+const SparkleIcon = ({ color = '#3D7EFF' }: { color?: string }) => (
   <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden="true">
     <path d="M10 2v4M10 14v4M2 10h4M14 10h4" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
     <path d="M4.22 4.22l2.83 2.83M12.95 12.95l2.83 2.83M4.22 15.78l2.83-2.83M12.95 7.05l2.83-2.83" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
@@ -68,7 +68,7 @@ export default function Generate() {
   const [result, setResult] = useState<Result | null>(null);
 
   const subject = ALL_SUBJECTS.find(s => s.id === selectedSubjectId);
-  const accentColor = subject?.color ?? '#D0BCFF';
+  const accentColor = subject?.color ?? '#3D7EFF';
   const canGenerate = topic.trim().length >= 3;
 
   const handleGenerate = async () => {
@@ -226,14 +226,14 @@ export default function Generate() {
               disabled={!canGenerate || status === 'generating'}
               className="h-11 px-7 rounded-full text-sm font-semibold flex items-center gap-2 border-0 cursor-pointer transition-all duration-200 hover:brightness-110 disabled:opacity-40 disabled:cursor-default whitespace-nowrap"
               style={{
-                backgroundColor: canGenerate && status !== 'generating' ? '#D0BCFF' : 'var(--color-md-surface-container-high)',
-                color: canGenerate && status !== 'generating' ? '#381E72' : 'var(--color-md-on-surface-variant)',
+                backgroundColor: canGenerate && status !== 'generating' ? '#3D7EFF' : 'var(--color-md-surface-container-high)',
+                color: canGenerate && status !== 'generating' ? '#E6EDF3' : 'var(--color-md-on-surface-variant)',
               }}
             >
               {status === 'generating' ? (
                 <><Spinner color={accentColor} />Generating...</>
               ) : (
-                <><SparkleIcon color={canGenerate ? '#381E72' : 'var(--color-md-on-surface-variant)'} />Generate</>
+                <><SparkleIcon color={canGenerate ? '#E6EDF3' : 'var(--color-md-on-surface-variant)'} />Generate</>
               )}
             </button>
           </div>

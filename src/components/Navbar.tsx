@@ -2,23 +2,18 @@ import { Link, useLocation } from 'react-router-dom';
 import { useLang, type Lang } from '../context/LanguageContext';
 
 const JapanFlag = () => (
-  <svg viewBox="0 0 30 20" width="20" height="14" style={{ borderRadius: '2px', display: 'block' }} aria-label="Japanese">
+  <svg viewBox="0 0 30 20" width="18" height="12" style={{ borderRadius: '2px', display: 'block' }} aria-label="Japanese">
     <rect width="30" height="20" fill="#fff" />
     <circle cx="15" cy="10" r="6" fill="#bc002d" />
   </svg>
 );
 
 const UKFlag = () => (
-  <svg viewBox="0 0 60 30" width="20" height="14" style={{ borderRadius: '2px', display: 'block' }} aria-label="English">
+  <svg viewBox="0 0 60 30" width="18" height="12" style={{ borderRadius: '2px', display: 'block' }} aria-label="English">
     <rect width="60" height="30" fill="#012169" />
-    {/* St Andrew's Cross – white diagonals */}
     <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6" />
-    {/* St Patrick's Cross – counterchanged red diagonals */}
-    {/* ↘ diagonal: upper half offset toward top, lower half offset toward bottom */}
     <path d="M4.5,0 L30.9,13.2 M29.1,16.8 L55.5,30" stroke="#C8102E" strokeWidth="3" />
-    {/* ↙ diagonal: upper half offset toward top, lower half offset toward bottom */}
     <path d="M55.5,0 L29.1,13.2 M30.9,16.8 L4.5,30" stroke="#C8102E" strokeWidth="3" />
-    {/* St George's Cross */}
     <rect y="11" width="60" height="8" fill="#fff" />
     <rect x="26" width="8" height="30" fill="#fff" />
     <rect y="12.5" width="60" height="5" fill="#C8102E" />
@@ -28,31 +23,39 @@ const UKFlag = () => (
 
 function LangToggle() {
   const { lang, setLang } = useLang();
-
   const btn = (l: Lang, Flag: React.FC, label: string) => (
     <button
       key={l}
       onClick={() => setLang(l)}
       title={label}
       aria-label={`Switch to ${label}`}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium tracking-widest transition-all duration-200 cursor-pointer border ${
-        lang === l
-          ? 'bg-md-primary-container text-md-on-primary-container border-md-primary/30'
-          : 'bg-transparent text-md-on-surface-variant border-transparent hover:bg-md-surface-container-high'
-      }`}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 cursor-pointer"
+      style={{
+        borderRadius: '6px',
+        background: lang === l ? 'rgba(61,126,255,0.15)' : 'transparent',
+        color: lang === l ? '#93B8FF' : '#8B949E',
+        border: `1px solid ${lang === l ? 'rgba(61,126,255,0.3)' : 'transparent'}`,
+      }}
     >
       <Flag />
       {l.toUpperCase()}
     </button>
   );
-
   return (
-    <div className="flex gap-1 bg-md-surface-container rounded-full p-1 border border-md-outline-variant">
+    <div className="flex items-center gap-0.5" style={{ padding: '3px', background: '#1F2937', borderRadius: '8px', border: '1px solid #30363D' }}>
       {btn('en', UKFlag, 'English')}
       {btn('ja', JapanFlag, 'Japanese')}
     </div>
   );
 }
+
+const GlobeIcon = () => (
+  <svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true">
+    <circle cx="10" cy="10" r="7.5" stroke="#3D7EFF" strokeWidth="1.5" />
+    <ellipse cx="10" cy="10" rx="3" ry="7.5" stroke="#3D7EFF" strokeWidth="1.5" />
+    <path d="M2.5 10h15M3.5 6.5h13M3.5 13.5h13" stroke="#3D7EFF" strokeWidth="1.2" opacity="0.6" />
+  </svg>
+);
 
 const navItems = [
   { to: '/', labelKey: 'nav_dashboard' as const },
@@ -67,43 +70,59 @@ export default function Navbar() {
   const { t } = useLang();
 
   return (
-    <nav className="bg-md-surface-container-low/80 backdrop-blur-md border-b border-md-outline-variant sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
+    <nav style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
+      height: '56px',
+      borderBottom: '1px solid rgba(48,54,61,0.8)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      background: 'rgba(13,17,23,0.88)',
+    }}>
+      <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between gap-6">
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 no-underline flex-shrink-0 group">
-          <div className="w-9 h-9 bg-md-primary-container rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" aria-hidden="true">
-              <path d="M4 4h5v12H4a1 1 0 01-1-1V5a1 1 0 011-1z" fill="#EADDFF" />
-              <path d="M9 4h7a1 1 0 011 1v10a1 1 0 01-1 1H9V4z" fill="#EADDFF" opacity="0.55" />
-              <path d="M9 4v12" stroke="#EADDFF" strokeWidth="1" />
-            </svg>
-          </div>
+        <Link to="/" className="flex items-center gap-2.5 no-underline flex-shrink-0">
+          <GlobeIcon />
           <div>
-            <div className="font-display text-md-on-surface text-[15px] leading-tight tracking-tight">
-              Global Business
+            <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '13px', color: '#E6EDF3', letterSpacing: '-0.01em', lineHeight: 1 }}>
+              GBS
             </div>
-            <div className="text-md-primary text-[9px] tracking-[0.18em] uppercase leading-none mt-0.5">
+            <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 500, fontSize: '9px', color: '#3D7EFF', letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1, marginTop: '3px' }}>
               {t('tagline')}
             </div>
           </div>
         </Link>
 
         {/* Nav links */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           {navItems.map(({ to, labelKey }) => {
             const active = pathname === to || (to !== '/' && pathname.startsWith(to));
             return (
               <Link
                 key={to}
                 to={to}
-                className={`flex items-center h-9 px-4 rounded-full text-sm font-medium no-underline whitespace-nowrap transition-all duration-200 ${
-                  active
-                    ? 'bg-md-secondary-container text-md-on-secondary-container'
-                    : 'text-md-on-surface-variant hover:bg-md-surface-container-high hover:text-md-on-surface'
-                }`}
+                className="relative flex items-center px-3 h-9 text-sm font-medium no-underline whitespace-nowrap transition-colors duration-150"
+                style={{
+                  borderRadius: '6px',
+                  color: active ? '#E6EDF3' : '#8B949E',
+                  background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
+                }}
               >
                 {t(labelKey)}
+                {active && (
+                  <span style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: '8px',
+                    right: '8px',
+                    height: '2px',
+                    borderRadius: '2px 2px 0 0',
+                    background: '#3D7EFF',
+                    boxShadow: '0 0 8px rgba(61,126,255,0.55)',
+                  }} />
+                )}
               </Link>
             );
           })}
