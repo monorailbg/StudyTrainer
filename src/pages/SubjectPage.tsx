@@ -2,14 +2,12 @@ import { useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useLang, type TKey } from '../context/LanguageContext';
 import { ALL_SUBJECTS } from '../data/subjects';
-import { extractTextFromFile, fileToBase64 } from '../lib/pdfExtractor';
-import {
-  generateFromText,
-  generateFromImage,
-  type GenerationType,
-  type GeneratedFlashcard,
-  type GeneratedNote,
-  type GeneratedQuizQuestion,
+import { generateFromFile } from '../lib/geminiGenerator';
+import type {
+  GenerationType,
+  GeneratedFlashcard,
+  GeneratedNote,
+  GeneratedQuizQuestion,
 } from '../lib/generator';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
@@ -27,7 +25,7 @@ interface UploadedFile {
   level: string;
 }
 
-type GenStatus = 'idle' | 'extracting' | 'generating' | 'done' | 'error';
+type GenStatus = 'idle' | 'generating' | 'done' | 'error';
 
 interface GenState {
   status: GenStatus;
@@ -139,7 +137,7 @@ export default function SubjectPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // API key
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropic-api-key') ?? '');
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini-api-key') ?? '');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKeyForm, setShowKeyForm] = useState(false);
 
@@ -187,7 +185,7 @@ export default function SubjectPage() {
     const trimmed = apiKeyInput.trim();
     if (!trimmed) return;
     setApiKey(trimmed);
-    localStorage.setItem('anthropic-api-key', trimmed);
+    localStorage.setItem('gemini-api-key', trimmed);
     setApiKeyInput('');
     setShowKeyForm(false);
   };
@@ -198,20 +196,9 @@ export default function SubjectPage() {
     if (!file) return;
 
     try {
-      setGenState({ status: 'extracting', type: selectedType });
+      setGenState({ status: 'generating', type: selectedType });
 
-      let result;
-      if (file.type === 'application/pdf') {
-        const text = await extractTextFromFile(file.rawFile);
-        if (!text.trim()) throw new Error('Could not extract text from PDF');
-        setGenState({ status: 'generating', type: selectedType });
-        result = await generateFromText(apiKey, text, selectedType, subject!.title);
-      } else {
-        const mimeType = file.type as 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
-        const b64 = await fileToBase64(file.rawFile);
-        setGenState({ status: 'generating', type: selectedType });
-        result = await generateFromImage(apiKey, b64, mimeType, selectedType, subject!.title);
-      }
+      const result = await generateFromFile(apiKey, file.rawFile, selectedType, subject!.title);
 
       setGeneratedContent(prev => ({
         ...prev,
@@ -222,7 +209,6 @@ export default function SubjectPage() {
       }));
 
       setGenState({ status: 'done', type: selectedType });
-      // Auto-switch to the generated content tab
       setActiveMode(selectedType);
     } catch (err) {
       setGenState({ status: 'error', type: selectedType, error: String(err) });
@@ -251,8 +237,8 @@ export default function SubjectPage() {
     { key: 'quiz', label: t('nav_quiz'), hasContent: !!generatedContent.quiz },
   ];
 
-  const isGenerating = genState.status === 'extracting' || genState.status === 'generating';
-  const genStatusLabel = genState.status === 'extracting' ? t('gen_extracting') : t('gen_generating');
+  const isGenerating = genState.status === 'generating';
+  const genStatusLabel = t('gen_generating');
 
   return (
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '36px 24px 80px' }}>

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useLang } from '../context/LanguageContext';
 import { ALL_SUBJECTS } from '../data/subjects';
-import {
-  generateFromTopic,
-  type GenerationType,
-  type GeneratedFlashcard,
-  type GeneratedNote,
-  type GeneratedQuizQuestion,
+import { generateFromTopic } from '../lib/geminiGenerator';
+import type {
+  GenerationType,
+  GeneratedFlashcard,
+  GeneratedNote,
+  GeneratedQuizQuestion,
 } from '../lib/generator';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
@@ -57,7 +57,7 @@ export default function Generate() {
   useLang();
 
   // API key
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropic-api-key') ?? '');
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini-api-key') ?? '');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKeyForm, setShowKeyForm] = useState(false);
 
@@ -80,7 +80,7 @@ export default function Generate() {
     const trimmed = apiKeyInput.trim();
     if (!trimmed) return;
     setApiKey(trimmed);
-    localStorage.setItem('anthropic-api-key', trimmed);
+    localStorage.setItem('gemini-api-key', trimmed);
     setApiKeyInput('');
     setShowKeyForm(false);
   };
