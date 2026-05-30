@@ -5,8 +5,9 @@ import type {
   GenerationType,
 } from './generator';
 
-const MODEL = 'gemini-2.0-flash';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+// Each model has its own independent daily quota — fall through on exhaustion
+const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
 
 const LS_KEY = 'gemini_api_key';
 
@@ -81,9 +82,9 @@ function processResult(
 
 type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
 
-async function callGemini(parts: Part[]): Promise<string> {
+async function callGemini(parts: Part[], model: string): Promise<string> {
   const key = getApiKey();
-  const url = `${API_BASE}/${MODEL}:generateContent?key=${key}`;
+  const url = `${API_BASE}/${model}:generateContent?key=${key}`;
 
   const res = await fetch(url, {
     method: 'POST',
@@ -108,13 +109,24 @@ async function callGemini(parts: Part[]): Promise<string> {
   return text;
 }
 
-// ── Retry helper ──────────────────────────────────────────────────────────
+// ── Retry + model-fallback helpers ────────────────────────────────────────
 
 function extractRetryDelay(err: unknown): number {
   const msg = String(err);
   const match = msg.match(/retry\s+in\s+([\d.]+)s/i);
-  // Default 65s covers the 60-second RPM window with margin
   return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 65_000;
+}
+
+function isPerMinuteError(msg: string): boolean {
+  return (
+    msg.toLowerCase().includes('per minute') ||
+    msg.toLowerCase().includes('rpm') ||
+    msg.toLowerCase().includes('rate_limit_exceeded')
+  );
+}
+
+function isQuotaOrUnavailable(msg: string): boolean {
+  return (msg.includes('RESOURCE_EXHAUSTED') && !isPerMinuteError(msg)) || msg.includes('404');
 }
 
 async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
@@ -125,16 +137,24 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
     } catch (err) {
       lastErr = err;
       const msg = String(err);
-      // Only retry genuine per-minute throttle — not daily/account quota exhaustion
-      const isPerMinute =
-        msg.toLowerCase().includes('per minute') ||
-        msg.toLowerCase().includes('rpm') ||
-        msg.toLowerCase().includes('rate_limit_exceeded');
-      const is429 = msg.includes('429');
-      if (is429 && isPerMinute && attempt < maxAttempts) {
+      if (msg.includes('429') && isPerMinuteError(msg) && attempt < maxAttempts) {
         await new Promise(r => setTimeout(r, extractRetryDelay(err)));
         continue;
       }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
+
+async function callGeminiAuto(parts: Part[]): Promise<string> {
+  let lastErr: unknown;
+  for (const model of MODELS) {
+    try {
+      return await withRetry(() => callGemini(parts, model));
+    } catch (err) {
+      lastErr = err;
+      if (isQuotaOrUnavailable(String(err))) continue;
       throw err;
     }
   }
@@ -264,12 +284,10 @@ export async function generateFromFile(
   const base64 = await fileToBase64(file);
   const prompt = FILE_PROMPTS[type](subjectTitle);
 
-  const text = await withRetry(() =>
-    callGemini([
-      { inline_data: { mime_type: file.type, data: base64 } },
-      { text: prompt },
-    ])
-  );
+  const text = await callGeminiAuto([
+    { inline_data: { mime_type: file.type, data: base64 } },
+    { text: prompt },
+  ]);
 
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
@@ -283,7 +301,7 @@ export async function generateFromTopic(
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level);
 
-  const text = await withRetry(() => callGemini([{ text: prompt }]));
+  const text = await callGeminiAuto([{ text: prompt }]);
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, topic);
 }
