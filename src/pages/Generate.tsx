@@ -19,10 +19,10 @@ function friendlyError(raw: string): string {
   if (raw.includes('403') || raw.includes('API_KEY_INVALID') || raw.toLowerCase().includes('api key'))
     return 'Invalid API key. Check VITE_GEMINI_API_KEY in your .env file.';
   if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('limit: 0')) {
-    const isPerMinute = raw.toLowerCase().includes('per minute') || raw.toLowerCase().includes('rpm') || raw.includes('429');
+    const isPerMinute = raw.toLowerCase().includes('per minute') || raw.toLowerCase().includes('rpm');
     if (isPerMinute)
-      return 'Per-minute rate limit hit (Gemini free tier: 15 req/min). The system retried automatically — if this keeps happening, wait 2 minutes before trying again.';
-    return 'Daily quota reached. The Gemini free tier allows 1,500 requests per day. Try again tomorrow or check your usage at ai.google.dev.';
+      return 'Per-minute rate limit hit (15 req/min on free tier). Wait 2 minutes and try again.';
+    return 'Quota exhausted — check your plan and billing at ai.google.dev/gemini-api/docs/rate-limits. If on the free tier your daily limit (1,500 req/day) may be reached.';
   }
   if (raw.toLowerCase().includes('quota'))
     return 'Quota limit reached. Check your Gemini API usage at ai.google.dev.';

@@ -117,15 +117,21 @@ function extractRetryDelay(err: unknown): number {
   return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 65_000;
 }
 
-async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 4): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (err) {
       lastErr = err;
-      const is429 = String(err).includes('429');
-      if (is429 && attempt < maxAttempts) {
+      const msg = String(err);
+      // Only retry genuine per-minute throttle — not daily/account quota exhaustion
+      const isPerMinute =
+        msg.toLowerCase().includes('per minute') ||
+        msg.toLowerCase().includes('rpm') ||
+        msg.toLowerCase().includes('rate_limit_exceeded');
+      const is429 = msg.includes('429');
+      if (is429 && isPerMinute && attempt < maxAttempts) {
         await new Promise(r => setTimeout(r, extractRetryDelay(err)));
         continue;
       }
