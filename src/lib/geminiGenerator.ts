@@ -5,16 +5,10 @@ import type {
   GenerationType,
 } from './generator';
 
-const V1BETA = 'https://generativelanguage.googleapis.com/v1beta/models';
-const V1 = 'https://generativelanguage.googleapis.com/v1/models';
+const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// Each model has its own independent daily quota — fall through on exhaustion.
-// Gemini 2.x models are v1beta only; 1.5 models are v1.
-const MODELS = [
-  { id: 'gemini-2.0-flash', base: V1BETA },
-  { id: 'gemini-2.0-flash-lite', base: V1BETA },
-  { id: 'gemini-1.5-flash', base: V1 },
-];
+// Each model has its own independent daily quota — fall through on exhaustion
+const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 
 const LS_KEY = 'gemini_api_key';
 
@@ -89,9 +83,9 @@ function processResult(
 
 type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
 
-async function callGemini(parts: Part[], model: string, base: string): Promise<string> {
+async function callGemini(parts: Part[], model: string): Promise<string> {
   const key = getApiKey();
-  const url = `${base}/${model}:generateContent?key=${key}`;
+  const url = `${API_BASE}/${model}:generateContent?key=${key}`;
 
   const res = await fetch(url, {
     method: 'POST',
@@ -156,9 +150,9 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
 
 async function callGeminiAuto(parts: Part[]): Promise<string> {
   let lastErr: unknown;
-  for (const { id, base } of MODELS) {
+  for (const model of MODELS) {
     try {
-      return await withRetry(() => callGemini(parts, id, base));
+      return await withRetry(() => callGemini(parts, model));
     } catch (err) {
       lastErr = err;
       if (isQuotaOrUnavailable(String(err))) continue;
