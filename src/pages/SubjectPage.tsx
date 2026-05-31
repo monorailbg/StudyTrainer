@@ -16,16 +16,22 @@ import { QuizViewer } from '../components/QuizViewer';
 function subjectFriendlyError(raw?: string): string {
   if (!raw) return 'Generation failed.';
   if (raw.includes('VITE_GEMINI_API_KEY') || raw.includes('not set'))
-    return 'Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.';
-  if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('limit: 0') || raw.toLowerCase().includes('quota'))
-    return 'API quota exhausted. Your Gemini free-tier limit may be reached.';
+    return 'Gemini API key not configured. Enter your key in the banner above.';
+  if (raw.includes('401') || raw.includes('403') || raw.includes('API_KEY_INVALID') || raw.includes('UNAUTHENTICATED'))
+    return 'Invalid or expired API key. Click "Remove" in the banner and paste a fresh key.';
+  if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('limit: 0')) {
+    const isPerMinute = raw.toLowerCase().includes('per minute') || raw.toLowerCase().includes('rpm');
+    if (isPerMinute)
+      return 'Per-minute rate limit hit (15 req/min on free tier). Wait 2 minutes and try again.';
+    return 'Quota exhausted — check your plan and billing at ai.google.dev/gemini-api/docs/rate-limits. If on the free tier your daily limit (1,500 req/day) may be reached.';
+  }
+  if (raw.toLowerCase().includes('quota'))
+    return 'Quota limit reached. Check your Gemini API usage at ai.google.dev.';
   if (raw.includes('429'))
-    return 'Rate limit reached. Wait 30 seconds and try again.';
-  if (raw.includes('403') || raw.includes('API_KEY_INVALID') || raw.toLowerCase().includes('api key'))
-    return 'Invalid API key. Check VITE_GEMINI_API_KEY in your .env file.';
+    return 'Rate limit hit. Wait 60 seconds and try again.';
   if (raw.includes('400'))
     return 'File too large or unsupported format.';
-  return `Generation failed: ${raw.slice(0, 120)}`;
+  return `Generation failed: ${raw.slice(0, 160)}`;
 }
 
 interface UploadedFile {
@@ -463,7 +469,14 @@ export default function SubjectPage() {
                 )}
 
                 {genState.status === 'error' && (
-                  <span className="text-red-400 text-sm">{subjectFriendlyError(genState.error)}</span>
+                  <div className="text-red-400 text-sm">
+                    <div>{subjectFriendlyError(genState.error)}</div>
+                    {genState.error && (
+                      <div className="mt-1 text-[11px] opacity-50 break-all" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                        {genState.error.slice(0, 220)}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
