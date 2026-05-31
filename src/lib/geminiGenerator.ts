@@ -7,8 +7,16 @@ import type {
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// Each model has its own independent daily quota — fall through on exhaustion
-const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+// Each model has its own independent daily free-tier quota — fall through on
+// exhaustion. gemini-2.0-* were deprecated Feb 2026 and retire June 2026 with
+// gutted free quota, so we use the 2.5 family (current free tier: 2.5-flash
+// 1,500 RPD, 2.5-flash-lite 1,000 RPD). The -latest aliases are a safety net
+// if a pinned ID is ever retired.
+const MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-flash-latest',
+];
 
 const LS_KEY = 'gemini_api_key';
 
