@@ -43,7 +43,7 @@ export function ApiKeyBanner() {
       </div>
       <input
         type="password"
-        placeholder="Paste your API key (starts with AIza)"
+        placeholder="Paste your API key (starts with AQ.)"
         value={key}
         onChange={e => setKey(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && save()}
