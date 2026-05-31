@@ -13,9 +13,12 @@ const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 const LS_KEY = 'gemini_api_key';
 
 export function getStoredApiKey(): string {
-  return (import.meta.env.VITE_GEMINI_API_KEY as string | undefined)
-    ?? localStorage.getItem(LS_KEY)
-    ?? '';
+  // A key entered in the banner (localStorage) always wins over the build-time
+  // env var. On a deployed build the env var is baked into the bundle, so if it
+  // held a revoked/leaked key it would otherwise override the user's fresh key.
+  const stored = localStorage.getItem(LS_KEY)?.trim();
+  if (stored) return stored;
+  return (import.meta.env.VITE_GEMINI_API_KEY as string | undefined)?.trim() ?? '';
 }
 
 export function setStoredApiKey(key: string) {
@@ -85,11 +88,16 @@ type Part = { text: string } | { inline_data: { mime_type: string; data: string 
 
 async function callGemini(parts: Part[], model: string): Promise<string> {
   const key = getApiKey();
-  const url = `${API_BASE}/${model}:generateContent?key=${key}`;
+  const url = `${API_BASE}/${model}:generateContent`;
 
+  // Send the key via the canonical header rather than the query string —
+  // avoids URL-encoding pitfalls and is Google's recommended method.
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': key,
+    },
     body: JSON.stringify({ contents: [{ parts }] }),
   });
 
