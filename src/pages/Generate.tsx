@@ -22,10 +22,10 @@ function friendlyError(raw: string): string {
     const isPerMinute = raw.toLowerCase().includes('per minute') || raw.toLowerCase().includes('rpm');
     if (isPerMinute)
       return 'Per-minute rate limit hit (15 req/min on free tier). Wait 2 minutes and try again.';
-    return 'Quota exhausted — check your plan and billing at ai.google.dev/gemini-api/docs/rate-limits. If on the free tier your daily limit (1,500 req/day) may be reached.';
+    return 'Quota exhausted on all available models. Your API key\'s daily limit is reached or the key has been compromised. Go to aistudio.google.com, revoke this key, generate a new one, and paste it in the banner above.';
   }
   if (raw.toLowerCase().includes('quota'))
-    return 'Quota limit reached. Check your Gemini API usage at ai.google.dev.';
+    return 'Quota limit reached. Revoke your key at aistudio.google.com, generate a new one, and paste it in the banner above.';
   if (raw.includes('429'))
     return 'Rate limit hit. Wait 60 seconds and try again.';
   if (raw.includes('400'))
