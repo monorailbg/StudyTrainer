@@ -85,7 +85,10 @@ function processResult(
     id: `gem-${Date.now()}-${i}`,
     question: q.question,
     options: q.options,
-    correct: q.correct as 0 | 1 | 2 | 3,
+    // The model sometimes returns this index as a string ("1") rather than a
+    // number, which broke the strict === comparison in QuizViewer and made every
+    // answer read as incorrect. Coerce to a real number so the check holds.
+    correct: Number(q.correct) as 0 | 1 | 2 | 3,
     explanation: q.explanation,
   }));
 }
