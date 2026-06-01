@@ -24,7 +24,9 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
   const [submitted, setSubmitted] = useState(false);
   const [shakingId, setShakingId] = useState<string | null>(null);
 
-  const score = submitted ? questions.filter(q => answers[q.id] === q.correct).length : 0;
+  // q.correct can arrive as a string ("1") from the model even though the type
+  // says number — coerce at every comparison so strict === never silently fails.
+  const score = submitted ? questions.filter(q => answers[q.id] === Number(q.correct)).length : 0;
   const pct = submitted ? Math.round((score / questions.length) * 100) : 0;
   const answered = Object.keys(answers).length;
   const countedScore = useCountUp(pct, submitted);
@@ -71,7 +73,7 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
         {questions.map((q, qi) => {
           const chosen = answers[q.id];
           const isAnswered = chosen !== undefined;
-          const isCorrect = submitted && chosen === q.correct;
+          const isCorrect = submitted && chosen === Number(q.correct);
           const isShaking = shakingId === q.id;
 
           return (
@@ -96,7 +98,7 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
               <div className="flex flex-col gap-2">
                 {q.options.map((opt, oi) => {
                   const isChosen = chosen === oi;
-                  const isRight = submitted && oi === q.correct;
+                  const isRight = submitted && oi === Number(q.correct);
                   const isWrong = submitted && isChosen && !isRight;
 
                   let bg = '#1F2937';
@@ -127,7 +129,7 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
                     <button
                       key={oi}
                       disabled={submitted}
-                      onClick={() => handleAnswer(q.id, oi, q.correct)}
+                      onClick={() => handleAnswer(q.id, oi, Number(q.correct))}
                       className={`flex items-center gap-3 w-full text-left px-3.5 py-3 border text-sm cursor-pointer disabled:cursor-default transition-all duration-150${isRight ? ' anim-correct' : ''}`}
                       style={{ background: bg, borderColor: border, color: textCol, borderRadius: '8px', minHeight: '44px' }}
                     >

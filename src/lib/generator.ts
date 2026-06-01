@@ -137,7 +137,7 @@ export async function generateFromText(
     id: `gen-${Date.now()}-${i}`,
     question: q.question,
     options: q.options,
-    correct: q.correct as 0 | 1 | 2 | 3,
+    correct: Number(q.correct) as 0 | 1 | 2 | 3,
     explanation: q.explanation,
   }));
 }
@@ -251,7 +251,7 @@ export async function generateFromTopic(
     id: `topic-${Date.now()}-${i}`,
     question: q.question,
     options: q.options,
-    correct: q.correct as 0 | 1 | 2 | 3,
+    correct: Number(q.correct) as 0 | 1 | 2 | 3,
     explanation: q.explanation,
   }));
 }
@@ -314,7 +314,7 @@ export async function generateFromImage(
     id: `gen-img-${Date.now()}-${i}`,
     question: q.question,
     options: q.options,
-    correct: q.correct as 0 | 1 | 2 | 3,
+    correct: Number(q.correct) as 0 | 1 | 2 | 3,
     explanation: q.explanation,
   }));
 }
