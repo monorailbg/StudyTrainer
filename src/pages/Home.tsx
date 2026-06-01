@@ -219,10 +219,11 @@ export default function Home() {
         <div
           style={{
             position: 'absolute',
-            top: '32px',
-            left: '32px',
+            top: 'clamp(16px, 4vw, 32px)',
+            left: 'clamp(16px, 4vw, 32px)',
             zIndex: 10,
             pointerEvents: 'none',
+            maxWidth: 'min(55vw, 400px)',
           }}
         >
           <div style={{
@@ -293,7 +294,7 @@ export default function Home() {
       </section>
 
       {/* ── CONTENT — starts in the lower third ────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 pb-20" style={{ position: 'relative', zIndex: 10 }}>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pb-16 md:pb-20" style={{ position: 'relative', zIndex: 10 }}>
 
         {/* Stats strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">

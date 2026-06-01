@@ -224,36 +224,31 @@ export default function SubjectPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 76px)' }}>
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
-      <div style={{
+      <div className="flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
         borderBottom: '1px solid #21262D',
-        padding: '18px 28px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-        flexShrink: 0,
         background: '#0D1117',
       }}>
         <Link to="/" style={{ color: '#8B949E', textDecoration: 'none', fontSize: '12px', flexShrink: 0 }}>
-          ← {t('back')}
+          ←
         </Link>
-        <div style={{ width: '1px', height: '14px', background: '#30363D' }} />
+        <div style={{ width: '1px', height: '14px', background: '#30363D', flexShrink: 0 }} />
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: subject.color, boxShadow: `0 0 8px ${subject.color}`, flexShrink: 0 }} />
-        <div>
+        <div className="flex-1 min-w-0">
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: '#E6EDF3' }}>
             {subject.title}
           </span>
-          <span style={{ fontSize: '12px', color: '#8B949E', marginLeft: '10px' }}>
+          <span className="hidden sm:inline" style={{ fontSize: '12px', color: '#8B949E', marginLeft: '10px' }}>
             {subject.description}
           </span>
         </div>
         {/* Level tabs */}
         {subject.levels && (
-          <div className="flex gap-1 ml-auto">
+          <div className="flex gap-1 overflow-x-auto flex-shrink-0" style={{ maxWidth: '200px' }}>
             {subject.levels.map(level => (
               <button
                 key={level}
                 onClick={() => setActiveLevel(level)}
-                className="h-7 px-3 text-xs font-medium border cursor-pointer transition-all duration-200"
+                className="h-7 px-3 text-xs font-medium border cursor-pointer transition-all duration-200 flex-shrink-0"
                 style={{
                   borderRadius: '999px',
                   background: activeLevel === level ? subject.color + '20' : 'transparent',
@@ -268,11 +263,36 @@ export default function SubjectPage() {
         )}
       </div>
 
+      {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}
+      <div className="md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: '#0D1117' }}>
+        {([
+          { id: 'upload',     label: 'Files',  dot: false },
+          { id: 'flashcards', label: 'Cards',  dot: !!generatedContent.flashcards },
+          { id: 'notes',      label: 'Notes',  dot: !!generatedContent.notes },
+          { id: 'quiz',       label: 'Quiz',   dot: !!generatedContent.quiz },
+        ] as { id: View; label: string; dot: boolean }[]).map(({ id, label, dot }) => (
+          <button
+            key={id}
+            onClick={() => setView(id)}
+            className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold flex-shrink-0 cursor-pointer border transition-all duration-200"
+            style={{
+              borderRadius: '999px',
+              background:  view === id ? subject.color + '20' : 'transparent',
+              color:       view === id ? subject.color : '#8B949E',
+              borderColor: view === id ? subject.color + '45' : 'transparent',
+            }}
+          >
+            {dot && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: subject.color, flexShrink: 0 }} />}
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* ── Sidebar + content ────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-        {/* Left sidebar */}
-        <aside style={{
+        {/* Left sidebar — hidden on mobile */}
+        <aside className="hidden md:flex flex-col" style={{
           width: '260px',
           flexShrink: 0,
           borderRight: '1px solid #21262D',
@@ -398,12 +418,46 @@ export default function SubjectPage() {
         </aside>
 
         {/* Main content area */}
-        <main style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '28px 32px',
-          background: '#0D1117',
-        }}>
+        <main className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: '#0D1117' }}>
+
+          {/* Mobile generate strip */}
+          {levelFiles.length > 0 && (
+            <div className="md:hidden flex items-center gap-2 p-3 mb-4 flex-wrap" style={{ background: '#161B22', borderRadius: '16px', border: '1px solid #21262D' }}>
+              {(['flashcards', 'notes', 'quiz'] as const).map(type => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                  className="h-7 px-3 text-[10px] font-semibold border cursor-pointer transition-all duration-200"
+                  style={{
+                    borderRadius: '999px',
+                    background:  selectedType === type ? subject.color + '20' : 'transparent',
+                    color:       selectedType === type ? subject.color : '#8B949E',
+                    borderColor: selectedType === type ? subject.color + '45' : '#30363D',
+                  }}
+                >
+                  {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
+                </button>
+              ))}
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || !selectedFileId}
+                className="flex items-center gap-1.5 h-7 px-3 text-[10px] font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-200 ml-auto"
+                style={{
+                  borderRadius: '999px',
+                  background:  isGenerating ? '#1F2937' : subject.color + '18',
+                  color:       isGenerating ? '#8B949E' : subject.color,
+                  borderColor: isGenerating ? '#30363D' : subject.color + '45',
+                }}
+              >
+                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate</>}
+              </button>
+              {genState.status === 'error' && (
+                <div className="w-full text-[10px] leading-relaxed" style={{ color: '#f87171' }}>
+                  {friendlyError(genState.error)}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Upload view */}
           {view === 'upload' && (
@@ -415,11 +469,10 @@ export default function SubjectPage() {
                 onDragLeave={() => setIsDragging(false)}
                 onClick={() => fileInputRef.current?.click()}
                 onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
-                className="text-center cursor-pointer outline-none transition-all duration-300"
+                className="text-center cursor-pointer outline-none transition-all duration-300 p-8 sm:p-14"
                 style={{
                   border: `2px dashed ${isDragging ? subject.color : '#30363D'}`,
                   borderRadius: '24px',
-                  padding: '56px 40px',
                   background: isDragging ? subject.color + '08' : '#161B22',
                   marginBottom: '20px',
                   transform: isDragging ? 'scale(1.01)' : 'scale(1)',
