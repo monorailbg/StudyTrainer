@@ -22,7 +22,7 @@ export const CORE_SUBJECTS: SubjectDef[] = [
     flashcardTopic: 'International Trade',
     notesSubject: 'International Trade',
     quizTopic: 'International Trade',
-    lat: 1.35, lng: 103.82,   // Singapore — crossroads of global trade
+    lat: 25.20, lng: 55.27,    // Dubai — East–West trade crossroads
   },
   {
     id: 'marketing',
@@ -33,7 +33,7 @@ export const CORE_SUBJECTS: SubjectDef[] = [
     flashcardTopic: 'Marketing',
     notesSubject: 'Marketing',
     quizTopic: 'Marketing',
-    lat: 35.68, lng: 139.65,  // Tokyo — consumer culture capital
+    lat: -23.55, lng: -46.63,  // São Paulo — largest consumer market in South America
   },
   {
     id: 'finance',
@@ -44,7 +44,7 @@ export const CORE_SUBJECTS: SubjectDef[] = [
     flashcardTopic: 'Finance',
     notesSubject: 'Finance',
     quizTopic: 'Finance',
-    lat: 51.51, lng: -0.13,   // London — global financial centre
+    lat: 51.51, lng: -0.13,    // London — global financial centre
   },
   {
     id: 'economics',
@@ -55,7 +55,7 @@ export const CORE_SUBJECTS: SubjectDef[] = [
     flashcardTopic: 'Economics',
     notesSubject: 'Economics',
     quizTopic: 'Economics',
-    lat: 50.11, lng: 8.68,    // Frankfurt — eurozone economic hub
+    lat: 41.88, lng: -87.63,   // Chicago — Chicago School of Economics
   },
 ];
 
@@ -66,7 +66,7 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
     description: 'Japanese language studies across three progressive levels.',
     color: '#f87171',
     levels: ['Level 1', 'Level 2', 'Level 3'],
-    lat: 34.69, lng: 135.50,  // Osaka
+    lat: 35.68, lng: 139.65,   // Tokyo
   },
   {
     id: 'chinese',
@@ -74,14 +74,14 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
     description: 'Mandarin Chinese language studies across three progressive levels.',
     color: '#fb923c',
     levels: ['Level 1', 'Level 2', 'Level 3'],
-    lat: 31.23, lng: 121.47,  // Shanghai
+    lat: 39.91, lng: 116.39,   // Beijing — ~2100 km from Tokyo
   },
   {
     id: 'research-business',
     title: 'Research for Business Studies',
     description: 'Research methods, methodology, data collection and analysis.',
     color: '#22d3ee',
-    lat: 42.36, lng: -71.06,  // Boston — Harvard, MIT
+    lat: 59.33, lng: 18.07,    // Stockholm — Scandinavia, ~1700 km from London
   },
   {
     id: 'eq-pc',
@@ -89,35 +89,35 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
     description: 'Emotional Intelligence and Personal Competencies across three levels.',
     color: '#a78bfa',
     levels: ['Level 1', 'Level 2', 'Level 3'],
-    lat: 47.38, lng: 8.54,    // Zurich
+    lat: -26.20, lng: 28.04,   // Johannesburg — Southern Africa
   },
   {
     id: 'business-economics',
     title: 'Business Economics',
     description: 'Applied economics: business cycles, fiscal policy, exchange rates.',
     color: '#fbbf24',
-    lat: 41.88, lng: -87.63,  // Chicago — economics school
+    lat: 1.35, lng: 103.82,    // Singapore — SE Asia business hub
   },
   {
     id: 'pre-seminar',
     title: 'Pre Seminar',
     description: 'Academic writing, research skills, presentation and citation.',
     color: '#818cf8',
-    lat: 48.21, lng: 16.37,   // Vienna — academic tradition
+    lat: -34.60, lng: -58.38,  // Buenos Aires — academic tradition, South America
   },
   {
     id: 'accounting-advanced',
     title: 'Accounting Advanced',
     description: 'Advanced financial reporting, consolidation, IFRS standards.',
     color: '#34d399',
-    lat: 22.32, lng: 114.17,  // Hong Kong — accounting hub
+    lat: -33.87, lng: 151.21,  // Sydney — Pacific financial hub, Oceania
   },
   {
     id: 'management',
     title: 'Management',
     description: 'Managerial theory, organisational behaviour, leadership and change.',
     color: '#f472b6',
-    lat: 40.71, lng: -74.01,  // New York
+    lat: 40.71, lng: -74.01,   // New York — ~1200 km from Chicago
   },
 ];
 

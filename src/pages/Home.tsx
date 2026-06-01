@@ -207,8 +207,8 @@ export default function Home() {
       <section
         style={{
           position: 'relative',
-          height: 'calc(62vh - 38px)',
-          minHeight: '360px',
+          height: 'calc(82vh - 38px)',
+          minHeight: '520px',
           overflow: 'hidden',
         }}
       >
