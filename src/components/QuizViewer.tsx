@@ -74,6 +74,11 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
           const chosen = answers[q.id];
           const isAnswered = chosen !== undefined;
           const isCorrect = submitted && chosen === Number(q.correct);
+          // The explanation box appears the moment a question is answered, before
+          // the user hits "Check Answers", so its correct/incorrect verdict can't
+          // be gated on `submitted` — otherwise it reads "Incorrect" for every
+          // answer (including the right one) until submission.
+          const answeredCorrectly = isAnswered && chosen === Number(q.correct);
           const isShaking = shakingId === q.id;
 
           return (
@@ -152,13 +157,13 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
                 <div
                   className="mt-3 px-3.5 py-3 rounded-lg text-xs leading-relaxed anim-fadein"
                   style={{
-                    background: isCorrect ? 'rgba(46,160,67,0.08)' : 'rgba(248,81,73,0.08)',
-                    border: `1px solid ${isCorrect ? 'rgba(46,160,67,0.2)' : 'rgba(248,81,73,0.2)'}`,
+                    background: answeredCorrectly ? 'rgba(46,160,67,0.08)' : 'rgba(248,81,73,0.08)',
+                    border: `1px solid ${answeredCorrectly ? 'rgba(46,160,67,0.2)' : 'rgba(248,81,73,0.2)'}`,
                     color: '#8B949E',
                   }}
                 >
-                  <span className="font-semibold mr-1" style={{ color: isCorrect ? '#56D364' : '#F97979' }}>
-                    {isCorrect ? '✓ Correct.' : '✗ Incorrect.'}
+                  <span className="font-semibold mr-1" style={{ color: answeredCorrectly ? '#56D364' : '#F97979' }}>
+                    {answeredCorrectly ? '✓ Correct.' : '✗ Incorrect.'}
                   </span>
                   {q.explanation}
                 </div>
