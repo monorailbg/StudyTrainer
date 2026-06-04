@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getAllNotes, type StoredNote } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudNotes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { NotesViewer } from '../components/NotesViewer';
 import type { SubjectDef } from '../data/subjects';
@@ -89,9 +90,11 @@ export default function Notes() {
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    getAllNotes().then(data =>
-      setNotes(data.sort((a, b) => b.createdAt - a.createdAt))
-    );
+    if (isFirebaseConfigured) {
+      getAllCloudNotes().then(data => setNotes(data as StoredNote[]));
+    } else {
+      getAllNotes().then(data => setNotes(data.sort((a, b) => b.createdAt - a.createdAt)));
+    }
   }, []);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));

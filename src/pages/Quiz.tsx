@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAllQuizzes, type StoredQuiz } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudQuizzes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { QuizViewer } from '../components/QuizViewer';
 import type { SubjectDef } from '../data/subjects';
@@ -88,9 +89,11 @@ export default function Quiz() {
   const [activeQuiz, setActiveQuiz] = useState<StoredQuiz | null>(null);
 
   useEffect(() => {
-    getAllQuizzes().then(data =>
-      setQuizzes(data.sort((a, b) => b.createdAt - a.createdAt))
-    );
+    if (isFirebaseConfigured) {
+      getAllCloudQuizzes().then(data => setQuizzes(data as StoredQuiz[]));
+    } else {
+      getAllQuizzes().then(data => setQuizzes(data.sort((a, b) => b.createdAt - a.createdAt)));
+    }
   }, []);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));

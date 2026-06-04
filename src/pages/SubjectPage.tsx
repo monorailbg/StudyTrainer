@@ -9,6 +9,14 @@ import {
   saveNote, getNotes, deleteNote, type StoredNote,
   saveFlashcardSet, getFlashcardSets, deleteFlashcardSet, type StoredFlashcardSet,
 } from '../lib/db';
+import {
+  isFirebaseConfigured,
+  uploadFileToStorage, saveCloudFile, getCloudFiles, deleteCloudFile,
+  saveCloudNote, getCloudNotes, deleteCloudNote, renameCloudNote,
+  saveCloudFlashcardSet, getCloudFlashcardSets, deleteCloudFlashcardSet, renameCloudFlashcardSet,
+  saveCloudQuiz, getCloudQuizzes, deleteCloudQuiz, renameCloudQuiz,
+  migrateSubjectFromIndexedDB,
+} from '../lib/cloudDb';
 import type {
   GenerationType,
   GeneratedFlashcard,
@@ -35,7 +43,7 @@ function friendlyError(raw?: string): string {
 
 interface UploadedFile {
   id: string; name: string; type: string; size: number;
-  url: string; rawFile: File; level: string;
+  url: string; rawFile: File | null; level: string; storageUrl?: string;
 }
 
 type GenStatus = 'idle' | 'generating' | 'done' | 'error';
@@ -178,35 +186,45 @@ export default function SubjectPage() {
 
     async function loadPersisted() {
       try {
-        const [storedFiles, storedQuizzes, storedNotes, storedSets] = await Promise.all([
-          getFiles(id!),
-          getQuizzes(id!),
-          getNotes(id!),
-          getFlashcardSets(id!),
-        ]);
-
-        if (storedQuizzes.length > 0) {
-          setSavedQuizzes(storedQuizzes.sort((a, b) => b.createdAt - a.createdAt));
-        }
-        if (storedNotes.length > 0) {
-          setSavedNotes(storedNotes.sort((a, b) => b.createdAt - a.createdAt));
-        }
-        if (storedSets.length > 0) {
-          setSavedFlashcardSets(storedSets.sort((a, b) => b.createdAt - a.createdAt));
-        }
-
-        if (storedFiles.length > 0) {
-          const mapped: UploadedFile[] = storedFiles.map(sf => ({
-            id:      sf.id,
-            name:    sf.name,
-            type:    sf.type,
-            size:    sf.size,
-            url:     URL.createObjectURL(sf.blob),
-            rawFile: new File([sf.blob], sf.name, { type: sf.type }),
-            level:   sf.level,
-          }));
-          setFiles(mapped);
-          setSelectedFileIds(mapped.map(f => f.id));
+        if (isFirebaseConfigured) {
+          await migrateSubjectFromIndexedDB(id!);
+          const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets] = await Promise.all([
+            getCloudFiles(id!),
+            getCloudQuizzes(id!),
+            getCloudNotes(id!),
+            getCloudFlashcardSets(id!),
+          ]);
+          if (cloudQuizzes.length > 0) setSavedQuizzes(cloudQuizzes);
+          if (cloudNotes.length > 0) setSavedNotes(cloudNotes);
+          if (cloudSets.length > 0) setSavedFlashcardSets(cloudSets);
+          if (cloudFiles.length > 0) {
+            const mapped: UploadedFile[] = cloudFiles.map(cf => ({
+              id: cf.id, name: cf.name, type: cf.type, size: cf.size,
+              url: cf.storageUrl, rawFile: null, level: cf.level, storageUrl: cf.storageUrl,
+            }));
+            setFiles(mapped);
+            setSelectedFileIds(mapped.map(f => f.id));
+          }
+        } else {
+          const [storedFiles, storedQuizzes, storedNotes, storedSets] = await Promise.all([
+            getFiles(id!),
+            getQuizzes(id!),
+            getNotes(id!),
+            getFlashcardSets(id!),
+          ]);
+          if (storedQuizzes.length > 0) setSavedQuizzes(storedQuizzes.sort((a, b) => b.createdAt - a.createdAt));
+          if (storedNotes.length > 0) setSavedNotes(storedNotes.sort((a, b) => b.createdAt - a.createdAt));
+          if (storedSets.length > 0) setSavedFlashcardSets(storedSets.sort((a, b) => b.createdAt - a.createdAt));
+          if (storedFiles.length > 0) {
+            const mapped: UploadedFile[] = storedFiles.map(sf => ({
+              id: sf.id, name: sf.name, type: sf.type, size: sf.size,
+              url: URL.createObjectURL(sf.blob),
+              rawFile: new File([sf.blob], sf.name, { type: sf.type }),
+              level: sf.level,
+            }));
+            setFiles(mapped);
+            setSelectedFileIds(mapped.map(f => f.id));
+          }
         }
       } catch (err) {
         console.error('Failed to load persisted subject data:', err);
@@ -216,8 +234,7 @@ export default function SubjectPage() {
     loadPersisted();
 
     return () => {
-      // Revoke blob URLs when leaving this subject
-      filesRef.current.forEach(f => URL.revokeObjectURL(f.url));
+      filesRef.current.forEach(f => { if (f.url.startsWith('blob:')) URL.revokeObjectURL(f.url); });
     };
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -231,9 +248,18 @@ export default function SubjectPage() {
     }));
     setFiles(prev => [...prev, ...mapped]);
     setSelectedFileIds(prev => [...prev, ...mapped.map(m => m.id)]);
-    // Persist blobs to IndexedDB
-    for (const file of mapped) {
-      await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile }).catch(() => {});
+    if (isFirebaseConfigured) {
+      for (const file of mapped) {
+        try {
+          const storageUrl = await uploadFileToStorage(id!, file.id, file.rawFile!);
+          await saveCloudFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, storageUrl, createdAt: Date.now() });
+          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, storageUrl } : f));
+        } catch { /* best-effort */ }
+      }
+    } else {
+      for (const file of mapped) {
+        await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
+      }
     }
   }, [activeLevel, id]);
 
@@ -245,11 +271,11 @@ export default function SubjectPage() {
   const removeFile = (fileId: string) => {
     setFiles(prev => {
       const f = prev.find(x => x.id === fileId);
-      if (f) URL.revokeObjectURL(f.url);
+      if (f?.url.startsWith('blob:')) URL.revokeObjectURL(f.url);
       return prev.filter(x => x.id !== fileId);
     });
     setSelectedFileIds(prev => prev.filter(fid => fid !== fileId));
-    deleteFile(fileId).catch(() => {});
+    if (isFirebaseConfigured) deleteCloudFile(id!, fileId).catch(() => {}); else deleteFile(fileId).catch(() => {});
   };
 
   const toggleFileSelection = (fileId: string) => {
@@ -261,19 +287,19 @@ export default function SubjectPage() {
   const removeQuiz = (quizId: string) => {
     setSavedQuizzes(prev => prev.filter(q => q.id !== quizId));
     if (activeQuizId === quizId) setActiveQuizId(null);
-    deleteQuiz(quizId).catch(() => {});
+    if (isFirebaseConfigured) deleteCloudQuiz(quizId).catch(() => {}); else deleteQuiz(quizId).catch(() => {});
   };
 
   const removeNote = (noteId: string) => {
     setSavedNotes(prev => prev.filter(n => n.id !== noteId));
     if (activeNoteId === noteId) setActiveNoteId(null);
-    deleteNote(noteId).catch(() => {});
+    if (isFirebaseConfigured) deleteCloudNote(noteId).catch(() => {}); else deleteNote(noteId).catch(() => {});
   };
 
   const removeSet = (setId: string) => {
     setSavedFlashcardSets(prev => prev.filter(s => s.id !== setId));
     if (activeSetId === setId) setActiveSetId(null);
-    deleteFlashcardSet(setId).catch(() => {});
+    if (isFirebaseConfigured) deleteCloudFlashcardSet(setId).catch(() => {}); else deleteFlashcardSet(setId).catch(() => {});
   };
 
   // ── Rename ─────────────────────────────────────────────────────────────────
@@ -289,16 +315,28 @@ export default function SubjectPage() {
     if (!name) { setRenaming(null); return; }
     if (type === 'quiz') {
       setSavedQuizzes(prev => prev.map(q => q.id === renaming.id ? { ...q, name } : q));
-      const quiz = savedQuizzes.find(q => q.id === renaming.id);
-      if (quiz) saveQuiz({ ...quiz, name }).catch(() => {});
+      if (isFirebaseConfigured) {
+        renameCloudQuiz(renaming.id, name).catch(() => {});
+      } else {
+        const quiz = savedQuizzes.find(q => q.id === renaming.id);
+        if (quiz) saveQuiz({ ...quiz, name }).catch(() => {});
+      }
     } else if (type === 'note') {
       setSavedNotes(prev => prev.map(n => n.id === renaming.id ? { ...n, name } : n));
-      const note = savedNotes.find(n => n.id === renaming.id);
-      if (note) saveNote({ ...note, name }).catch(() => {});
+      if (isFirebaseConfigured) {
+        renameCloudNote(renaming.id, name).catch(() => {});
+      } else {
+        const note = savedNotes.find(n => n.id === renaming.id);
+        if (note) saveNote({ ...note, name }).catch(() => {});
+      }
     } else {
       setSavedFlashcardSets(prev => prev.map(s => s.id === renaming.id ? { ...s, name } : s));
-      const set = savedFlashcardSets.find(s => s.id === renaming.id);
-      if (set) saveFlashcardSet({ ...set, name }).catch(() => {});
+      if (isFirebaseConfigured) {
+        renameCloudFlashcardSet(renaming.id, name).catch(() => {});
+      } else {
+        const set = savedFlashcardSets.find(s => s.id === renaming.id);
+        if (set) saveFlashcardSet({ ...set, name }).catch(() => {});
+      }
     }
     setRenaming(null);
   };
@@ -317,7 +355,14 @@ export default function SubjectPage() {
       const results: unknown[] = [];
       for (let i = 0; i < selectedFiles.length; i++) {
         setGenProgress({ current: i + 1, total: selectedFiles.length });
-        const result = await generateFromFile(selectedFiles[i].rawFile, selectedType, subject!.title, {
+        let fileForGen = selectedFiles[i].rawFile;
+        if (!fileForGen) {
+          const url = selectedFiles[i].storageUrl;
+          if (!url) throw new Error(`No file data for ${selectedFiles[i].name}`);
+          const blob = await fetch(url).then(r => r.blob());
+          fileForGen = new File([blob], selectedFiles[i].name, { type: selectedFiles[i].type });
+        }
+        const result = await generateFromFile(fileForGen, selectedType, subject!.title, {
           cardCount,
           questionCount: quizCount,
           focusTopic: focusTopic.trim() || undefined,
@@ -345,7 +390,11 @@ export default function SubjectPage() {
           createdAt: Date.now(),
           questions: allQuestions,
         };
-        await saveQuiz(quiz).catch(() => {});
+        if (isFirebaseConfigured) {
+          await saveCloudQuiz({ id: quiz.id, subjectId: id!, name, createdAt: quiz.createdAt, questions: quiz.questions }).catch(() => {});
+        } else {
+          await saveQuiz(quiz).catch(() => {});
+        }
         setSavedQuizzes(prev => [quiz, ...prev]);
         setActiveQuizId(quiz.id);
       } else if (selectedType === 'flashcards') {
@@ -358,7 +407,11 @@ export default function SubjectPage() {
           createdAt: Date.now(),
           cards,
         };
-        await saveFlashcardSet(set).catch(() => {});
+        if (isFirebaseConfigured) {
+          await saveCloudFlashcardSet({ id: set.id, subjectId: id!, name, createdAt: set.createdAt, cards: set.cards }).catch(() => {});
+        } else {
+          await saveFlashcardSet(set).catch(() => {});
+        }
         setSavedFlashcardSets(prev => [set, ...prev]);
         setActiveSetId(set.id);
       } else {
@@ -377,7 +430,11 @@ export default function SubjectPage() {
           createdAt: Date.now(),
           note,
         };
-        await saveNote(stored).catch(() => {});
+        if (isFirebaseConfigured) {
+          await saveCloudNote({ id: stored.id, subjectId: id!, name, createdAt: stored.createdAt, note: stored.note }).catch(() => {});
+        } else {
+          await saveNote(stored).catch(() => {});
+        }
         setSavedNotes(prev => [stored, ...prev]);
         setActiveNoteId(stored.id);
       }

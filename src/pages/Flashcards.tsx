@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAllFlashcardSets, type StoredFlashcardSet } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudFlashcardSets } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import type { SubjectDef } from '../data/subjects';
@@ -88,9 +89,11 @@ export default function Flashcards() {
   const [activeSet, setActiveSet] = useState<StoredFlashcardSet | null>(null);
 
   useEffect(() => {
-    getAllFlashcardSets().then(data =>
-      setSets(data.sort((a, b) => b.createdAt - a.createdAt))
-    );
+    if (isFirebaseConfigured) {
+      getAllCloudFlashcardSets().then(data => setSets(data as StoredFlashcardSet[]));
+    } else {
+      getAllFlashcardSets().then(data => setSets(data.sort((a, b) => b.createdAt - a.createdAt)));
+    }
   }, []);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
