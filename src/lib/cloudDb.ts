@@ -24,6 +24,16 @@ export { isFirebaseConfigured, isSupabaseConfigured };
 
 // ── Cloud document types ───────────────────────────────────────────────────
 
+export type FolderKind = 'file' | 'card' | 'note' | 'quiz';
+
+export interface CloudFolder {
+  id:        string;
+  subjectId: string;
+  kind:      FolderKind;
+  name:      string;
+  createdAt: number;
+}
+
 export interface CloudFile {
   id:         string;
   subjectId:  string;
@@ -33,6 +43,7 @@ export interface CloudFile {
   level:      string;
   storageUrl: string;
   createdAt:  number;
+  folderId?:  string | null;
 }
 
 export interface CloudNote {
@@ -41,6 +52,7 @@ export interface CloudNote {
   name:      string;
   createdAt: number;
   note:      GeneratedNote;
+  folderId?: string | null;
 }
 
 export interface CloudFlashcardSet {
@@ -49,6 +61,7 @@ export interface CloudFlashcardSet {
   name:      string;
   createdAt: number;
   cards:     GeneratedFlashcard[];
+  folderId?: string | null;
 }
 
 export interface CloudQuiz {
@@ -57,6 +70,7 @@ export interface CloudQuiz {
   name:      string;
   createdAt: number;
   questions: GeneratedQuizQuestion[];
+  folderId?: string | null;
 }
 
 // ── Internal helpers ───────────────────────────────────────────────────────
@@ -112,6 +126,20 @@ export async function deleteCloudFile(subjectId: string, fileId: string): Promis
     deleteDoc(doc(db(), 'uploadedFiles', fileId)),
     deleteFileFromStorage(subjectId, fileId),
   ]);
+}
+
+// ── Folders CRUD ───────────────────────────────────────────────────────────
+
+export async function saveCloudFolder(folder: CloudFolder): Promise<void> {
+  await setDoc(doc(db(), 'folders', folder.id), folder);
+}
+
+export async function getCloudFolders(subjectId: string): Promise<CloudFolder[]> {
+  return getBySubject<CloudFolder>('folders', subjectId);
+}
+
+export async function deleteCloudFolder(folderId: string): Promise<void> {
+  await deleteDoc(doc(db(), 'folders', folderId));
 }
 
 // ── Notes CRUD ─────────────────────────────────────────────────────────────

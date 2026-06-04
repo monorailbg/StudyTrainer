@@ -7,7 +7,7 @@
 import type { GeneratedFlashcard, GeneratedNote, GeneratedQuizQuestion } from './generator';
 
 const DB_NAME = 'StudyTrainerDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 let _db: Promise<IDBDatabase> | null = null;
 
@@ -36,6 +36,10 @@ function openDB(): Promise<IDBDatabase> {
         const store = db.createObjectStore('flashcardSets', { keyPath: 'id' });
         store.createIndex('bySubject', 'subjectId', { unique: false });
       }
+      if (!db.objectStoreNames.contains('folders')) {
+        const store = db.createObjectStore('folders', { keyPath: 'id' });
+        store.createIndex('bySubject', 'subjectId', { unique: false });
+      }
     };
     req.onsuccess  = () => resolve(req.result);
     req.onerror    = () => { _db = null; reject(req.error); };
@@ -54,6 +58,7 @@ export interface StoredFile {
   size:      number;
   level:     string;
   blob:      Blob;
+  folderId?: string | null;
 }
 
 export async function saveFile(file: StoredFile): Promise<void> {
@@ -118,6 +123,7 @@ export interface StoredQuiz {
   name:      string;
   createdAt: number;
   questions: GeneratedQuizQuestion[];
+  folderId?: string | null;
 }
 
 export async function saveQuiz(quiz: StoredQuiz): Promise<void> {
@@ -158,6 +164,7 @@ export interface StoredNote {
   name:      string;
   createdAt: number;
   note:      GeneratedNote;
+  folderId?: string | null;
 }
 
 export async function saveNote(note: StoredNote): Promise<void> {
@@ -198,6 +205,7 @@ export interface StoredFlashcardSet {
   name:      string;
   createdAt: number;
   cards:     GeneratedFlashcard[];
+  folderId?: string | null;
 }
 
 export async function saveFlashcardSet(set: StoredFlashcardSet): Promise<void> {
@@ -257,5 +265,49 @@ export async function getAllQuizzes(): Promise<StoredQuiz[]> {
     const req = tx.objectStore('quizzes').getAll();
     req.onsuccess = () => resolve(req.result ?? []);
     req.onerror   = () => reject(req.error);
+  });
+}
+
+// ── Folders ──────────────────────────────────────────────────────────────────
+// User-created folders for organising files, flashcard sets, notes and quizzes.
+// `kind` keeps each content type's folders separate.
+
+export type FolderKind = 'file' | 'card' | 'note' | 'quiz';
+
+export interface Folder {
+  id:        string;
+  subjectId: string;
+  kind:      FolderKind;
+  name:      string;
+  createdAt: number;
+}
+
+export async function saveFolder(folder: Folder): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('folders', 'readwrite');
+    tx.objectStore('folders').put(folder);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+export async function getFolders(subjectId: string): Promise<Folder[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('folders', 'readonly');
+    const req = tx.objectStore('folders').index('bySubject').getAll(subjectId);
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function deleteFolder(folderId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('folders', 'readwrite');
+    tx.objectStore('folders').delete(folderId);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
   });
 }

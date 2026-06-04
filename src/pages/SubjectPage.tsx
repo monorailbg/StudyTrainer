@@ -10,6 +10,7 @@ import {
   saveQuiz, getQuizzes, deleteQuiz, type StoredQuiz,
   saveNote, getNotes, deleteNote, type StoredNote,
   saveFlashcardSet, getFlashcardSets, deleteFlashcardSet, type StoredFlashcardSet,
+  saveFolder, getFolders, deleteFolder, type Folder, type FolderKind,
 } from '../lib/db';
 import {
   isFirebaseConfigured, isSupabaseConfigured,
@@ -17,6 +18,7 @@ import {
   saveCloudNote, getCloudNotes, deleteCloudNote, renameCloudNote,
   saveCloudFlashcardSet, getCloudFlashcardSets, deleteCloudFlashcardSet, renameCloudFlashcardSet,
   saveCloudQuiz, getCloudQuizzes, deleteCloudQuiz, renameCloudQuiz,
+  saveCloudFolder, getCloudFolders, deleteCloudFolder,
   migrateSubjectFromIndexedDB,
 } from '../lib/cloudDb';
 import type {
@@ -58,6 +60,7 @@ function timeAgo(ts: number): string {
 interface UploadedFile {
   id: string; name: string; type: string; size: number;
   url: string; rawFile: File | null; level: string; storageUrl?: string;
+  folderId?: string | null;
 }
 
 type GenStatus = 'idle' | 'generating' | 'done' | 'error';
@@ -217,6 +220,167 @@ function OverviewTile({
   );
 }
 
+// ── Folder icons ─────────────────────────────────────────────────────────────
+
+const IconFolder = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M2 5a1.5 1.5 0 011.5-1.5h3l1.5 2H14.5A1.5 1.5 0 0116 7v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 012 13.5V5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>);
+const IconFolderPlus = () => (<svg viewBox="0 0 18 18" width="14" height="14" fill="none"><path d="M2 5a1.5 1.5 0 011.5-1.5h3l1.5 2H14.5A1.5 1.5 0 0116 7v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 012 13.5V5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M9 8.5v3M7.5 10h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>);
+
+// ── Folder board ─────────────────────────────────────────────────────────────
+// Generic drag-and-drop organiser used by every content type. Items carry an
+// optional `folderId`; dragging an item onto a folder header (or the Unfiled
+// zone) re-files it. Each kind keeps its own set of folders.
+
+function FolderBoard<T extends { id: string; folderId?: string | null }>({
+  kind, label, color, folders, items, draggedId, cols = 2, headerExtra,
+  onDragStart, onDragEnd, onDropToFolder, onCreateFolder, onDeleteFolder, renderItem,
+}: {
+  kind: FolderKind;
+  label: string;
+  color: string;
+  folders: Folder[];
+  items: T[];
+  draggedId: string | null;
+  cols?: 1 | 2;
+  headerExtra?: React.ReactNode;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+  onDropToFolder: (folderId: string | null) => void;
+  onCreateFolder: (name: string) => void;
+  onDeleteFolder: (folderId: string) => void;
+  renderItem: (item: T) => React.ReactNode;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [hoverFolder, setHoverFolder] = useState<string | null>(null);
+  const isDragging = draggedId != null;
+  const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+
+  const submit = () => {
+    const n = newName.trim();
+    if (n) onCreateFolder(n);
+    setNewName(''); setCreating(false);
+  };
+
+  const kindFolders = folders.filter(f => f.kind === kind);
+  const unfiled = items.filter(it => !it.folderId || !kindFolders.some(f => f.id === it.folderId));
+
+  // Plain render helper (not a component) so dropping into a folder never
+  // remounts the subtree — keeps the rename input focused while typing.
+  const zone = (folderId: string | null, children: React.ReactNode) => {
+    const key = folderId ?? '__unfiled__';
+    const isHover = hoverFolder === key && isDragging;
+    return (
+      <div
+        onDragOver={e => { if (isDragging) { e.preventDefault(); setHoverFolder(key); } }}
+        onDragLeave={() => setHoverFolder(prev => (prev === key ? null : prev))}
+        onDrop={e => { e.preventDefault(); onDropToFolder(folderId); setHoverFolder(null); }}
+        style={{
+          borderRadius: '16px',
+          border: `1px dashed ${isHover ? color : 'transparent'}`,
+          background: isHover ? color + '0E' : 'transparent',
+          padding: isDragging ? '4px' : 0,
+          transition: 'background 0.15s ease, border-color 0.15s ease',
+        }}
+      >
+        {children}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+          {label} ({items.length}){kindFolders.length > 0 && ` · ${kindFolders.length} folder${kindFolders.length > 1 ? 's' : ''}`}
+        </div>
+        <div className="flex items-center gap-3 ml-auto">
+        {headerExtra}
+        {creating ? (
+          <input
+            autoFocus value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onBlur={submit}
+            onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setNewName(''); setCreating(false); } }}
+            placeholder="Folder name…"
+            style={{ background: '#0D1117', border: `1px solid ${color}55`, borderRadius: '999px', color: '#E6EDF3', fontSize: '11px', padding: '5px 12px', outline: 'none', width: '160px' }}
+          />
+        ) : (
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1.5 cursor-pointer"
+            style={{ background: color + '14', color, border: `1px solid ${color}33`, borderRadius: '999px', fontSize: '11px', fontWeight: 600, padding: '5px 12px' }}
+          >
+            <IconFolderPlus /> New folder
+          </button>
+        )}
+        </div>
+      </div>
+
+      {isDragging && (
+        <div className="mb-3 text-[11px]" style={{ color: color }}>
+          Drop onto a folder to organise, or onto “Unfiled” to remove.
+        </div>
+      )}
+
+      {/* Folder sections */}
+      {kindFolders.map(folder => {
+        const folderItems = items.filter(it => it.folderId === folder.id);
+        return (
+          <div key={folder.id} style={{ marginBottom: '18px' }}>
+            {zone(folder.id, <>
+              <div className="flex items-center gap-2 mb-2.5 px-1">
+                <span style={{ color }}><IconFolder /></span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{folder.name}</span>
+                <span style={{ fontSize: '11px', color: '#8B949E' }}>{folderItems.length}</span>
+                <button
+                  onClick={() => onDeleteFolder(folder.id)}
+                  aria-label="Delete folder"
+                  className="ml-auto cursor-pointer"
+                  style={{ background: 'transparent', border: 'none', color: '#484F58', padding: '2px', lineHeight: 0 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
+                >
+                  <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+              </div>
+              {folderItems.length === 0 ? (
+                <div className="px-1 pb-1 text-[11px]" style={{ color: '#484F58' }}>Empty — drag items here.</div>
+              ) : (
+                <div className={gridClass}>
+                  {folderItems.map(it => (
+                    <div key={it.id} draggable onDragStart={() => onDragStart(it.id)} onDragEnd={onDragEnd}
+                      style={{ opacity: draggedId === it.id ? 0.4 : 1, cursor: 'grab' }}>
+                      {renderItem(it)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>)}
+          </div>
+        );
+      })}
+
+      {/* Unfiled */}
+      {zone(null, <>
+        {kindFolders.length > 0 && (
+          <div className="flex items-center gap-2 mb-2.5 px-1">
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#8B949E' }}>Unfiled</span>
+            <span style={{ fontSize: '11px', color: '#484F58' }}>{unfiled.length}</span>
+          </div>
+        )}
+        <div className={gridClass}>
+          {unfiled.map(it => (
+            <div key={it.id} draggable onDragStart={() => onDragStart(it.id)} onDragEnd={onDragEnd}
+              style={{ opacity: draggedId === it.id ? 0.4 : 1, cursor: 'grab' }}>
+              {renderItem(it)}
+            </div>
+          ))}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function SubjectPage() {
@@ -249,6 +413,9 @@ export default function SubjectPage() {
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [savedFlashcardSets, setSavedFlashcardSets] = useState<StoredFlashcardSet[]>([]);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [draggedItem, setDraggedItem] = useState<{ kind: FolderKind; id: string } | null>(null);
+  const [showGenPanel, setShowGenPanel] = useState(false);
 
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
@@ -269,6 +436,7 @@ export default function SubjectPage() {
     setActiveNoteId(null);
     setSavedFlashcardSets([]);
     setActiveSetId(null);
+    setFolders([]);
     setView('dashboard');
     setGenState({ status: 'idle' });
 
@@ -276,12 +444,14 @@ export default function SubjectPage() {
       try {
         if (isFirebaseConfigured) {
           await migrateSubjectFromIndexedDB(id!);
-          const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets] = await Promise.all([
+          const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets, cloudFolders] = await Promise.all([
             getCloudFiles(id!),
             getCloudQuizzes(id!),
             getCloudNotes(id!),
             getCloudFlashcardSets(id!),
+            getCloudFolders(id!),
           ]);
+          if (cloudFolders.length > 0) setFolders(cloudFolders);
           if (cloudQuizzes.length > 0) setSavedQuizzes(cloudQuizzes);
           if (cloudNotes.length > 0) setSavedNotes(cloudNotes);
           if (cloudSets.length > 0) setSavedFlashcardSets(cloudSets);
@@ -289,17 +459,20 @@ export default function SubjectPage() {
             const mapped: UploadedFile[] = cloudFiles.map(cf => ({
               id: cf.id, name: cf.name, type: cf.type, size: cf.size,
               url: cf.storageUrl, rawFile: null, level: cf.level, storageUrl: cf.storageUrl,
+              folderId: cf.folderId ?? null,
             }));
             setFiles(mapped);
             setSelectedFileIds(mapped.map(f => f.id));
           }
         } else {
-          const [storedFiles, storedQuizzes, storedNotes, storedSets] = await Promise.all([
+          const [storedFiles, storedQuizzes, storedNotes, storedSets, storedFolders] = await Promise.all([
             getFiles(id!),
             getQuizzes(id!),
             getNotes(id!),
             getFlashcardSets(id!),
+            getFolders(id!),
           ]);
+          if (storedFolders.length > 0) setFolders(storedFolders);
           if (storedQuizzes.length > 0) setSavedQuizzes(storedQuizzes.sort((a, b) => b.createdAt - a.createdAt));
           if (storedNotes.length > 0) setSavedNotes(storedNotes.sort((a, b) => b.createdAt - a.createdAt));
           if (storedSets.length > 0) setSavedFlashcardSets(storedSets.sort((a, b) => b.createdAt - a.createdAt));
@@ -309,6 +482,7 @@ export default function SubjectPage() {
               url: URL.createObjectURL(sf.blob),
               rawFile: new File([sf.blob], sf.name, { type: sf.type }),
               level: sf.level,
+              folderId: sf.folderId ?? null,
             }));
             setFiles(mapped);
             setSelectedFileIds(mapped.map(f => f.id));
@@ -452,6 +626,89 @@ export default function SubjectPage() {
 
   const toggleInclude = (item: string) =>
     setNotesIncludes(prev => prev.includes(item) ? prev.filter(x => x !== item) : [...prev, item]);
+
+  // ── Folders ────────────────────────────────────────────────────────────────
+  const createFolder = (kind: FolderKind, name: string) => {
+    const folder: Folder = {
+      id: `folder-${kind}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      subjectId: id!, kind, name, createdAt: Date.now(),
+    };
+    setFolders(prev => [...prev, folder]);
+    if (isFirebaseConfigured) saveCloudFolder(folder).catch(() => {});
+    else saveFolder(folder).catch(() => {});
+  };
+
+  const removeFolder = (folderId: string) => {
+    setFolders(prev => prev.filter(f => f.id !== folderId));
+    // Orphan any items in this folder back to "Unfiled".
+    moveAllOutOfFolder(folderId);
+    if (isFirebaseConfigured) deleteCloudFolder(folderId).catch(() => {});
+    else deleteFolder(folderId).catch(() => {});
+  };
+
+  const persistFileFolder = (file: UploadedFile, folderId: string | null) => {
+    if (isFirebaseConfigured) {
+      saveCloudFile({
+        id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size,
+        level: file.level, storageUrl: file.storageUrl ?? '', createdAt: Date.now(), folderId,
+      }).catch(() => {});
+    } else if (file.rawFile) {
+      saveFile({
+        id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size,
+        level: file.level, blob: file.rawFile, folderId,
+      }).catch(() => {});
+    }
+  };
+
+  const moveItemToFolder = (kind: FolderKind, itemId: string, folderId: string | null) => {
+    if (kind === 'file') {
+      setFiles(prev => prev.map(f => {
+        if (f.id !== itemId) return f;
+        const updated = { ...f, folderId };
+        persistFileFolder(updated, folderId);
+        return updated;
+      }));
+    } else if (kind === 'quiz') {
+      setSavedQuizzes(prev => prev.map(q => {
+        if (q.id !== itemId) return q;
+        const updated = { ...q, folderId };
+        if (isFirebaseConfigured) saveCloudQuiz({ ...updated, subjectId: id! }).catch(() => {});
+        else saveQuiz(updated).catch(() => {});
+        return updated;
+      }));
+    } else if (kind === 'note') {
+      setSavedNotes(prev => prev.map(n => {
+        if (n.id !== itemId) return n;
+        const updated = { ...n, folderId };
+        if (isFirebaseConfigured) saveCloudNote({ ...updated, subjectId: id! }).catch(() => {});
+        else saveNote(updated).catch(() => {});
+        return updated;
+      }));
+    } else {
+      setSavedFlashcardSets(prev => prev.map(s => {
+        if (s.id !== itemId) return s;
+        const updated = { ...s, folderId };
+        if (isFirebaseConfigured) saveCloudFlashcardSet({ ...updated, subjectId: id! }).catch(() => {});
+        else saveFlashcardSet(updated).catch(() => {});
+        return updated;
+      }));
+    }
+  };
+
+  // When a folder is deleted, drop every item it held back to Unfiled.
+  const moveAllOutOfFolder = (folderId: string) => {
+    files.filter(f => f.folderId === folderId).forEach(f => moveItemToFolder('file', f.id, null));
+    savedQuizzes.filter(q => q.folderId === folderId).forEach(q => moveItemToFolder('quiz', q.id, null));
+    savedNotes.filter(n => n.folderId === folderId).forEach(n => moveItemToFolder('note', n.id, null));
+    savedFlashcardSets.filter(s => s.folderId === folderId).forEach(s => moveItemToFolder('card', s.id, null));
+  };
+
+  const handleItemDrop = (kind: FolderKind, folderId: string | null) => {
+    if (draggedItem && draggedItem.kind === kind) {
+      moveItemToFolder(kind, draggedItem.id, folderId);
+    }
+    setDraggedItem(null);
+  };
 
   // ── Generation ─────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
@@ -659,14 +916,14 @@ export default function SubjectPage() {
 
         {/* Left sidebar — hidden on mobile */}
         <aside className="hidden md:flex flex-col" style={{
-          width: '260px',
+          width: '320px',
           flexShrink: 0,
           borderRight: '1px solid #21262D',
           background: '#0D1117',
           display: 'flex',
           flexDirection: 'column',
-          padding: '16px 12px',
-          gap: '2px',
+          padding: '20px 16px',
+          gap: '3px',
           overflowY: 'auto',
         }}>
           {/* Overview / dashboard */}
@@ -809,225 +1066,11 @@ export default function SubjectPage() {
             </div>
           )}
 
-          {/* Generate panel in sidebar */}
-          {levelFiles.length > 0 && (
-            <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #21262D' }}>
-              <div className="flex items-center justify-between px-1 mb-2">
-                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
-                  Generate
-                </div>
-                <div style={{ fontSize: '9px', color: selectedLevelFileIds.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
-                  {selectedLevelFileIds.length}/{levelFiles.length} selected
-                </div>
-              </div>
-
-              {/* Type selector */}
-              <div className="flex gap-1.5 flex-wrap px-1 mb-3">
-                {(['flashcards', 'notes', 'quiz'] as GenerationType[]).map(type => (
-                  <button
-                    key={type}
-                    onClick={() => setSelectedType(type)}
-                    className="h-7 px-2.5 text-[10px] border cursor-pointer transition-all duration-200 font-semibold"
-                    style={{
-                      borderRadius: '999px',
-                      background:   selectedType === type ? subject.color + '20' : 'transparent',
-                      color:        selectedType === type ? subject.color          : '#8B949E',
-                      borderColor:  selectedType === type ? subject.color + '50'   : '#30363D',
-                    }}
-                  >
-                    {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
-                  </button>
-                ))}
-              </div>
-
-              {/* ── Flashcard options ── */}
-              {selectedType === 'flashcards' && (
-                <div className="px-1 mb-3 flex flex-col gap-2.5">
-                  <div>
-                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Cards per file</div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {[6, 12, 20, 30].map(n => (
-                        <button key={n} onClick={() => setCardCount(n)}
-                          className="h-7 w-9 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{ borderRadius: '999px', background: cardCount === n ? subject.color + '20' : 'transparent', color: cardCount === n ? subject.color : '#8B949E', borderColor: cardCount === n ? subject.color + '50' : '#30363D' }}>
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
-                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Supply & demand"
-                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '5px 9px', fontSize: '11px', color: '#E6EDF3', outline: 'none' }} />
-                  </div>
-                </div>
-              )}
-
-              {/* ── Notes options ── */}
-              {selectedType === 'notes' && (
-                <div className="px-1 mb-3 flex flex-col gap-2.5">
-                  <div>
-                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
-                    <div className="flex gap-1.5">
-                      {(['concise', 'standard', 'comprehensive'] as const).map(d => (
-                        <button key={d} onClick={() => setNotesDetail(d)}
-                          className="h-7 px-2 text-[9px] border cursor-pointer transition-all duration-200 font-semibold capitalize"
-                          style={{ borderRadius: '999px', background: notesDetail === d ? subject.color + '20' : 'transparent', color: notesDetail === d ? subject.color : '#8B949E', borderColor: notesDetail === d ? subject.color + '50' : '#30363D' }}>
-                          {d === 'comprehensive' ? 'Deep' : d.charAt(0).toUpperCase() + d.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Include</div>
-                    <div className="flex flex-col gap-1.5">
-                      {(['formulas', 'diagrams', 'mindmap'] as const).map(item => (
-                        <label key={item} className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={notesIncludes.includes(item)} onChange={() => toggleInclude(item)}
-                            style={{ accentColor: subject.color, width: '12px', height: '12px', cursor: 'pointer' }} />
-                          <span style={{ fontSize: '10px', color: notesIncludes.includes(item) ? '#C9D1D9' : '#8B949E' }}>
-                            {item === 'formulas' ? '∑ Formulas' : item === 'diagrams' ? '→ Diagrams' : '⊞ Mind-map style'}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Quiz options ── */}
-              {selectedType === 'quiz' && (
-                <div className="px-1 mb-3 flex flex-col gap-2.5">
-                  <div>
-                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {[5, 10, 15, 20].map(n => (
-                        <button key={n} onClick={() => setQuizCount(n)}
-                          className="h-7 w-9 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{ borderRadius: '999px', background: quizCount === n ? subject.color + '20' : 'transparent', color: quizCount === n ? subject.color : '#8B949E', borderColor: quizCount === n ? subject.color + '50' : '#30363D' }}>
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
-                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy"
-                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '5px 9px', fontSize: '11px', color: '#E6EDF3', outline: 'none' }} />
-                  </div>
-                </div>
-              )}
-
-              {/* ── Custom prompt (expandable) ── */}
-              <div className="px-1 mb-3">
-                <button onClick={() => setShowAdvanced(v => !v)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '9px', fontWeight: 600, color: showAdvanced ? subject.color : '#484F58', display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
-                  <span style={{ fontSize: '10px' }}>✦</span> Custom instructions {showAdvanced ? '▴' : '▾'}
-                </button>
-                {showAdvanced && (
-                  <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
-                    placeholder={`E.g. "Focus on exam definitions", "Use simple language", "Include worked examples"`}
-                    rows={3}
-                    style={{ marginTop: '7px', width: '100%', background: '#0D1117', border: `1px solid ${subject.color}30`, borderRadius: '8px', padding: '8px 10px', fontSize: '11px', color: '#E6EDF3', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
-                )}
-              </div>
-
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating || selectedLevelFileIds.length === 0}
-                className="w-full flex items-center justify-center gap-2 h-9 text-xs font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-300"
-                style={{
-                  borderRadius: '999px',
-                  background:   isGenerating ? '#1F2937' : subject.color + '18',
-                  color:        isGenerating ? '#8B949E' : subject.color,
-                  borderColor:  isGenerating ? '#30363D' : subject.color + '45',
-                }}
-              >
-                {isGenerating
-                  ? <><Spinner color={subject.color} /> Generating…</>
-                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? `${cardCount} Cards` : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
-                }
-              </button>
-
-              {isGenerating && genProgress && genProgress.total > 1 && (
-                <div className="mt-2 text-center text-[10px]" style={{ color: '#8B949E' }}>
-                  File {genProgress.current} of {genProgress.total}…
-                </div>
-              )}
-
-              {genState.status === 'error' && (
-                <div className="mt-2 px-1 text-[10px] leading-relaxed" style={{ color: '#f87171' }}>
-                  {friendlyError(genState.error)}
-                </div>
-              )}
-            </div>
-          )}
         </aside>
 
         {/* Main content area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: '#0D1117' }}>
 
-          {/* Mobile generate strip */}
-          {levelFiles.length > 0 && (
-            <div className="md:hidden flex items-center gap-2 p-3 mb-4 flex-wrap" style={{ background: '#161B22', borderRadius: '16px', border: '1px solid #21262D' }}>
-              {(['flashcards', 'notes', 'quiz'] as const).map(type => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedType(type)}
-                  className="h-7 px-3 text-[10px] font-semibold border cursor-pointer transition-all duration-200"
-                  style={{
-                    borderRadius: '999px',
-                    background:  selectedType === type ? subject.color + '20' : 'transparent',
-                    color:       selectedType === type ? subject.color : '#8B949E',
-                    borderColor: selectedType === type ? subject.color + '45' : '#30363D',
-                  }}
-                >
-                  {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
-                </button>
-              ))}
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating || selectedLevelFileIds.length === 0}
-                className="flex items-center gap-1.5 h-7 px-3 text-[10px] font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-200 ml-auto"
-                style={{
-                  borderRadius: '999px',
-                  background:  isGenerating ? '#1F2937' : subject.color + '18',
-                  color:       isGenerating ? '#8B949E' : subject.color,
-                  borderColor: isGenerating ? '#30363D' : subject.color + '45',
-                }}
-              >
-                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate {selectedType === 'flashcards' ? `${cardCount} Cards` : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>}
-              </button>
-
-              {/* Question count — only for quizzes */}
-              {selectedType === 'quiz' && (
-                <div className="w-full flex items-center gap-1.5 flex-wrap">
-                  <span style={{ fontSize: '9px', color: '#8B949E', fontWeight: 600 }}>Questions/file:</span>
-                  {[5, 10, 15, 20].map(n => (
-                    <button
-                      key={n}
-                      onClick={() => setQuizCount(n)}
-                      className="h-6 w-8 text-[10px] border cursor-pointer transition-all duration-200 font-semibold"
-                      style={{
-                        borderRadius: '999px',
-                        background:  quizCount === n ? subject.color + '20' : 'transparent',
-                        color:       quizCount === n ? subject.color : '#8B949E',
-                        borderColor: quizCount === n ? subject.color + '50' : '#30363D',
-                      }}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {genState.status === 'error' && (
-                <div className="w-full text-[10px] leading-relaxed" style={{ color: '#f87171' }}>
-                  {friendlyError(genState.error)}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Dashboard view */}
           {view === 'dashboard' && (
@@ -1134,100 +1177,96 @@ export default function SubjectPage() {
                 </span>
               </div>
 
-              {/* File list */}
+              {/* File list with folders */}
               {levelFiles.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B949E' }}>
-                      {t('uploaded_files')} ({levelFiles.length})
-                    </div>
+                <FolderBoard<UploadedFile>
+                  kind="file" label={t('uploaded_files')} color={subject.color}
+                  folders={folders} items={levelFiles} cols={1}
+                  draggedId={draggedItem?.kind === 'file' ? draggedItem.id : null}
+                  onDragStart={fid => setDraggedItem({ kind: 'file', id: fid })}
+                  onDragEnd={() => setDraggedItem(null)}
+                  onDropToFolder={fid => handleItemDrop('file', fid)}
+                  onCreateFolder={name => createFolder('file', name)}
+                  onDeleteFolder={removeFolder}
+                  headerExtra={
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => setSelectedFileIds(levelFiles.map(f => f.id))}
-                        style={{ fontSize: '10px', fontWeight: 600, color: subject.color, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                      >
+                      <button onClick={() => setSelectedFileIds(levelFiles.map(f => f.id))}
+                        style={{ fontSize: '10px', fontWeight: 600, color: subject.color, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         Select all
                       </button>
                       <span style={{ color: '#30363D', fontSize: '10px' }}>·</span>
-                      <button
-                        onClick={() => setSelectedFileIds([])}
-                        style={{ fontSize: '10px', fontWeight: 600, color: '#8B949E', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                      >
+                      <button onClick={() => setSelectedFileIds([])}
+                        style={{ fontSize: '10px', fontWeight: 600, color: '#8B949E', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         None
                       </button>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {levelFiles.map(file => {
-                      const isPDF = file.type === 'application/pdf';
-                      const iconColor = isPDF ? '#f87171' : '#60a5fa';
-                      const isFileSelected = selectedFileIds.includes(file.id);
-                      return (
-                        <div
-                          key={file.id}
-                          onClick={() => toggleFileSelection(file.id)}
+                  }
+                  renderItem={(file) => {
+                    const isPDF = file.type === 'application/pdf';
+                    const iconColor = isPDF ? '#f87171' : '#60a5fa';
+                    const isFileSelected = selectedFileIds.includes(file.id);
+                    return (
+                      <div
+                        onClick={() => toggleFileSelection(file.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          background: isFileSelected ? subject.color + '08' : '#161B22',
+                          border: `1px solid ${isFileSelected ? subject.color + '40' : '#30363D'}`,
+                          borderRadius: '16px', padding: '12px 16px',
+                          cursor: 'pointer', transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <div style={{
+                          width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0,
+                          background: isFileSelected ? subject.color : 'transparent',
+                          border: `2px solid ${isFileSelected ? subject.color : '#484F58'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.2s ease',
+                        }}>
+                          {isFileSelected && (
+                            <svg viewBox="0 0 12 12" width="9" height="9" fill="none">
+                              <path d="M2 6l2.5 2.5L10 3.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                        <div style={{
+                          width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+                          background: iconColor + '18',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <svg viewBox="0 0 20 20" width="17" height="17" fill="none">
+                            {isPDF
+                              ? <><path d="M5 2h8l4 4v12H5V2z" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/><path d="M13 2v4h4" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/><path d="M7 10h6M7 13h4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round"/></>
+                              : <><rect x="2" y="3" width="16" height="14" rx="2" stroke={iconColor} strokeWidth="1.3"/><circle cx="7" cy="8" r="1.5" stroke={iconColor} strokeWidth="1.2"/><path d="M3 14l4-5 4 4 2-2 4 3" stroke={iconColor} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></>
+                            }
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 500, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {file.name}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                            {(file.size / 1024 / 1024).toFixed(2)} MB · {isPDF ? 'PDF' : 'Image'}{activeLevel && ` · ${activeLevel}`}
+                          </div>
+                        </div>
+                        {!isPDF && (
+                          <img src={file.url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
+                        )}
+                        <button
+                          onClick={e => { e.stopPropagation(); removeFile(file.id); }}
                           style={{
-                            display: 'flex', alignItems: 'center', gap: '12px',
-                            background: isFileSelected ? subject.color + '08' : '#161B22',
-                            border: `1px solid ${isFileSelected ? subject.color + '40' : '#30363D'}`,
-                            borderRadius: '16px', padding: '12px 16px',
-                            cursor: 'pointer', transition: 'all 0.2s ease',
+                            height: '30px', padding: '0 12px', borderRadius: '999px',
+                            fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                            background: 'transparent', color: '#f87171',
+                            border: '1px solid rgba(248,113,113,0.25)', flexShrink: 0,
                           }}
                         >
-                          {/* Checkbox */}
-                          <div style={{
-                            width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0,
-                            background: isFileSelected ? subject.color : 'transparent',
-                            border: `2px solid ${isFileSelected ? subject.color : '#484F58'}`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.2s ease',
-                          }}>
-                            {isFileSelected && (
-                              <svg viewBox="0 0 12 12" width="9" height="9" fill="none">
-                                <path d="M2 6l2.5 2.5L10 3.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            )}
-                          </div>
-
-                          <div style={{
-                            width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
-                            background: iconColor + '18',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <svg viewBox="0 0 20 20" width="17" height="17" fill="none">
-                              {isPDF
-                                ? <><path d="M5 2h8l4 4v12H5V2z" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/><path d="M13 2v4h4" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/><path d="M7 10h6M7 13h4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round"/></>
-                                : <><rect x="2" y="3" width="16" height="14" rx="2" stroke={iconColor} strokeWidth="1.3"/><circle cx="7" cy="8" r="1.5" stroke={iconColor} strokeWidth="1.2"/><path d="M3 14l4-5 4 4 2-2 4 3" stroke={iconColor} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></>
-                              }
-                            </svg>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '13px', fontWeight: 500, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {file.name}
-                            </div>
-                            <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                              {(file.size / 1024 / 1024).toFixed(2)} MB · {isPDF ? 'PDF' : 'Image'}{activeLevel && ` · ${activeLevel}`}
-                            </div>
-                          </div>
-                          {!isPDF && (
-                            <img src={file.url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
-                          )}
-                          <button
-                            onClick={e => { e.stopPropagation(); removeFile(file.id); }}
-                            style={{
-                              height: '30px', padding: '0 12px', borderRadius: '999px',
-                              fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                              background: 'transparent', color: '#f87171',
-                              border: '1px solid rgba(248,113,113,0.25)', flexShrink: 0,
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  }}
+                />
               )}
             </>
           )}
@@ -1261,84 +1300,86 @@ export default function SubjectPage() {
             }
 
             return (
-              <div>
-                <div className="text-[10px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#8B949E' }}>
-                  Flashcard Sets ({savedFlashcardSets.length})
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedFlashcardSets.map((set, i) => {
-                    const isRenaming = renaming?.id === set.id;
-                    return (
-                      <div
-                        key={set.id}
-                        onClick={() => { if (!isRenaming) setActiveSetId(set.id); }}
-                        className="card-panel card-panel-lift p-4 flex items-center gap-3 anim-rise"
-                        style={{ ['--d' as string]: `${i * 60}ms`, cursor: isRenaming ? 'default' : 'pointer' }}
-                      >
-                        <div style={{
-                          width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
-                          background: subject.color + '18', color: subject.color,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <IconCards />
-                        </div>
-                        <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
-                          {isRenaming ? (
-                            <input
-                              autoFocus
-                              value={renaming.value}
-                              onChange={e => setRenaming({ ...renaming, value: e.target.value })}
-                              onBlur={() => commitRename('set')}
-                              onKeyDown={e => { if (e.key === 'Enter') commitRename('set'); if (e.key === 'Escape') setRenaming(null); }}
-                              style={{
-                                width: '100%', background: '#0D1117',
-                                border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                                color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
-                                padding: '2px 6px', outline: 'none',
-                              }}
-                            />
-                          ) : (
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {set.name}
-                            </div>
-                          )}
-                          <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                            {set.cards.length} cards · {new Date(set.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <button
-                          onClick={e => { e.stopPropagation(); startRename(set.id, set.name); }}
-                          aria-label="Rename flashcard set"
-                          style={{
-                            width: '30px', height: '30px', borderRadius: '999px',
-                            cursor: 'pointer', flexShrink: 0,
-                            background: isRenaming ? subject.color + '20' : 'transparent',
-                            color: isRenaming ? subject.color : '#484F58',
-                            border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          <IconPencil />
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); removeSet(set.id); }}
-                          aria-label="Delete flashcard set"
-                          style={{
-                            width: '30px', height: '30px', borderRadius: '999px',
-                            fontSize: '11px', cursor: 'pointer', flexShrink: 0,
-                            background: 'transparent', color: '#f87171',
-                            border: '1px solid rgba(248,113,113,0.25)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                        >
-                          <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </button>
+              <FolderBoard<StoredFlashcardSet>
+                kind="card" label="Flashcard sets" color={subject.color}
+                folders={folders} items={savedFlashcardSets}
+                draggedId={draggedItem?.kind === 'card' ? draggedItem.id : null}
+                onDragStart={cid => setDraggedItem({ kind: 'card', id: cid })}
+                onDragEnd={() => setDraggedItem(null)}
+                onDropToFolder={fid => handleItemDrop('card', fid)}
+                onCreateFolder={name => createFolder('card', name)}
+                onDeleteFolder={removeFolder}
+                renderItem={(set) => {
+                  const isRenaming = renaming?.id === set.id;
+                  return (
+                    <div
+                      onClick={() => { if (!isRenaming) setActiveSetId(set.id); }}
+                      className="card-panel card-panel-lift p-4 flex items-center gap-3"
+                      style={{ cursor: isRenaming ? 'default' : 'pointer' }}
+                    >
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                        background: subject.color + '18', color: subject.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <IconCards />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                      <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
+                        {isRenaming ? (
+                          <input
+                            autoFocus
+                            value={renaming.value}
+                            onChange={e => setRenaming({ ...renaming, value: e.target.value })}
+                            onBlur={() => commitRename('set')}
+                            onKeyDown={e => { if (e.key === 'Enter') commitRename('set'); if (e.key === 'Escape') setRenaming(null); }}
+                            style={{
+                              width: '100%', background: '#0D1117',
+                              border: `1px solid ${subject.color}55`, borderRadius: '6px',
+                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              padding: '2px 6px', outline: 'none',
+                            }}
+                          />
+                        ) : (
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {set.name}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                          {set.cards.length} cards · {new Date(set.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); startRename(set.id, set.name); }}
+                        aria-label="Rename flashcard set"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          cursor: 'pointer', flexShrink: 0,
+                          background: isRenaming ? subject.color + '20' : 'transparent',
+                          color: isRenaming ? subject.color : '#484F58',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <IconPencil />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); removeSet(set.id); }}
+                        aria-label="Delete flashcard set"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                          background: 'transparent', color: '#f87171',
+                          border: '1px solid rgba(248,113,113,0.25)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </div>
+                  );
+                }}
+              />
             );
           })()}
 
@@ -1371,84 +1412,86 @@ export default function SubjectPage() {
             }
 
             return (
-              <div>
-                <div className="text-[10px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#8B949E' }}>
-                  Notes ({savedNotes.length})
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedNotes.map((n, i) => {
-                    const isRenaming = renaming?.id === n.id;
-                    return (
-                      <div
-                        key={n.id}
-                        onClick={() => { if (!isRenaming) setActiveNoteId(n.id); }}
-                        className="card-panel card-panel-lift p-4 flex items-center gap-3 anim-rise"
-                        style={{ ['--d' as string]: `${i * 60}ms`, cursor: isRenaming ? 'default' : 'pointer' }}
-                      >
-                        <div style={{
-                          width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
-                          background: subject.color + '18', color: subject.color,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <IconNote />
-                        </div>
-                        <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
-                          {isRenaming ? (
-                            <input
-                              autoFocus
-                              value={renaming.value}
-                              onChange={e => setRenaming({ ...renaming, value: e.target.value })}
-                              onBlur={() => commitRename('note')}
-                              onKeyDown={e => { if (e.key === 'Enter') commitRename('note'); if (e.key === 'Escape') setRenaming(null); }}
-                              style={{
-                                width: '100%', background: '#0D1117',
-                                border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                                color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
-                                padding: '2px 6px', outline: 'none',
-                              }}
-                            />
-                          ) : (
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {n.name}
-                            </div>
-                          )}
-                          <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                            {n.note.sections.length} sections · {new Date(n.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <button
-                          onClick={e => { e.stopPropagation(); startRename(n.id, n.name); }}
-                          aria-label="Rename note"
-                          style={{
-                            width: '30px', height: '30px', borderRadius: '999px',
-                            cursor: 'pointer', flexShrink: 0,
-                            background: isRenaming ? subject.color + '20' : 'transparent',
-                            color: isRenaming ? subject.color : '#484F58',
-                            border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          <IconPencil />
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); removeNote(n.id); }}
-                          aria-label="Delete note"
-                          style={{
-                            width: '30px', height: '30px', borderRadius: '999px',
-                            fontSize: '11px', cursor: 'pointer', flexShrink: 0,
-                            background: 'transparent', color: '#f87171',
-                            border: '1px solid rgba(248,113,113,0.25)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                        >
-                          <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </button>
+              <FolderBoard<StoredNote>
+                kind="note" label="Notes" color={subject.color}
+                folders={folders} items={savedNotes}
+                draggedId={draggedItem?.kind === 'note' ? draggedItem.id : null}
+                onDragStart={nid => setDraggedItem({ kind: 'note', id: nid })}
+                onDragEnd={() => setDraggedItem(null)}
+                onDropToFolder={fid => handleItemDrop('note', fid)}
+                onCreateFolder={name => createFolder('note', name)}
+                onDeleteFolder={removeFolder}
+                renderItem={(n) => {
+                  const isRenaming = renaming?.id === n.id;
+                  return (
+                    <div
+                      onClick={() => { if (!isRenaming) setActiveNoteId(n.id); }}
+                      className="card-panel card-panel-lift p-4 flex items-center gap-3"
+                      style={{ cursor: isRenaming ? 'default' : 'pointer' }}
+                    >
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                        background: subject.color + '18', color: subject.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <IconNote />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                      <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
+                        {isRenaming ? (
+                          <input
+                            autoFocus
+                            value={renaming.value}
+                            onChange={e => setRenaming({ ...renaming, value: e.target.value })}
+                            onBlur={() => commitRename('note')}
+                            onKeyDown={e => { if (e.key === 'Enter') commitRename('note'); if (e.key === 'Escape') setRenaming(null); }}
+                            style={{
+                              width: '100%', background: '#0D1117',
+                              border: `1px solid ${subject.color}55`, borderRadius: '6px',
+                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              padding: '2px 6px', outline: 'none',
+                            }}
+                          />
+                        ) : (
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {n.name}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                          {n.note.sections.length} sections · {new Date(n.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); startRename(n.id, n.name); }}
+                        aria-label="Rename note"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          cursor: 'pointer', flexShrink: 0,
+                          background: isRenaming ? subject.color + '20' : 'transparent',
+                          color: isRenaming ? subject.color : '#484F58',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <IconPencil />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); removeNote(n.id); }}
+                        aria-label="Delete note"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                          background: 'transparent', color: '#f87171',
+                          border: '1px solid rgba(248,113,113,0.25)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </div>
+                  );
+                }}
+              />
             );
           })()}
 
@@ -1481,88 +1524,279 @@ export default function SubjectPage() {
             }
 
             return (
-              <div>
-                <div className="text-[10px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#8B949E' }}>
-                  Previous Quizzes ({savedQuizzes.length})
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedQuizzes.map((quiz, i) => {
-                    const isRenaming = renaming?.id === quiz.id;
-                    return (
-                      <div
-                        key={quiz.id}
-                        onClick={() => { if (!isRenaming) setActiveQuizId(quiz.id); }}
-                        className="card-panel card-panel-lift p-4 flex items-center gap-3 anim-rise"
-                        style={{ ['--d' as string]: `${i * 60}ms`, cursor: isRenaming ? 'default' : 'pointer' }}
-                      >
-                        <div style={{
-                          width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
-                          background: subject.color + '18', color: subject.color,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <IconQuiz />
-                        </div>
-                        <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
-                          {isRenaming ? (
-                            <input
-                              autoFocus
-                              value={renaming.value}
-                              onChange={e => setRenaming({ ...renaming, value: e.target.value })}
-                              onBlur={() => commitRename('quiz')}
-                              onKeyDown={e => { if (e.key === 'Enter') commitRename('quiz'); if (e.key === 'Escape') setRenaming(null); }}
-                              style={{
-                                width: '100%', background: '#0D1117',
-                                border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                                color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
-                                padding: '2px 6px', outline: 'none',
-                              }}
-                            />
-                          ) : (
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {quiz.name}
-                            </div>
-                          )}
-                          <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                            {quiz.questions.length} questions · {new Date(quiz.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <button
-                          onClick={e => { e.stopPropagation(); startRename(quiz.id, quiz.name); }}
-                          aria-label="Rename quiz"
-                          style={{
-                            width: '30px', height: '30px', borderRadius: '999px',
-                            cursor: 'pointer', flexShrink: 0,
-                            background: isRenaming ? subject.color + '20' : 'transparent',
-                            color: isRenaming ? subject.color : '#484F58',
-                            border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          <IconPencil />
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); removeQuiz(quiz.id); }}
-                          aria-label="Delete quiz"
-                          style={{
-                            width: '30px', height: '30px', borderRadius: '999px',
-                            fontSize: '11px', cursor: 'pointer', flexShrink: 0,
-                            background: 'transparent', color: '#f87171',
-                            border: '1px solid rgba(248,113,113,0.25)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                        >
-                          <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </button>
+              <FolderBoard<StoredQuiz>
+                kind="quiz" label="Previous quizzes" color={subject.color}
+                folders={folders} items={savedQuizzes}
+                draggedId={draggedItem?.kind === 'quiz' ? draggedItem.id : null}
+                onDragStart={qid => setDraggedItem({ kind: 'quiz', id: qid })}
+                onDragEnd={() => setDraggedItem(null)}
+                onDropToFolder={fid => handleItemDrop('quiz', fid)}
+                onCreateFolder={name => createFolder('quiz', name)}
+                onDeleteFolder={removeFolder}
+                renderItem={(quiz) => {
+                  const isRenaming = renaming?.id === quiz.id;
+                  return (
+                    <div
+                      onClick={() => { if (!isRenaming) setActiveQuizId(quiz.id); }}
+                      className="card-panel card-panel-lift p-4 flex items-center gap-3"
+                      style={{ cursor: isRenaming ? 'default' : 'pointer' }}
+                    >
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                        background: subject.color + '18', color: subject.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <IconQuiz />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                      <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
+                        {isRenaming ? (
+                          <input
+                            autoFocus
+                            value={renaming.value}
+                            onChange={e => setRenaming({ ...renaming, value: e.target.value })}
+                            onBlur={() => commitRename('quiz')}
+                            onKeyDown={e => { if (e.key === 'Enter') commitRename('quiz'); if (e.key === 'Escape') setRenaming(null); }}
+                            style={{
+                              width: '100%', background: '#0D1117',
+                              border: `1px solid ${subject.color}55`, borderRadius: '6px',
+                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              padding: '2px 6px', outline: 'none',
+                            }}
+                          />
+                        ) : (
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {quiz.name}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                          {quiz.questions.length} questions · {new Date(quiz.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); startRename(quiz.id, quiz.name); }}
+                        aria-label="Rename quiz"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          cursor: 'pointer', flexShrink: 0,
+                          background: isRenaming ? subject.color + '20' : 'transparent',
+                          color: isRenaming ? subject.color : '#484F58',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <IconPencil />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); removeQuiz(quiz.id); }}
+                        aria-label="Delete quiz"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                          background: 'transparent', color: '#f87171',
+                          border: '1px solid rgba(248,113,113,0.25)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </div>
+                  );
+                }}
+              />
             );
           })()}
         </main>
       </div>
+
+      {/* ── Floating Generate button + popover ──────────────────────────────── */}
+      {levelFiles.length > 0 && (
+        <div style={{ position: 'fixed', right: '24px', bottom: '24px', zIndex: 200, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
+          {showGenPanel && (
+            <div
+              style={{
+                width: 'min(92vw, 340px)', maxHeight: '70vh', overflowY: 'auto',
+                background: '#161B22', border: '1px solid #30363D', borderRadius: '20px',
+                boxShadow: '0 18px 50px rgba(0,0,0,0.55)', padding: '16px',
+              }}
+              className="anim-rise"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3' }}>Generate</div>
+                <div style={{ fontSize: '10px', color: selectedLevelFileIds.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
+                  {selectedLevelFileIds.length}/{levelFiles.length} selected
+                </div>
+              </div>
+
+              {selectedLevelFileIds.length === 0 && (
+                <div className="mb-3 text-[11px] leading-relaxed" style={{ color: '#D29922' }}>
+                  Select one or more files in the Files tab first.
+                </div>
+              )}
+
+              {/* Type selector */}
+              <div className="flex gap-1.5 flex-wrap mb-3">
+                {(['flashcards', 'notes', 'quiz'] as GenerationType[]).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedType(type)}
+                    className="h-8 px-3 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                    style={{
+                      borderRadius: '999px',
+                      background:   selectedType === type ? subject.color + '20' : 'transparent',
+                      color:        selectedType === type ? subject.color          : '#8B949E',
+                      borderColor:  selectedType === type ? subject.color + '50'   : '#30363D',
+                    }}
+                  >
+                    {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Flashcard options */}
+              {selectedType === 'flashcards' && (
+                <div className="mb-3 flex flex-col gap-2.5">
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Cards per file</div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[6, 12, 20, 30].map(n => (
+                        <button key={n} onClick={() => setCardCount(n)}
+                          className="h-8 w-10 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
+                          style={{ borderRadius: '999px', background: cardCount === n ? subject.color + '20' : 'transparent', color: cardCount === n ? subject.color : '#8B949E', borderColor: cardCount === n ? subject.color + '50' : '#30363D' }}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Supply & demand"
+                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Notes options */}
+              {selectedType === 'notes' && (
+                <div className="mb-3 flex flex-col gap-2.5">
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
+                    <div className="flex gap-1.5">
+                      {(['concise', 'standard', 'comprehensive'] as const).map(d => (
+                        <button key={d} onClick={() => setNotesDetail(d)}
+                          className="h-8 px-2.5 text-[10px] border cursor-pointer transition-all duration-200 font-semibold capitalize"
+                          style={{ borderRadius: '999px', background: notesDetail === d ? subject.color + '20' : 'transparent', color: notesDetail === d ? subject.color : '#8B949E', borderColor: notesDetail === d ? subject.color + '50' : '#30363D' }}>
+                          {d === 'comprehensive' ? 'Deep' : d.charAt(0).toUpperCase() + d.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Include</div>
+                    <div className="flex flex-col gap-1.5">
+                      {(['formulas', 'diagrams', 'mindmap'] as const).map(item => (
+                        <label key={item} className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={notesIncludes.includes(item)} onChange={() => toggleInclude(item)}
+                            style={{ accentColor: subject.color, width: '13px', height: '13px', cursor: 'pointer' }} />
+                          <span style={{ fontSize: '11px', color: notesIncludes.includes(item) ? '#C9D1D9' : '#8B949E' }}>
+                            {item === 'formulas' ? '∑ Formulas' : item === 'diagrams' ? '→ Diagrams' : '⊞ Mind-map style'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Quiz options */}
+              {selectedType === 'quiz' && (
+                <div className="mb-3 flex flex-col gap-2.5">
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[5, 10, 15, 20].map(n => (
+                        <button key={n} onClick={() => setQuizCount(n)}
+                          className="h-8 w-10 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
+                          style={{ borderRadius: '999px', background: quizCount === n ? subject.color + '20' : 'transparent', color: quizCount === n ? subject.color : '#8B949E', borderColor: quizCount === n ? subject.color + '50' : '#30363D' }}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy"
+                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Custom prompt */}
+              <div className="mb-3">
+                <button onClick={() => setShowAdvanced(v => !v)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '10px', fontWeight: 600, color: showAdvanced ? subject.color : '#484F58', display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
+                  <span style={{ fontSize: '11px' }}>✦</span> Custom instructions {showAdvanced ? '▴' : '▾'}
+                </button>
+                {showAdvanced && (
+                  <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
+                    placeholder={`E.g. "Focus on exam definitions", "Use simple language"`}
+                    rows={3}
+                    style={{ marginTop: '7px', width: '100%', background: '#0D1117', border: `1px solid ${subject.color}30`, borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
+                )}
+              </div>
+
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || selectedLevelFileIds.length === 0}
+                className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-300"
+                style={{
+                  borderRadius: '999px',
+                  background:   isGenerating ? '#1F2937' : subject.color + '18',
+                  color:        isGenerating ? '#8B949E' : subject.color,
+                  borderColor:  isGenerating ? '#30363D' : subject.color + '45',
+                }}
+              >
+                {isGenerating
+                  ? <><Spinner color={subject.color} /> Generating…</>
+                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? `${cardCount} Cards` : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
+                }
+              </button>
+
+              {isGenerating && genProgress && genProgress.total > 1 && (
+                <div className="mt-2 text-center text-[11px]" style={{ color: '#8B949E' }}>
+                  File {genProgress.current} of {genProgress.total}…
+                </div>
+              )}
+
+              {genState.status === 'error' && (
+                <div className="mt-2 text-[11px] leading-relaxed" style={{ color: '#f87171' }}>
+                  {friendlyError(genState.error)}
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={() => setShowGenPanel(v => !v)}
+            aria-label="Generate study material"
+            className="flex items-center gap-2 cursor-pointer transition-all duration-300"
+            style={{
+              height: '54px', padding: showGenPanel ? '0 18px' : '0 22px',
+              borderRadius: '999px',
+              background: subject.color,
+              color: '#0D1117',
+              border: 'none',
+              fontWeight: 700, fontSize: '14px',
+              boxShadow: `0 10px 30px ${subject.color}55, 0 2px 8px rgba(0,0,0,0.4)`,
+              fontFamily: "'Sora',sans-serif",
+            }}
+          >
+            {showGenPanel
+              ? <><svg viewBox="0 0 14 14" width="14" height="14" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> Close</>
+              : <><IconSparkle /> Generate</>}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
