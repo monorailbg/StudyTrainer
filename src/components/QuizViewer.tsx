@@ -19,18 +19,135 @@ function useCountUp(target: number, active: boolean, duration = 1000) {
   return val;
 }
 
+// ── Setup screen ───────────────────────────────────────────────────────────────
+
+function SetupScreen({
+  total, color, onStart,
+}: {
+  total: number;
+  color: string;
+  onStart: (count: number, shuffle: boolean) => void;
+}) {
+  const rawOptions = [5, 10, 15, 20].filter(n => n < total);
+  const countOptions = [...rawOptions, total];
+  const defaultCount = countOptions.find(n => n >= Math.min(10, total)) ?? total;
+  const [testCount, setTestCount] = useState(defaultCount);
+  const [shuffle, setShuffle] = useState(true);
+
+  return (
+    <div style={{ maxWidth: '420px', paddingTop: '8px' }}>
+      {/* Stat */}
+      <div style={{ marginBottom: '28px' }}>
+        <div className="mono" style={{ fontSize: '3rem', fontWeight: 700, lineHeight: 1, color }}>
+          {total}
+        </div>
+        <div style={{ fontSize: '13px', color: '#8B949E', marginTop: '4px' }}>
+          questions ready
+        </div>
+      </div>
+
+      {/* Count selector */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '10px' }}>
+          How many questions?
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {countOptions.map(n => (
+            <button
+              key={n}
+              onClick={() => setTestCount(n)}
+              style={{
+                height: '38px', padding: '0 18px',
+                borderRadius: '999px',
+                background: testCount === n ? color + '1A' : '#161B22',
+                color: testCount === n ? color : '#8B949E',
+                border: `1px solid ${testCount === n ? color + '55' : '#30363D'}`,
+                fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {n === total ? `All ${n}` : n}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Shuffle toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
+        <button
+          onClick={() => setShuffle(s => !s)}
+          style={{
+            width: '36px', height: '20px', borderRadius: '999px',
+            background: shuffle ? color : '#30363D',
+            border: 'none', cursor: 'pointer', position: 'relative',
+            flexShrink: 0,
+            transition: 'background 0.25s ease',
+          }}
+          aria-label="Toggle shuffle"
+        >
+          <span style={{
+            position: 'absolute', top: '2px',
+            left: shuffle ? '18px' : '2px',
+            width: '16px', height: '16px',
+            borderRadius: '50%', background: '#E6EDF3',
+            transition: 'left 0.25s ease',
+          }} />
+        </button>
+        <span style={{ fontSize: '13px', color: shuffle ? '#E6EDF3' : '#8B949E', transition: 'color 0.2s' }}>
+          Shuffle questions
+        </span>
+      </div>
+
+      {/* Start */}
+      <button
+        onClick={() => onStart(testCount, shuffle)}
+        style={{
+          height: '44px', padding: '0 36px',
+          borderRadius: '999px',
+          background: color,
+          color: '#0D1117',
+          border: 'none',
+          fontSize: '14px', fontWeight: 700,
+          cursor: 'pointer',
+          boxShadow: `0 4px 20px ${color}44, 0 1px 0 rgba(255,255,255,0.15) inset`,
+          transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.02)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+      >
+        Start Test
+      </button>
+    </div>
+  );
+}
+
+// ── Quiz viewer ────────────────────────────────────────────────────────────────
+
 export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuestion[]; color: string }) {
+  const [started, setStarted] = useState(false);
+  const [activeQuestions, setActiveQuestions] = useState<GeneratedQuizQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [shakingId, setShakingId] = useState<string | null>(null);
 
-  // q.correct can arrive as a string ("1") from the model even though the type
-  // says number — coerce at every comparison so strict === never silently fails.
-  const score = submitted ? questions.filter(q => answers[q.id] === Number(q.correct)).length : 0;
-  const pct = submitted ? Math.round((score / questions.length) * 100) : 0;
+  const score = submitted ? activeQuestions.filter(q => answers[q.id] === Number(q.correct)).length : 0;
+  const pct = submitted && activeQuestions.length > 0 ? Math.round((score / activeQuestions.length) * 100) : 0;
   const answered = Object.keys(answers).length;
   const countedScore = useCountUp(pct, submitted);
-  const reset = () => { setAnswers({}); setSubmitted(false); };
+
+  function startTest(count: number, shuffle: boolean) {
+    const pool = shuffle ? [...questions].sort(() => Math.random() - 0.5) : [...questions];
+    setActiveQuestions(pool.slice(0, count));
+    setAnswers({});
+    setSubmitted(false);
+    setStarted(true);
+  }
+
+  function reset() {
+    setAnswers({});
+    setSubmitted(false);
+    setStarted(false);
+  }
 
   function handleAnswer(questionId: string, optionIndex: number, correctIndex: number) {
     setAnswers(a => ({ ...a, [questionId]: optionIndex }));
@@ -38,6 +155,10 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
       setShakingId(questionId);
       setTimeout(() => setShakingId(null), 400);
     }
+  }
+
+  if (!started) {
+    return <SetupScreen total={questions.length} color={color} onStart={startTest} />;
   }
 
   return (
@@ -55,29 +176,34 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
           <div className="flex items-baseline gap-2">
             <span className="mono leading-none" style={{ fontSize: '3rem', color }}>{countedScore}%</span>
             <span className="text-sm" style={{ color: '#8B949E' }}>
-              {score} / {questions.length} correct
+              {score} / {activeQuestions.length} correct
             </span>
           </div>
-          <button
-            onClick={reset}
-            className="h-8 px-4 text-xs font-medium border cursor-pointer transition-colors duration-150"
-            style={{ background: '#1F2937', color: '#E6EDF3', border: '1px solid #30363D', borderRadius: '7px' }}
-          >
-            Retry
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setAnswers({}); setSubmitted(false); }}
+              className="h-8 px-4 text-xs font-medium cursor-pointer transition-colors duration-150"
+              style={{ background: '#1F2937', color: '#E6EDF3', border: '1px solid #30363D', borderRadius: '999px' }}
+            >
+              Retry same
+            </button>
+            <button
+              onClick={reset}
+              className="h-8 px-4 text-xs font-medium cursor-pointer transition-colors duration-150"
+              style={{ background: color + '18', color, border: `1px solid ${color}40`, borderRadius: '999px' }}
+            >
+              New test
+            </button>
+          </div>
         </div>
       )}
 
       {/* Questions */}
       <div className="flex flex-col gap-3">
-        {questions.map((q, qi) => {
+        {activeQuestions.map((q, qi) => {
           const chosen = answers[q.id];
           const isAnswered = chosen !== undefined;
           const isCorrect = submitted && chosen === Number(q.correct);
-          // The explanation box appears the moment a question is answered, before
-          // the user hits "Check Answers", so its correct/incorrect verdict can't
-          // be gated on `submitted` — otherwise it reads "Incorrect" for every
-          // answer (including the right one) until submission.
           const answeredCorrectly = isAnswered && chosen === Number(q.correct);
           const isShaking = shakingId === q.id;
 
@@ -111,24 +237,9 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
                   let textCol = '#8B949E';
                   let badgeColor = border;
 
-                  if (isChosen && !submitted) {
-                    bg = color + '12';
-                    border = color + '55';
-                    textCol = '#E6EDF3';
-                    badgeColor = color;
-                  }
-                  if (isRight) {
-                    bg = 'rgba(46,160,67,0.1)';
-                    border = 'rgba(46,160,67,0.45)';
-                    textCol = '#56D364';
-                    badgeColor = '#2EA043';
-                  }
-                  if (isWrong) {
-                    bg = 'rgba(248,81,73,0.1)';
-                    border = 'rgba(248,81,73,0.45)';
-                    textCol = '#F97979';
-                    badgeColor = '#F85149';
-                  }
+                  if (isChosen && !submitted) { bg = color + '12'; border = color + '55'; textCol = '#E6EDF3'; badgeColor = color; }
+                  if (isRight) { bg = 'rgba(46,160,67,0.1)'; border = 'rgba(46,160,67,0.45)'; textCol = '#56D364'; badgeColor = '#2EA043'; }
+                  if (isWrong) { bg = 'rgba(248,81,73,0.1)'; border = 'rgba(248,81,73,0.45)'; textCol = '#F97979'; badgeColor = '#F85149'; }
 
                   return (
                     <button
@@ -152,7 +263,6 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
                 })}
               </div>
 
-              {/* Explanation — slides down after answer */}
               {isAnswered && q.explanation && (
                 <div
                   className="mt-3 px-3.5 py-3 rounded-lg text-xs leading-relaxed anim-fadein"
@@ -178,19 +288,19 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
         <div className="mt-5 flex items-center gap-4">
           <button
             onClick={() => setSubmitted(true)}
-            disabled={answered < questions.length}
+            disabled={answered < activeQuestions.length}
             className="h-10 px-6 text-sm font-semibold border-0 cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-150"
             style={{
-              background: answered === questions.length ? '#3D7EFF' : '#1F2937',
-              color: answered === questions.length ? '#E6EDF3' : '#8B949E',
-              borderRadius: '8px',
+              background: answered === activeQuestions.length ? '#3D7EFF' : '#1F2937',
+              color: answered === activeQuestions.length ? '#E6EDF3' : '#8B949E',
+              borderRadius: '999px',
             }}
           >
             Check Answers
           </button>
-          {answered < questions.length && (
+          {answered < activeQuestions.length && (
             <span className="text-xs" style={{ color: '#8B949E' }}>
-              {answered} / {questions.length} answered
+              {answered} / {activeQuestions.length} answered
             </span>
           )}
         </div>

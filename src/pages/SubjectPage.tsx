@@ -34,6 +34,7 @@ interface UploadedFile {
 
 type GenStatus = 'idle' | 'generating' | 'done' | 'error';
 interface GenState { status: GenStatus; type?: GenerationType; error?: string; }
+interface GenProgress { current: number; total: number; }
 
 interface GeneratedContent {
   flashcards?: GeneratedFlashcard[];
@@ -153,10 +154,12 @@ export default function SubjectPage() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFileId, setSelectedFileId] = useState('');
+  const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<GenerationType>('flashcards');
   const [genState, setGenState] = useState<GenState>({ status: 'idle' });
+  const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent>({});
+  const [quizGenKey, setQuizGenKey] = useState(0);
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const valid = Array.from(newFiles).filter(f => ACCEPTED.includes(f.type));
@@ -165,12 +168,9 @@ export default function SubjectPage() {
       name: f.name, type: f.type, size: f.size,
       url: URL.createObjectURL(f), rawFile: f, level: activeLevel,
     }));
-    setFiles(prev => {
-      const next = [...prev, ...mapped];
-      if (!selectedFileId && next.length > 0) setSelectedFileId(next[0].id);
-      return next;
-    });
-  }, [activeLevel, selectedFileId]);
+    setFiles(prev => [...prev, ...mapped]);
+    setSelectedFileIds(prev => [...prev, ...mapped.map(m => m.id)]);
+  }, [activeLevel]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
@@ -181,30 +181,50 @@ export default function SubjectPage() {
     setFiles(prev => {
       const f = prev.find(x => x.id === fileId);
       if (f) URL.revokeObjectURL(f.url);
-      const next = prev.filter(x => x.id !== fileId);
-      if (selectedFileId === fileId) setSelectedFileId(next[0]?.id ?? '');
-      return next;
+      return prev.filter(x => x.id !== fileId);
     });
+    setSelectedFileIds(prev => prev.filter(id => id !== fileId));
+  };
+
+  const toggleFileSelection = (fileId: string) => {
+    setSelectedFileIds(prev =>
+      prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
+    );
   };
 
   const handleGenerate = async () => {
-    if (!selectedFileId) return;
-    const file = files.find(f => f.id === selectedFileId);
-    if (!file) return;
+    const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
+    if (selectedFiles.length === 0) return;
     try {
       setGenState({ status: 'generating', type: selectedType });
-      const result = await generateFromFile(file.rawFile, selectedType, subject!.title);
-      setGeneratedContent(prev => ({
-        ...prev,
-        sourceFileId: selectedFileId,
-        ...(selectedType === 'flashcards' && { flashcards: result as GeneratedFlashcard[] }),
-        ...(selectedType === 'notes'      && { notes:      result as GeneratedNote }),
-        ...(selectedType === 'quiz'       && { quiz:       result as GeneratedQuizQuestion[] }),
-      }));
+      setGenProgress({ current: 0, total: selectedFiles.length });
+
+      const results: unknown[] = [];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        setGenProgress({ current: i + 1, total: selectedFiles.length });
+        const result = await generateFromFile(selectedFiles[i].rawFile, selectedType, subject!.title);
+        results.push(result);
+      }
+
+      setGeneratedContent(prev => {
+        if (selectedType === 'flashcards') {
+          return { ...prev, flashcards: (results as GeneratedFlashcard[][]).flat() };
+        }
+        if (selectedType === 'notes') {
+          if (results.length === 1) return { ...prev, notes: results[0] as GeneratedNote };
+          const sections = (results as GeneratedNote[]).flatMap(n => n.sections);
+          return { ...prev, notes: { title: subject!.title, summary: `Combined notes from ${results.length} files.`, sections } };
+        }
+        const allQuestions = (results as GeneratedQuizQuestion[][]).flat().map((q, i) => ({ ...q, id: `m${i}-${q.id}` }));
+        return { ...prev, quiz: allQuestions };
+      });
+      if (selectedType === 'quiz') setQuizGenKey(k => k + 1);
       setGenState({ status: 'done', type: selectedType });
       setView(selectedType);
     } catch (err) {
       setGenState({ status: 'error', type: selectedType, error: String(err) });
+    } finally {
+      setGenProgress(null);
     }
   };
 
@@ -219,6 +239,7 @@ export default function SubjectPage() {
 
   const levelFiles = files.filter(f => !subject.levels || f.level === activeLevel);
   const isGenerating = genState.status === 'generating';
+  const selectedLevelFileIds = selectedFileIds.filter(id => levelFiles.some(f => f.id === id));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 76px)' }}>
@@ -316,17 +337,22 @@ export default function SubjectPage() {
               onClick={() => { setView('upload'); }}
             />
 
-            {levelFiles.map(file => (
-              <div key={file.id} style={{ position: 'relative' }}>
-                <SidebarItem
-                  icon={<IconFile />}
-                  label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
-                  sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : 'Image'}`}
-                  active={view === 'upload' && selectedFileId === file.id}
-                  onClick={() => { setSelectedFileId(file.id); setView('upload'); }}
-                />
-              </div>
-            ))}
+            {levelFiles.map(file => {
+              const isFileSelected = selectedFileIds.includes(file.id);
+              return (
+                <div key={file.id}>
+                  <SidebarItem
+                    icon={<IconFile />}
+                    label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
+                    sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : 'Image'}`}
+                    active={view === 'upload'}
+                    dot={isFileSelected}
+                    dotColor={subject.color}
+                    onClick={() => { toggleFileSelection(file.id); setView('upload'); }}
+                  />
+                </div>
+              );
+            })}
           </div>
 
           {/* Generated content section */}
@@ -366,13 +392,14 @@ export default function SubjectPage() {
 
           {/* Generate panel in sidebar */}
           {levelFiles.length > 0 && (
-            <div style={{
-              marginTop: 'auto',
-              paddingTop: '16px',
-              borderTop: '1px solid #21262D',
-            }}>
-              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
-                Generate
+            <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #21262D' }}>
+              <div className="flex items-center justify-between px-1 mb-2">
+                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
+                  Generate
+                </div>
+                <div style={{ fontSize: '9px', color: selectedLevelFileIds.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
+                  {selectedLevelFileIds.length}/{levelFiles.length} selected
+                </div>
               </div>
 
               {/* Type selector */}
@@ -396,7 +423,7 @@ export default function SubjectPage() {
 
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating || !selectedFileId}
+                disabled={isGenerating || selectedLevelFileIds.length === 0}
                 className="w-full flex items-center justify-center gap-2 h-9 text-xs font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-300"
                 style={{
                   borderRadius: '999px',
@@ -407,6 +434,12 @@ export default function SubjectPage() {
               >
                 {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate</>}
               </button>
+
+              {isGenerating && genProgress && genProgress.total > 1 && (
+                <div className="mt-2 text-center text-[10px]" style={{ color: '#8B949E' }}>
+                  File {genProgress.current} of {genProgress.total}…
+                </div>
+              )}
 
               {genState.status === 'error' && (
                 <div className="mt-2 px-1 text-[10px] leading-relaxed" style={{ color: '#f87171' }}>
@@ -440,7 +473,7 @@ export default function SubjectPage() {
               ))}
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating || !selectedFileId}
+                disabled={isGenerating || selectedLevelFileIds.length === 0}
                 className="flex items-center gap-1.5 h-7 px-3 text-[10px] font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-200 ml-auto"
                 style={{
                   borderRadius: '999px',
@@ -513,19 +546,58 @@ export default function SubjectPage() {
               {/* File list */}
               {levelFiles.length > 0 && (
                 <div>
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B949E', marginBottom: '10px' }}>
-                    {t('uploaded_files')} ({levelFiles.length})
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B949E' }}>
+                      {t('uploaded_files')} ({levelFiles.length})
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedFileIds(levelFiles.map(f => f.id))}
+                        style={{ fontSize: '10px', fontWeight: 600, color: subject.color, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      >
+                        Select all
+                      </button>
+                      <span style={{ color: '#30363D', fontSize: '10px' }}>·</span>
+                      <button
+                        onClick={() => setSelectedFileIds([])}
+                        style={{ fontSize: '10px', fontWeight: 600, color: '#8B949E', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      >
+                        None
+                      </button>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {levelFiles.map(file => {
                       const isPDF = file.type === 'application/pdf';
                       const iconColor = isPDF ? '#f87171' : '#60a5fa';
+                      const isFileSelected = selectedFileIds.includes(file.id);
                       return (
-                        <div key={file.id} style={{
-                          display: 'flex', alignItems: 'center', gap: '12px',
-                          background: '#161B22', border: '1px solid #30363D', borderRadius: '16px',
-                          padding: '12px 16px',
-                        }}>
+                        <div
+                          key={file.id}
+                          onClick={() => toggleFileSelection(file.id)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '12px',
+                            background: isFileSelected ? subject.color + '08' : '#161B22',
+                            border: `1px solid ${isFileSelected ? subject.color + '40' : '#30363D'}`,
+                            borderRadius: '16px', padding: '12px 16px',
+                            cursor: 'pointer', transition: 'all 0.2s ease',
+                          }}
+                        >
+                          {/* Checkbox */}
+                          <div style={{
+                            width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0,
+                            background: isFileSelected ? subject.color : 'transparent',
+                            border: `2px solid ${isFileSelected ? subject.color : '#484F58'}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.2s ease',
+                          }}>
+                            {isFileSelected && (
+                              <svg viewBox="0 0 12 12" width="9" height="9" fill="none">
+                                <path d="M2 6l2.5 2.5L10 3.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+
                           <div style={{
                             width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
                             background: iconColor + '18',
@@ -549,32 +621,17 @@ export default function SubjectPage() {
                           {!isPDF && (
                             <img src={file.url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
                           )}
-                          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                            <button
-                              onClick={() => { setSelectedFileId(file.id); }}
-                              style={{
-                                height: '30px', padding: '0 12px', borderRadius: '999px',
-                                fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                                background: selectedFileId === file.id ? subject.color + '25' : 'transparent',
-                                color: selectedFileId === file.id ? subject.color : '#8B949E',
-                                border: `1px solid ${selectedFileId === file.id ? subject.color + '50' : '#30363D'}`,
-                                transition: 'all 0.2s ease',
-                              }}
-                            >
-                              {selectedFileId === file.id ? '✓ Selected' : 'Select'}
-                            </button>
-                            <button
-                              onClick={() => removeFile(file.id)}
-                              style={{
-                                height: '30px', padding: '0 12px', borderRadius: '999px',
-                                fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                                background: 'transparent', color: '#f87171',
-                                border: '1px solid rgba(248,113,113,0.25)',
-                              }}
-                            >
-                              Remove
-                            </button>
-                          </div>
+                          <button
+                            onClick={e => { e.stopPropagation(); removeFile(file.id); }}
+                            style={{
+                              height: '30px', padding: '0 12px', borderRadius: '999px',
+                              fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                              background: 'transparent', color: '#f87171',
+                              border: '1px solid rgba(248,113,113,0.25)', flexShrink: 0,
+                            }}
+                          >
+                            Remove
+                          </button>
                         </div>
                       );
                     })}
@@ -606,7 +663,7 @@ export default function SubjectPage() {
           {view === 'quiz' && (
             generatedContent.quiz
               ? <ContentHeader label={`${generatedContent.quiz.length} ${t('questions')} · AI Generated`} onRegenerate={() => setView('upload')} t={t}>
-                  <QuizViewer questions={generatedContent.quiz} color={subject.color} />
+                  <QuizViewer key={quizGenKey} questions={generatedContent.quiz} color={subject.color} />
                 </ContentHeader>
               : <EmptyState color={subject.color} onUpload={() => setView('upload')} />
           )}
