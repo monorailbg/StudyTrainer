@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLang } from '../context/LanguageContext';
-import { ALL_SUBJECTS } from '../data/subjects';
+import { useResolvedSubjects } from '../store/useSubjects';
 import { generateFromTopic } from '../lib/geminiGenerator';
 import type {
   GenerationType,
@@ -63,6 +63,7 @@ interface Result {
 
 export default function Generate() {
   useLang();
+  const { allSubjects: ALL_SUBJECTS } = useResolvedSubjects();
 
   const [topic, setTopic] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');

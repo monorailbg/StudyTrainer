@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
-import { ALL_SUBJECTS } from '../data/subjects';
+import { useResolvedSubjects } from '../store/useSubjects';
 import { generateFromFile } from '../lib/geminiGenerator';
 import {
   saveFile, getFiles, deleteFile,
@@ -130,7 +130,8 @@ function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }
 export default function SubjectPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useLang();
-  const subject = ALL_SUBJECTS.find(s => s.id === id);
+  const { allSubjects } = useResolvedSubjects();
+  const subject = allSubjects.find(s => s.id === id);
 
   const [activeLevel, setActiveLevel] = useState(subject?.levels?.[0] ?? '');
   const [view, setView] = useState<View>('dashboard');

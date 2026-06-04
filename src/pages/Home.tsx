@@ -1,12 +1,14 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useStore } from '../store/useStore';
-import { ALL_SUBJECTS, CORE_SUBJECTS, EXTENDED_SUBJECTS } from '../data/subjects';
+import { useResolvedSubjects } from '../store/useSubjects';
+import type { SubjectDef } from '../data/subjects';
 import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
 import notesData from '../data/notes-config.json';
 import GlobeView from '../components/GlobeView';
+import { ManageSubjects } from '../components/ManageSubjects';
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 
@@ -103,7 +105,7 @@ function StatChip({ label, value, progress, color = '#3D7EFF' }: {
 
 // ── Subject card ───────────────────────────────────────────────────────────────
 
-function SubjectCard({ subject, isCore }: { subject: typeof ALL_SUBJECTS[0]; isCore: boolean }) {
+function SubjectCard({ subject, isCore }: { subject: SubjectDef; isCore: boolean }) {
   const { t } = useLang();
   const Icon = SubjectIconMap[subject.id] ?? IconGlobe;
 
@@ -191,6 +193,10 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
 export default function Home() {
   const { t } = useLang();
   const { flashcardsStudied, flashcardsKnown, quizScores, notesRead } = useStore();
+  const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
+  const [managing, setManaging] = useState(false);
+  // Force the globe to rebuild when the set of subjects changes.
+  const globeKey = allSubjects.map(s => s.id).join(',');
 
   const totalCards = flashcardsData.length;
   const totalNotes = notesData.length;
@@ -213,7 +219,7 @@ export default function Home() {
         }}
       >
         {/* Globe canvas */}
-        <GlobeView subjects={ALL_SUBJECTS} />
+        <GlobeView key={globeKey} subjects={allSubjects} />
 
         {/* Title overlay — top left */}
         <div
@@ -340,21 +346,51 @@ export default function Home() {
 
         {/* Core subjects */}
         <div className="mb-10">
-          <SectionLabel count={CORE_SUBJECTS.length}>{t('core_subjects')}</SectionLabel>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {CORE_SUBJECTS.map(s => <SubjectCard key={s.id} subject={s} isCore={true} />)}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#8B949E' }}>
+                {t('core_subjects')}
+              </span>
+              <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: '#1F2937', color: '#8B949E', border: '1px solid #30363D' }}>
+                {coreSubjects.length}
+              </span>
+              <div className="flex-1 h-px" style={{ background: '#30363D' }} />
+            </div>
+            <button
+              onClick={() => setManaging(true)}
+              className="flex items-center gap-1.5 ml-3 h-8 px-3.5 text-xs font-semibold cursor-pointer transition-all duration-300"
+              style={{ borderRadius: '999px', background: '#3D7EFF18', color: '#3D7EFF', border: '1px solid #3D7EFF35' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px #3D7EFF33'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
+            >
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
+              Manage
+            </button>
           </div>
+          {coreSubjects.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {coreSubjects.map(s => <SubjectCard key={s.id} subject={s} isCore={true} />)}
+            </div>
+          ) : (
+            <div className="text-xs" style={{ color: '#8B949E' }}>
+              No core subjects. Star one in <button onClick={() => setManaging(true)} className="underline cursor-pointer bg-transparent border-none p-0" style={{ color: '#3D7EFF' }}>Manage</button>.
+            </div>
+          )}
         </div>
 
         {/* Extended curriculum */}
-        <div>
-          <SectionLabel count={EXTENDED_SUBJECTS.length}>{t('extended')}</SectionLabel>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {EXTENDED_SUBJECTS.map(s => <SubjectCard key={s.id} subject={s} isCore={false} />)}
+        {extendedSubjects.length > 0 && (
+          <div>
+            <SectionLabel count={extendedSubjects.length}>{t('extended')}</SectionLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {extendedSubjects.map(s => <SubjectCard key={s.id} subject={s} isCore={false} />)}
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
+
+      {managing && <ManageSubjects onClose={() => setManaging(false)} />}
     </div>
   );
 }
