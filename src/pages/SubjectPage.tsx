@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useLang, type TKey } from '../context/LanguageContext';
 import { ALL_SUBJECTS } from '../data/subjects';
 import { generateFromFile } from '../lib/geminiGenerator';
+import { saveFile, getFiles, deleteFile, saveContent, getContent } from '../lib/db';
 import type {
   GenerationType,
   GeneratedFlashcard,
@@ -161,7 +162,66 @@ export default function SubjectPage() {
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent>({});
   const [quizGenKey, setQuizGenKey] = useState(0);
 
-  const addFiles = useCallback((newFiles: FileList | File[]) => {
+  // Refs so async callbacks always read the latest values without stale closures
+  const generatedContentRef = useRef<GeneratedContent>({});
+  generatedContentRef.current = generatedContent;
+  const filesRef = useRef<UploadedFile[]>([]);
+  filesRef.current = files;
+
+  // ── Load persisted data when subject changes ───────────────────────────────
+  useEffect(() => {
+    if (!id) return;
+
+    // Reset all state when navigating to a different subject
+    setFiles([]);
+    setSelectedFileIds([]);
+    setGeneratedContent({});
+    setView('upload');
+    setGenState({ status: 'idle' });
+
+    async function loadPersisted() {
+      try {
+        const [storedFiles, storedContent] = await Promise.all([
+          getFiles(id!),
+          getContent(id!),
+        ]);
+
+        if (storedFiles.length > 0) {
+          const mapped: UploadedFile[] = storedFiles.map(sf => ({
+            id:      sf.id,
+            name:    sf.name,
+            type:    sf.type,
+            size:    sf.size,
+            url:     URL.createObjectURL(sf.blob),
+            rawFile: new File([sf.blob], sf.name, { type: sf.type }),
+            level:   sf.level,
+          }));
+          setFiles(mapped);
+          setSelectedFileIds(mapped.map(f => f.id));
+        }
+
+        if (storedContent) {
+          setGeneratedContent({
+            flashcards: storedContent.flashcards as GeneratedFlashcard[] | undefined,
+            notes:      storedContent.notes      as GeneratedNote        | undefined,
+            quiz:       storedContent.quiz       as GeneratedQuizQuestion[] | undefined,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load persisted subject data:', err);
+      }
+    }
+
+    loadPersisted();
+
+    return () => {
+      // Revoke blob URLs when leaving this subject
+      filesRef.current.forEach(f => URL.revokeObjectURL(f.url));
+    };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── File management ────────────────────────────────────────────────────────
+  const addFiles = useCallback(async (newFiles: FileList | File[]) => {
     const valid = Array.from(newFiles).filter(f => ACCEPTED.includes(f.type));
     const mapped: UploadedFile[] = valid.map(f => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -170,7 +230,11 @@ export default function SubjectPage() {
     }));
     setFiles(prev => [...prev, ...mapped]);
     setSelectedFileIds(prev => [...prev, ...mapped.map(m => m.id)]);
-  }, [activeLevel]);
+    // Persist blobs to IndexedDB
+    for (const file of mapped) {
+      await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile }).catch(() => {});
+    }
+  }, [activeLevel, id]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
@@ -183,15 +247,17 @@ export default function SubjectPage() {
       if (f) URL.revokeObjectURL(f.url);
       return prev.filter(x => x.id !== fileId);
     });
-    setSelectedFileIds(prev => prev.filter(id => id !== fileId));
+    setSelectedFileIds(prev => prev.filter(fid => fid !== fileId));
+    deleteFile(fileId).catch(() => {});
   };
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFileIds(prev =>
-      prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
+      prev.includes(fileId) ? prev.filter(fid => fid !== fileId) : [...prev, fileId]
     );
   };
 
+  // ── Generation ─────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
     if (selectedFiles.length === 0) return;
@@ -206,18 +272,27 @@ export default function SubjectPage() {
         results.push(result);
       }
 
-      setGeneratedContent(prev => {
-        if (selectedType === 'flashcards') {
-          return { ...prev, flashcards: (results as GeneratedFlashcard[][]).flat() };
-        }
-        if (selectedType === 'notes') {
-          if (results.length === 1) return { ...prev, notes: results[0] as GeneratedNote };
+      // Build new content slice
+      let newPart: Partial<GeneratedContent>;
+      if (selectedType === 'flashcards') {
+        newPart = { flashcards: (results as GeneratedFlashcard[][]).flat() };
+      } else if (selectedType === 'notes') {
+        if (results.length === 1) {
+          newPart = { notes: results[0] as GeneratedNote };
+        } else {
           const sections = (results as GeneratedNote[]).flatMap(n => n.sections);
-          return { ...prev, notes: { title: subject!.title, summary: `Combined notes from ${results.length} files.`, sections } };
+          newPart = { notes: { title: subject!.title, summary: `Combined notes from ${results.length} files.`, sections } };
         }
+      } else {
         const allQuestions = (results as GeneratedQuizQuestion[][]).flat().map((q, i) => ({ ...q, id: `m${i}-${q.id}` }));
-        return { ...prev, quiz: allQuestions };
-      });
+        newPart = { quiz: allQuestions };
+      }
+
+      // Merge with existing and persist
+      const nextContent: GeneratedContent = { ...generatedContentRef.current, ...newPart };
+      setGeneratedContent(nextContent);
+      await saveContent(id!, nextContent as Record<string, unknown>).catch(() => {});
+
       if (selectedType === 'quiz') setQuizGenKey(k => k + 1);
       setGenState({ status: 'done', type: selectedType });
       setView(selectedType);
