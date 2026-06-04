@@ -217,9 +217,14 @@ Return ONLY valid JSON — no markdown, no commentary:
 Create 4-7 sections covering all major topics.`,
 
   quiz: (subject) =>
-    `You are an expert exam question writer for university-level ${subject}.
+    quizFilePrompt(subject, 10),
+};
 
-Analyse the content in this file and create exactly 10 multiple-choice questions.
+// Quiz prompt with a caller-chosen question count (selected before generation).
+function quizFilePrompt(subject: string, count: number): string {
+  return `You are an expert exam question writer for university-level ${subject}.
+
+Analyse the content in this file and create exactly ${count} multiple-choice questions.
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
@@ -231,8 +236,8 @@ Return ONLY valid JSON — no markdown, no commentary:
       "explanation": "Why this is correct (1-2 sentences)"
     }
   ]
-}`,
-};
+}`;
+}
 
 const LEVEL_MAP: Record<string, string> = {
   introductory: 'introductory (first-year university)',
@@ -299,10 +304,13 @@ Return ONLY valid JSON — no markdown, no preamble:
 export async function generateFromFile(
   file: File,
   type: GenerationType,
-  subjectTitle: string
+  subjectTitle: string,
+  questionCount = 10
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   const base64 = await fileToBase64(file);
-  const prompt = FILE_PROMPTS[type](subjectTitle);
+  const prompt = type === 'quiz'
+    ? quizFilePrompt(subjectTitle, questionCount)
+    : FILE_PROMPTS[type](subjectTitle);
 
   const text = await callGeminiAuto([
     { inline_data: { mime_type: file.type, data: base64 } },

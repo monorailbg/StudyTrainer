@@ -1,9 +1,13 @@
 // IndexedDB persistence for uploaded files and generated content.
 // Files are stored as Blob (binary), so they survive page refresh.
-// Content (flashcards / notes / quiz JSON) is stored alongside.
+// Content (flashcards / notes JSON) is stored alongside.
+// Each generated quiz is stored as its own record in the `quizzes` store so a
+// subject can keep a folder of "previous quizzes".
+
+import type { GeneratedQuizQuestion } from './generator';
 
 const DB_NAME = 'StudyTrainerDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let _db: Promise<IDBDatabase> | null = null;
 
@@ -19,6 +23,10 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('content')) {
         db.createObjectStore('content', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('quizzes')) {
+        const store = db.createObjectStore('quizzes', { keyPath: 'id' });
+        store.createIndex('bySubject', 'subjectId', { unique: false });
       }
     };
     req.onsuccess  = () => resolve(req.result);
@@ -91,5 +99,45 @@ export async function getContent(subjectId: string): Promise<Record<string, any>
     const req = tx.objectStore('content').get(subjectId);
     req.onsuccess = () => resolve(req.result);
     req.onerror   = () => reject(req.error);
+  });
+}
+
+// ── Saved quizzes ────────────────────────────────────────────────────────────
+
+export interface StoredQuiz {
+  id:        string;
+  subjectId: string;
+  name:      string;
+  createdAt: number;
+  questions: GeneratedQuizQuestion[];
+}
+
+export async function saveQuiz(quiz: StoredQuiz): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('quizzes', 'readwrite');
+    tx.objectStore('quizzes').put(quiz);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+export async function getQuizzes(subjectId: string): Promise<StoredQuiz[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('quizzes', 'readonly');
+    const req = tx.objectStore('quizzes').index('bySubject').getAll(subjectId);
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function deleteQuiz(quizId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('quizzes', 'readwrite');
+    tx.objectStore('quizzes').delete(quizId);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
   });
 }

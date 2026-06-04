@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useLang, type TKey } from '../context/LanguageContext';
 import { ALL_SUBJECTS } from '../data/subjects';
 import { generateFromFile } from '../lib/geminiGenerator';
-import { saveFile, getFiles, deleteFile, saveContent, getContent } from '../lib/db';
+import { saveFile, getFiles, deleteFile, saveContent, getContent, saveQuiz, getQuizzes, deleteQuiz, type StoredQuiz } from '../lib/db';
 import type {
   GenerationType,
   GeneratedFlashcard,
@@ -160,7 +160,9 @@ export default function SubjectPage() {
   const [genState, setGenState] = useState<GenState>({ status: 'idle' });
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent>({});
-  const [quizGenKey, setQuizGenKey] = useState(0);
+  const [quizCount, setQuizCount] = useState(10);
+  const [savedQuizzes, setSavedQuizzes] = useState<StoredQuiz[]>([]);
+  const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
 
   // Refs so async callbacks always read the latest values without stale closures
   const generatedContentRef = useRef<GeneratedContent>({});
@@ -176,15 +178,22 @@ export default function SubjectPage() {
     setFiles([]);
     setSelectedFileIds([]);
     setGeneratedContent({});
+    setSavedQuizzes([]);
+    setActiveQuizId(null);
     setView('upload');
     setGenState({ status: 'idle' });
 
     async function loadPersisted() {
       try {
-        const [storedFiles, storedContent] = await Promise.all([
+        const [storedFiles, storedContent, storedQuizzes] = await Promise.all([
           getFiles(id!),
           getContent(id!),
+          getQuizzes(id!),
         ]);
+
+        if (storedQuizzes.length > 0) {
+          setSavedQuizzes(storedQuizzes.sort((a, b) => b.createdAt - a.createdAt));
+        }
 
         if (storedFiles.length > 0) {
           const mapped: UploadedFile[] = storedFiles.map(sf => ({
@@ -204,7 +213,6 @@ export default function SubjectPage() {
           setGeneratedContent({
             flashcards: storedContent.flashcards as GeneratedFlashcard[] | undefined,
             notes:      storedContent.notes      as GeneratedNote        | undefined,
-            quiz:       storedContent.quiz       as GeneratedQuizQuestion[] | undefined,
           });
         }
       } catch (err) {
@@ -257,6 +265,12 @@ export default function SubjectPage() {
     );
   };
 
+  const removeQuiz = (quizId: string) => {
+    setSavedQuizzes(prev => prev.filter(q => q.id !== quizId));
+    if (activeQuizId === quizId) setActiveQuizId(null);
+    deleteQuiz(quizId).catch(() => {});
+  };
+
   // ── Generation ─────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
@@ -268,32 +282,43 @@ export default function SubjectPage() {
       const results: unknown[] = [];
       for (let i = 0; i < selectedFiles.length; i++) {
         setGenProgress({ current: i + 1, total: selectedFiles.length });
-        const result = await generateFromFile(selectedFiles[i].rawFile, selectedType, subject!.title);
+        const result = await generateFromFile(selectedFiles[i].rawFile, selectedType, subject!.title, quizCount);
         results.push(result);
       }
 
-      // Build new content slice
-      let newPart: Partial<GeneratedContent>;
-      if (selectedType === 'flashcards') {
-        newPart = { flashcards: (results as GeneratedFlashcard[][]).flat() };
-      } else if (selectedType === 'notes') {
-        if (results.length === 1) {
+      if (selectedType === 'quiz') {
+        // Each generation is saved as its own quiz in the "previous quizzes" folder
+        const allQuestions = (results as GeneratedQuizQuestion[][]).flat().map((q, i) => ({ ...q, id: `m${i}-${q.id}` }));
+        const baseNames = selectedFiles.map(f => f.name.replace(/\.[^.]+$/, ''));
+        const name = baseNames.length === 1
+          ? baseNames[0]
+          : `${baseNames[0]} +${baseNames.length - 1} more`;
+        const quiz: StoredQuiz = {
+          id: `quiz-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          subjectId: id!,
+          name,
+          createdAt: Date.now(),
+          questions: allQuestions,
+        };
+        await saveQuiz(quiz).catch(() => {});
+        setSavedQuizzes(prev => [quiz, ...prev]);
+        setActiveQuizId(quiz.id);
+      } else {
+        // Flashcards / notes are merged into the subject's single content record
+        let newPart: Partial<GeneratedContent>;
+        if (selectedType === 'flashcards') {
+          newPart = { flashcards: (results as GeneratedFlashcard[][]).flat() };
+        } else if (results.length === 1) {
           newPart = { notes: results[0] as GeneratedNote };
         } else {
           const sections = (results as GeneratedNote[]).flatMap(n => n.sections);
           newPart = { notes: { title: subject!.title, summary: `Combined notes from ${results.length} files.`, sections } };
         }
-      } else {
-        const allQuestions = (results as GeneratedQuizQuestion[][]).flat().map((q, i) => ({ ...q, id: `m${i}-${q.id}` }));
-        newPart = { quiz: allQuestions };
+        const nextContent: GeneratedContent = { ...generatedContentRef.current, ...newPart };
+        setGeneratedContent(nextContent);
+        await saveContent(id!, nextContent as Record<string, unknown>).catch(() => {});
       }
 
-      // Merge with existing and persist
-      const nextContent: GeneratedContent = { ...generatedContentRef.current, ...newPart };
-      setGeneratedContent(nextContent);
-      await saveContent(id!, nextContent as Record<string, unknown>).catch(() => {});
-
-      if (selectedType === 'quiz') setQuizGenKey(k => k + 1);
       setGenState({ status: 'done', type: selectedType });
       setView(selectedType);
     } catch (err) {
@@ -365,11 +390,11 @@ export default function SubjectPage() {
           { id: 'upload',     label: 'Files',  dot: false },
           { id: 'flashcards', label: 'Cards',  dot: !!generatedContent.flashcards },
           { id: 'notes',      label: 'Notes',  dot: !!generatedContent.notes },
-          { id: 'quiz',       label: 'Quiz',   dot: !!generatedContent.quiz },
+          { id: 'quiz',       label: 'Quizzes', dot: savedQuizzes.length > 0 },
         ] as { id: View; label: string; dot: boolean }[]).map(({ id, label, dot }) => (
           <button
             key={id}
-            onClick={() => setView(id)}
+            onClick={() => { if (id === 'quiz') setActiveQuizId(null); setView(id); }}
             className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold flex-shrink-0 cursor-pointer border transition-all duration-200"
             style={{
               borderRadius: '999px',
@@ -456,14 +481,35 @@ export default function SubjectPage() {
             />
             <SidebarItem
               icon={<IconQuiz />}
-              label={t('nav_quiz')}
-              sublabel={generatedContent.quiz ? `${generatedContent.quiz.length} questions` : 'Not generated'}
-              active={view === 'quiz'}
-              dot={!!generatedContent.quiz}
+              label="Quizzes"
+              sublabel={savedQuizzes.length > 0 ? `${savedQuizzes.length} saved` : 'None yet'}
+              active={view === 'quiz' && !activeQuizId}
+              dot={savedQuizzes.length > 0}
               dotColor={subject.color}
-              onClick={() => setView('quiz')}
+              onClick={() => { setActiveQuizId(null); setView('quiz'); }}
             />
           </div>
+
+          {/* Previous quizzes folder */}
+          {savedQuizzes.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
+                Previous Quizzes
+              </div>
+              {savedQuizzes.map(quiz => (
+                <SidebarItem
+                  key={quiz.id}
+                  icon={<IconQuiz />}
+                  label={quiz.name}
+                  sublabel={`${quiz.questions.length} questions`}
+                  active={view === 'quiz' && activeQuizId === quiz.id}
+                  dot={view === 'quiz' && activeQuizId === quiz.id}
+                  dotColor={subject.color}
+                  onClick={() => { setActiveQuizId(quiz.id); setView('quiz'); }}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Generate panel in sidebar */}
           {levelFiles.length > 0 && (
@@ -496,6 +542,32 @@ export default function SubjectPage() {
                 ))}
               </div>
 
+              {/* Question count — only for quizzes, chosen before generation */}
+              {selectedType === 'quiz' && (
+                <div className="px-1 mb-3">
+                  <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 600 }}>
+                    Questions per file
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[5, 10, 15, 20].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setQuizCount(n)}
+                        className="h-7 w-9 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                        style={{
+                          borderRadius: '999px',
+                          background:   quizCount === n ? subject.color + '20' : 'transparent',
+                          color:        quizCount === n ? subject.color          : '#8B949E',
+                          borderColor:  quizCount === n ? subject.color + '50'   : '#30363D',
+                        }}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || selectedLevelFileIds.length === 0}
@@ -507,7 +579,7 @@ export default function SubjectPage() {
                   borderColor:  isGenerating ? '#30363D' : subject.color + '45',
                 }}
               >
-                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate</>}
+                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate {selectedType === 'quiz' ? `${quizCount} Q` : ''}</>}
               </button>
 
               {isGenerating && genProgress && genProgress.total > 1 && (
@@ -557,8 +629,31 @@ export default function SubjectPage() {
                   borderColor: isGenerating ? '#30363D' : subject.color + '45',
                 }}
               >
-                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate</>}
+                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate {selectedType === 'quiz' ? `${quizCount} Q` : ''}</>}
               </button>
+
+              {/* Question count — only for quizzes */}
+              {selectedType === 'quiz' && (
+                <div className="w-full flex items-center gap-1.5 flex-wrap">
+                  <span style={{ fontSize: '9px', color: '#8B949E', fontWeight: 600 }}>Questions/file:</span>
+                  {[5, 10, 15, 20].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setQuizCount(n)}
+                      className="h-6 w-8 text-[10px] border cursor-pointer transition-all duration-200 font-semibold"
+                      style={{
+                        borderRadius: '999px',
+                        background:  quizCount === n ? subject.color + '20' : 'transparent',
+                        color:       quizCount === n ? subject.color : '#8B949E',
+                        borderColor: quizCount === n ? subject.color + '50' : '#30363D',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {genState.status === 'error' && (
                 <div className="w-full text-[10px] leading-relaxed" style={{ color: '#f87171' }}>
                   {friendlyError(genState.error)}
@@ -734,14 +829,80 @@ export default function SubjectPage() {
               : <EmptyState color={subject.color} onUpload={() => setView('upload')} />
           )}
 
-          {/* Quiz view */}
-          {view === 'quiz' && (
-            generatedContent.quiz
-              ? <ContentHeader label={`${generatedContent.quiz.length} ${t('questions')} · AI Generated`} onRegenerate={() => setView('upload')} t={t}>
-                  <QuizViewer key={quizGenKey} questions={generatedContent.quiz} color={subject.color} />
-                </ContentHeader>
-              : <EmptyState color={subject.color} onUpload={() => setView('upload')} />
-          )}
+          {/* Quiz view — either the active quiz or the "previous quizzes" folder */}
+          {view === 'quiz' && (() => {
+            const activeQuiz = activeQuizId ? savedQuizzes.find(q => q.id === activeQuizId) : undefined;
+
+            if (activeQuiz) {
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <button
+                      onClick={() => setActiveQuizId(null)}
+                      className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
+                      style={{ color: '#8B949E' }}
+                    >
+                      ← All quizzes
+                    </button>
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+                      {activeQuiz.name} · {activeQuiz.questions.length} {t('questions')}
+                    </div>
+                  </div>
+                  <QuizViewer key={activeQuiz.id} questions={activeQuiz.questions} color={subject.color} />
+                </div>
+              );
+            }
+
+            if (savedQuizzes.length === 0) {
+              return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
+            }
+
+            return (
+              <div>
+                <div className="text-[10px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#8B949E' }}>
+                  Previous Quizzes ({savedQuizzes.length})
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {savedQuizzes.map(quiz => (
+                    <div
+                      key={quiz.id}
+                      onClick={() => setActiveQuizId(quiz.id)}
+                      className="card-panel card-panel-lift p-4 cursor-pointer flex items-center gap-3"
+                    >
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                        background: subject.color + '18', color: subject.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <IconQuiz />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {quiz.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                          {quiz.questions.length} questions · {new Date(quiz.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); removeQuiz(quiz.id); }}
+                        aria-label="Delete quiz"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                          background: 'transparent', color: '#f87171',
+                          border: '1px solid rgba(248,113,113,0.25)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </main>
       </div>
     </div>
