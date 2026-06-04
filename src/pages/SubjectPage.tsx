@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useLang, type TKey } from '../context/LanguageContext';
+import { useLang } from '../context/LanguageContext';
 import { ALL_SUBJECTS } from '../data/subjects';
 import { generateFromFile } from '../lib/geminiGenerator';
-import { saveFile, getFiles, deleteFile, saveContent, getContent, saveQuiz, getQuizzes, deleteQuiz, type StoredQuiz } from '../lib/db';
+import {
+  saveFile, getFiles, deleteFile,
+  saveQuiz, getQuizzes, deleteQuiz, type StoredQuiz,
+  saveNote, getNotes, deleteNote, type StoredNote,
+  saveFlashcardSet, getFlashcardSets, deleteFlashcardSet, type StoredFlashcardSet,
+} from '../lib/db';
 import type {
   GenerationType,
   GeneratedFlashcard,
@@ -36,13 +41,6 @@ interface UploadedFile {
 type GenStatus = 'idle' | 'generating' | 'done' | 'error';
 interface GenState { status: GenStatus; type?: GenerationType; error?: string; }
 interface GenProgress { current: number; total: number; }
-
-interface GeneratedContent {
-  flashcards?: GeneratedFlashcard[];
-  notes?: GeneratedNote;
-  quiz?: GeneratedQuizQuestion[];
-  sourceFileId?: string;
-}
 
 type View = 'dashboard' | 'upload' | 'flashcards' | 'notes' | 'quiz';
 
@@ -95,24 +93,6 @@ function SidebarItem({
   );
 }
 
-// ── Content header ─────────────────────────────────────────────────────────────
-
-function ContentHeader({ label, onRegenerate, t, children }: {
-  label: string; onRegenerate: () => void; t: (k: TKey) => string; children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-5">
-        <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>{label}</div>
-        <button onClick={onRegenerate} className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0" style={{ color: '#3D7EFF' }}>
-          {t('gen_regenerate')} →
-        </button>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 // ── Empty state ────────────────────────────────────────────────────────────────
 
 function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }) {
@@ -160,14 +140,15 @@ export default function SubjectPage() {
   const [selectedType, setSelectedType] = useState<GenerationType>('flashcards');
   const [genState, setGenState] = useState<GenState>({ status: 'idle' });
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
-  const [generatedContent, setGeneratedContent] = useState<GeneratedContent>({});
   const [quizCount, setQuizCount] = useState(10);
   const [savedQuizzes, setSavedQuizzes] = useState<StoredQuiz[]>([]);
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
+  const [savedNotes, setSavedNotes] = useState<StoredNote[]>([]);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [savedFlashcardSets, setSavedFlashcardSets] = useState<StoredFlashcardSet[]>([]);
+  const [activeSetId, setActiveSetId] = useState<string | null>(null);
 
   // Refs so async callbacks always read the latest values without stale closures
-  const generatedContentRef = useRef<GeneratedContent>({});
-  generatedContentRef.current = generatedContent;
   const filesRef = useRef<UploadedFile[]>([]);
   filesRef.current = files;
 
@@ -178,22 +159,32 @@ export default function SubjectPage() {
     // Reset all state when navigating to a different subject
     setFiles([]);
     setSelectedFileIds([]);
-    setGeneratedContent({});
     setSavedQuizzes([]);
     setActiveQuizId(null);
+    setSavedNotes([]);
+    setActiveNoteId(null);
+    setSavedFlashcardSets([]);
+    setActiveSetId(null);
     setView('dashboard');
     setGenState({ status: 'idle' });
 
     async function loadPersisted() {
       try {
-        const [storedFiles, storedContent, storedQuizzes] = await Promise.all([
+        const [storedFiles, storedQuizzes, storedNotes, storedSets] = await Promise.all([
           getFiles(id!),
-          getContent(id!),
           getQuizzes(id!),
+          getNotes(id!),
+          getFlashcardSets(id!),
         ]);
 
         if (storedQuizzes.length > 0) {
           setSavedQuizzes(storedQuizzes.sort((a, b) => b.createdAt - a.createdAt));
+        }
+        if (storedNotes.length > 0) {
+          setSavedNotes(storedNotes.sort((a, b) => b.createdAt - a.createdAt));
+        }
+        if (storedSets.length > 0) {
+          setSavedFlashcardSets(storedSets.sort((a, b) => b.createdAt - a.createdAt));
         }
 
         if (storedFiles.length > 0) {
@@ -208,13 +199,6 @@ export default function SubjectPage() {
           }));
           setFiles(mapped);
           setSelectedFileIds(mapped.map(f => f.id));
-        }
-
-        if (storedContent) {
-          setGeneratedContent({
-            flashcards: storedContent.flashcards as GeneratedFlashcard[] | undefined,
-            notes:      storedContent.notes      as GeneratedNote        | undefined,
-          });
         }
       } catch (err) {
         console.error('Failed to load persisted subject data:', err);
@@ -272,6 +256,18 @@ export default function SubjectPage() {
     deleteQuiz(quizId).catch(() => {});
   };
 
+  const removeNote = (noteId: string) => {
+    setSavedNotes(prev => prev.filter(n => n.id !== noteId));
+    if (activeNoteId === noteId) setActiveNoteId(null);
+    deleteNote(noteId).catch(() => {});
+  };
+
+  const removeSet = (setId: string) => {
+    setSavedFlashcardSets(prev => prev.filter(s => s.id !== setId));
+    if (activeSetId === setId) setActiveSetId(null);
+    deleteFlashcardSet(setId).catch(() => {});
+  };
+
   // ── Generation ─────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
@@ -287,15 +283,18 @@ export default function SubjectPage() {
         results.push(result);
       }
 
+      // A friendly name derived from the source file(s) — shared across types
+      const baseNames = selectedFiles.map(f => f.name.replace(/\.[^.]+$/, ''));
+      const name = baseNames.length === 1
+        ? baseNames[0]
+        : `${baseNames[0]} +${baseNames.length - 1} more`;
+      const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
       if (selectedType === 'quiz') {
         // Each generation is saved as its own quiz in the "previous quizzes" folder
         const allQuestions = (results as GeneratedQuizQuestion[][]).flat().map((q, i) => ({ ...q, id: `m${i}-${q.id}` }));
-        const baseNames = selectedFiles.map(f => f.name.replace(/\.[^.]+$/, ''));
-        const name = baseNames.length === 1
-          ? baseNames[0]
-          : `${baseNames[0]} +${baseNames.length - 1} more`;
         const quiz: StoredQuiz = {
-          id: `quiz-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          id: `quiz-${uid()}`,
           subjectId: id!,
           name,
           createdAt: Date.now(),
@@ -304,20 +303,38 @@ export default function SubjectPage() {
         await saveQuiz(quiz).catch(() => {});
         setSavedQuizzes(prev => [quiz, ...prev]);
         setActiveQuizId(quiz.id);
+      } else if (selectedType === 'flashcards') {
+        // Each generation is saved as its own flashcard set in the folder
+        const cards = (results as GeneratedFlashcard[][]).flat();
+        const set: StoredFlashcardSet = {
+          id: `set-${uid()}`,
+          subjectId: id!,
+          name,
+          createdAt: Date.now(),
+          cards,
+        };
+        await saveFlashcardSet(set).catch(() => {});
+        setSavedFlashcardSets(prev => [set, ...prev]);
+        setActiveSetId(set.id);
       } else {
-        // Flashcards / notes are merged into the subject's single content record
-        let newPart: Partial<GeneratedContent>;
-        if (selectedType === 'flashcards') {
-          newPart = { flashcards: (results as GeneratedFlashcard[][]).flat() };
-        } else if (results.length === 1) {
-          newPart = { notes: results[0] as GeneratedNote };
+        // Each generation is saved as its own note in the notes folder
+        let note: GeneratedNote;
+        if (results.length === 1) {
+          note = results[0] as GeneratedNote;
         } else {
           const sections = (results as GeneratedNote[]).flatMap(n => n.sections);
-          newPart = { notes: { title: subject!.title, summary: `Combined notes from ${results.length} files.`, sections } };
+          note = { title: name, summary: `Combined notes from ${results.length} files.`, sections };
         }
-        const nextContent: GeneratedContent = { ...generatedContentRef.current, ...newPart };
-        setGeneratedContent(nextContent);
-        await saveContent(id!, nextContent as Record<string, unknown>).catch(() => {});
+        const stored: StoredNote = {
+          id: `note-${uid()}`,
+          subjectId: id!,
+          name,
+          createdAt: Date.now(),
+          note,
+        };
+        await saveNote(stored).catch(() => {});
+        setSavedNotes(prev => [stored, ...prev]);
+        setActiveNoteId(stored.id);
       }
 
       setGenState({ status: 'done', type: selectedType });
@@ -390,13 +407,18 @@ export default function SubjectPage() {
         {([
           { id: 'dashboard',  label: 'Overview', dot: false },
           { id: 'upload',     label: 'Files',    dot: false },
-          { id: 'flashcards', label: 'Cards',    dot: !!generatedContent.flashcards },
-          { id: 'notes',      label: 'Notes',    dot: !!generatedContent.notes },
+          { id: 'flashcards', label: 'Cards',    dot: savedFlashcardSets.length > 0 },
+          { id: 'notes',      label: 'Notes',    dot: savedNotes.length > 0 },
           { id: 'quiz',       label: 'Quizzes',  dot: savedQuizzes.length > 0 },
         ] as { id: View; label: string; dot: boolean }[]).map(({ id, label, dot }) => (
           <button
             key={id}
-            onClick={() => { if (id === 'quiz') setActiveQuizId(null); setView(id); }}
+            onClick={() => {
+              if (id === 'quiz') setActiveQuizId(null);
+              if (id === 'notes') setActiveNoteId(null);
+              if (id === 'flashcards') setActiveSetId(null);
+              setView(id);
+            }}
             className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold flex-shrink-0 cursor-pointer border transition-all duration-200"
             style={{
               borderRadius: '999px',
@@ -477,20 +499,20 @@ export default function SubjectPage() {
             <SidebarItem
               icon={<IconCards />}
               label={t('nav_flashcards')}
-              sublabel={generatedContent.flashcards ? `${generatedContent.flashcards.length} cards` : 'Not generated'}
-              active={view === 'flashcards'}
-              dot={!!generatedContent.flashcards}
+              sublabel={savedFlashcardSets.length > 0 ? `${savedFlashcardSets.length} saved` : 'None yet'}
+              active={view === 'flashcards' && !activeSetId}
+              dot={savedFlashcardSets.length > 0}
               dotColor={subject.color}
-              onClick={() => setView('flashcards')}
+              onClick={() => { setActiveSetId(null); setView('flashcards'); }}
             />
             <SidebarItem
               icon={<IconNote />}
               label={t('nav_notes')}
-              sublabel={generatedContent.notes ? `${generatedContent.notes.sections.length} sections` : 'Not generated'}
-              active={view === 'notes'}
-              dot={!!generatedContent.notes}
+              sublabel={savedNotes.length > 0 ? `${savedNotes.length} saved` : 'None yet'}
+              active={view === 'notes' && !activeNoteId}
+              dot={savedNotes.length > 0}
               dotColor={subject.color}
-              onClick={() => setView('notes')}
+              onClick={() => { setActiveNoteId(null); setView('notes'); }}
             />
             <SidebarItem
               icon={<IconQuiz />}
@@ -502,6 +524,48 @@ export default function SubjectPage() {
               onClick={() => { setActiveQuizId(null); setView('quiz'); }}
             />
           </div>
+
+          {/* Flashcard sets folder */}
+          {savedFlashcardSets.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
+                Flashcard Sets
+              </div>
+              {savedFlashcardSets.map(set => (
+                <SidebarItem
+                  key={set.id}
+                  icon={<IconCards />}
+                  label={set.name}
+                  sublabel={`${set.cards.length} cards`}
+                  active={view === 'flashcards' && activeSetId === set.id}
+                  dot={view === 'flashcards' && activeSetId === set.id}
+                  dotColor={subject.color}
+                  onClick={() => { setActiveSetId(set.id); setView('flashcards'); }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Notes folder */}
+          {savedNotes.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
+                Notes
+              </div>
+              {savedNotes.map(n => (
+                <SidebarItem
+                  key={n.id}
+                  icon={<IconNote />}
+                  label={n.name}
+                  sublabel={`${n.note.sections.length} sections`}
+                  active={view === 'notes' && activeNoteId === n.id}
+                  dot={view === 'notes' && activeNoteId === n.id}
+                  dotColor={subject.color}
+                  onClick={() => { setActiveNoteId(n.id); setView('notes'); }}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Previous quizzes folder */}
           {savedQuizzes.length > 0 && (
@@ -720,7 +784,7 @@ export default function SubjectPage() {
 
                 {/* Notes tile */}
                 <button
-                  onClick={() => setView('notes')}
+                  onClick={() => { setActiveNoteId(null); setView('notes'); }}
                   style={{
                     background: '#161B22', border: '1px solid #21262D',
                     borderRadius: '20px', padding: '20px',
@@ -732,8 +796,8 @@ export default function SubjectPage() {
                 >
                   <div style={{
                     width: '40px', height: '40px', borderRadius: '12px',
-                    background: generatedContent.notes ? subject.color + '18' : '#1F2937',
-                    color: generatedContent.notes ? subject.color : '#484F58',
+                    background: savedNotes.length > 0 ? subject.color + '18' : '#1F2937',
+                    color: savedNotes.length > 0 ? subject.color : '#484F58',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     marginBottom: '14px',
                   }}>
@@ -742,17 +806,17 @@ export default function SubjectPage() {
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
                     Notes
                   </div>
-                  <div style={{ fontSize: '12px', color: generatedContent.notes ? subject.color : '#484F58', fontWeight: 600 }}>
-                    {generatedContent.notes ? `${generatedContent.notes.sections.length} sections` : 'Not generated'}
+                  <div style={{ fontSize: '12px', color: savedNotes.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
+                    {savedNotes.length > 0 ? `${savedNotes.length} saved` : 'None yet'}
                   </div>
                   <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
-                    {generatedContent.notes ? 'AI structured notes' : 'Generate from files'}
+                    {savedNotes.length > 0 ? 'AI structured notes' : 'Generate from files'}
                   </div>
                 </button>
 
                 {/* Flashcards tile */}
                 <button
-                  onClick={() => setView('flashcards')}
+                  onClick={() => { setActiveSetId(null); setView('flashcards'); }}
                   style={{
                     background: '#161B22', border: '1px solid #21262D',
                     borderRadius: '20px', padding: '20px',
@@ -764,8 +828,8 @@ export default function SubjectPage() {
                 >
                   <div style={{
                     width: '40px', height: '40px', borderRadius: '12px',
-                    background: generatedContent.flashcards ? subject.color + '18' : '#1F2937',
-                    color: generatedContent.flashcards ? subject.color : '#484F58',
+                    background: savedFlashcardSets.length > 0 ? subject.color + '18' : '#1F2937',
+                    color: savedFlashcardSets.length > 0 ? subject.color : '#484F58',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     marginBottom: '14px',
                   }}>
@@ -774,11 +838,11 @@ export default function SubjectPage() {
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
                     Flashcards
                   </div>
-                  <div style={{ fontSize: '12px', color: generatedContent.flashcards ? subject.color : '#484F58', fontWeight: 600 }}>
-                    {generatedContent.flashcards ? `${generatedContent.flashcards.length} cards` : 'Not generated'}
+                  <div style={{ fontSize: '12px', color: savedFlashcardSets.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
+                    {savedFlashcardSets.length > 0 ? `${savedFlashcardSets.length} saved` : 'None yet'}
                   </div>
                   <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
-                    {generatedContent.flashcards ? 'Ready to study' : 'Generate from files'}
+                    {savedFlashcardSets.length > 0 ? 'Ready to study' : 'Generate from files'}
                   </div>
                 </button>
 
@@ -967,23 +1031,155 @@ export default function SubjectPage() {
             </>
           )}
 
-          {/* Flashcards view */}
-          {view === 'flashcards' && (
-            generatedContent.flashcards
-              ? <ContentHeader label={`${generatedContent.flashcards.length} ${t('cards')} · AI Generated`} onRegenerate={() => setView('upload')} t={t}>
-                  <FlashcardViewer cards={generatedContent.flashcards} color={subject.color} />
-                </ContentHeader>
-              : <EmptyState color={subject.color} onUpload={() => setView('upload')} />
-          )}
+          {/* Flashcards view — either an active set or the folder of saved sets */}
+          {view === 'flashcards' && (() => {
+            const activeSet = activeSetId ? savedFlashcardSets.find(s => s.id === activeSetId) : undefined;
 
-          {/* Notes view */}
-          {view === 'notes' && (
-            generatedContent.notes
-              ? <ContentHeader label={`${generatedContent.notes.sections.length} sections · AI Generated`} onRegenerate={() => setView('upload')} t={t}>
-                  <NotesViewer notes={generatedContent.notes} />
-                </ContentHeader>
-              : <EmptyState color={subject.color} onUpload={() => setView('upload')} />
-          )}
+            if (activeSet) {
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <button
+                      onClick={() => setActiveSetId(null)}
+                      className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
+                      style={{ color: '#8B949E' }}
+                    >
+                      ← All flashcards
+                    </button>
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+                      {activeSet.name} · {activeSet.cards.length} {t('cards')}
+                    </div>
+                  </div>
+                  <FlashcardViewer key={activeSet.id} cards={activeSet.cards} color={subject.color} />
+                </div>
+              );
+            }
+
+            if (savedFlashcardSets.length === 0) {
+              return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
+            }
+
+            return (
+              <div>
+                <div className="text-[10px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#8B949E' }}>
+                  Flashcard Sets ({savedFlashcardSets.length})
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {savedFlashcardSets.map(set => (
+                    <div
+                      key={set.id}
+                      onClick={() => setActiveSetId(set.id)}
+                      className="card-panel card-panel-lift p-4 cursor-pointer flex items-center gap-3"
+                    >
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                        background: subject.color + '18', color: subject.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <IconCards />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {set.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                          {set.cards.length} cards · {new Date(set.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); removeSet(set.id); }}
+                        aria-label="Delete flashcard set"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                          background: 'transparent', color: '#f87171',
+                          border: '1px solid rgba(248,113,113,0.25)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Notes view — either an active note or the folder of saved notes */}
+          {view === 'notes' && (() => {
+            const activeNote = activeNoteId ? savedNotes.find(n => n.id === activeNoteId) : undefined;
+
+            if (activeNote) {
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <button
+                      onClick={() => setActiveNoteId(null)}
+                      className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
+                      style={{ color: '#8B949E' }}
+                    >
+                      ← All notes
+                    </button>
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+                      {activeNote.name} · {activeNote.note.sections.length} sections
+                    </div>
+                  </div>
+                  <NotesViewer notes={activeNote.note} />
+                </div>
+              );
+            }
+
+            if (savedNotes.length === 0) {
+              return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
+            }
+
+            return (
+              <div>
+                <div className="text-[10px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#8B949E' }}>
+                  Notes ({savedNotes.length})
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {savedNotes.map(n => (
+                    <div
+                      key={n.id}
+                      onClick={() => setActiveNoteId(n.id)}
+                      className="card-panel card-panel-lift p-4 cursor-pointer flex items-center gap-3"
+                    >
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                        background: subject.color + '18', color: subject.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <IconNote />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {n.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                          {n.note.sections.length} sections · {new Date(n.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); removeNote(n.id); }}
+                        aria-label="Delete note"
+                        style={{
+                          width: '30px', height: '30px', borderRadius: '999px',
+                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                          background: 'transparent', color: '#f87171',
+                          border: '1px solid rgba(248,113,113,0.25)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Quiz view — either the active quiz or the "previous quizzes" folder */}
           {view === 'quiz' && (() => {

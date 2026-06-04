@@ -4,10 +4,10 @@
 // Each generated quiz is stored as its own record in the `quizzes` store so a
 // subject can keep a folder of "previous quizzes".
 
-import type { GeneratedQuizQuestion } from './generator';
+import type { GeneratedFlashcard, GeneratedNote, GeneratedQuizQuestion } from './generator';
 
 const DB_NAME = 'StudyTrainerDB';
-const DB_VERSION = 2;
+const DB_VERSION = 4;
 
 let _db: Promise<IDBDatabase> | null = null;
 
@@ -26,6 +26,14 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('quizzes')) {
         const store = db.createObjectStore('quizzes', { keyPath: 'id' });
+        store.createIndex('bySubject', 'subjectId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('notes')) {
+        const store = db.createObjectStore('notes', { keyPath: 'id' });
+        store.createIndex('bySubject', 'subjectId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('flashcardSets')) {
+        const store = db.createObjectStore('flashcardSets', { keyPath: 'id' });
         store.createIndex('bySubject', 'subjectId', { unique: false });
       }
     };
@@ -137,6 +145,86 @@ export async function deleteQuiz(quizId: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('quizzes', 'readwrite');
     tx.objectStore('quizzes').delete(quizId);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+// ── Saved notes ──────────────────────────────────────────────────────────────
+
+export interface StoredNote {
+  id:        string;
+  subjectId: string;
+  name:      string;
+  createdAt: number;
+  note:      GeneratedNote;
+}
+
+export async function saveNote(note: StoredNote): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').put(note);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+export async function getNotes(subjectId: string): Promise<StoredNote[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('notes', 'readonly');
+    const req = tx.objectStore('notes').index('bySubject').getAll(subjectId);
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function deleteNote(noteId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').delete(noteId);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+// ── Saved flashcard sets ─────────────────────────────────────────────────────
+
+export interface StoredFlashcardSet {
+  id:        string;
+  subjectId: string;
+  name:      string;
+  createdAt: number;
+  cards:     GeneratedFlashcard[];
+}
+
+export async function saveFlashcardSet(set: StoredFlashcardSet): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('flashcardSets', 'readwrite');
+    tx.objectStore('flashcardSets').put(set);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+export async function getFlashcardSets(subjectId: string): Promise<StoredFlashcardSet[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('flashcardSets', 'readonly');
+    const req = tx.objectStore('flashcardSets').index('bySubject').getAll(subjectId);
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function deleteFlashcardSet(setId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('flashcardSets', 'readwrite');
+    tx.objectStore('flashcardSets').delete(setId);
     tx.oncomplete = () => resolve();
     tx.onerror    = () => reject(tx.error);
   });
