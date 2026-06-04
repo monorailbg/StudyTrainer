@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getAllNotes, type StoredNote } from '../lib/db';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { NotesViewer } from '../components/NotesViewer';
@@ -86,6 +86,7 @@ export default function Notes() {
   const [notes, setNotes] = useState<StoredNote[]>([]);
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeNote, setActiveNote] = useState<StoredNote | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     getAllNotes().then(data =>
@@ -120,7 +121,7 @@ export default function Notes() {
       </aside>
 
       {/* Main */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+      <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', padding: activeNote ? 0 : '24px 28px' }}>
 
         {activeNote ? (
           <div>
@@ -138,7 +139,13 @@ export default function Notes() {
                 </span>
               </div>
             </div>
-            <NotesViewer key={activeNote.id} notes={activeNote.note} />
+            <NotesViewer
+              key={activeNote.id}
+              notes={activeNote.note}
+              color={activeColor}
+              noteId={activeNote.id}
+              scrollElRef={mainRef}
+            />
           </div>
         ) : notes.length === 0 ? (
           <Empty />
