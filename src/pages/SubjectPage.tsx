@@ -343,19 +343,31 @@ export default function SubjectPage() {
     setFiles(prev => [...prev, ...mapped]);
     setSelectedFileIds(prev => [...prev, ...mapped.map(m => m.id)]);
     if (isFirebaseConfigured) {
+      let uploaded = 0;
+      let failed = 0;
       for (const file of mapped) {
         try {
           const storageUrl = await uploadFileToStorage(id!, file.id, file.rawFile!);
           await saveCloudFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, storageUrl, createdAt: Date.now() });
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, storageUrl } : f));
-        } catch { /* best-effort */ }
+          uploaded++;
+        } catch (err) {
+          console.error('Cloud upload failed:', err);
+          failed++;
+        }
+      }
+      if (failed > 0) {
+        toast('error', `${failed} file${failed > 1 ? 's' : ''} not shared`, 'Cloud upload was rejected — check your Firestore/Storage security rules. Saved locally only.');
+      }
+      if (uploaded > 0) {
+        toast('success', `${uploaded} file${uploaded > 1 ? 's' : ''} added`, 'Uploaded to the shared library.');
       }
     } else {
       for (const file of mapped) {
         await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
       }
+      toast('success', `${mapped.length} file${mapped.length > 1 ? 's' : ''} added`, undefined);
     }
-    toast('success', `${mapped.length} file${mapped.length > 1 ? 's' : ''} added`, isFirebaseConfigured ? 'Uploaded to the shared library.' : undefined);
   }, [activeLevel, id, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
