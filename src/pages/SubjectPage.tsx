@@ -143,6 +143,12 @@ export default function SubjectPage() {
   const [genState, setGenState] = useState<GenState>({ status: 'idle' });
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [quizCount, setQuizCount] = useState(10);
+  const [cardCount, setCardCount] = useState(12);
+  const [focusTopic, setFocusTopic] = useState('');
+  const [notesDetail, setNotesDetail] = useState<'concise' | 'standard' | 'comprehensive'>('standard');
+  const [notesIncludes, setNotesIncludes] = useState<string[]>([]);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [savedQuizzes, setSavedQuizzes] = useState<StoredQuiz[]>([]);
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [savedNotes, setSavedNotes] = useState<StoredNote[]>([]);
@@ -297,6 +303,9 @@ export default function SubjectPage() {
     setRenaming(null);
   };
 
+  const toggleInclude = (item: string) =>
+    setNotesIncludes(prev => prev.includes(item) ? prev.filter(x => x !== item) : [...prev, item]);
+
   // ── Generation ─────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
@@ -308,7 +317,14 @@ export default function SubjectPage() {
       const results: unknown[] = [];
       for (let i = 0; i < selectedFiles.length; i++) {
         setGenProgress({ current: i + 1, total: selectedFiles.length });
-        const result = await generateFromFile(selectedFiles[i].rawFile, selectedType, subject!.title, quizCount);
+        const result = await generateFromFile(selectedFiles[i].rawFile, selectedType, subject!.title, {
+          cardCount,
+          questionCount: quizCount,
+          focusTopic: focusTopic.trim() || undefined,
+          notesDetail,
+          notesIncludes,
+          customPrompt: customPrompt.trim() || undefined,
+        });
         results.push(result);
       }
 
@@ -648,31 +664,97 @@ export default function SubjectPage() {
                 ))}
               </div>
 
-              {/* Question count — only for quizzes, chosen before generation */}
-              {selectedType === 'quiz' && (
-                <div className="px-1 mb-3">
-                  <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 600 }}>
-                    Questions per file
+              {/* ── Flashcard options ── */}
+              {selectedType === 'flashcards' && (
+                <div className="px-1 mb-3 flex flex-col gap-2.5">
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Cards per file</div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[6, 12, 20, 30].map(n => (
+                        <button key={n} onClick={() => setCardCount(n)}
+                          className="h-7 w-9 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                          style={{ borderRadius: '999px', background: cardCount === n ? subject.color + '20' : 'transparent', color: cardCount === n ? subject.color : '#8B949E', borderColor: cardCount === n ? subject.color + '50' : '#30363D' }}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {[5, 10, 15, 20].map(n => (
-                      <button
-                        key={n}
-                        onClick={() => setQuizCount(n)}
-                        className="h-7 w-9 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
-                        style={{
-                          borderRadius: '999px',
-                          background:   quizCount === n ? subject.color + '20' : 'transparent',
-                          color:        quizCount === n ? subject.color          : '#8B949E',
-                          borderColor:  quizCount === n ? subject.color + '50'   : '#30363D',
-                        }}
-                      >
-                        {n}
-                      </button>
-                    ))}
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Supply & demand"
+                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '5px 9px', fontSize: '11px', color: '#E6EDF3', outline: 'none' }} />
                   </div>
                 </div>
               )}
+
+              {/* ── Notes options ── */}
+              {selectedType === 'notes' && (
+                <div className="px-1 mb-3 flex flex-col gap-2.5">
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
+                    <div className="flex gap-1.5">
+                      {(['concise', 'standard', 'comprehensive'] as const).map(d => (
+                        <button key={d} onClick={() => setNotesDetail(d)}
+                          className="h-7 px-2 text-[9px] border cursor-pointer transition-all duration-200 font-semibold capitalize"
+                          style={{ borderRadius: '999px', background: notesDetail === d ? subject.color + '20' : 'transparent', color: notesDetail === d ? subject.color : '#8B949E', borderColor: notesDetail === d ? subject.color + '50' : '#30363D' }}>
+                          {d === 'comprehensive' ? 'Deep' : d.charAt(0).toUpperCase() + d.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Include</div>
+                    <div className="flex flex-col gap-1.5">
+                      {(['formulas', 'diagrams', 'mindmap'] as const).map(item => (
+                        <label key={item} className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={notesIncludes.includes(item)} onChange={() => toggleInclude(item)}
+                            style={{ accentColor: subject.color, width: '12px', height: '12px', cursor: 'pointer' }} />
+                          <span style={{ fontSize: '10px', color: notesIncludes.includes(item) ? '#C9D1D9' : '#8B949E' }}>
+                            {item === 'formulas' ? '∑ Formulas' : item === 'diagrams' ? '→ Diagrams' : '⊞ Mind-map style'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Quiz options ── */}
+              {selectedType === 'quiz' && (
+                <div className="px-1 mb-3 flex flex-col gap-2.5">
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[5, 10, 15, 20].map(n => (
+                        <button key={n} onClick={() => setQuizCount(n)}
+                          className="h-7 w-9 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                          style={{ borderRadius: '999px', background: quizCount === n ? subject.color + '20' : 'transparent', color: quizCount === n ? subject.color : '#8B949E', borderColor: quizCount === n ? subject.color + '50' : '#30363D' }}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy"
+                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '5px 9px', fontSize: '11px', color: '#E6EDF3', outline: 'none' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* ── Custom prompt (expandable) ── */}
+              <div className="px-1 mb-3">
+                <button onClick={() => setShowAdvanced(v => !v)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '9px', fontWeight: 600, color: showAdvanced ? subject.color : '#484F58', display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
+                  <span style={{ fontSize: '10px' }}>✦</span> Custom instructions {showAdvanced ? '▴' : '▾'}
+                </button>
+                {showAdvanced && (
+                  <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
+                    placeholder={`E.g. "Focus on exam definitions", "Use simple language", "Include worked examples"`}
+                    rows={3}
+                    style={{ marginTop: '7px', width: '100%', background: '#0D1117', border: `1px solid ${subject.color}30`, borderRadius: '8px', padding: '8px 10px', fontSize: '11px', color: '#E6EDF3', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
+                )}
+              </div>
 
               <button
                 onClick={handleGenerate}
@@ -685,7 +767,10 @@ export default function SubjectPage() {
                   borderColor:  isGenerating ? '#30363D' : subject.color + '45',
                 }}
               >
-                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate {selectedType === 'quiz' ? `${quizCount} Q` : ''}</>}
+                {isGenerating
+                  ? <><Spinner color={subject.color} /> Generating…</>
+                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? `${cardCount} Cards` : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
+                }
               </button>
 
               {isGenerating && genProgress && genProgress.total > 1 && (
@@ -735,7 +820,7 @@ export default function SubjectPage() {
                   borderColor: isGenerating ? '#30363D' : subject.color + '45',
                 }}
               >
-                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate {selectedType === 'quiz' ? `${quizCount} Q` : ''}</>}
+                {isGenerating ? <><Spinner color={subject.color} /> Generating…</> : <><IconSparkle /> Generate {selectedType === 'flashcards' ? `${cardCount} Cards` : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>}
               </button>
 
               {/* Question count — only for quizzes */}

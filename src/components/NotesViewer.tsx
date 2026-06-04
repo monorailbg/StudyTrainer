@@ -185,6 +185,34 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
           )}
         </p>
 
+        {/* Formula block */}
+        {!collapsed && section.formula && (
+          <div style={{
+            margin: '0 0 13px', padding: '10px 14px', borderRadius: '9px',
+            background: '#0D1117', border: `1px solid ${color}30`,
+            fontFamily: 'JetBrains Mono, monospace', fontSize: '13px',
+            color: color, lineHeight: 1.6,
+            display: 'flex', alignItems: 'flex-start', gap: '8px',
+          }}>
+            <span style={{ opacity: 0.6, fontSize: '11px', marginTop: '1px', flexShrink: 0 }}>∑</span>
+            <span>{section.formula}</span>
+          </div>
+        )}
+
+        {/* Diagram block */}
+        {!collapsed && section.diagram && (
+          <div style={{
+            margin: '0 0 13px', padding: '10px 14px', borderRadius: '9px',
+            background: '#0D1117', border: '1px solid #30363D',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: '12px',
+            color: '#8B949E', lineHeight: 1.7, whiteSpace: 'pre-wrap',
+            display: 'flex', alignItems: 'flex-start', gap: '8px',
+          }}>
+            <span style={{ opacity: 0.5, fontSize: '11px', marginTop: '1px', flexShrink: 0 }}>→</span>
+            <span>{section.diagram}</span>
+          </div>
+        )}
+
         {!collapsed && hasKeyPoints && (
           <ul style={{ margin: '0 0 13px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
             {(section.keyPoints ?? []).map((pt, j) => (

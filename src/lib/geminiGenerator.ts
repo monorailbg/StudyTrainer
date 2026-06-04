@@ -181,25 +181,72 @@ async function callGeminiAuto(parts: Part[]): Promise<string> {
   throw lastErr;
 }
 
+// ── Generation options ─────────────────────────────────────────────────────
+
+export interface GenerateOptions {
+  cardCount?: number;                                          // flashcards (default 12)
+  questionCount?: number;                                      // quiz (default 10)
+  focusTopic?: string;                                         // narrow topic, flashcards & quiz
+  notesDetail?: 'concise' | 'standard' | 'comprehensive';     // notes depth
+  notesIncludes?: string[];                                    // 'formulas' | 'diagrams' | 'mindmap'
+  customPrompt?: string;                                       // free-text appended to the prompt
+}
+
 // ── Prompts ────────────────────────────────────────────────────────────────
 
-const FILE_PROMPTS: Record<GenerationType, (subject: string) => string> = {
-  flashcards: (subject) =>
-    `You are an expert study material creator for university-level ${subject} students.
+function flashcardFilePrompt(subject: string, opts: GenerateOptions): string {
+  const count = opts.cardCount ?? 12;
+  const focus = opts.focusTopic?.trim();
+  const custom = opts.customPrompt?.trim();
+  return `You are an expert study material creator for university-level ${subject} students.
 
-Analyse the content in this file and create exactly 12 high-quality flashcards covering the most important concepts, definitions, and relationships.
+Analyse the content in this file and create exactly ${count} high-quality flashcards.
+${focus ? `Focus specifically on the topic: "${focus}".` : 'Cover the most important concepts, definitions, and relationships.'}
+${custom ? `\nAdditional instructions: ${custom}` : ''}
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
   "flashcards": [
     { "front": "Concise question or term", "back": "Clear answer or definition", "topic": "Specific sub-topic" }
   ]
-}`,
+}`;
+}
 
-  notes: (subject) =>
-    `You are an expert academic note-taker for university-level ${subject}.
+function notesFilePrompt(subject: string, opts: GenerateOptions): string {
+  const detail = opts.notesDetail ?? 'standard';
+  const includes = opts.notesIncludes ?? [];
+  const custom = opts.customPrompt?.trim();
 
-Analyse the content in this file and create comprehensive structured notes.
+  const sectionCount = detail === 'concise' ? '3–4' : detail === 'comprehensive' ? '8–12' : '4–7';
+  const contentDepth = detail === 'concise'
+    ? 'Keep each section brief — 1-2 sentences of content, 2-3 key points.'
+    : detail === 'comprehensive'
+      ? 'Each section should have a thorough explanation (4-6 sentences) and 4-6 key points.'
+      : 'Each section should have a clear explanation (2-4 sentences) and 3-5 key points.';
+
+  const formulaInstruction = includes.includes('formulas')
+    ? 'If a section involves mathematics, physics, chemistry, or economics formulae, add a "formula" field with the key equation(s) in plain-text notation (e.g., "F = ma", "ΔG = ΔH − TΔS", "MV = PQ").'
+    : '';
+  const diagramInstruction = includes.includes('diagrams')
+    ? 'Where a process, flow, or structure is best shown visually, add a "diagram" field with a concise text diagram (e.g., "Households → [Labour] → Firms → [Wages] → Households", or a simple table row like "AD ↑ → Price level ↑ → Real output ↑ (short run)").'
+    : '';
+  const mindmapInstruction = includes.includes('mindmap')
+    ? 'Organise sections hierarchically: the first section should introduce the top-level concept, subsequent sections should each explore one branch or sub-concept.'
+    : '';
+
+  const schemaExtras = (includes.includes('formulas') || includes.includes('diagrams'))
+    ? `      "formula": "optional — key equation or formula for this section",
+      "diagram": "optional — short text diagram or flow for this section",`
+    : '';
+
+  return `You are an expert academic note-taker for university-level ${subject}.
+
+Analyse the content in this file and create ${detail} structured notes with ${sectionCount} sections.
+${contentDepth}
+${formulaInstruction}
+${diagramInstruction}
+${mindmapInstruction}
+${custom ? `\nAdditional instructions: ${custom}` : ''}
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
@@ -208,23 +255,23 @@ Return ONLY valid JSON — no markdown, no commentary:
   "sections": [
     {
       "heading": "Section heading",
-      "content": "Main explanation paragraph (2-4 sentences)",
+      "content": "Main explanation paragraph",
+      ${schemaExtras}
       "keyPoints": ["Key point 1", "Key point 2", "Key point 3"]
     }
   ]
+}`;
 }
 
-Create 4-7 sections covering all major topics.`,
-
-  quiz: (subject) =>
-    quizFilePrompt(subject, 10),
-};
-
-// Quiz prompt with a caller-chosen question count (selected before generation).
-function quizFilePrompt(subject: string, count: number): string {
+function quizFilePrompt(subject: string, opts: GenerateOptions): string {
+  const count = opts.questionCount ?? 10;
+  const focus = opts.focusTopic?.trim();
+  const custom = opts.customPrompt?.trim();
   return `You are an expert exam question writer for university-level ${subject}.
 
 Analyse the content in this file and create exactly ${count} multiple-choice questions.
+${focus ? `Focus specifically on the topic: "${focus}".` : ''}
+${custom ? `Additional instructions: ${custom}` : ''}
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
@@ -305,12 +352,13 @@ export async function generateFromFile(
   file: File,
   type: GenerationType,
   subjectTitle: string,
-  questionCount = 10
+  options: GenerateOptions = {}
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   const base64 = await fileToBase64(file);
-  const prompt = type === 'quiz'
-    ? quizFilePrompt(subjectTitle, questionCount)
-    : FILE_PROMPTS[type](subjectTitle);
+  const prompt =
+    type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) :
+    type === 'notes'      ? notesFilePrompt(subjectTitle, options) :
+                            quizFilePrompt(subjectTitle, options);
 
   const text = await callGeminiAuto([
     { inline_data: { mime_type: file.type, data: base64 } },

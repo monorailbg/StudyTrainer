@@ -11,6 +11,8 @@ export interface GeneratedNoteSection {
   heading: string;
   content: string;
   keyPoints?: string[];
+  formula?: string;   // inline formula block, e.g. "F = ma" or "ΔG = ΔH − TΔS"
+  diagram?: string;   // text diagram, e.g. "Input → [Stage A] → Output"
 }
 
 export interface GeneratedNote {
