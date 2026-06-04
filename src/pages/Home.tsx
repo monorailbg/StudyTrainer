@@ -83,19 +83,59 @@ function TiltCard({ children, className, style }: {
   );
 }
 
+// ── Sparkline ──────────────────────────────────────────────────────────────────
+
+function Sparkline({ points, color }: { points: number[]; color: string }) {
+  if (points.length < 2) return null;
+  const w = 64, h = 18;
+  const max = Math.max(...points, 1);
+  const min = Math.min(...points, 0);
+  const range = max - min || 1;
+  const step = w / (points.length - 1);
+  const coords = points.map((p, i) => [i * step, h - ((p - min) / range) * h]);
+  const line = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block', overflow: 'visible' }}>
+      <path d={area} fill={color} opacity={0.12} />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={coords[coords.length - 1][0]} cy={coords[coords.length - 1][1]} r="2" fill={color} />
+    </svg>
+  );
+}
+
 // ── Stat strip ─────────────────────────────────────────────────────────────────
 
-function StatChip({ label, value, progress, color = '#3D7EFF' }: {
+function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, index = 0 }: {
   label: string; value: string | number; progress?: number; color?: string;
+  icon?: React.ReactNode; spark?: number[]; index?: number;
 }) {
   return (
-    <div className="card-panel px-5 py-4">
-      <div className="text-[9px] font-semibold uppercase tracking-[0.13em] mb-1.5" style={{ color: '#8B949E' }}>
-        {label}
+    <div
+      className="card-panel anim-rise"
+      style={{
+        ['--d' as string]: `${index * 60}ms`,
+        padding: '16px 18px',
+        background: `radial-gradient(120% 120% at 100% 0%, ${color}0E 0%, #161B22 55%)`,
+        position: 'relative', overflow: 'hidden',
+      }}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="text-[9px] font-semibold uppercase tracking-[0.13em]" style={{ color: '#8B949E' }}>
+          {label}
+        </div>
+        {icon && (
+          <span style={{ color, width: '26px', height: '26px', borderRadius: '8px', background: color + '18', border: `1px solid ${color}2A`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {icon}
+          </span>
+        )}
       </div>
-      <div className="mono text-2xl leading-none" style={{ color: '#E6EDF3' }}>{value}</div>
+      <div className="flex items-end justify-between gap-2">
+        <div className="mono text-2xl leading-none" style={{ color: '#E6EDF3' }}>{value}</div>
+        {spark && spark.length >= 2 && <Sparkline points={spark} color={color} />}
+      </div>
       {progress !== undefined && (
-        <div className="mt-2.5 overflow-hidden" style={{ height: '2px', background: '#30363D', borderRadius: '2px' }}>
+        <div className="mt-2.5 overflow-hidden" style={{ height: '3px', background: '#30363D', borderRadius: '2px' }}>
           <div style={{ width: `${Math.max(0, Math.min(100, progress))}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
         </div>
       )}
@@ -105,7 +145,7 @@ function StatChip({ label, value, progress, color = '#3D7EFF' }: {
 
 // ── Subject card ───────────────────────────────────────────────────────────────
 
-function SubjectCard({ subject, isCore }: { subject: SubjectDef; isCore: boolean }) {
+function SubjectCard({ subject, isCore, index = 0 }: { subject: SubjectDef; isCore: boolean; index?: number }) {
   const { t } = useLang();
   const Icon = SubjectIconMap[subject.id] ?? IconGlobe;
 
@@ -115,7 +155,7 @@ function SubjectCard({ subject, isCore }: { subject: SubjectDef; isCore: boolean
     ? quizData.filter(q => q.topic === subject.quizTopic).length : 0;
 
   return (
-    <Link to={`/subject/${subject.id}`} className="no-underline block h-full">
+    <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms` }}>
       <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}>
         <div className="p-5 flex flex-col h-full gap-3">
           {/* Icon + color accent */}
@@ -192,7 +232,7 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
 
 export default function Home() {
   const { t } = useLang();
-  const { flashcardsStudied, flashcardsKnown, quizScores, notesRead } = useStore();
+  const { flashcardsStudied, flashcardsKnown, quizScores, notesRead, recentSubjects } = useStore();
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
   // Force the globe to rebuild when the set of subjects changes.
@@ -304,11 +344,61 @@ export default function Home() {
 
         {/* Stats strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-          <StatChip label={t('stats_studied')} value={flashcardsStudied.length} color="#3D7EFF" />
-          <StatChip label={t('stats_known')}   value={flashcardsKnown.length}   progress={knownPct} color="#3D7EFF" />
-          <StatChip label={t('stats_score')}   value={avgScore > 0 ? `${avgScore}%` : '—'} progress={avgScore || undefined} color="#D29922" />
-          <StatChip label={t('stats_notes')}   value={notesRead.length}         progress={notesPct} color="#2EA043" />
+          <StatChip index={0} label={t('stats_studied')} value={flashcardsStudied.length} color="#3D7EFF"
+            icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="1.5" y="4.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><rect x="4" y="2.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>} />
+          <StatChip index={1} label={t('stats_known')}   value={flashcardsKnown.length}   progress={knownPct} color="#3D7EFF"
+            icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 8.2l1.8 1.8L11 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
+          <StatChip index={2} label={t('stats_score')}   value={avgScore > 0 ? `${avgScore}%` : '—'} progress={avgScore || undefined} color="#D29922"
+            spark={quizScores.map(q => Math.round((q.score / q.total) * 100))}
+            icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><polyline points="2,11 6,7 9,9 14,4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
+          <StatChip index={3} label={t('stats_notes')}   value={notesRead.length}         progress={notesPct} color="#2EA043"
+            icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>} />
         </div>
+
+        {/* Continue where you left off */}
+        {recentSubjects.length > 0 && (() => {
+          const recents = recentSubjects
+            .map(r => allSubjects.find(s => s.id === r.id))
+            .filter((s): s is SubjectDef => Boolean(s))
+            .slice(0, 5);
+          if (recents.length === 0) return null;
+          return (
+            <div className="mb-10">
+              <SectionLabel>Continue where you left off</SectionLabel>
+              <div className="flex gap-3 flex-wrap">
+                {recents.map((s, i) => {
+                  const Icon = SubjectIconMap[s.id] ?? IconGlobe;
+                  return (
+                    <Link
+                      key={s.id}
+                      to={`/subject/${s.id}`}
+                      className="no-underline anim-rise"
+                      style={{
+                        ['--d' as string]: `${i * 50}ms`,
+                        display: 'flex', alignItems: 'center', gap: '11px',
+                        padding: '11px 16px 11px 12px', borderRadius: '14px',
+                        background: '#161B22', border: '1px solid #21262D',
+                        transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = s.color + '45'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+                    >
+                      <span className="[&>svg]:w-[18px] [&>svg]:h-[18px]" style={{ width: '36px', height: '36px', borderRadius: '11px', background: s.color + '1F', border: `1px solid ${s.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon color={s.color} />
+                      </span>
+                      <div className="min-w-0">
+                        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 600, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
+                          {s.title}
+                        </div>
+                        <div style={{ fontSize: '11px', color: s.color, fontWeight: 600 }}>Resume →</div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Study modes — three pill links */}
         <div className="flex gap-3 mb-10 flex-wrap">
@@ -369,7 +459,7 @@ export default function Home() {
           </div>
           {coreSubjects.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {coreSubjects.map(s => <SubjectCard key={s.id} subject={s} isCore={true} />)}
+              {coreSubjects.map((s, i) => <SubjectCard key={s.id} subject={s} isCore={true} index={i} />)}
             </div>
           ) : (
             <div className="text-xs" style={{ color: '#8B949E' }}>
@@ -383,7 +473,7 @@ export default function Home() {
           <div>
             <SectionLabel count={extendedSubjects.length}>{t('extended')}</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {extendedSubjects.map(s => <SubjectCard key={s.id} subject={s} isCore={false} />)}
+              {extendedSubjects.map((s, i) => <SubjectCard key={s.id} subject={s} isCore={false} index={i} />)}
             </div>
           </div>
         )}

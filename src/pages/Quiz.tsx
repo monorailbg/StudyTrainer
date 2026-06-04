@@ -3,6 +3,7 @@ import { getAllQuizzes, type StoredQuiz } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudQuizzes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { QuizViewer } from '../components/QuizViewer';
+import { SkeletonCardGrid } from '../components/Skeleton';
 import type { SubjectDef } from '../data/subjects';
 
 // ── Subject sidebar item ──────────────────────────────────────────────────────
@@ -38,14 +39,16 @@ function SubjectBtn({ subject, count, active, onClick }: {
 
 // ── Quiz card ─────────────────────────────────────────────────────────────────
 
-function QuizCard({ quiz, color, onClick }: { quiz: StoredQuiz; color: string; onClick: () => void }) {
+function QuizCard({ quiz, color, onClick, index = 0 }: { quiz: StoredQuiz; color: string; onClick: () => void; index?: number }) {
   return (
     <button
       onClick={onClick}
+      className="anim-rise"
       style={{
+        ['--d' as string]: `${index * 45}ms`,
         background: '#161B22', border: '1px solid #21262D', borderRadius: '16px',
         padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
-        transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
       }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '40'; }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
@@ -85,15 +88,15 @@ function Empty() {
 export default function Quiz() {
   const { allSubjects } = useResolvedSubjects();
   const [quizzes, setQuizzes] = useState<StoredQuiz[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<StoredQuiz | null>(null);
 
   useEffect(() => {
-    if (isFirebaseConfigured) {
-      getAllCloudQuizzes().then(data => setQuizzes(data as StoredQuiz[]));
-    } else {
-      getAllQuizzes().then(data => setQuizzes(data.sort((a, b) => b.createdAt - a.createdAt)));
-    }
+    const p = isFirebaseConfigured
+      ? getAllCloudQuizzes().then(data => setQuizzes(data as StoredQuiz[]))
+      : getAllQuizzes().then(data => setQuizzes(data.sort((a, b) => b.createdAt - a.createdAt)));
+    p.finally(() => setLoading(false));
   }, []);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
@@ -143,6 +146,8 @@ export default function Quiz() {
             </div>
             <QuizViewer key={activeQuiz.id} questions={activeQuiz.questions} color={activeColor} />
           </div>
+        ) : loading ? (
+          <SkeletonCardGrid />
         ) : quizzes.length === 0 ? (
           <Empty />
         ) : (
@@ -159,8 +164,8 @@ export default function Quiz() {
                     <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
-                    {groupQuizzes.map(quiz => (
-                      <QuizCard key={quiz.id} quiz={quiz} color={color} onClick={() => setActiveQuiz(quiz)} />
+                    {groupQuizzes.map((quiz, i) => (
+                      <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />
                     ))}
                   </div>
                 </div>

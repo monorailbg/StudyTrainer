@@ -177,34 +177,49 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
       {/* Score banner */}
       {submitted && (
         <div
-          className="rounded-xl px-6 py-4 mb-5 flex items-center justify-between anim-fadein"
+          className="rounded-xl px-6 py-5 mb-5 anim-fadein"
           style={{
-            background: '#161B22',
+            background: `radial-gradient(120% 140% at 0% 0%, ${color}12 0%, #161B22 55%)`,
             border: `1px solid ${color}30`,
             boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
-          <div className="flex items-baseline gap-2">
-            <span className="mono leading-none" style={{ fontSize: '3rem', color }}>{countedScore}%</span>
-            <span className="text-sm" style={{ color: '#8B949E' }}>
-              {score} / {activeQuestions.length} correct
-            </span>
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-baseline gap-2">
+              <span className="mono leading-none" style={{ fontSize: '3rem', color }}>{countedScore}%</span>
+              <span className="text-sm" style={{ color: '#8B949E' }}>
+                {score} / {activeQuestions.length} correct
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setAnswers({}); setSubmitted(false); }}
+                className="h-8 px-4 text-xs font-medium cursor-pointer transition-colors duration-150"
+                style={{ background: '#1F2937', color: '#E6EDF3', border: '1px solid #30363D', borderRadius: '999px' }}
+              >
+                Retry same
+              </button>
+              <button
+                onClick={reset}
+                className="h-8 px-4 text-xs font-medium cursor-pointer transition-colors duration-150"
+                style={{ background: color + '18', color, border: `1px solid ${color}40`, borderRadius: '999px' }}
+              >
+                New test
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setAnswers({}); setSubmitted(false); }}
-              className="h-8 px-4 text-xs font-medium cursor-pointer transition-colors duration-150"
-              style={{ background: '#1F2937', color: '#E6EDF3', border: '1px solid #30363D', borderRadius: '999px' }}
-            >
-              Retry same
-            </button>
-            <button
-              onClick={reset}
-              className="h-8 px-4 text-xs font-medium cursor-pointer transition-colors duration-150"
-              style={{ background: color + '18', color, border: `1px solid ${color}40`, borderRadius: '999px' }}
-            >
-              New test
-            </button>
+          {/* Correct / incorrect segmented bar */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex overflow-hidden" style={{ height: '8px', borderRadius: '999px', background: '#1F2937' }}>
+              <div style={{ width: `${pct}%`, background: '#2EA043', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
+              <div style={{ width: `${100 - pct}%`, background: 'rgba(248,81,73,0.55)', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
+            </div>
+            <span className="text-xs flex items-center gap-1.5" style={{ color: '#56D364' }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#2EA043' }} /> {score}
+            </span>
+            <span className="text-xs flex items-center gap-1.5" style={{ color: '#F97979' }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#F85149' }} /> {activeQuestions.length - score}
+            </span>
           </div>
         </div>
       )}

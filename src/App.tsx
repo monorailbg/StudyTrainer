@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { LanguageProvider } from './context/LanguageContext';
+import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
 import { ApiKeyBanner } from './components/ApiKeyBanner';
 import Home from './pages/Home';
@@ -9,21 +10,33 @@ import Quiz from './pages/Quiz';
 import SubjectPage from './pages/SubjectPage';
 import Generate from './pages/Generate';
 
+// Keyed wrapper so each route re-triggers the entrance transition.
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <div key={location.pathname} className="page-transition" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <Routes location={location}>
+        <Route path="/" element={<Home />} />
+        <Route path="/flashcards" element={<Flashcards />} />
+        <Route path="/notes" element={<Notes />} />
+        <Route path="/quiz" element={<Quiz />} />
+        <Route path="/generate" element={<Generate />} />
+        <Route path="/subject/:id" element={<SubjectPage />} />
+      </Routes>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <LanguageProvider>
-      <BrowserRouter>
-        <Navbar />
-        <ApiKeyBanner />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/flashcards" element={<Flashcards />} />
-          <Route path="/notes" element={<Notes />} />
-          <Route path="/quiz" element={<Quiz />} />
-          <Route path="/generate" element={<Generate />} />
-          <Route path="/subject/:id" element={<SubjectPage />} />
-        </Routes>
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <Navbar />
+          <ApiKeyBanner />
+          <AnimatedRoutes />
+        </BrowserRouter>
+      </ToastProvider>
     </LanguageProvider>
   );
 }

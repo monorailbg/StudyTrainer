@@ -3,6 +3,7 @@ import { getAllNotes, type StoredNote } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudNotes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { NotesViewer } from '../components/NotesViewer';
+import { SkeletonCardGrid } from '../components/Skeleton';
 import type { SubjectDef } from '../data/subjects';
 
 // ── Subject sidebar item ──────────────────────────────────────────────────────
@@ -38,14 +39,16 @@ function SubjectBtn({ subject, count, active, onClick }: {
 
 // ── Note card ─────────────────────────────────────────────────────────────────
 
-function NoteCard({ note, color, onClick }: { note: StoredNote; color: string; onClick: () => void }) {
+function NoteCard({ note, color, onClick, index = 0 }: { note: StoredNote; color: string; onClick: () => void; index?: number }) {
   return (
     <button
       onClick={onClick}
+      className="anim-rise"
       style={{
+        ['--d' as string]: `${index * 45}ms`,
         background: '#161B22', border: '1px solid #21262D', borderRadius: '16px',
         padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
-        transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
       }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '40'; }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
@@ -85,16 +88,16 @@ function Empty() {
 export default function Notes() {
   const { allSubjects } = useResolvedSubjects();
   const [notes, setNotes] = useState<StoredNote[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeNote, setActiveNote] = useState<StoredNote | null>(null);
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (isFirebaseConfigured) {
-      getAllCloudNotes().then(data => setNotes(data as StoredNote[]));
-    } else {
-      getAllNotes().then(data => setNotes(data.sort((a, b) => b.createdAt - a.createdAt)));
-    }
+    const p = isFirebaseConfigured
+      ? getAllCloudNotes().then(data => setNotes(data as StoredNote[]))
+      : getAllNotes().then(data => setNotes(data.sort((a, b) => b.createdAt - a.createdAt)));
+    p.finally(() => setLoading(false));
   }, []);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
@@ -150,6 +153,8 @@ export default function Notes() {
               scrollElRef={mainRef}
             />
           </div>
+        ) : loading ? (
+          <SkeletonCardGrid />
         ) : notes.length === 0 ? (
           <Empty />
         ) : (
@@ -166,8 +171,8 @@ export default function Notes() {
                     <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
-                    {groupNotes.map(note => (
-                      <NoteCard key={note.id} note={note} color={color} onClick={() => setActiveNote(note)} />
+                    {groupNotes.map((note, i) => (
+                      <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => setActiveNote(note)} />
                     ))}
                   </div>
                 </div>

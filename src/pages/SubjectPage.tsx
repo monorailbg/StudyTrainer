@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useResolvedSubjects } from '../store/useSubjects';
+import { useStore } from '../store/useStore';
+import { useToast } from '../components/Toast';
 import { generateFromFile } from '../lib/geminiGenerator';
 import {
   saveFile, getFiles, deleteFile,
@@ -37,6 +39,18 @@ function friendlyError(raw?: string): string {
   if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
   if (raw.includes('400')) return 'File too large or unsupported format.';
   return `Generation failed: ${raw.slice(0, 140)}`;
+}
+
+function timeAgo(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(ts).toLocaleDateString();
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -133,12 +147,84 @@ function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }
   );
 }
 
+// ── Overview tile ──────────────────────────────────────────────────────────────
+
+function OverviewTile({
+  icon, label, color, active, primary, secondary, badges, onClick, index,
+}: {
+  icon: React.ReactNode; label: string; color: string; active: boolean;
+  primary: string; secondary: string; badges?: string[];
+  onClick: () => void; index: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="anim-rise"
+      style={{
+        ['--d' as string]: `${index * 60}ms`,
+        background: '#161B22', border: '1px solid #21262D',
+        borderRadius: '20px', padding: '24px',
+        textAlign: 'left', cursor: 'pointer',
+        transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1), border-color 0.25s ease, box-shadow 0.25s ease',
+        display: 'flex', flexDirection: 'column', gap: '14px', minHeight: '150px',
+      }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = 'translateY(-3px)';
+        el.style.borderColor = color + '40';
+        el.style.boxShadow = `0 10px 28px rgba(0,0,0,0.4), 0 0 0 1px ${color}22`;
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = '';
+        el.style.borderColor = '#21262D';
+        el.style.boxShadow = '';
+      }}
+    >
+      <div className="flex items-start justify-between">
+        <div style={{
+          width: '52px', height: '52px', borderRadius: '15px',
+          background: active ? color + '1F' : '#1F2937',
+          color: active ? color : '#484F58',
+          border: `1px solid ${active ? color + '33' : '#30363D'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ transform: 'scale(1.25)' }}>{icon}</span>
+        </div>
+        {active && <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, marginTop: '6px' }} />}
+      </div>
+      <div style={{ marginTop: 'auto' }}>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: '#E6EDF3', marginBottom: '4px' }}>
+          {label}
+        </div>
+        <div style={{ fontSize: '12px', color: active ? color : '#484F58', fontWeight: 600 }}>
+          {primary}
+        </div>
+        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '3px' }}>
+          {secondary}
+        </div>
+        {badges && badges.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap" style={{ marginTop: '10px' }}>
+            {badges.map((b, i) => (
+              <span key={i} style={{ fontSize: '10px', fontWeight: 600, color: color, background: color + '14', border: `1px solid ${color}28`, borderRadius: '999px', padding: '2px 8px' }}>
+                {b}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function SubjectPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useLang();
   const { allSubjects } = useResolvedSubjects();
+  const { toast } = useToast();
+  const visitSubject = useStore(s => s.visitSubject);
   const subject = allSubjects.find(s => s.id === id);
 
   const [activeLevel, setActiveLevel] = useState(subject?.levels?.[0] ?? '');
@@ -171,6 +257,8 @@ export default function SubjectPage() {
   // ── Load persisted data when subject changes ───────────────────────────────
   useEffect(() => {
     if (!id) return;
+
+    visitSubject(id);
 
     // Reset all state when navigating to a different subject
     setFiles([]);
@@ -240,7 +328,13 @@ export default function SubjectPage() {
 
   // ── File management ────────────────────────────────────────────────────────
   const addFiles = useCallback(async (newFiles: FileList | File[]) => {
-    const valid = Array.from(newFiles).filter(f => ACCEPTED.includes(f.type));
+    const all = Array.from(newFiles);
+    const valid = all.filter(f => ACCEPTED.includes(f.type));
+    const rejected = all.length - valid.length;
+    if (rejected > 0) {
+      toast('error', `${rejected} file${rejected > 1 ? 's' : ''} skipped`, 'Only PDF and image files are supported.');
+    }
+    if (valid.length === 0) return;
     const mapped: UploadedFile[] = valid.map(f => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       name: f.name, type: f.type, size: f.size,
@@ -261,7 +355,8 @@ export default function SubjectPage() {
         await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
       }
     }
-  }, [activeLevel, id]);
+    toast('success', `${mapped.length} file${mapped.length > 1 ? 's' : ''} added`, isFirebaseConfigured ? 'Uploaded to the shared library.' : undefined);
+  }, [activeLevel, id, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
@@ -441,8 +536,11 @@ export default function SubjectPage() {
 
       setGenState({ status: 'done', type: selectedType });
       setView(selectedType);
+      const typeLabel = selectedType === 'flashcards' ? 'Flashcards' : selectedType === 'quiz' ? 'Quiz' : 'Notes';
+      toast('success', `${typeLabel} ready`, `Generated from ${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}.`);
     } catch (err) {
       setGenState({ status: 'error', type: selectedType, error: String(err) });
+      toast('error', 'Generation failed', friendlyError(String(err)));
     } finally {
       setGenProgress(null);
     }
@@ -469,18 +567,25 @@ export default function SubjectPage() {
         borderBottom: '1px solid #21262D',
         background: '#0D1117',
       }}>
-        <Link to="/" style={{ color: '#8B949E', textDecoration: 'none', fontSize: '12px', flexShrink: 0 }}>
-          ←
+        <Link to="/" className="flex-shrink-0 transition-colors" style={{ color: '#8B949E', textDecoration: 'none', fontSize: '12px', fontWeight: 500 }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#E6EDF3')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#8B949E')}>
+          {t('nav_dashboard')}
         </Link>
-        <div style={{ width: '1px', height: '14px', background: '#30363D', flexShrink: 0 }} />
+        <span className="flex-shrink-0" style={{ color: '#484F58', fontSize: '11px' }}>›</span>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: subject.color, boxShadow: `0 0 8px ${subject.color}`, flexShrink: 0 }} />
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-baseline gap-2.5">
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: '#E6EDF3' }}>
             {subject.title}
           </span>
-          <span className="hidden sm:inline" style={{ fontSize: '12px', color: '#8B949E', marginLeft: '10px' }}>
-            {subject.description}
-          </span>
+          {view !== 'dashboard' && (
+            <>
+              <span className="flex-shrink-0 hidden sm:inline" style={{ color: '#484F58', fontSize: '11px' }}>›</span>
+              <span className="hidden sm:inline" style={{ fontSize: '12px', fontWeight: 500, color: '#8B949E', textTransform: 'capitalize' }}>
+                {view === 'upload' ? 'Files' : view}
+              </span>
+            </>
+          )}
         </div>
         {/* Level tabs */}
         {subject.levels && (
@@ -920,136 +1025,47 @@ export default function SubjectPage() {
                 <div style={{ fontSize: '13px', color: '#8B949E' }}>{subject.description}</div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-
-                {/* Files tile */}
-                <button
-                  onClick={() => setView('upload')}
-                  style={{
-                    background: '#161B22', border: '1px solid #21262D',
-                    borderRadius: '20px', padding: '20px',
-                    textAlign: 'left', cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px) scale(1.01)'; (e.currentTarget as HTMLElement).style.borderColor = subject.color + '40'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
-                >
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '12px',
-                    background: subject.color + '18', color: subject.color,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: '14px',
-                  }}>
-                    <IconFile />
+              {(() => {
+                const totalMB = levelFiles.reduce((a, f) => a + f.size, 0) / 1024 / 1024;
+                const pdfCount = levelFiles.filter(f => f.type === 'application/pdf').length;
+                const imgCount = levelFiles.length - pdfCount;
+                const fileParts = [pdfCount > 0 ? `${pdfCount} PDF${pdfCount > 1 ? 's' : ''}` : '', imgCount > 0 ? `${imgCount} image${imgCount > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
+                const totalCards = savedFlashcardSets.reduce((a, s) => a + s.cards.length, 0);
+                const totalQs = savedQuizzes.reduce((a, q) => a + q.questions.length, 0);
+                const totalSections = savedNotes.reduce((a, n) => a + n.note.sections.length, 0);
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                    <OverviewTile
+                      index={0} icon={<IconFile />} label="Files" color={subject.color}
+                      active={levelFiles.length > 0}
+                      primary={levelFiles.length > 0 ? `${levelFiles.length} uploaded` : 'No files yet'}
+                      secondary={levelFiles.length > 0 ? `${fileParts} · ${totalMB.toFixed(1)} MB total` : 'Upload PDFs or images to begin'}
+                      onClick={() => setView('upload')}
+                    />
+                    <OverviewTile
+                      index={1} icon={<IconNote />} label="Notes" color="#2EA043"
+                      active={savedNotes.length > 0}
+                      primary={savedNotes.length > 0 ? `${savedNotes.length} note${savedNotes.length > 1 ? 's' : ''}` : 'None yet'}
+                      secondary={savedNotes.length > 0 ? `${totalSections} sections · updated ${timeAgo(savedNotes[0].createdAt)}` : 'Generate structured notes from files'}
+                      onClick={() => { setActiveNoteId(null); setView('notes'); }}
+                    />
+                    <OverviewTile
+                      index={2} icon={<IconCards />} label="Flashcards" color="#3D7EFF"
+                      active={savedFlashcardSets.length > 0}
+                      primary={savedFlashcardSets.length > 0 ? `${totalCards} cards` : 'None yet'}
+                      secondary={savedFlashcardSets.length > 0 ? `in ${savedFlashcardSets.length} set${savedFlashcardSets.length > 1 ? 's' : ''} · updated ${timeAgo(savedFlashcardSets[0].createdAt)}` : 'Generate a deck from files'}
+                      onClick={() => { setActiveSetId(null); setView('flashcards'); }}
+                    />
+                    <OverviewTile
+                      index={3} icon={<IconQuiz />} label="Quizzes" color="#D29922"
+                      active={savedQuizzes.length > 0}
+                      primary={savedQuizzes.length > 0 ? `${totalQs} questions` : 'None yet'}
+                      secondary={savedQuizzes.length > 0 ? `in ${savedQuizzes.length} quiz${savedQuizzes.length > 1 ? 'zes' : ''} · updated ${timeAgo(savedQuizzes[0].createdAt)}` : 'Generate a quiz from files'}
+                      onClick={() => { setActiveQuizId(null); setView('quiz'); }}
+                    />
                   </div>
-                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
-                    Files
-                  </div>
-                  <div style={{ fontSize: '12px', color: levelFiles.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
-                    {levelFiles.length > 0 ? `${levelFiles.length} uploaded` : 'No files yet'}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
-                    {levelFiles.length > 0 ? 'Click to manage' : 'Upload to get started'}
-                  </div>
-                </button>
-
-                {/* Notes tile */}
-                <button
-                  onClick={() => { setActiveNoteId(null); setView('notes'); }}
-                  style={{
-                    background: '#161B22', border: '1px solid #21262D',
-                    borderRadius: '20px', padding: '20px',
-                    textAlign: 'left', cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px) scale(1.01)'; (e.currentTarget as HTMLElement).style.borderColor = subject.color + '40'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
-                >
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '12px',
-                    background: savedNotes.length > 0 ? subject.color + '18' : '#1F2937',
-                    color: savedNotes.length > 0 ? subject.color : '#484F58',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: '14px',
-                  }}>
-                    <IconNote />
-                  </div>
-                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
-                    Notes
-                  </div>
-                  <div style={{ fontSize: '12px', color: savedNotes.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
-                    {savedNotes.length > 0 ? `${savedNotes.length} saved` : 'None yet'}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
-                    {savedNotes.length > 0 ? 'AI structured notes' : 'Generate from files'}
-                  </div>
-                </button>
-
-                {/* Flashcards tile */}
-                <button
-                  onClick={() => { setActiveSetId(null); setView('flashcards'); }}
-                  style={{
-                    background: '#161B22', border: '1px solid #21262D',
-                    borderRadius: '20px', padding: '20px',
-                    textAlign: 'left', cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px) scale(1.01)'; (e.currentTarget as HTMLElement).style.borderColor = subject.color + '40'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
-                >
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '12px',
-                    background: savedFlashcardSets.length > 0 ? subject.color + '18' : '#1F2937',
-                    color: savedFlashcardSets.length > 0 ? subject.color : '#484F58',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: '14px',
-                  }}>
-                    <IconCards />
-                  </div>
-                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
-                    Flashcards
-                  </div>
-                  <div style={{ fontSize: '12px', color: savedFlashcardSets.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
-                    {savedFlashcardSets.length > 0 ? `${savedFlashcardSets.length} saved` : 'None yet'}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
-                    {savedFlashcardSets.length > 0 ? 'Ready to study' : 'Generate from files'}
-                  </div>
-                </button>
-
-                {/* Quizzes tile */}
-                <button
-                  onClick={() => { setActiveQuizId(null); setView('quiz'); }}
-                  style={{
-                    background: '#161B22', border: '1px solid #21262D',
-                    borderRadius: '20px', padding: '20px',
-                    textAlign: 'left', cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px) scale(1.01)'; (e.currentTarget as HTMLElement).style.borderColor = subject.color + '40'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
-                >
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '12px',
-                    background: savedQuizzes.length > 0 ? subject.color + '18' : '#1F2937',
-                    color: savedQuizzes.length > 0 ? subject.color : '#484F58',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: '14px',
-                  }}>
-                    <IconQuiz />
-                  </div>
-                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
-                    Quizzes
-                  </div>
-                  <div style={{ fontSize: '12px', color: savedQuizzes.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
-                    {savedQuizzes.length > 0 ? `${savedQuizzes.length} saved` : 'None yet'}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
-                    {savedQuizzes.length > 0 ? 'Test your knowledge' : 'Generate from files'}
-                  </div>
-                </button>
-
-              </div>
+                );
+              })()}
             </div>
           )}
 
@@ -1236,14 +1252,14 @@ export default function SubjectPage() {
                   Flashcard Sets ({savedFlashcardSets.length})
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedFlashcardSets.map(set => {
+                  {savedFlashcardSets.map((set, i) => {
                     const isRenaming = renaming?.id === set.id;
                     return (
                       <div
                         key={set.id}
                         onClick={() => { if (!isRenaming) setActiveSetId(set.id); }}
-                        className="card-panel card-panel-lift p-4 flex items-center gap-3"
-                        style={{ cursor: isRenaming ? 'default' : 'pointer' }}
+                        className="card-panel card-panel-lift p-4 flex items-center gap-3 anim-rise"
+                        style={{ ['--d' as string]: `${i * 60}ms`, cursor: isRenaming ? 'default' : 'pointer' }}
                       >
                         <div style={{
                           width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
@@ -1331,7 +1347,7 @@ export default function SubjectPage() {
                       {activeNote.name} · {activeNote.note.sections.length} sections
                     </div>
                   </div>
-                  <NotesViewer notes={activeNote.note} />
+                  <NotesViewer notes={activeNote.note} color={subject.color} noteId={activeNote.id} />
                 </div>
               );
             }
@@ -1346,14 +1362,14 @@ export default function SubjectPage() {
                   Notes ({savedNotes.length})
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedNotes.map(n => {
+                  {savedNotes.map((n, i) => {
                     const isRenaming = renaming?.id === n.id;
                     return (
                       <div
                         key={n.id}
                         onClick={() => { if (!isRenaming) setActiveNoteId(n.id); }}
-                        className="card-panel card-panel-lift p-4 flex items-center gap-3"
-                        style={{ cursor: isRenaming ? 'default' : 'pointer' }}
+                        className="card-panel card-panel-lift p-4 flex items-center gap-3 anim-rise"
+                        style={{ ['--d' as string]: `${i * 60}ms`, cursor: isRenaming ? 'default' : 'pointer' }}
                       >
                         <div style={{
                           width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
@@ -1456,14 +1472,14 @@ export default function SubjectPage() {
                   Previous Quizzes ({savedQuizzes.length})
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedQuizzes.map(quiz => {
+                  {savedQuizzes.map((quiz, i) => {
                     const isRenaming = renaming?.id === quiz.id;
                     return (
                       <div
                         key={quiz.id}
                         onClick={() => { if (!isRenaming) setActiveQuizId(quiz.id); }}
-                        className="card-panel card-panel-lift p-4 flex items-center gap-3"
-                        style={{ cursor: isRenaming ? 'default' : 'pointer' }}
+                        className="card-panel card-panel-lift p-4 flex items-center gap-3 anim-rise"
+                        style={{ ['--d' as string]: `${i * 60}ms`, cursor: isRenaming ? 'default' : 'pointer' }}
                       >
                         <div style={{
                           width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,

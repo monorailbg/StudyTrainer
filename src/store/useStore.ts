@@ -6,11 +6,13 @@ interface StudyStore {
   flashcardsKnown: string[];
   quizScores: { topic: string; score: number; total: number; date: string }[];
   notesRead: string[];
+  recentSubjects: { id: string; at: number }[];
   markFlashcardStudied: (id: string) => void;
   markFlashcardKnown: (id: string) => void;
   markFlashcardReview: (id: string) => void;
   addQuizScore: (topic: string, score: number, total: number) => void;
   markNoteRead: (id: string) => void;
+  visitSubject: (id: string) => void;
   resetProgress: () => void;
 }
 
@@ -21,6 +23,7 @@ export const useStore = create<StudyStore>()(
       flashcardsKnown: [],
       quizScores: [],
       notesRead: [],
+      recentSubjects: [],
 
       markFlashcardStudied: (id) =>
         set((s) => ({
@@ -57,8 +60,16 @@ export const useStore = create<StudyStore>()(
           notesRead: s.notesRead.includes(id) ? s.notesRead : [...s.notesRead, id],
         })),
 
+      visitSubject: (id) =>
+        set((s) => ({
+          recentSubjects: [
+            { id, at: Date.now() },
+            ...s.recentSubjects.filter((r) => r.id !== id),
+          ].slice(0, 6),
+        })),
+
       resetProgress: () =>
-        set({ flashcardsStudied: [], flashcardsKnown: [], quizScores: [], notesRead: [] }),
+        set({ flashcardsStudied: [], flashcardsKnown: [], quizScores: [], notesRead: [], recentSubjects: [] }),
     }),
     { name: 'study-trainer-progress' }
   )
