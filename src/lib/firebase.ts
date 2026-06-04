@@ -1,6 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 // All six config values must be present for Firebase to be active.
 // If any are missing the app runs in local-only (IndexedDB) mode.
@@ -17,14 +16,12 @@ export const isFirebaseConfigured = Object.values(cfg).every(Boolean);
 
 let _app: FirebaseApp | null = null;
 let _db:  Firestore | null = null;
-let _storage: FirebaseStorage | null = null;
 
 if (isFirebaseConfigured) {
-  _app     = initializeApp(cfg as Required<typeof cfg>);
-  _db      = getFirestore(_app);
-  _storage = getStorage(_app);
+  _app = initializeApp(cfg as Required<typeof cfg>);
+  _db  = getFirestore(_app);
   // eslint-disable-next-line no-console
-  console.info('%c[StudyTrainer] Cloud mode ON — uploads are shared via Firebase.', 'color:#2EA043;font-weight:600');
+  console.info('%c[StudyTrainer] Firestore ON — notes, flashcards and quizzes are shared via Firebase.', 'color:#2EA043;font-weight:600');
 } else {
   const missing = Object.entries(cfg).filter(([, v]) => !v).map(([k]) => k);
   // eslint-disable-next-line no-console
@@ -35,5 +32,4 @@ if (isFirebaseConfigured) {
   );
 }
 
-export const firebaseDb      = _db;
-export const firebaseStorage = _storage;
+export const firebaseDb = _db;

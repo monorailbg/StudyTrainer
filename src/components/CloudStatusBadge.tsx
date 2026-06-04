@@ -1,20 +1,30 @@
 import { useState } from 'react';
 import { isFirebaseConfigured } from '../lib/firebase';
+import { isSupabaseConfigured } from '../lib/supabase';
 
-// Small fixed badge that makes the persistence mode unmistakable.
-// When Firebase is configured it stays out of the way (a quiet green dot);
-// when it's NOT, it shows a loud warning so a misconfigured deploy is
-// obvious at a glance instead of silently falling back to local-only.
+const allConfigured = isFirebaseConfigured && isSupabaseConfigured;
+
+// Surfaces the current persistence mode so a misconfigured deploy is
+// immediately obvious rather than silently falling back to local-only.
 export function CloudStatusBadge() {
   const [dismissed, setDismissed] = useState(false);
-  if (isFirebaseConfigured || dismissed) return null;
+  if (allConfigured || dismissed) return null;
+
+  const missingFirebase = !isFirebaseConfigured;
+  const missingSupabase = !isSupabaseConfigured;
+
+  const detail = missingFirebase && missingSupabase
+    ? 'Firebase (notes/flashcards/quizzes) and Supabase (file storage) are not configured.'
+    : missingFirebase
+      ? 'Firebase is not configured — notes, flashcards and quizzes will not be shared.'
+      : 'Supabase is not configured — uploaded files will not be shared.';
 
   return (
     <div
       style={{
         position: 'fixed', bottom: '16px', left: '16px', zIndex: 150,
         display: 'flex', alignItems: 'center', gap: '10px',
-        maxWidth: 'min(92vw, 340px)',
+        maxWidth: 'min(92vw, 360px)',
         padding: '11px 14px', borderRadius: '12px',
         background: '#2A1E0D', border: '1px solid #D29922',
         boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
@@ -27,9 +37,7 @@ export function CloudStatusBadge() {
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, marginBottom: '2px' }}>Local-only mode</div>
-        <div style={{ color: '#C9A86A' }}>
-          Firebase isn’t configured in this build. Uploads stay on this device and are not shared.
-        </div>
+        <div style={{ color: '#C9A86A' }}>{detail}</div>
       </div>
       <button
         onClick={() => setDismissed(true)}

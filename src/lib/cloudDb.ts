@@ -1,15 +1,13 @@
 /**
- * Cloud persistence layer (Firebase Firestore + Storage).
+ * Cloud persistence layer.
  *
- * Flat collections with a `subjectId` field make cross-subject queries
- * (navbar pages) straightforward without composite indexes.
- *
- *   /uploadedFiles/{fileId}       – file metadata + storage URL
+ * Firestore (Firebase) stores structured metadata:
+ *   /uploadedFiles/{fileId}       – file metadata + Supabase storage URL
  *   /notes/{noteId}               – GeneratedNote + metadata
  *   /flashcardSets/{setId}        – GeneratedFlashcard[] + metadata
  *   /quizzes/{quizId}             – GeneratedQuizQuestion[] + metadata
  *
- * Firebase Storage path: files/{subjectId}/{fileId}
+ * Supabase Storage holds file bytes at: study-files/files/{subjectId}/{fileId}
  */
 
 import {
@@ -17,15 +15,12 @@ import {
   query, where,
   type Firestore,
 } from 'firebase/firestore';
-import {
-  ref, uploadBytes, getDownloadURL, deleteObject,
-  type FirebaseStorage,
-} from 'firebase/storage';
 import type { GeneratedFlashcard, GeneratedNote, GeneratedQuizQuestion } from './generator';
-import { firebaseDb, firebaseStorage, isFirebaseConfigured } from './firebase';
+import { firebaseDb, isFirebaseConfigured } from './firebase';
+import { supabase, isSupabaseConfigured, STORAGE_BUCKET } from './supabase';
 
-// Re-export so callers can gate on this without importing from firebase.ts
-export { isFirebaseConfigured };
+// Re-export so callers can gate on cloud features without importing individual lib files.
+export { isFirebaseConfigured, isSupabaseConfigured };
 
 // ── Cloud document types ───────────────────────────────────────────────────
 
@@ -71,11 +66,6 @@ function db(): Firestore {
   return firebaseDb;
 }
 
-function st(): FirebaseStorage {
-  if (!firebaseStorage) throw new Error('Firebase not configured');
-  return firebaseStorage;
-}
-
 async function getAll<T>(col: string): Promise<T[]> {
   const snap = await getDocs(collection(db(), col));
   return snap.docs.map(d => d.data() as T);
@@ -86,20 +76,24 @@ async function getBySubject<T>(col: string, subjectId: string): Promise<T[]> {
   return snap.docs.map(d => d.data() as T);
 }
 
-// ── File storage ───────────────────────────────────────────────────────────
+// ── File storage (Supabase) ────────────────────────────────────────────────
 
 export async function uploadFileToStorage(subjectId: string, fileId: string, file: File): Promise<string> {
-  const fileRef = ref(st(), `files/${subjectId}/${fileId}`);
-  await uploadBytes(fileRef, file, { contentType: file.type });
-  return getDownloadURL(fileRef);
+  if (!isSupabaseConfigured || !supabase) throw new Error('Supabase Storage is not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+  const path = `files/${subjectId}/${fileId}`;
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
+    contentType: file.type,
+    upsert: true,
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
 }
 
 export async function deleteFileFromStorage(subjectId: string, fileId: string): Promise<void> {
-  try {
-    await deleteObject(ref(st(), `files/${subjectId}/${fileId}`));
-  } catch {
-    // Ignore if file doesn't exist in storage
-  }
+  if (!isSupabaseConfigured || !supabase) return;
+  const path = `files/${subjectId}/${fileId}`;
+  await supabase.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {});
 }
 
 // ── File metadata CRUD ─────────────────────────────────────────────────────

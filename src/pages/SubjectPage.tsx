@@ -12,7 +12,7 @@ import {
   saveFlashcardSet, getFlashcardSets, deleteFlashcardSet, type StoredFlashcardSet,
 } from '../lib/db';
 import {
-  isFirebaseConfigured,
+  isFirebaseConfigured, isSupabaseConfigured,
   uploadFileToStorage, saveCloudFile, getCloudFiles, deleteCloudFile,
   saveCloudNote, getCloudNotes, deleteCloudNote, renameCloudNote,
   saveCloudFlashcardSet, getCloudFlashcardSets, deleteCloudFlashcardSet, renameCloudFlashcardSet,
@@ -342,7 +342,7 @@ export default function SubjectPage() {
     }));
     setFiles(prev => [...prev, ...mapped]);
     setSelectedFileIds(prev => [...prev, ...mapped.map(m => m.id)]);
-    if (isFirebaseConfigured) {
+    if (isFirebaseConfigured && isSupabaseConfigured) {
       let uploaded = 0;
       let failed = 0;
       for (const file of mapped) {
@@ -357,7 +357,7 @@ export default function SubjectPage() {
         }
       }
       if (failed > 0) {
-        toast('error', `${failed} file${failed > 1 ? 's' : ''} not shared`, 'Cloud upload was rejected — check your Firestore/Storage security rules. Saved locally only.');
+        toast('error', `${failed} file${failed > 1 ? 's' : ''} not shared`, 'Upload failed — check your Supabase bucket policy. Saved locally only.');
       }
       if (uploaded > 0) {
         toast('success', `${uploaded} file${uploaded > 1 ? 's' : ''} added`, 'Uploaded to the shared library.');
