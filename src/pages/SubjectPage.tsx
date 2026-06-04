@@ -44,12 +44,13 @@ interface GeneratedContent {
   sourceFileId?: string;
 }
 
-type View = 'upload' | 'flashcards' | 'notes' | 'quiz';
+type View = 'dashboard' | 'upload' | 'flashcards' | 'notes' | 'quiz';
 
 const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 
 // ── Mini icons ─────────────────────────────────────────────────────────────────
 
+const IconDash  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>);
 const IconFile  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M4 2h7l4 4v10H4V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M11 2v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>);
 const IconCards = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="1" y="4" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/><rect x="4" y="2" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>);
 const IconNote  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M3 2h9l4 4v10H3V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M12 2v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M5 9h8M5 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>);
@@ -151,7 +152,7 @@ export default function SubjectPage() {
   const subject = ALL_SUBJECTS.find(s => s.id === id);
 
   const [activeLevel, setActiveLevel] = useState(subject?.levels?.[0] ?? '');
-  const [view, setView] = useState<View>('upload');
+  const [view, setView] = useState<View>('dashboard');
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -180,7 +181,7 @@ export default function SubjectPage() {
     setGeneratedContent({});
     setSavedQuizzes([]);
     setActiveQuizId(null);
-    setView('upload');
+    setView('dashboard');
     setGenState({ status: 'idle' });
 
     async function loadPersisted() {
@@ -387,10 +388,11 @@ export default function SubjectPage() {
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}
       <div className="md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: '#0D1117' }}>
         {([
-          { id: 'upload',     label: 'Files',  dot: false },
-          { id: 'flashcards', label: 'Cards',  dot: !!generatedContent.flashcards },
-          { id: 'notes',      label: 'Notes',  dot: !!generatedContent.notes },
-          { id: 'quiz',       label: 'Quizzes', dot: savedQuizzes.length > 0 },
+          { id: 'dashboard',  label: 'Overview', dot: false },
+          { id: 'upload',     label: 'Files',    dot: false },
+          { id: 'flashcards', label: 'Cards',    dot: !!generatedContent.flashcards },
+          { id: 'notes',      label: 'Notes',    dot: !!generatedContent.notes },
+          { id: 'quiz',       label: 'Quizzes',  dot: savedQuizzes.length > 0 },
         ] as { id: View; label: string; dot: boolean }[]).map(({ id, label, dot }) => (
           <button
             key={id}
@@ -424,6 +426,17 @@ export default function SubjectPage() {
           gap: '2px',
           overflowY: 'auto',
         }}>
+          {/* Overview / dashboard */}
+          <div style={{ marginBottom: '8px' }}>
+            <SidebarItem
+              icon={<IconDash />}
+              label="Overview"
+              sublabel="Subject dashboard"
+              active={view === 'dashboard'}
+              onClick={() => setView('dashboard')}
+            />
+          </div>
+
           {/* Upload / files section */}
           <div style={{ marginBottom: '4px' }}>
             <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
@@ -659,6 +672,149 @@ export default function SubjectPage() {
                   {friendlyError(genState.error)}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Dashboard view */}
+          {view === 'dashboard' && (
+            <div>
+              <div style={{ marginBottom: '28px' }}>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '20px', color: '#E6EDF3', marginBottom: '4px' }}>
+                  {subject.title}
+                </div>
+                <div style={{ fontSize: '13px', color: '#8B949E' }}>{subject.description}</div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+
+                {/* Files tile */}
+                <button
+                  onClick={() => setView('upload')}
+                  style={{
+                    background: '#161B22', border: '1px solid #21262D',
+                    borderRadius: '20px', padding: '20px',
+                    textAlign: 'left', cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px) scale(1.01)'; (e.currentTarget as HTMLElement).style.borderColor = subject.color + '40'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+                >
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '12px',
+                    background: subject.color + '18', color: subject.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: '14px',
+                  }}>
+                    <IconFile />
+                  </div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
+                    Files
+                  </div>
+                  <div style={{ fontSize: '12px', color: levelFiles.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
+                    {levelFiles.length > 0 ? `${levelFiles.length} uploaded` : 'No files yet'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
+                    {levelFiles.length > 0 ? 'Click to manage' : 'Upload to get started'}
+                  </div>
+                </button>
+
+                {/* Notes tile */}
+                <button
+                  onClick={() => setView('notes')}
+                  style={{
+                    background: '#161B22', border: '1px solid #21262D',
+                    borderRadius: '20px', padding: '20px',
+                    textAlign: 'left', cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px) scale(1.01)'; (e.currentTarget as HTMLElement).style.borderColor = subject.color + '40'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+                >
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '12px',
+                    background: generatedContent.notes ? subject.color + '18' : '#1F2937',
+                    color: generatedContent.notes ? subject.color : '#484F58',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: '14px',
+                  }}>
+                    <IconNote />
+                  </div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
+                    Notes
+                  </div>
+                  <div style={{ fontSize: '12px', color: generatedContent.notes ? subject.color : '#484F58', fontWeight: 600 }}>
+                    {generatedContent.notes ? `${generatedContent.notes.sections.length} sections` : 'Not generated'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
+                    {generatedContent.notes ? 'AI structured notes' : 'Generate from files'}
+                  </div>
+                </button>
+
+                {/* Flashcards tile */}
+                <button
+                  onClick={() => setView('flashcards')}
+                  style={{
+                    background: '#161B22', border: '1px solid #21262D',
+                    borderRadius: '20px', padding: '20px',
+                    textAlign: 'left', cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px) scale(1.01)'; (e.currentTarget as HTMLElement).style.borderColor = subject.color + '40'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+                >
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '12px',
+                    background: generatedContent.flashcards ? subject.color + '18' : '#1F2937',
+                    color: generatedContent.flashcards ? subject.color : '#484F58',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: '14px',
+                  }}>
+                    <IconCards />
+                  </div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
+                    Flashcards
+                  </div>
+                  <div style={{ fontSize: '12px', color: generatedContent.flashcards ? subject.color : '#484F58', fontWeight: 600 }}>
+                    {generatedContent.flashcards ? `${generatedContent.flashcards.length} cards` : 'Not generated'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
+                    {generatedContent.flashcards ? 'Ready to study' : 'Generate from files'}
+                  </div>
+                </button>
+
+                {/* Quizzes tile */}
+                <button
+                  onClick={() => { setActiveQuizId(null); setView('quiz'); }}
+                  style={{
+                    background: '#161B22', border: '1px solid #21262D',
+                    borderRadius: '20px', padding: '20px',
+                    textAlign: 'left', cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px) scale(1.01)'; (e.currentTarget as HTMLElement).style.borderColor = subject.color + '40'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+                >
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '12px',
+                    background: savedQuizzes.length > 0 ? subject.color + '18' : '#1F2937',
+                    color: savedQuizzes.length > 0 ? subject.color : '#484F58',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: '14px',
+                  }}>
+                    <IconQuiz />
+                  </div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3', marginBottom: '4px' }}>
+                    Quizzes
+                  </div>
+                  <div style={{ fontSize: '12px', color: savedQuizzes.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
+                    {savedQuizzes.length > 0 ? `${savedQuizzes.length} saved` : 'None yet'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#484F58', marginTop: '2px' }}>
+                    {savedQuizzes.length > 0 ? 'Test your knowledge' : 'Generate from files'}
+                  </div>
+                </button>
+
+              </div>
             </div>
           )}
 

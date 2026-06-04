@@ -21,18 +21,47 @@ function useCountUp(target: number, active: boolean, duration = 1000) {
 
 // ── Setup screen ───────────────────────────────────────────────────────────────
 
+function Toggle({ on, color, onChange, label }: { on: boolean; color: string; onChange: () => void; label: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <button
+        onClick={onChange}
+        style={{
+          width: '36px', height: '20px', borderRadius: '999px',
+          background: on ? color : '#30363D',
+          border: 'none', cursor: 'pointer', position: 'relative',
+          flexShrink: 0, transition: 'background 0.25s ease',
+        }}
+        aria-label={label}
+      >
+        <span style={{
+          position: 'absolute', top: '2px',
+          left: on ? '18px' : '2px',
+          width: '16px', height: '16px',
+          borderRadius: '50%', background: '#E6EDF3',
+          transition: 'left 0.25s ease',
+        }} />
+      </button>
+      <span style={{ fontSize: '13px', color: on ? '#E6EDF3' : '#8B949E', transition: 'color 0.2s' }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function SetupScreen({
   total, color, onStart,
 }: {
   total: number;
   color: string;
-  onStart: (count: number, shuffle: boolean) => void;
+  onStart: (count: number, shuffle: boolean, immediate: boolean) => void;
 }) {
   const rawOptions = [5, 10, 15, 20].filter(n => n < total);
   const countOptions = [...rawOptions, total];
   const defaultCount = countOptions.find(n => n >= Math.min(10, total)) ?? total;
   const [testCount, setTestCount] = useState(defaultCount);
   const [shuffle, setShuffle] = useState(true);
+  const [immediate, setImmediate] = useState(false);
 
   return (
     <div style={{ maxWidth: '420px', paddingTop: '8px' }}>
@@ -72,35 +101,15 @@ function SetupScreen({
         </div>
       </div>
 
-      {/* Shuffle toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
-        <button
-          onClick={() => setShuffle(s => !s)}
-          style={{
-            width: '36px', height: '20px', borderRadius: '999px',
-            background: shuffle ? color : '#30363D',
-            border: 'none', cursor: 'pointer', position: 'relative',
-            flexShrink: 0,
-            transition: 'background 0.25s ease',
-          }}
-          aria-label="Toggle shuffle"
-        >
-          <span style={{
-            position: 'absolute', top: '2px',
-            left: shuffle ? '18px' : '2px',
-            width: '16px', height: '16px',
-            borderRadius: '50%', background: '#E6EDF3',
-            transition: 'left 0.25s ease',
-          }} />
-        </button>
-        <span style={{ fontSize: '13px', color: shuffle ? '#E6EDF3' : '#8B949E', transition: 'color 0.2s' }}>
-          Shuffle questions
-        </span>
+      {/* Toggles */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '32px' }}>
+        <Toggle on={shuffle} color={color} onChange={() => setShuffle(s => !s)} label="Shuffle questions" />
+        <Toggle on={immediate} color={color} onChange={() => setImmediate(s => !s)} label="Reveal answer after each question" />
       </div>
 
       {/* Start */}
       <button
-        onClick={() => onStart(testCount, shuffle)}
+        onClick={() => onStart(testCount, shuffle, immediate)}
         style={{
           height: '44px', padding: '0 36px',
           borderRadius: '999px',
@@ -129,17 +138,19 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [shakingId, setShakingId] = useState<string | null>(null);
+  const [immediateReveal, setImmediateReveal] = useState(false);
 
   const score = submitted ? activeQuestions.filter(q => answers[q.id] === Number(q.correct)).length : 0;
   const pct = submitted && activeQuestions.length > 0 ? Math.round((score / activeQuestions.length) * 100) : 0;
   const answered = Object.keys(answers).length;
   const countedScore = useCountUp(pct, submitted);
 
-  function startTest(count: number, shuffle: boolean) {
+  function startTest(count: number, shuffle: boolean, immediate: boolean) {
     const pool = shuffle ? [...questions].sort(() => Math.random() - 0.5) : [...questions];
     setActiveQuestions(pool.slice(0, count));
     setAnswers({});
     setSubmitted(false);
+    setImmediateReveal(immediate);
     setStarted(true);
   }
 
@@ -203,7 +214,8 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
         {activeQuestions.map((q, qi) => {
           const chosen = answers[q.id];
           const isAnswered = chosen !== undefined;
-          const isCorrect = submitted && chosen === Number(q.correct);
+          const reveal = submitted || (immediateReveal && isAnswered);
+          const isCorrect = reveal && chosen === Number(q.correct);
           const answeredCorrectly = isAnswered && chosen === Number(q.correct);
           const isShaking = shakingId === q.id;
 
@@ -229,8 +241,8 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
               <div className="flex flex-col gap-2">
                 {q.options.map((opt, oi) => {
                   const isChosen = chosen === oi;
-                  const isRight = submitted && oi === Number(q.correct);
-                  const isWrong = submitted && isChosen && !isRight;
+                  const isRight = reveal && oi === Number(q.correct);
+                  const isWrong = reveal && isChosen && !isRight;
 
                   let bg = '#1F2937';
                   let border = '#30363D';
@@ -244,7 +256,7 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
                   return (
                     <button
                       key={oi}
-                      disabled={submitted}
+                      disabled={submitted || (immediateReveal && isAnswered)}
                       onClick={() => handleAnswer(q.id, oi, Number(q.correct))}
                       className={`flex items-center gap-3 w-full text-left px-3.5 py-3 border text-sm cursor-pointer disabled:cursor-default transition-all duration-150${isRight ? ' anim-correct' : ''}`}
                       style={{ background: bg, borderColor: border, color: textCol, borderRadius: '8px', minHeight: '44px' }}
@@ -263,7 +275,7 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
                 })}
               </div>
 
-              {isAnswered && q.explanation && (
+              {reveal && q.explanation && (
                 <div
                   className="mt-3 px-3.5 py-3 rounded-lg text-xs leading-relaxed anim-fadein"
                   style={{
