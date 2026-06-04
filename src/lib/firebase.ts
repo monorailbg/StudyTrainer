@@ -23,6 +23,16 @@ if (isFirebaseConfigured) {
   _app     = initializeApp(cfg as Required<typeof cfg>);
   _db      = getFirestore(_app);
   _storage = getStorage(_app);
+  // eslint-disable-next-line no-console
+  console.info('%c[StudyTrainer] Cloud mode ON — uploads are shared via Firebase.', 'color:#2EA043;font-weight:600');
+} else {
+  const missing = Object.entries(cfg).filter(([, v]) => !v).map(([k]) => k);
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[StudyTrainer] Cloud mode OFF — running local-only (IndexedDB). ' +
+    'Uploads will NOT be shared. Missing/empty Firebase env vars at build time: ' +
+    missing.join(', ') + '. Set them in .env and rebuild.'
+  );
 }
 
 export const firebaseDb      = _db;

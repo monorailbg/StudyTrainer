@@ -3,6 +3,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
 import { ApiKeyBanner } from './components/ApiKeyBanner';
+import { CloudStatusBadge } from './components/CloudStatusBadge';
 import Home from './pages/Home';
 import Flashcards from './pages/Flashcards';
 import Notes from './pages/Notes';
@@ -35,6 +36,7 @@ export default function App() {
           <Navbar />
           <ApiKeyBanner />
           <AnimatedRoutes />
+          <CloudStatusBadge />
         </BrowserRouter>
       </ToastProvider>
     </LanguageProvider>
