@@ -1,244 +1,175 @@
-import { useState, useMemo } from 'react';
-import { useStore } from '../store/useStore';
-import flashcardsData from '../data/flashcards.json';
-import type { Flashcard } from '../types';
+import { useState, useEffect } from 'react';
+import { getAllFlashcardSets, type StoredFlashcardSet } from '../lib/db';
+import { useResolvedSubjects } from '../store/useSubjects';
+import { FlashcardViewer } from '../components/FlashcardViewer';
+import type { SubjectDef } from '../data/subjects';
 
-const cards = flashcardsData as Flashcard[];
-const allTopics = ['All', ...Array.from(new Set(cards.map((c) => c.topic)))];
-const allChapters = ['All', ...Array.from(new Set(cards.map((c) => c.chapter)))];
+// ── Subject sidebar item ──────────────────────────────────────────────────────
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+function SubjectBtn({ subject, count, active, onClick }: {
+  subject: SubjectDef | null; count: number; active: boolean; onClick: () => void;
+}) {
+  const color = subject?.color ?? '#3D7EFF';
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '9px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+        background: active ? color + '18' : 'transparent',
+        transition: 'background 0.15s ease',
+      }}
+    >
+      <span style={{
+        width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+        background: color,
+        boxShadow: active ? `0 0 6px ${color}` : 'none',
+      }} />
+      <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? '#E6EDF3' : '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {subject?.title ?? 'All subjects'}
+      </span>
+      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : '#484F58' }}>
+        {count}
+      </span>
+    </button>
+  );
 }
 
+// ── Set card ─────────────────────────────────────────────────────────────────
+
+function SetCard({ set, color, onClick }: { set: StoredFlashcardSet; color: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: '#161B22', border: '1px solid #21262D', borderRadius: '16px',
+        padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
+        transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '40'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+    >
+      <div style={{
+        width: '36px', height: '36px', borderRadius: '10px', marginBottom: '12px',
+        background: color + '18', color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="1" y="4" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/><rect x="4" y="2" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>
+      </div>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {set.name}
+      </div>
+      <div style={{ fontSize: '11px', color: '#8B949E' }}>
+        {set.cards.length} cards · {new Date(set.createdAt).toLocaleDateString()}
+      </div>
+    </button>
+  );
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+function Empty() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: '#8B949E', textAlign: 'center', gap: '12px' }}>
+      <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><rect x="4" y="14" width="30" height="22" rx="5" stroke="#30363D" strokeWidth="2"/><rect x="14" y="8" width="30" height="22" rx="5" stroke="#484F58" strokeWidth="2" fill="none"/></svg>
+      <div>
+        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>No flashcard sets yet</div>
+        <div style={{ fontSize: '13px' }}>Upload files to a subject and generate flashcards from the subject page.</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function Flashcards() {
-  const { flashcardsKnown, flashcardsStudied, markFlashcardKnown, markFlashcardReview, markFlashcardStudied } = useStore();
-  const [topic, setTopic] = useState('All');
-  const [chapter, setChapter] = useState('All');
-  const [showKnown, setShowKnown] = useState(true);
-  const [shuffled, setShuffled] = useState(false);
-  const [index, setIndex] = useState(0);
-  const [flipped, setFlipped] = useState(false);
+  const { allSubjects } = useResolvedSubjects();
+  const [sets, setSets] = useState<StoredFlashcardSet[]>([]);
+  const [filterId, setFilterId] = useState<string | null>(null);
+  const [activeSet, setActiveSet] = useState<StoredFlashcardSet | null>(null);
 
-  const filtered = useMemo(() => {
-    let result = cards;
-    if (topic !== 'All') result = result.filter((c) => c.topic === topic);
-    if (chapter !== 'All') result = result.filter((c) => c.chapter === chapter);
-    if (!showKnown) result = result.filter((c) => !flashcardsKnown.includes(c.id));
-    return shuffled ? shuffle(result) : result;
-  }, [topic, chapter, showKnown, shuffled, flashcardsKnown]);
+  useEffect(() => {
+    getAllFlashcardSets().then(data =>
+      setSets(data.sort((a, b) => b.createdAt - a.createdAt))
+    );
+  }, []);
 
-  const card = filtered[index] ?? null;
-  const isKnown = card ? flashcardsKnown.includes(card.id) : false;
+  const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
+  const subjectsWithSets = allSubjects.filter(s => sets.some(x => x.subjectId === s.id));
+  const visibleSets = filterId ? sets.filter(s => s.subjectId === filterId) : sets;
 
-  const goTo = (i: number) => {
-    setIndex(Math.max(0, Math.min(i, filtered.length - 1)));
-    setFlipped(false);
-    if (card) markFlashcardStudied(card.id);
-  };
+  // When in All view, group by subject for readability
+  type Group = { subject: SubjectDef | undefined; sets: StoredFlashcardSet[] };
+  const groups: Group[] = filterId
+    ? [{ subject: subjectMap.get(filterId), sets: visibleSets }]
+    : subjectsWithSets.map(s => ({ subject: s, sets: sets.filter(x => x.subjectId === s.id) }));
 
-  const handleShuffle = () => {
-    setShuffled((s) => !s);
-    setIndex(0);
-    setFlipped(false);
-  };
-
-  const progress = filtered.length > 0 ? ((index + 1) / filtered.length) * 100 : 0;
-  const knownCount = filtered.filter((c) => flashcardsKnown.includes(c.id)).length;
+  const activeSubject = activeSet ? subjectMap.get(activeSet.subjectId) : undefined;
+  const activeColor = activeSubject?.color ?? '#3D7EFF';
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="text-md-on-surface-variant text-[10px] tracking-[0.2em] uppercase mb-1.5 font-medium">
-          Study Mode
-        </div>
-        <h1 className="font-display text-md-on-surface m-0" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.5rem)' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
+
+      {/* Sidebar */}
+      <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
+        <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
           Flashcards
-        </h1>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-md-surface-container rounded-3xl p-5 border border-md-outline-variant flex flex-wrap gap-4 items-center mb-8">
-        <div className="flex items-center gap-2">
-          <label className="text-md-on-surface-variant text-xs tracking-widest uppercase">Topic</label>
-          <select
-            value={topic}
-            onChange={(e) => { setTopic(e.target.value); setIndex(0); setFlipped(false); }}
-            className="md-select !w-auto !px-3 !py-1.5 !text-sm !rounded-xl"
-          >
-            {allTopics.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
         </div>
+        <SubjectBtn subject={null} count={sets.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveSet(null); }} />
+        {subjectsWithSets.map(s => (
+          <SubjectBtn key={s.id} subject={s} count={sets.filter(x => x.subjectId === s.id).length} active={filterId === s.id} onClick={() => { setFilterId(s.id); setActiveSet(null); }} />
+        ))}
+      </aside>
 
-        <div className="flex items-center gap-2">
-          <label className="text-md-on-surface-variant text-xs tracking-widest uppercase">Chapter</label>
-          <select
-            value={chapter}
-            onChange={(e) => { setChapter(e.target.value); setIndex(0); setFlipped(false); }}
-            className="md-select !w-auto !px-3 !py-1.5 !text-sm !rounded-xl"
-          >
-            {allChapters.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
+      {/* Mobile subject strip */}
+      <div className="md:hidden" style={{ display: 'none' }} />
 
-        <label className="flex items-center gap-2 cursor-pointer text-md-on-surface-variant text-sm">
-          <input
-            type="checkbox"
-            checked={!showKnown}
-            onChange={() => { setShowKnown((v) => !v); setIndex(0); setFlipped(false); }}
-            style={{ accentColor: '#3D7EFF' }}
-          />
-          Hide known cards
-        </label>
+      {/* Main */}
+      <main style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
 
-        <button
-          onClick={handleShuffle}
-          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 cursor-pointer ${
-            shuffled
-              ? 'bg-md-primary-container text-md-on-primary-container border-md-primary/30'
-              : 'bg-transparent text-md-on-surface-variant border-md-outline-variant hover:bg-md-surface-container-high'
-          }`}
-        >
-          {shuffled ? '✓ Shuffled' : 'Shuffle'}
-        </button>
-
-        <div className="ml-auto text-md-on-surface-variant text-sm">
-          <span className="text-md-primary font-semibold">{knownCount}</span> / {filtered.length} known
-        </div>
-      </div>
-
-      {card ? (
-        <>
-          {/* Progress bar */}
-          <div className="h-0.5 bg-md-outline-variant rounded-full mb-5 overflow-hidden">
-            <div
-              className="h-full bg-md-primary rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-
-          <div className="text-md-on-surface-variant text-xs text-center mb-5">
-            Card {index + 1} of {filtered.length} &nbsp;·&nbsp;
-            <span className="text-md-primary">{card.topic}</span> &nbsp;·&nbsp; {card.chapter}
-          </div>
-
-          {/* Flip card */}
-          <div
-            className="flip-card cursor-pointer mb-6"
-            style={{ height: '340px' }}
-            onClick={() => { setFlipped((f) => !f); markFlashcardStudied(card.id); }}
-          >
-            <div className={`flip-card-inner ${flipped ? 'flipped' : ''}`}>
-              {/* Front */}
-              <div
-                className="flip-card-front rounded-3xl flex flex-col items-center justify-center p-10 text-center relative"
-                style={{
-                  background: '#161B22',
-                  border: `1px solid ${isKnown ? 'rgba(46,160,67,0.4)' : '#30363D'}`,
-                  boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',
-                }}
+        {activeSet ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <button
+                onClick={() => setActiveSet(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#8B949E', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <div className="text-[10px] tracking-[0.12em] uppercase mb-5 font-medium" style={{ color: '#8B949E' }}>
-                  Term / Concept
-                </div>
-                <div className="text-md-on-surface leading-snug" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)' }}>
-                  {card.front}
-                </div>
-                <div className="text-xs mt-8 flex items-center gap-1.5" style={{ color: '#484F58' }}>
-                  <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>Space</kbd>
-                  to reveal
-                </div>
-                {isKnown && (
-                  <div className="absolute top-4 right-4 text-[10px] px-2.5 py-1 rounded font-semibold" style={{ background: 'rgba(46,160,67,0.12)', color: '#56D364', border: '1px solid rgba(46,160,67,0.25)' }}>
-                    ✓ Known
+                ← All flashcards
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {activeSubject && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />}
+                <span style={{ fontSize: '11px', color: '#8B949E', fontWeight: 600 }}>
+                  {activeSubject?.title ?? ''} · {activeSet.name} · {activeSet.cards.length} cards
+                </span>
+              </div>
+            </div>
+            <FlashcardViewer key={activeSet.id} cards={activeSet.cards} color={activeColor} />
+          </div>
+        ) : sets.length === 0 ? (
+          <Empty />
+        ) : (
+          <div>
+            {groups.map(({ subject, sets: groupSets }) => {
+              if (groupSets.length === 0) return null;
+              const color = subject?.color ?? '#3D7EFF';
+              return (
+                <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? 'Unknown subject'}</span>
+                    <span style={{ fontSize: '10px', color: '#484F58' }}>{groupSets.length} set{groupSets.length !== 1 ? 's' : ''}</span>
+                    <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
-                )}
-              </div>
-
-              {/* Back */}
-              <div
-                className="flip-card-back rounded-3xl flex flex-col items-center justify-center p-10 text-center"
-                style={{ background: 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)', border: '1px solid rgba(61,126,255,0.35)', boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.4)' }}
-              >
-                <div className="text-md-primary text-[10px] tracking-[0.2em] uppercase mb-4">
-                  Definition
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                    {groupSets.map(set => (
+                      <SetCard key={set.id} set={set} color={color} onClick={() => setActiveSet(set)} />
+                    ))}
+                  </div>
                 </div>
-                <div className="text-md-on-surface text-[15px] leading-relaxed max-w-xl">
-                  {card.back}
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
-
-          {/* Controls */}
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex gap-2">
-              <button
-                onClick={() => goTo(index - 1)}
-                disabled={index === 0}
-                className="h-10 px-5 rounded-full text-sm font-medium border transition-all duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-default bg-md-surface-container text-md-on-surface border-md-outline-variant hover:bg-md-surface-container-high"
-              >
-                ← Previous
-              </button>
-              <button
-                onClick={() => goTo(index + 1)}
-                disabled={index >= filtered.length - 1}
-                className="h-10 px-5 rounded-full text-sm font-medium border transition-all duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-default bg-md-surface-container text-md-on-surface border-md-outline-variant hover:bg-md-surface-container-high"
-              >
-                Next →
-              </button>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => markFlashcardReview(card.id)}
-                className="h-10 px-5 rounded-full text-sm font-medium border transition-all duration-200 cursor-pointer border-red-500/30 text-red-400 hover:bg-red-500/10"
-              >
-                Review Again
-              </button>
-              <button
-                onClick={() => markFlashcardKnown(card.id)}
-                className={`h-10 px-5 rounded-full text-sm font-medium border transition-all duration-200 cursor-pointer ${
-                  isKnown
-                    ? 'bg-green-900/20 text-green-400 border-green-400/50'
-                    : 'border-green-500/30 text-green-400 hover:bg-green-500/10'
-                }`}
-                style={isKnown ? { boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 0 0 1px rgba(74,222,128,0.12), 0 2px 10px rgba(74,222,128,0.2)' } : {}}
-              >
-                {isKnown ? '✓ Known' : 'Mark as Known'}
-              </button>
-            </div>
-          </div>
-
-          {/* Progress summary */}
-          <div className="grid grid-cols-4 gap-4 bg-md-surface-container rounded-3xl p-5 border border-md-outline-variant mt-8">
-            {[
-              { label: 'Total in filter', value: filtered.length, color: 'text-md-on-surface-variant' },
-              { label: 'Studied', value: filtered.filter((c) => flashcardsStudied.includes(c.id)).length, color: 'text-blue-400' },
-              { label: 'Known', value: knownCount, color: 'text-green-400' },
-              { label: 'Remaining', value: filtered.length - knownCount, color: 'text-md-primary' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="text-center">
-                <div className={`font-display text-2xl ${color}`}>{value}</div>
-                <div className="text-md-on-surface-variant text-[10px] uppercase tracking-wide mt-1">{label}</div>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="bg-md-surface-container rounded-3xl p-16 border border-md-outline-variant text-center">
-          <div className="font-display text-md-on-surface text-xl mb-2">No cards match your filters</div>
-          <div className="text-md-on-surface-variant text-sm">
-            Try adjusting the topic, chapter, or showing known cards.
-          </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 }

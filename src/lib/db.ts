@@ -229,3 +229,33 @@ export async function deleteFlashcardSet(setId: string): Promise<void> {
     tx.onerror    = () => reject(tx.error);
   });
 }
+
+export async function getAllFlashcardSets(): Promise<StoredFlashcardSet[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('flashcardSets', 'readonly');
+    const req = tx.objectStore('flashcardSets').getAll();
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function getAllNotes(): Promise<StoredNote[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('notes', 'readonly');
+    const req = tx.objectStore('notes').getAll();
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function getAllQuizzes(): Promise<StoredQuiz[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('quizzes', 'readonly');
+    const req = tx.objectStore('quizzes').getAll();
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
