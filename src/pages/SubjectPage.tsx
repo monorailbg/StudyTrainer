@@ -345,6 +345,7 @@ export default function SubjectPage() {
     if (isFirebaseConfigured && isSupabaseConfigured) {
       let uploaded = 0;
       let failed = 0;
+      let lastError = '';
       for (const file of mapped) {
         try {
           const storageUrl = await uploadFileToStorage(id!, file.id, file.rawFile!);
@@ -353,11 +354,12 @@ export default function SubjectPage() {
           uploaded++;
         } catch (err) {
           console.error('Cloud upload failed:', err);
+          lastError = err instanceof Error ? err.message : String(err);
           failed++;
         }
       }
       if (failed > 0) {
-        toast('error', `${failed} file${failed > 1 ? 's' : ''} not shared`, 'Upload failed — check your Supabase bucket policy. Saved locally only.');
+        toast('error', `${failed} file${failed > 1 ? 's' : ''} not shared`, lastError || 'Cloud upload failed. Saved locally only.');
       }
       if (uploaded > 0) {
         toast('success', `${uploaded} file${uploaded > 1 ? 's' : ''} added`, 'Uploaded to the shared library.');
