@@ -48,7 +48,8 @@ const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'i
 
 // ── Mini icons ─────────────────────────────────────────────────────────────────
 
-const IconDash  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>);
+const IconDash   = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>);
+const IconPencil = () => (<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M11 2.5l2.5 2.5-7.5 7.5H3.5v-2.5L11 2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M9.5 4l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>);
 const IconFile  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M4 2h7l4 4v10H4V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M11 2v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>);
 const IconCards = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="1" y="4" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/><rect x="4" y="2" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>);
 const IconNote  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M3 2h9l4 4v10H3V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M12 2v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M5 9h8M5 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>);
@@ -266,6 +267,33 @@ export default function SubjectPage() {
     setSavedFlashcardSets(prev => prev.filter(s => s.id !== setId));
     if (activeSetId === setId) setActiveSetId(null);
     deleteFlashcardSet(setId).catch(() => {});
+  };
+
+  // ── Rename ─────────────────────────────────────────────────────────────────
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
+
+  const startRename = (id: string, currentName: string) => {
+    setRenaming({ id, value: currentName });
+  };
+
+  const commitRename = (type: 'quiz' | 'note' | 'set') => {
+    if (!renaming) return;
+    const name = renaming.value.trim();
+    if (!name) { setRenaming(null); return; }
+    if (type === 'quiz') {
+      setSavedQuizzes(prev => prev.map(q => q.id === renaming.id ? { ...q, name } : q));
+      const quiz = savedQuizzes.find(q => q.id === renaming.id);
+      if (quiz) saveQuiz({ ...quiz, name }).catch(() => {});
+    } else if (type === 'note') {
+      setSavedNotes(prev => prev.map(n => n.id === renaming.id ? { ...n, name } : n));
+      const note = savedNotes.find(n => n.id === renaming.id);
+      if (note) saveNote({ ...note, name }).catch(() => {});
+    } else {
+      setSavedFlashcardSets(prev => prev.map(s => s.id === renaming.id ? { ...s, name } : s));
+      const set = savedFlashcardSets.find(s => s.id === renaming.id);
+      if (set) saveFlashcardSet({ ...set, name }).catch(() => {});
+    }
+    setRenaming(null);
   };
 
   // ── Generation ─────────────────────────────────────────────────────────────
@@ -1065,42 +1093,77 @@ export default function SubjectPage() {
                   Flashcard Sets ({savedFlashcardSets.length})
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedFlashcardSets.map(set => (
-                    <div
-                      key={set.id}
-                      onClick={() => setActiveSetId(set.id)}
-                      className="card-panel card-panel-lift p-4 cursor-pointer flex items-center gap-3"
-                    >
-                      <div style={{
-                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
-                        background: subject.color + '18', color: subject.color,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <IconCards />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {set.name}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {set.cards.length} cards · {new Date(set.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <button
-                        onClick={e => { e.stopPropagation(); removeSet(set.id); }}
-                        aria-label="Delete flashcard set"
-                        style={{
-                          width: '30px', height: '30px', borderRadius: '999px',
-                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
-                          background: 'transparent', color: '#f87171',
-                          border: '1px solid rgba(248,113,113,0.25)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
+                  {savedFlashcardSets.map(set => {
+                    const isRenaming = renaming?.id === set.id;
+                    return (
+                      <div
+                        key={set.id}
+                        onClick={() => { if (!isRenaming) setActiveSetId(set.id); }}
+                        className="card-panel card-panel-lift p-4 flex items-center gap-3"
+                        style={{ cursor: isRenaming ? 'default' : 'pointer' }}
                       >
-                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </button>
-                    </div>
-                  ))}
+                        <div style={{
+                          width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                          background: subject.color + '18', color: subject.color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <IconCards />
+                        </div>
+                        <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
+                          {isRenaming ? (
+                            <input
+                              autoFocus
+                              value={renaming.value}
+                              onChange={e => setRenaming({ ...renaming, value: e.target.value })}
+                              onBlur={() => commitRename('set')}
+                              onKeyDown={e => { if (e.key === 'Enter') commitRename('set'); if (e.key === 'Escape') setRenaming(null); }}
+                              style={{
+                                width: '100%', background: '#0D1117',
+                                border: `1px solid ${subject.color}55`, borderRadius: '6px',
+                                color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                                padding: '2px 6px', outline: 'none',
+                              }}
+                            />
+                          ) : (
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {set.name}
+                            </div>
+                          )}
+                          <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                            {set.cards.length} cards · {new Date(set.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); startRename(set.id, set.name); }}
+                          aria-label="Rename flashcard set"
+                          style={{
+                            width: '30px', height: '30px', borderRadius: '999px',
+                            cursor: 'pointer', flexShrink: 0,
+                            background: isRenaming ? subject.color + '20' : 'transparent',
+                            color: isRenaming ? subject.color : '#484F58',
+                            border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <IconPencil />
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); removeSet(set.id); }}
+                          aria-label="Delete flashcard set"
+                          style={{
+                            width: '30px', height: '30px', borderRadius: '999px',
+                            fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                            background: 'transparent', color: '#f87171',
+                            border: '1px solid rgba(248,113,113,0.25)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -1140,42 +1203,77 @@ export default function SubjectPage() {
                   Notes ({savedNotes.length})
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedNotes.map(n => (
-                    <div
-                      key={n.id}
-                      onClick={() => setActiveNoteId(n.id)}
-                      className="card-panel card-panel-lift p-4 cursor-pointer flex items-center gap-3"
-                    >
-                      <div style={{
-                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
-                        background: subject.color + '18', color: subject.color,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <IconNote />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {n.name}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {n.note.sections.length} sections · {new Date(n.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <button
-                        onClick={e => { e.stopPropagation(); removeNote(n.id); }}
-                        aria-label="Delete note"
-                        style={{
-                          width: '30px', height: '30px', borderRadius: '999px',
-                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
-                          background: 'transparent', color: '#f87171',
-                          border: '1px solid rgba(248,113,113,0.25)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
+                  {savedNotes.map(n => {
+                    const isRenaming = renaming?.id === n.id;
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => { if (!isRenaming) setActiveNoteId(n.id); }}
+                        className="card-panel card-panel-lift p-4 flex items-center gap-3"
+                        style={{ cursor: isRenaming ? 'default' : 'pointer' }}
                       >
-                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </button>
-                    </div>
-                  ))}
+                        <div style={{
+                          width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                          background: subject.color + '18', color: subject.color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <IconNote />
+                        </div>
+                        <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
+                          {isRenaming ? (
+                            <input
+                              autoFocus
+                              value={renaming.value}
+                              onChange={e => setRenaming({ ...renaming, value: e.target.value })}
+                              onBlur={() => commitRename('note')}
+                              onKeyDown={e => { if (e.key === 'Enter') commitRename('note'); if (e.key === 'Escape') setRenaming(null); }}
+                              style={{
+                                width: '100%', background: '#0D1117',
+                                border: `1px solid ${subject.color}55`, borderRadius: '6px',
+                                color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                                padding: '2px 6px', outline: 'none',
+                              }}
+                            />
+                          ) : (
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {n.name}
+                            </div>
+                          )}
+                          <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                            {n.note.sections.length} sections · {new Date(n.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); startRename(n.id, n.name); }}
+                          aria-label="Rename note"
+                          style={{
+                            width: '30px', height: '30px', borderRadius: '999px',
+                            cursor: 'pointer', flexShrink: 0,
+                            background: isRenaming ? subject.color + '20' : 'transparent',
+                            color: isRenaming ? subject.color : '#484F58',
+                            border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <IconPencil />
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); removeNote(n.id); }}
+                          aria-label="Delete note"
+                          style={{
+                            width: '30px', height: '30px', borderRadius: '999px',
+                            fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                            background: 'transparent', color: '#f87171',
+                            border: '1px solid rgba(248,113,113,0.25)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -1215,42 +1313,77 @@ export default function SubjectPage() {
                   Previous Quizzes ({savedQuizzes.length})
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {savedQuizzes.map(quiz => (
-                    <div
-                      key={quiz.id}
-                      onClick={() => setActiveQuizId(quiz.id)}
-                      className="card-panel card-panel-lift p-4 cursor-pointer flex items-center gap-3"
-                    >
-                      <div style={{
-                        width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
-                        background: subject.color + '18', color: subject.color,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <IconQuiz />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {quiz.name}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {quiz.questions.length} questions · {new Date(quiz.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <button
-                        onClick={e => { e.stopPropagation(); removeQuiz(quiz.id); }}
-                        aria-label="Delete quiz"
-                        style={{
-                          width: '30px', height: '30px', borderRadius: '999px',
-                          fontSize: '11px', cursor: 'pointer', flexShrink: 0,
-                          background: 'transparent', color: '#f87171',
-                          border: '1px solid rgba(248,113,113,0.25)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
+                  {savedQuizzes.map(quiz => {
+                    const isRenaming = renaming?.id === quiz.id;
+                    return (
+                      <div
+                        key={quiz.id}
+                        onClick={() => { if (!isRenaming) setActiveQuizId(quiz.id); }}
+                        className="card-panel card-panel-lift p-4 flex items-center gap-3"
+                        style={{ cursor: isRenaming ? 'default' : 'pointer' }}
                       >
-                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </button>
-                    </div>
-                  ))}
+                        <div style={{
+                          width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                          background: subject.color + '18', color: subject.color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <IconQuiz />
+                        </div>
+                        <div className="flex-1 min-w-0" onClick={e => isRenaming && e.stopPropagation()}>
+                          {isRenaming ? (
+                            <input
+                              autoFocus
+                              value={renaming.value}
+                              onChange={e => setRenaming({ ...renaming, value: e.target.value })}
+                              onBlur={() => commitRename('quiz')}
+                              onKeyDown={e => { if (e.key === 'Enter') commitRename('quiz'); if (e.key === 'Escape') setRenaming(null); }}
+                              style={{
+                                width: '100%', background: '#0D1117',
+                                border: `1px solid ${subject.color}55`, borderRadius: '6px',
+                                color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                                padding: '2px 6px', outline: 'none',
+                              }}
+                            />
+                          ) : (
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {quiz.name}
+                            </div>
+                          )}
+                          <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                            {quiz.questions.length} questions · {new Date(quiz.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); startRename(quiz.id, quiz.name); }}
+                          aria-label="Rename quiz"
+                          style={{
+                            width: '30px', height: '30px', borderRadius: '999px',
+                            cursor: 'pointer', flexShrink: 0,
+                            background: isRenaming ? subject.color + '20' : 'transparent',
+                            color: isRenaming ? subject.color : '#484F58',
+                            border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <IconPencil />
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); removeQuiz(quiz.id); }}
+                          aria-label="Delete quiz"
+                          style={{
+                            width: '30px', height: '30px', borderRadius: '999px',
+                            fontSize: '11px', cursor: 'pointer', flexShrink: 0,
+                            background: 'transparent', color: '#f87171',
+                            border: '1px solid rgba(248,113,113,0.25)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
