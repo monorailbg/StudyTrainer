@@ -133,7 +133,7 @@ function SubjectCard({ subject, isCore, index = 0 }: { subject: SubjectDef; isCo
           <div className="flex items-start justify-between">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5"
               style={{ background: subject.color + '20', border: `1px solid ${subject.color}30` }}>
-              <SubjectIcon id={subject.id} color={subject.color} />
+              <SubjectIcon id={subject.id} icon={subject.icon} color={subject.color} />
             </div>
             <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: subject.color, boxShadow: `0 0 6px ${subject.color}` }} />
           </div>
@@ -385,7 +385,7 @@ export default function Home() {
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
                     >
                       <span className="[&>svg]:w-[18px] [&>svg]:h-[18px]" style={{ width: '36px', height: '36px', borderRadius: '11px', background: s.color + '1F', border: `1px solid ${s.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <SubjectIcon id={s.id} color={s.color} />
+                        <SubjectIcon id={s.id} icon={s.icon} color={s.color} />
                       </span>
                       <div className="min-w-0">
                         <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 600, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>

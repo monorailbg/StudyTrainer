@@ -197,7 +197,7 @@ function SubjectNode({ data }: NodeProps) {
         background: s.color + '1F', border: `1px solid ${s.color}44`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <SubjectIcon id={s.id} color={s.color} />
+        <SubjectIcon id={s.id} icon={s.icon} color={s.color} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 700, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

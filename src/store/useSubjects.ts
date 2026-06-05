@@ -37,14 +37,19 @@ export interface NewSubjectInput {
   isCore: boolean;
 }
 
+// Fields a user can override on any subject (built-in or custom).
+export type SubjectEdit = Partial<Pick<SubjectDef, 'title' | 'description' | 'color' | 'icon'>>;
+
 interface SubjectsStore {
   customSubjects: SubjectDef[];
   deletedIds: string[];
   coreOverrides: Record<string, boolean>;
+  edits: Record<string, SubjectEdit>;
 
   addSubject: (input: NewSubjectInput) => void;
   deleteSubject: (id: string) => void;
   setCore: (id: string, core: boolean) => void;
+  editSubject: (id: string, patch: SubjectEdit) => void;
   restoreDefaults: () => void;
 }
 
@@ -54,6 +59,7 @@ export const useSubjects = create<SubjectsStore>()(
       customSubjects: [],
       deletedIds: [],
       coreOverrides: {},
+      edits: {},
 
       addSubject: (input) =>
         set((s) => {
@@ -85,8 +91,19 @@ export const useSubjects = create<SubjectsStore>()(
       setCore: (id, core) =>
         set((s) => ({ coreOverrides: { ...s.coreOverrides, [id]: core } })),
 
+      editSubject: (id, patch) =>
+        set((s) => {
+          // Drop empty-string / undefined fields so an edit never blanks a value.
+          const clean: SubjectEdit = {};
+          if (patch.title?.trim())       clean.title = patch.title.trim();
+          if (patch.description !== undefined) clean.description = patch.description.trim();
+          if (patch.color)               clean.color = patch.color;
+          if (patch.icon)               clean.icon = patch.icon;
+          return { edits: { ...s.edits, [id]: { ...s.edits[id], ...clean } } };
+        }),
+
       restoreDefaults: () =>
-        set({ customSubjects: [], deletedIds: [], coreOverrides: {} }),
+        set({ customSubjects: [], deletedIds: [], coreOverrides: {}, edits: {} }),
     }),
     { name: 'study-trainer-subjects' }
   )
@@ -95,11 +112,13 @@ export const useSubjects = create<SubjectsStore>()(
 // Resolve the persisted overrides against the built-in defaults into the
 // effective core / extended / full lists that the UI renders.
 export function useResolvedSubjects() {
-  const { customSubjects, deletedIds, coreOverrides } = useSubjects();
+  const { customSubjects, deletedIds, coreOverrides, edits } = useSubjects();
 
   const isCore = (s: SubjectDef) => coreOverrides[s.id] ?? DEFAULT_CORE_IDS.has(s.id);
 
-  const allSubjects = [...ALL_SUBJECTS, ...customSubjects].filter(s => !deletedIds.includes(s.id));
+  const allSubjects = [...ALL_SUBJECTS, ...customSubjects]
+    .filter(s => !deletedIds.includes(s.id))
+    .map(s => (edits[s.id] ? { ...s, ...edits[s.id] } : s));
   const coreSubjects = allSubjects.filter(isCore);
   const extendedSubjects = allSubjects.filter(s => !isCore(s));
 

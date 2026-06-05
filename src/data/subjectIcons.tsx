@@ -1,5 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 // Shared subject glyphs. Each subject id maps to a small line icon used on the
-// dashboard cards, the globe legend and the mind map nodes.
+// dashboard cards, the globe legend and the mind map nodes. A subject can also
+// pin a specific glyph via its `icon` key, which the editor lets users change.
 
 export const IconGlobe  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5"/><ellipse cx="12" cy="12" rx="4" ry="9" stroke={color} strokeWidth="1.5"/><path d="M3 12h18M3 8h18M3 16h18" stroke={color} strokeWidth="1.2" opacity=".5"/></svg>);
 export const IconChart  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><rect x="3" y="12" width="4" height="9" rx="1" fill={color} opacity=".7"/><rect x="10" y="7" width="4" height="14" rx="1" fill={color}/><rect x="17" y="4" width="4" height="17" rx="1" fill={color} opacity=".7"/></svg>);
@@ -29,8 +31,37 @@ const SubjectIconMap: Record<string, React.FC<{ color: string }>> = {
   management:            IconOrg,
 };
 
-// Resolve a subject id to its icon, falling back to the globe glyph.
-export function SubjectIcon({ id, color }: { id: string; color: string }) {
-  const Icon = SubjectIconMap[id] ?? IconGlobe;
-  return <Icon color={color} />;
+// Named glyph registry — the set a user can pick from in the subject editor.
+const ICON_BY_KEY: Record<string, React.FC<{ color: string }>> = {
+  globe: IconGlobe, chart: IconChart, trend: IconTrend, scale: IconScale,
+  kana: IconKana, hanzi: IconHanzi, search: IconSearch, brain: IconBrain,
+  build: IconBuild, pencil: IconPencil, calc: IconCalc, org: IconOrg,
+};
+
+export const ICON_OPTIONS: { key: string; label: string }[] = [
+  { key: 'globe', label: 'Globe' },
+  { key: 'chart', label: 'Bars' },
+  { key: 'trend', label: 'Trend' },
+  { key: 'scale', label: 'Scale' },
+  { key: 'kana',  label: 'Kana' },
+  { key: 'hanzi', label: 'Hanzi' },
+  { key: 'search', label: 'Research' },
+  { key: 'brain', label: 'Brain' },
+  { key: 'build', label: 'Building' },
+  { key: 'pencil', label: 'Pencil' },
+  { key: 'calc', label: 'Calculator' },
+  { key: 'org', label: 'Org chart' },
+];
+
+// Render a glyph by its named key (used by the editor's icon picker).
+export function NamedIcon({ iconKey, color }: { iconKey: string; color: string }) {
+  const Comp = ICON_BY_KEY[iconKey] ?? IconGlobe;
+  return <Comp color={color} />;
+}
+
+// Resolve a subject's icon: an explicit `icon` key wins, then the id default,
+// then the globe glyph.
+export function SubjectIcon({ id, icon, color }: { id: string; icon?: string; color: string }) {
+  const Comp = (icon ? ICON_BY_KEY[icon] : undefined) ?? SubjectIconMap[id] ?? IconGlobe;
+  return <Comp color={color} />;
 }

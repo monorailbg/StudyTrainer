@@ -3,6 +3,7 @@ export interface SubjectDef {
   title: string;
   description: string;
   color: string;
+  icon?: string;          // named glyph key (see data/subjectIcons); falls back to id map
   levels?: string[];
   hasContent?: boolean;
   flashcardTopic?: string;
@@ -63,17 +64,15 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
   {
     id: 'japanese',
     title: 'Japanese',
-    description: 'Japanese language studies across three progressive levels.',
+    description: 'Japanese language studies: grammar, vocabulary and kanji.',
     color: '#f87171',
-    levels: ['Level 1', 'Level 2', 'Level 3'],
     lat: 35.68, lng: 139.65,   // Tokyo
   },
   {
     id: 'chinese',
     title: 'Chinese',
-    description: 'Mandarin Chinese language studies across three progressive levels.',
+    description: 'Mandarin Chinese language studies: grammar, vocabulary and hanzi.',
     color: '#fb923c',
-    levels: ['Level 1', 'Level 2', 'Level 3'],
     lat: 39.91, lng: 116.39,   // Beijing — ~2100 km from Tokyo
   },
   {
@@ -85,8 +84,8 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
   },
   {
     id: 'eq-pc',
-    title: 'EQ and PC',
-    description: 'Emotional Intelligence and Personal Competencies across three levels.',
+    title: 'English for Qualifications and Practical communication',
+    description: 'English for academic qualifications and practical, real-world communication.',
     color: '#a78bfa',
     levels: ['Level 1', 'Level 2', 'Level 3'],
     lat: -26.20, lng: 28.04,   // Johannesburg — Southern Africa
