@@ -865,6 +865,8 @@ export default function SubjectPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 72px)' }}>
+      {/* Dim toggle lives here — outside <main> so CSS filter on dim-mode never breaks position:fixed */}
+      {(view === 'flashcards' || view === 'notes' || view === 'quiz') && <DimModeToggle />}
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
@@ -1149,8 +1151,6 @@ export default function SubjectPage() {
 
         {/* Main content area */}
         <main ref={mainRef} className={`flex-1 overflow-y-auto p-4 md:p-8 study-dim-root${dim && (view === 'notes' || view === 'quiz') ? ' dim-mode' : ''}`} style={{ background: '#0D1117' }}>
-
-          {(view === 'flashcards' || view === 'notes' || view === 'quiz') && <DimModeToggle />}
 
           {/* Dashboard view */}
           {view === 'dashboard' && (
