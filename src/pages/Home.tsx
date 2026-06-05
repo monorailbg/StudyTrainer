@@ -174,7 +174,6 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
 
   const hasProgress = stats && (stats.notesTotal > 0 || stats.cardsTotal > 0);
   const due = stats?.cardsDue ?? 0;
-  const allDone = !!stats && stats.cardsTotal > 0 && due === 0;
   const barDelay = index * 60;
 
   return (
@@ -189,16 +188,6 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
           boxShadow: '0 4px 12px rgba(248,81,73,0.45)', whiteSpace: 'nowrap',
         }}>
           {due} due
-        </span>
-      )}
-      {due === 0 && allDone && (
-        <span style={{
-          position: 'absolute', top: '-7px', right: '-6px', zIndex: 3,
-          padding: '2px 8px', borderRadius: '999px',
-          background: 'rgba(46,160,67,0.16)', color: '#56D364', border: '1px solid rgba(46,160,67,0.4)',
-          fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap',
-        }}>
-          ✓ All done
         </span>
       )}
       <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}>
