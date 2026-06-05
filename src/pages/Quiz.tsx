@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { getAllQuizzes, type StoredQuiz } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudQuizzes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
+import { useDimMode } from '../store/useDimMode';
+import { useActivity } from '../store/useActivity';
+import { useStore } from '../store/useStore';
+import { DimModeToggle } from '../components/DimModeToggle';
 import { QuizViewer } from '../components/QuizViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
 import type { SubjectDef } from '../data/subjects';
@@ -91,6 +95,9 @@ export default function Quiz() {
   const [loading, setLoading] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<StoredQuiz | null>(null);
+  const dim = useDimMode(s => s.dim);
+  const record = useActivity(s => s.record);
+  const addQuizScore = useStore(s => s.addQuizScore);
 
   useEffect(() => {
     const p = isFirebaseConfigured
@@ -112,7 +119,9 @@ export default function Quiz() {
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
+    <>
+    <DimModeToggle />
+    <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
@@ -144,7 +153,16 @@ export default function Quiz() {
                 </span>
               </div>
             </div>
-            <QuizViewer key={activeQuiz.id} questions={activeQuiz.questions} color={activeColor} />
+            <QuizViewer
+              key={activeQuiz.id}
+              questions={activeQuiz.questions}
+              color={activeColor}
+              onComplete={(pct, score, total) => {
+                const name = activeSubject?.title ?? 'a subject';
+                addQuizScore(activeSubject?.id ?? activeQuiz.subjectId, score, total);
+                record({ type: 'quiz', subjectId: activeQuiz.subjectId, subjectName: name, detail: `Scored ${pct}% on ${name} quiz` });
+              }}
+            />
           </div>
         ) : loading ? (
           <SkeletonCardGrid />
@@ -175,5 +193,6 @@ export default function Quiz() {
         )}
       </main>
     </div>
+    </>
   );
 }

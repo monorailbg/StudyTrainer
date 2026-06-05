@@ -260,16 +260,28 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
 
 // ── NotesViewer ───────────────────────────────────────────────────────────────
 
-export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef }: {
+export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onRead }: {
   notes: GeneratedNote;
   color?: string;
   noteId?: string;
   scrollElRef?: React.RefObject<HTMLElement | null>;
+  onRead?: () => void;
 }) {
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [scrollPct, setScrollPct] = useState(0);
   const [showBackTop, setShowBackTop] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
+
+  // Fire `onRead` once when the reader scrolls past 80% (or when the note is
+  // short enough to fit without scrolling). Refs reset on remount per note.
+  const onReadRef = useRef(onRead);
+  useEffect(() => { onReadRef.current = onRead; }, [onRead]);
+  const readFiredRef = useRef(false);
+  const fireRead = useCallback(() => {
+    if (readFiredRef.current) return;
+    readFiredRef.current = true;
+    onReadRef.current?.();
+  }, []);
 
   // Understood state (persisted to localStorage when noteId is provided)
   const storageKey = noteId ? `notes-understood-${noteId}` : null;
@@ -284,7 +296,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef }: {
   const toggleUnderstood = useCallback((i: number) => {
     setUnderstood(prev => {
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      if (next.has(i)) next.delete(i); else next.add(i);
       if (storageKey) localStorage.setItem(storageKey, JSON.stringify([...next]));
       return next;
     });
@@ -293,7 +305,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef }: {
   const toggleCollapsed = useCallback((i: number) => {
     setCollapsed(prev => {
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      if (next.has(i)) next.delete(i); else next.add(i);
       return next;
     });
   }, []);
@@ -305,12 +317,18 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef }: {
     const handler = () => {
       const { scrollTop, scrollHeight, clientHeight } = el;
       const max = scrollHeight - clientHeight;
-      setScrollPct(max > 0 ? scrollTop / max : 0);
+      const pct = max > 0 ? scrollTop / max : 0;
+      setScrollPct(pct);
       setShowBackTop(scrollTop > 300);
+      if (max <= 0 || pct >= 0.8) fireRead();
     };
     el.addEventListener('scroll', handler, { passive: true });
-    return () => el.removeEventListener('scroll', handler);
-  }, [scrollElRef]);
+    // Short notes that don't scroll count as read once laid out.
+    const t = setTimeout(() => {
+      if ((el.scrollHeight - el.clientHeight) <= 0) fireRead();
+    }, 800);
+    return () => { el.removeEventListener('scroll', handler); clearTimeout(t); };
+  }, [scrollElRef, fireRead]);
 
   // IntersectionObserver: track which section is currently in view
   useEffect(() => {

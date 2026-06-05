@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { getAllFlashcardSets, type StoredFlashcardSet } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudFlashcardSets } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
+import { useDimMode } from '../store/useDimMode';
+import { useActivity } from '../store/useActivity';
+import { DimModeToggle } from '../components/DimModeToggle';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
 import type { SubjectDef } from '../data/subjects';
@@ -91,6 +94,8 @@ export default function Flashcards() {
   const [loading, setLoading] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeSet, setActiveSet] = useState<StoredFlashcardSet | null>(null);
+  const dim = useDimMode(s => s.dim);
+  const record = useActivity(s => s.record);
 
   useEffect(() => {
     const p = isFirebaseConfigured
@@ -113,7 +118,9 @@ export default function Flashcards() {
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
+    <>
+    <DimModeToggle />
+    <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
@@ -148,7 +155,16 @@ export default function Flashcards() {
                 </span>
               </div>
             </div>
-            <FlashcardViewer key={activeSet.id} cards={activeSet.cards} color={activeColor} />
+            <FlashcardViewer
+              key={activeSet.id}
+              cards={activeSet.cards}
+              color={activeColor}
+              subjectId={activeSet.subjectId}
+              onSessionEnd={(n) => {
+                const name = activeSubject?.title ?? 'a subject';
+                record({ type: 'flashcards', subjectId: activeSet.subjectId, subjectName: name, detail: `Reviewed ${n} card${n !== 1 ? 's' : ''} in ${name}` });
+              }}
+            />
           </div>
         ) : loading ? (
           <SkeletonCardGrid />
@@ -179,5 +195,6 @@ export default function Flashcards() {
         )}
       </main>
     </div>
+    </>
   );
 }

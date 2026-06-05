@@ -132,7 +132,11 @@ function SetupScreen({
 
 // ── Quiz viewer ────────────────────────────────────────────────────────────────
 
-export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuestion[]; color: string }) {
+export function QuizViewer({ questions, color, onComplete }: {
+  questions: GeneratedQuizQuestion[];
+  color: string;
+  onComplete?: (pct: number, score: number, total: number) => void;
+}) {
   const [started, setStarted] = useState(false);
   const [activeQuestions, setActiveQuestions] = useState<GeneratedQuizQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -158,6 +162,13 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
     setAnswers({});
     setSubmitted(false);
     setStarted(false);
+  }
+
+  function submit() {
+    const s = activeQuestions.filter(q => answers[q.id] === Number(q.correct)).length;
+    const p = activeQuestions.length > 0 ? Math.round((s / activeQuestions.length) * 100) : 0;
+    setSubmitted(true);
+    onComplete?.(p, s, activeQuestions.length);
   }
 
   function handleAnswer(questionId: string, optionIndex: number, correctIndex: number) {
@@ -314,7 +325,7 @@ export function QuizViewer({ questions, color }: { questions: GeneratedQuizQuest
       {!submitted && answered > 0 && (
         <div className="mt-5 flex items-center gap-4">
           <button
-            onClick={() => setSubmitted(true)}
+            onClick={submit}
             disabled={answered < activeQuestions.length}
             className="h-10 px-6 text-sm font-semibold border-0 cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-150"
             style={{

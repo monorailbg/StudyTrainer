@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { getAllNotes, type StoredNote } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudNotes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
+import { useDimMode } from '../store/useDimMode';
+import { useActivity } from '../store/useActivity';
+import { useStore } from '../store/useStore';
+import { DimModeToggle } from '../components/DimModeToggle';
 import { NotesViewer } from '../components/NotesViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
 import type { SubjectDef } from '../data/subjects';
@@ -92,6 +96,9 @@ export default function Notes() {
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeNote, setActiveNote] = useState<StoredNote | null>(null);
   const mainRef = useRef<HTMLElement>(null);
+  const dim = useDimMode(s => s.dim);
+  const record = useActivity(s => s.record);
+  const markNoteRead = useStore(s => s.markNoteRead);
 
   useEffect(() => {
     const p = isFirebaseConfigured
@@ -113,7 +120,9 @@ export default function Notes() {
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
+    <>
+    <DimModeToggle />
+    <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
@@ -151,6 +160,14 @@ export default function Notes() {
               color={activeColor}
               noteId={activeNote.id}
               scrollElRef={mainRef}
+              onRead={() => {
+                const already = useStore.getState().notesRead.includes(activeNote.id);
+                markNoteRead(activeNote.id);
+                if (!already) {
+                  const name = activeSubject?.title ?? 'a subject';
+                  record({ type: 'note', subjectId: activeNote.subjectId, subjectName: name, detail: `Read "${activeNote.name}" in ${name}` });
+                }
+              }}
             />
           </div>
         ) : loading ? (
@@ -182,5 +199,6 @@ export default function Notes() {
         )}
       </main>
     </div>
+    </>
   );
 }

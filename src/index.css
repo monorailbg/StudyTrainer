@@ -457,3 +457,18 @@ h1, h2, h3 {
   }
   .flip-card-inner { transition-duration: 0.01ms !important; }
 }
+
+/* ── Dim reading mode ────────────────────────────────────────────────
+   Shared by the Notes, Flashcards and Quiz pages. The app is styled with
+   inline hex colours rather than CSS variables, so dim mode is applied as a
+   single root-level filter layer: it darkens the surface toward near-black,
+   eases off contrast and desaturates accents/glows in one pass — no per-element
+   overrides, no layout reflow. The moon toggle is rendered outside this
+   container so it stays at full brightness. */
+.study-dim-root {
+  transition: filter 320ms ease, background-color 320ms ease;
+}
+.study-dim-root.dim-mode {
+  filter: brightness(0.80) saturate(0.80) contrast(0.98);
+  background-color: #0a0a0f !important;
+}

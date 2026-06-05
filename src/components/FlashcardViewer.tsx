@@ -1,26 +1,89 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GeneratedFlashcard } from '../lib/generator';
+import { useSRS } from '../store/useSRS';
+import type { Rating } from '../lib/srs';
 
-export function FlashcardViewer({ cards, color }: { cards: GeneratedFlashcard[]; color: string }) {
+const RATINGS: { key: Rating; label: string; hint: string; color: string }[] = [
+  { key: 'again', label: 'Again', hint: '1', color: '#F85149' },
+  { key: 'hard',  label: 'Hard',  hint: '2', color: '#fb923c' },
+  { key: 'good',  label: 'Good',  hint: '3', color: '#3D7EFF' },
+  { key: 'easy',  label: 'Easy',  hint: '4', color: '#2EA043' },
+];
+
+export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
+  cards: GeneratedFlashcard[];
+  color: string;
+  subjectId?: string;
+  onSessionEnd?: (reviewedCount: number) => void;
+}) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [reviewed, setReviewed] = useState(0);
+  const [done, setDone] = useState(false);
   const card = cards[index];
   const progress = ((index + 1) / cards.length) * 100;
+  const srsMode = !!subjectId;
+  const rate = useSRS(s => s.rate);
+
+  // Report the session (count of cards rated) exactly once — on completion or
+  // when the viewer unmounts mid-way.
+  const reviewedRef = useRef(0);
+  const reportedRef = useRef(false);
+  const report = useCallback(() => {
+    if (reportedRef.current || reviewedRef.current === 0) return;
+    reportedRef.current = true;
+    onSessionEnd?.(reviewedRef.current);
+  }, [onSessionEnd]);
+  useEffect(() => report, [report]);
 
   const prev = () => { setIndex(i => Math.max(0, i - 1)); setFlipped(false); };
   const next = () => { setIndex(i => Math.min(cards.length - 1, i + 1)); setFlipped(false); };
   const flip = () => setFlipped(f => !f);
 
+  const handleRate = useCallback((rating: Rating) => {
+    if (subjectId) rate(card.id, subjectId, rating);
+    const n = reviewed + 1;
+    setReviewed(n);
+    reviewedRef.current = n;
+    if (index >= cards.length - 1) { setDone(true); report(); }
+    else next();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectId, rate, card, reviewed, index, cards.length, report]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (srsMode && flipped && ['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault();
+        handleRate(RATINGS[Number(e.key) - 1].key);
+        return;
+      }
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
-      if (e.key === 'ArrowRight') next();
-      if (e.key === 'ArrowLeft') prev();
+      if (!srsMode && e.key === 'ArrowRight') next();
+      if (!srsMode && e.key === 'ArrowLeft') prev();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
+
+  if (srsMode && done) {
+    return (
+      <div className="anim-fadein" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', gap: '14px', textAlign: 'center' }}>
+        <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: color + '1A', border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </div>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>Session complete</div>
+        <div style={{ fontSize: '13px', color: '#8B949E' }}>You reviewed {reviewed} card{reviewed !== 1 ? 's' : ''}. Schedule updated.</div>
+        <button
+          onClick={() => { setIndex(0); setFlipped(false); setReviewed(0); setDone(false); reviewedRef.current = 0; reportedRef.current = false; }}
+          className="h-10 px-6 text-sm font-semibold cursor-pointer"
+          style={{ marginTop: '6px', background: color + '18', color, border: `1px solid ${color}45`, borderRadius: '999px' }}
+        >
+          Review again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -101,43 +164,82 @@ export function FlashcardViewer({ cards, color }: { cards: GeneratedFlashcard[];
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-3 justify-center">
-        <button
-          onClick={prev}
-          disabled={index === 0}
-          className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-          style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
-          aria-label="Previous card"
-        >
-          ← Prev
-        </button>
+      {srsMode ? (
+        flipped ? (
+          <div>
+            <div className="grid grid-cols-4 gap-2">
+              {RATINGS.map(r => (
+                <button
+                  key={r.key}
+                  onClick={() => handleRate(r.key)}
+                  className="h-11 text-sm font-semibold cursor-pointer transition-transform duration-150"
+                  style={{ background: r.color + '1A', color: r.color, border: `1px solid ${r.color}55`, borderRadius: '12px' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+                  aria-label={`Rate ${r.label}`}
+                >
+                  {r.label}
+                  <span className="ml-1.5 text-[10px] opacity-60">{r.hint}</span>
+                </button>
+              ))}
+            </div>
+            <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
+              How well did you recall this? <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>–<kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={flip}
+              className="h-11 px-8 text-sm font-semibold cursor-pointer"
+              style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
+            >
+              Show answer
+            </button>
+            <span className="text-xs" style={{ color: '#484F58' }}>{reviewed} reviewed this session</span>
+          </div>
+        )
+      ) : (
+        <>
+          <div className="flex items-center gap-3 justify-center">
+            <button
+              onClick={prev}
+              disabled={index === 0}
+              className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
+              style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
+              aria-label="Previous card"
+            >
+              ← Prev
+            </button>
 
-        <button
-          onClick={flip}
-          className="h-10 px-7 text-sm font-semibold transition-all duration-150 cursor-pointer btn-accent"
-          style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
-        >
-          Flip card
-        </button>
+            <button
+              onClick={flip}
+              className="h-10 px-7 text-sm font-semibold transition-all duration-150 cursor-pointer btn-accent"
+              style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
+            >
+              Flip card
+            </button>
 
-        <button
-          onClick={next}
-          disabled={index === cards.length - 1}
-          className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-          style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
-          aria-label="Next card"
-        >
-          Next →
-        </button>
-      </div>
+            <button
+              onClick={next}
+              disabled={index === cards.length - 1}
+              className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
+              style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
+              aria-label="Next card"
+            >
+              Next →
+            </button>
+          </div>
 
-      {/* Keyboard hint */}
-      <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
-        <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>←</kbd>
-        {' '}/{' '}
-        <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>→</kbd>
-        {' '}navigate
-      </div>
+          {/* Keyboard hint */}
+          <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
+            <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>←</kbd>
+            {' '}/{' '}
+            <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>→</kbd>
+            {' '}navigate
+          </div>
+        </>
+      )}
     </div>
   );
 }

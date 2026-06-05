@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useStore } from '../store/useStore';
+import { useActivity } from '../store/useActivity';
 import { useToast } from '../components/Toast';
 import { generateFromFile } from '../lib/geminiGenerator';
 import {
@@ -389,6 +390,7 @@ export default function SubjectPage() {
   const { allSubjects } = useResolvedSubjects();
   const { toast } = useToast();
   const visitSubject = useStore(s => s.visitSubject);
+  const recordActivity = useActivity(s => s.record);
   const subject = allSubjects.find(s => s.id === id);
 
   const [activeLevel, setActiveLevel] = useState(subject?.levels?.[0] ?? '');
@@ -811,6 +813,7 @@ export default function SubjectPage() {
       setView(selectedType);
       const typeLabel = selectedType === 'flashcards' ? 'Flashcards' : selectedType === 'quiz' ? 'Quiz' : 'Notes';
       toast('success', `${typeLabel} ready`, `Generated from ${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}.`);
+      recordActivity({ type: 'generate', subjectId: subject!.id, subjectName: subject!.title, detail: `Generated ${typeLabel.toLowerCase()} for ${subject!.title}` });
     } catch (err) {
       setGenState({ status: 'error', type: selectedType, error: String(err) });
       toast('error', 'Generation failed', friendlyError(String(err)));
@@ -1292,7 +1295,13 @@ export default function SubjectPage() {
                       {activeSet.name} · {activeSet.cards.length} {t('cards')}
                     </div>
                   </div>
-                  <FlashcardViewer key={activeSet.id} cards={activeSet.cards} color={subject.color} />
+                  <FlashcardViewer
+                    key={activeSet.id}
+                    cards={activeSet.cards}
+                    color={subject.color}
+                    subjectId={subject.id}
+                    onSessionEnd={(n) => recordActivity({ type: 'flashcards', subjectId: subject.id, subjectName: subject.title, detail: `Reviewed ${n} card${n !== 1 ? 's' : ''} in ${subject.title}` })}
+                  />
                 </div>
               );
             }
@@ -1516,7 +1525,15 @@ export default function SubjectPage() {
                       {activeQuiz.name} · {activeQuiz.questions.length} {t('questions')}
                     </div>
                   </div>
-                  <QuizViewer key={activeQuiz.id} questions={activeQuiz.questions} color={subject.color} />
+                  <QuizViewer
+                    key={activeQuiz.id}
+                    questions={activeQuiz.questions}
+                    color={subject.color}
+                    onComplete={(pct, score, total) => {
+                      useStore.getState().addQuizScore(subject.id, score, total);
+                      recordActivity({ type: 'quiz', subjectId: subject.id, subjectName: subject.title, detail: `Scored ${pct}% on ${subject.title} quiz` });
+                    }}
+                  />
                 </div>
               );
             }
