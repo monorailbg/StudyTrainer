@@ -312,7 +312,7 @@ function ActivityModal({ events, subjects, onClose }: { events: ActivityEvent[];
 
 export default function Home() {
   const { t } = useLang();
-  const { flashcardsStudied, flashcardsKnown, quizScores, notesRead, recentSubjects } = useStore();
+  const { flashcardsStudied, flashcardsKnown, quizScores, notesRead, recentSubjects, removeRecentSubject } = useStore();
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
@@ -563,11 +563,12 @@ export default function Home() {
                     <Link
                       key={s.id}
                       to={`/subject/${s.id}`}
-                      className="no-underline anim-rise"
+                      className="no-underline anim-rise group"
                       style={{
                         ['--d' as string]: `${i * 50}ms`,
+                        position: 'relative',
                         display: 'flex', alignItems: 'center', gap: '11px',
-                        padding: '11px 16px 11px 12px', borderRadius: '14px',
+                        padding: '11px 30px 11px 12px', borderRadius: '14px',
                         background: '#161B22', border: '1px solid #21262D',
                         transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
                       }}
@@ -583,6 +584,23 @@ export default function Home() {
                         </div>
                         <div style={{ fontSize: '11px', color: s.color, fontWeight: 600 }}>Resume →</div>
                       </div>
+                      {/* Remove from recents */}
+                      <button
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); removeRecentSubject(s.id); }}
+                        aria-label={`Remove ${s.title} from recents`}
+                        title="Remove"
+                        style={{
+                          position: 'absolute', top: '7px', right: '7px',
+                          width: '18px', height: '18px', borderRadius: '50%', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'rgba(255,255,255,0.04)', border: '1px solid #30363D', color: '#8B949E',
+                          transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+                        }}
+                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(248,81,73,0.16)'; el.style.color = '#F97979'; el.style.borderColor = 'rgba(248,81,73,0.45)'; }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(255,255,255,0.04)'; el.style.color = '#8B949E'; el.style.borderColor = '#30363D'; }}
+                      >
+                        <svg viewBox="0 0 12 12" width="9" height="9" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                      </button>
                     </Link>
                   );
                 })}

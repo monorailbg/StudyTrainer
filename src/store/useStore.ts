@@ -13,6 +13,7 @@ interface StudyStore {
   addQuizScore: (topic: string, score: number, total: number) => void;
   markNoteRead: (id: string) => void;
   visitSubject: (id: string) => void;
+  removeRecentSubject: (id: string) => void;
   resetProgress: () => void;
 }
 
@@ -66,6 +67,11 @@ export const useStore = create<StudyStore>()(
             { id, at: Date.now() },
             ...s.recentSubjects.filter((r) => r.id !== id),
           ].slice(0, 6),
+        })),
+
+      removeRecentSubject: (id) =>
+        set((s) => ({
+          recentSubjects: s.recentSubjects.filter((r) => r.id !== id),
         })),
 
       resetProgress: () =>
