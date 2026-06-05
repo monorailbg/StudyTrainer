@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, forwardRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, forwardRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { GeneratedNote, GeneratedNoteSection } from '../lib/generator';
 import { AskAI } from './AskAI';
 import { useAnnotations, type Annotation } from '../store/useAnnotations';
@@ -170,9 +171,10 @@ function AnnotatedRichText({ rawText, accent, annotations, dim }: {
 
 // ── AnnotationToolbar ─────────────────────────────────────────────────────────
 
-function AnnotationToolbar({ x, y, accent, existingId, onHighlight, onUnderline, onRemove, onDismiss }: {
-  x: number;
-  y: number;
+interface SelRect { left: number; top: number; bottom: number; width: number }
+
+function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline, onRemove, onDismiss }: {
+  rect: SelRect;
   accent: string;
   existingId?: string;
   onHighlight: (color: string) => void;
@@ -181,32 +183,61 @@ function AnnotationToolbar({ x, y, accent, existingId, onHighlight, onUnderline,
   onDismiss: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; below: boolean } | null>(null);
+
+  // Measure the toolbar once rendered, then position it centered over the
+  // selection — above by default, flipping below when too close to the top.
+  // getBoundingClientRect is viewport-relative and the toolbar is position:fixed
+  // + portaled to <body>, so coordinates map directly with no scroll math and
+  // no interference from transformed/filtered ancestors (e.g. dim mode).
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const tw = el.offsetWidth;
+    const th = el.offsetHeight;
+    const m = 8;
+    let left = rect.left + rect.width / 2 - tw / 2;
+    left = Math.max(m, Math.min(left, window.innerWidth - tw - m));
+    let top = rect.top - th - 10;
+    let below = false;
+    if (top < m) { top = rect.bottom + 10; below = true; }
+    setPos({ left, top, below });
+  }, [rect]);
+
+  // Dismiss on outside click or any scroll (selection coords would go stale).
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onDismiss();
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('scroll', onDismiss, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('scroll', onDismiss, true);
+    };
   }, [onDismiss]);
 
-  const clampedX = Math.max(80, Math.min(x, window.innerWidth - 80));
-  const clampedY = Math.max(60, y - 52);
+  // Centre x of the selection relative to the toolbar, for the caret.
+  const caretX = pos
+    ? Math.max(12, Math.min(rect.left + rect.width / 2 - pos.left, (ref.current?.offsetWidth ?? 200) - 12))
+    : 0;
 
-  return (
+  return createPortal(
     <div
       ref={ref}
+      onMouseDown={e => e.preventDefault()} // keep selection; don't trigger outside-hide
       style={{
-        position: 'fixed', left: clampedX, top: clampedY,
-        transform: 'translateX(-50%)', zIndex: 200,
-        display: 'flex', alignItems: 'center', gap: '3px', padding: '5px 10px',
+        position: 'fixed',
+        left: pos ? pos.left : rect.left,
+        top: pos ? pos.top : rect.top - 50,
+        visibility: pos ? 'visible' : 'hidden',
+        zIndex: 9999,
+        display: 'flex', alignItems: 'center', gap: '3px', padding: '5px 8px',
         background: '#111827', border: '1px solid rgba(255,255,255,0.12)',
         borderRadius: '999px', boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
         userSelect: 'none',
       }}
     >
-      <span style={{ fontSize: '9px', color: '#484F58', letterSpacing: '0.08em', marginRight: '4px' }}>
-        MARK
-      </span>
       {HIGHLIGHT_COLORS.map(c => (
         <button
           key={c.id}
@@ -246,7 +277,20 @@ function AnnotationToolbar({ x, y, accent, existingId, onHighlight, onUnderline,
           >✕</button>
         </>
       )}
-    </div>
+      {/* Caret pointing toward the selection */}
+      {pos && (
+        <span
+          style={{
+            position: 'absolute', left: caretX, width: 0, height: 0,
+            transform: 'translateX(-50%)',
+            ...(pos.below
+              ? { top: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: '6px solid #111827' }
+              : { bottom: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid #111827' }),
+          }}
+        />
+      )}
+    </div>,
+    document.body
   );
 }
 
@@ -486,7 +530,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
   const toggleDim = useDimMode(s => s.toggle);
   const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation, getForSection } = useAnnotations();
   const [toolbar, setToolbar] = useState<{
-    x: number; y: number; sectionIndex: number; selectedText: string; existingId?: string;
+    rect: SelRect; sectionIndex: number; selectedText: string; existingId?: string;
   } | null>(null);
   const [scrollPct, setScrollPct] = useState(0);
   const [showBackTop, setShowBackTop] = useState(false);
@@ -584,8 +628,12 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
   }, [activeSection, notes.sections.length]);
 
   // Annotation: detect text selection and show toolbar
-  const handleMouseUp = useCallback(() => {
+  const handleSelectionEnd = useCallback(() => {
     setTimeout(() => {
+      // Ignore selections made inside form fields (search bar, AskAI textarea…)
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) return;
       const text = sel.toString().trim();
@@ -603,9 +651,12 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       }
       if (sectionIndex === -1) return;
 
-      const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      setToolbar({ x: rect.left + rect.width / 2, y: rect.top, sectionIndex, selectedText: text });
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      setToolbar({
+        rect: { left: r.left, top: r.top, bottom: r.bottom, width: r.width },
+        sectionIndex,
+        selectedText: text,
+      });
     }, 10);
   }, []);
 
@@ -617,7 +668,13 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
     if (!annId) return;
     const ann = allAnnotations.find(a => a.id === annId);
     if (!ann) return;
-    setToolbar({ x: e.clientX, y: e.clientY, sectionIndex: ann.sectionIndex, selectedText: ann.selectedText, existingId: annId });
+    const r = annEl!.getBoundingClientRect();
+    setToolbar({
+      rect: { left: r.left, top: r.top, bottom: r.bottom, width: r.width },
+      sectionIndex: ann.sectionIndex,
+      selectedText: ann.selectedText,
+      existingId: annId,
+    });
   }, [allAnnotations]);
 
   const applyAnnotation = useCallback((type: 'highlight' | 'underline', colorVal?: string) => {
@@ -655,11 +712,10 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
   const readTime = calcReadTime(notes);
 
   return (
-    <div style={{ position: 'relative' }} onMouseUp={handleMouseUp} onClick={handleAnnotationClick}>
+    <div style={{ position: 'relative' }} onMouseUp={handleSelectionEnd} onTouchEnd={handleSelectionEnd} onClick={handleAnnotationClick}>
       {toolbar && (
         <AnnotationToolbar
-          x={toolbar.x}
-          y={toolbar.y}
+          rect={toolbar.rect}
           accent={color}
           existingId={toolbar.existingId}
           onHighlight={(c) => applyAnnotation('highlight', c)}
