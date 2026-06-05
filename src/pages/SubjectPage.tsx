@@ -416,6 +416,7 @@ export default function SubjectPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [draggedItem, setDraggedItem] = useState<{ kind: FolderKind; id: string } | null>(null);
   const [showGenPanel, setShowGenPanel] = useState(false);
+  const [genLanguage, setGenLanguage] = useState<'english' | 'japanese' | 'both'>('english');
 
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
@@ -735,6 +736,7 @@ export default function SubjectPage() {
           notesDetail,
           notesIncludes,
           customPrompt: customPrompt.trim() || undefined,
+          language: genLanguage,
         });
         results.push(result);
       }
@@ -1651,6 +1653,28 @@ export default function SubjectPage() {
                     {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
                   </button>
                 ))}
+              </div>
+
+              {/* Language selector */}
+              <div className="mb-3">
+                <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Language</div>
+                <div className="flex gap-1.5">
+                  {(['english', 'japanese', 'both'] as const).map(lang => (
+                    <button
+                      key={lang}
+                      onClick={() => setGenLanguage(lang)}
+                      className="h-8 px-3 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                      style={{
+                        borderRadius: '999px',
+                        background:  genLanguage === lang ? subject.color + '20' : 'transparent',
+                        color:       genLanguage === lang ? subject.color         : '#8B949E',
+                        borderColor: genLanguage === lang ? subject.color + '50'  : '#30363D',
+                      }}
+                    >
+                      {lang === 'english' ? 'EN' : lang === 'japanese' ? 'JA' : 'EN + JA'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Flashcard options */}

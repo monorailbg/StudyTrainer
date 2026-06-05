@@ -190,6 +190,13 @@ export interface GenerateOptions {
   notesDetail?: 'concise' | 'standard' | 'comprehensive';     // notes depth
   notesIncludes?: string[];                                    // 'formulas' | 'diagrams' | 'mindmap'
   customPrompt?: string;                                       // free-text appended to the prompt
+  language?: 'english' | 'japanese' | 'both';                 // output language (default english)
+}
+
+function languageInstruction(language?: 'english' | 'japanese' | 'both'): string {
+  if (!language || language === 'english') return '';
+  if (language === 'japanese') return '\n\nGenerate ALL text content in Japanese (日本語で生成してください). Every field in the JSON output must be written in Japanese.';
+  return '\n\nGenerate content bilingually — write each text value in both English and Japanese, separated by " / ". Example: "Supply and demand / 需要と供給". Apply this to every text field in the JSON.';
 }
 
 // ── Prompts ────────────────────────────────────────────────────────────────
@@ -202,7 +209,7 @@ function flashcardFilePrompt(subject: string, opts: GenerateOptions): string {
 
 Analyse the content in this file and create exactly ${count} high-quality flashcards.
 ${focus ? `Focus specifically on the topic: "${focus}".` : 'Cover the most important concepts, definitions, and relationships.'}
-${custom ? `\nAdditional instructions: ${custom}` : ''}
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
@@ -246,7 +253,7 @@ ${contentDepth}
 ${formulaInstruction}
 ${diagramInstruction}
 ${mindmapInstruction}
-${custom ? `\nAdditional instructions: ${custom}` : ''}
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
@@ -271,7 +278,7 @@ function quizFilePrompt(subject: string, opts: GenerateOptions): string {
 
 Analyse the content in this file and create exactly ${count} multiple-choice questions.
 ${focus ? `Focus specifically on the topic: "${focus}".` : ''}
-${custom ? `Additional instructions: ${custom}` : ''}
+${custom ? `Additional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
@@ -292,12 +299,12 @@ const LEVEL_MAP: Record<string, string> = {
   advanced: 'advanced (final year / master\'s level)',
 };
 
-const TOPIC_PROMPTS: Record<GenerationType, (topic: string, context: string, level: string) => string> = {
-  flashcards: (topic, context, level) =>
+const TOPIC_PROMPTS: Record<GenerationType, (topic: string, context: string, level: string, language?: 'english' | 'japanese' | 'both') => string> = {
+  flashcards: (topic, context, level, language) =>
     `You are an expert study material creator for university students.
 
 Create exactly 12 flashcards on: "${topic}"${context ? ` in the context of ${context}` : ''}.
-Level: ${LEVEL_MAP[level] ?? level}.
+Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
 
 Return ONLY valid JSON — no markdown, no preamble:
 {
@@ -306,11 +313,11 @@ Return ONLY valid JSON — no markdown, no preamble:
   ]
 }`,
 
-  notes: (topic, context, level) =>
+  notes: (topic, context, level, language) =>
     `You are an expert academic note-taker for university students.
 
 Create comprehensive structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
-Level: ${LEVEL_MAP[level] ?? level}.
+Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
 
 Return ONLY valid JSON — no markdown, no preamble:
 {
@@ -327,11 +334,11 @@ Return ONLY valid JSON — no markdown, no preamble:
 
 Create 4-7 sections.`,
 
-  quiz: (topic, context, level) =>
+  quiz: (topic, context, level, language) =>
     `You are an expert exam question writer for university students.
 
 Create exactly 10 multiple-choice questions on: "${topic}"${context ? ` for a ${context} course` : ''}.
-Level: ${LEVEL_MAP[level] ?? level}.
+Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
 
 Return ONLY valid JSON — no markdown, no preamble:
 {
@@ -373,9 +380,10 @@ export async function generateFromTopic(
   topic: string,
   type: GenerationType,
   subjectContext = '',
-  level = 'intermediate'
+  level = 'intermediate',
+  language?: 'english' | 'japanese' | 'both'
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
-  const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level);
+  const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level, language);
 
   const text = await callGeminiAuto([{ text: prompt }]);
   const parsed = parseJSON(text) as Record<string, unknown>;
