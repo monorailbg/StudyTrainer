@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef, forwardRef, useCallback } from 'react';
+import { useState, useEffect, useRef, forwardRef, useCallback, useMemo } from 'react';
 import type { GeneratedNote, GeneratedNoteSection } from '../lib/generator';
 import { AskAI } from './AskAI';
+import { useAnnotations, type Annotation } from '../store/useAnnotations';
+import { useDimMode } from '../store/useDimMode';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -39,6 +41,212 @@ function RichText({ text, accent }: { text: string; accent: string }) {
         return <span key={i}>{part}</span>;
       })}
     </>
+  );
+}
+
+// ── Annotation constants ──────────────────────────────────────────────────────
+
+const HIGHLIGHT_COLORS = [
+  { id: 'yellow', label: 'Yellow', value: 'rgba(255,214,0,0.35)' },
+  { id: 'teal',   label: 'Teal',   value: 'rgba(0,210,190,0.30)' },
+  { id: 'pink',   label: 'Pink',   value: 'rgba(255,100,150,0.28)' },
+] as const;
+
+// ── buildSegments: merges bold markers + annotations into renderable segments ──
+
+type Segment = {
+  text: string;
+  isBold: boolean;
+  annotation?: Annotation | null;
+};
+
+function buildSegments(rawText: string, annotations: Annotation[]): Segment[] {
+  type BoldSeg = { text: string; isBold: boolean; visStart: number; visEnd: number };
+  const boldSegs: BoldSeg[] = [];
+  const boldRe = /\*\*([^*]+)\*\*/g;
+  let lastIdx = 0;
+  let visPos = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = boldRe.exec(rawText)) !== null) {
+    if (m.index > lastIdx) {
+      const t = rawText.slice(lastIdx, m.index);
+      boldSegs.push({ text: t, isBold: false, visStart: visPos, visEnd: visPos + t.length });
+      visPos += t.length;
+    }
+    const t = m[1];
+    boldSegs.push({ text: t, isBold: true, visStart: visPos, visEnd: visPos + t.length });
+    visPos += t.length;
+    lastIdx = boldRe.lastIndex;
+  }
+  if (lastIdx < rawText.length) {
+    const t = rawText.slice(lastIdx);
+    boldSegs.push({ text: t, isBold: false, visStart: visPos, visEnd: visPos + t.length });
+  }
+
+  const visibleText = boldSegs.map(s => s.text).join('');
+  const annRanges: { start: number; end: number; ann: Annotation }[] = [];
+  for (const ann of annotations) {
+    if (!ann.selectedText) continue;
+    const idx = visibleText.indexOf(ann.selectedText);
+    if (idx !== -1) annRanges.push({ start: idx, end: idx + ann.selectedText.length, ann });
+  }
+  annRanges.sort((a, b) => a.start - b.start);
+
+  if (annRanges.length === 0) {
+    return boldSegs.map(s => ({ text: s.text, isBold: s.isBold, annotation: null }));
+  }
+
+  const result: Segment[] = [];
+  for (const bs of boldSegs) {
+    let pos = bs.visStart;
+    for (const ar of annRanges) {
+      if (ar.end <= pos || ar.start >= bs.visEnd) continue;
+      if (ar.start > pos) {
+        const t = bs.text.slice(pos - bs.visStart, ar.start - bs.visStart);
+        if (t) result.push({ text: t, isBold: bs.isBold, annotation: null });
+        pos = ar.start;
+      }
+      const end = Math.min(ar.end, bs.visEnd);
+      const t = bs.text.slice(pos - bs.visStart, end - bs.visStart);
+      if (t) result.push({ text: t, isBold: bs.isBold, annotation: ar.ann });
+      pos = end;
+    }
+    if (pos < bs.visEnd) {
+      const t = bs.text.slice(pos - bs.visStart);
+      if (t) result.push({ text: t, isBold: bs.isBold, annotation: null });
+    }
+  }
+  return result;
+}
+
+// ── AnnotatedRichText ─────────────────────────────────────────────────────────
+
+function AnnotatedRichText({ rawText, accent, annotations, dim }: {
+  rawText: string;
+  accent: string;
+  annotations: Annotation[];
+  dim: boolean;
+}) {
+  const segments = useMemo(() => buildSegments(rawText, annotations), [rawText, annotations]);
+  return (
+    <>
+      {segments.map((seg, i) => {
+        const ann = seg.annotation;
+        let annStyle: React.CSSProperties = {};
+        if (ann) {
+          if (ann.type === 'highlight') {
+            annStyle = {
+              background: ann.color ?? 'rgba(255,214,0,0.35)',
+              borderRadius: '2px', padding: '0 1px',
+              opacity: dim ? 0.7 : 1,
+            };
+          } else {
+            annStyle = { textDecoration: 'underline', textDecorationColor: accent, textUnderlineOffset: '3px' };
+          }
+        }
+        if (seg.isBold) {
+          return (
+            <strong key={i} data-ann-id={ann?.id} style={{
+              background: ann ? undefined : accent + '22',
+              color: accent, borderRadius: '3px',
+              padding: '1px 5px', fontWeight: 600,
+              ...annStyle,
+            }}>{seg.text}</strong>
+          );
+        }
+        if (ann) {
+          return (
+            <mark key={i} data-ann-id={ann.id} style={{ background: 'transparent', ...annStyle }}>
+              {seg.text}
+            </mark>
+          );
+        }
+        return <span key={i}>{seg.text}</span>;
+      })}
+    </>
+  );
+}
+
+// ── AnnotationToolbar ─────────────────────────────────────────────────────────
+
+function AnnotationToolbar({ x, y, accent, existingId, onHighlight, onUnderline, onRemove, onDismiss }: {
+  x: number;
+  y: number;
+  accent: string;
+  existingId?: string;
+  onHighlight: (color: string) => void;
+  onUnderline: () => void;
+  onRemove?: () => void;
+  onDismiss: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onDismiss();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onDismiss]);
+
+  const clampedX = Math.max(80, Math.min(x, window.innerWidth - 80));
+  const clampedY = Math.max(60, y - 52);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: 'fixed', left: clampedX, top: clampedY,
+        transform: 'translateX(-50%)', zIndex: 200,
+        display: 'flex', alignItems: 'center', gap: '3px', padding: '5px 10px',
+        background: '#111827', border: '1px solid rgba(255,255,255,0.12)',
+        borderRadius: '999px', boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+        userSelect: 'none',
+      }}
+    >
+      <span style={{ fontSize: '9px', color: '#484F58', letterSpacing: '0.08em', marginRight: '4px' }}>
+        MARK
+      </span>
+      {HIGHLIGHT_COLORS.map(c => (
+        <button
+          key={c.id}
+          onClick={() => onHighlight(c.value)}
+          title={`Highlight ${c.label}`}
+          style={{
+            width: '18px', height: '18px', borderRadius: '50%',
+            background: c.value, border: '1.5px solid rgba(255,255,255,0.2)',
+            cursor: 'pointer', flexShrink: 0,
+          }}
+        />
+      ))}
+      <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
+      <button
+        onClick={onUnderline}
+        title="Underline"
+        style={{
+          width: '26px', height: '26px', borderRadius: '7px',
+          background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+          cursor: 'pointer', color: accent, fontSize: '13px', fontWeight: 700,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          textDecoration: 'underline', textUnderlineOffset: '3px',
+        }}
+      >U</button>
+      {existingId && onRemove && (
+        <>
+          <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
+          <button
+            onClick={onRemove}
+            title="Remove"
+            style={{
+              width: '26px', height: '26px', borderRadius: '7px',
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+              cursor: 'pointer', color: '#F85149', fontSize: '12px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >✕</button>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -87,12 +295,14 @@ interface SectionCardProps {
   color: string;
   understood: boolean;
   collapsed: boolean;
+  annotations: Annotation[];
+  dim: boolean;
   onToggleUnderstood: () => void;
   onToggleCollapsed: () => void;
 }
 
 const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function SectionCard(
-  { index, section, color, understood, collapsed, onToggleUnderstood, onToggleCollapsed },
+  { index, section, color, understood, collapsed, annotations, dim, onToggleUnderstood, onToggleCollapsed },
   ref
 ) {
   const [recallOpen, setRecallOpen] = useState(false);
@@ -182,7 +392,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
               </button>
             </>
           ) : (
-            <RichText text={section.content} accent={color} />
+            <AnnotatedRichText rawText={section.content} accent={color} annotations={annotations} dim={dim} />
           )}
         </p>
 
@@ -272,6 +482,11 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
   onToggleFullFocus?: () => void;
 }) {
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dim = useDimMode(s => s.dim);
+  const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation, getForSection } = useAnnotations();
+  const [toolbar, setToolbar] = useState<{
+    x: number; y: number; sectionIndex: number; selectedText: string; existingId?: string;
+  } | null>(null);
   const [scrollPct, setScrollPct] = useState(0);
   const [showBackTop, setShowBackTop] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
@@ -367,6 +582,56 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
     return () => window.removeEventListener('keydown', handler);
   }, [activeSection, notes.sections.length]);
 
+  // Annotation: detect text selection and show toolbar
+  const handleMouseUp = useCallback(() => {
+    setTimeout(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      const text = sel.toString().trim();
+      if (text.length < 2) return;
+
+      // Find section index from DOM
+      let el: Element | null = sel.anchorNode instanceof Element
+        ? sel.anchorNode
+        : sel.anchorNode?.parentElement ?? null;
+      let sectionIndex = -1;
+      while (el) {
+        const idx = el.getAttribute('data-section-idx');
+        if (idx !== null) { sectionIndex = Number(idx); break; }
+        el = el.parentElement;
+      }
+      if (sectionIndex === -1) return;
+
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      setToolbar({ x: rect.left + rect.width / 2, y: rect.top, sectionIndex, selectedText: text });
+    }, 10);
+  }, []);
+
+  // Annotation: click on existing annotation mark to show remove toolbar
+  const handleAnnotationClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const annEl = target.closest('[data-ann-id]') as HTMLElement | null;
+    const annId = annEl?.getAttribute('data-ann-id');
+    if (!annId) return;
+    const ann = allAnnotations.find(a => a.id === annId);
+    if (!ann) return;
+    setToolbar({ x: e.clientX, y: e.clientY, sectionIndex: ann.sectionIndex, selectedText: ann.selectedText, existingId: annId });
+  }, [allAnnotations]);
+
+  const applyAnnotation = useCallback((type: 'highlight' | 'underline', colorVal?: string) => {
+    if (!toolbar || !noteId) return;
+    addAnnotation({
+      noteId,
+      sectionIndex: toolbar.sectionIndex,
+      type,
+      color: colorVal,
+      selectedText: toolbar.selectedText,
+    });
+    window.getSelection()?.removeAllRanges();
+    setToolbar(null);
+  }, [toolbar, noteId, addAnnotation]);
+
   const scrollToSection = (i: number) => {
     const el = sectionRefs.current[i];
     if (!el) return;
@@ -389,7 +654,19 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
   const readTime = calcReadTime(notes);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }} onMouseUp={handleMouseUp} onClick={handleAnnotationClick}>
+      {toolbar && (
+        <AnnotationToolbar
+          x={toolbar.x}
+          y={toolbar.y}
+          accent={color}
+          existingId={toolbar.existingId}
+          onHighlight={(c) => applyAnnotation('highlight', c)}
+          onUnderline={() => applyAnnotation('underline')}
+          onRemove={toolbar.existingId ? () => { removeAnnotation(toolbar.existingId!); setToolbar(null); } : undefined}
+          onDismiss={() => setToolbar(null)}
+        />
+      )}
 
       {/* Reading progress bar — sticky at top of scroll container */}
       <div style={{ position: 'sticky', top: 0, zIndex: 10, height: '2px', background: '#21262D' }}>
@@ -402,10 +679,10 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       </div>
 
       {/* Two-column reading layout */}
-      <div style={{ display: 'flex', gap: '48px', padding: '36px 28px 80px' }}>
+      <div style={{ display: 'flex', gap: '48px', padding: '36px 28px 80px', justifyContent: 'center' }}>
 
         {/* ── Content column ── */}
-        <div style={{ flex: 1, minWidth: 0, maxWidth: fullFocus ? '100%' : '68ch' }}>
+        <div style={{ maxWidth: fullFocus ? '100%' : '780px', width: '100%', minWidth: 0 }}>
 
           {/* Note metadata + completion header */}
           <div style={{ marginBottom: '28px' }}>
@@ -500,6 +777,8 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
               color={color}
               understood={understood.has(i)}
               collapsed={collapsed.has(i)}
+              annotations={noteId ? getForSection(noteId, i) : []}
+              dim={dim}
               onToggleUnderstood={() => toggleUnderstood(i)}
               onToggleCollapsed={() => toggleCollapsed(i)}
             />

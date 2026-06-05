@@ -82,7 +82,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
     return (
       <>
       {dim && <div style={scrimStyle} />}
-      <div className="anim-fadein" style={{ ...lift, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', gap: '14px', textAlign: 'center' }}>
+      <div className="anim-fadein" style={{ ...lift, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: '14px', textAlign: 'center' }}>
         <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: color + '1A', border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
@@ -118,12 +118,14 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
     );
   }
 
+  const cardW = 'min(560px, 90vw)';
+
   return (
     <>
     {dim && <div style={scrimStyle} />}
-    <div style={lift}>
-      {/* Progress bar — top */}
-      <div className="h-px mb-5 overflow-hidden" style={{ background: '#30363D', borderRadius: '1px' }}>
+    <div style={{ ...lift, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '70vh', justifyContent: 'center', paddingTop: '12px', paddingBottom: '24px' }}>
+      {/* Progress bar — full width */}
+      <div className="h-px mb-5 overflow-hidden" style={{ width: '100%', background: '#30363D', borderRadius: '1px' }}>
         <div
           className="h-full"
           style={{
@@ -136,7 +138,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
       </div>
 
       {/* Counter + topic */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4" style={{ width: cardW }}>
         <span className="mono text-xs" style={{ color: '#8B949E' }}>
           {index + 1} / {cards.length}
         </span>
@@ -148,7 +150,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
       {/* Flip card */}
       <div
         className="flip-card cursor-pointer mb-5"
-        style={{ height: '280px' }}
+        style={{ width: cardW, minHeight: '160px' }}
         onClick={flip}
         role="button"
         tabIndex={0}
@@ -158,8 +160,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         <div className={`flip-card-inner${flipped ? ' flipped' : ''}`}>
           {/* Front */}
           <div
-            className="flip-card-front flex flex-col items-center justify-center p-10 gap-4"
+            className="flip-card-front flex flex-col items-center justify-center gap-4"
             style={{
+              padding: '28px 32px',
               borderRadius: '12px',
               background: dim ? `linear-gradient(150deg, ${color}33 0%, #161d28 100%)` : '#161B22',
               border: `1px solid ${dim ? color + 'bb' : color + '25'}`,
@@ -172,10 +175,10 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#8B949E' }}>
               Question
             </div>
-            <div className="text-center leading-relaxed max-w-xl" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(1.1rem, 2vw, 1.4rem)', color: '#E6EDF3', lineHeight: 1.4 }}>
+            <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: '17px', color: '#E6EDF3', lineHeight: 1.45 }}>
               {card.front}
             </div>
-            <div className="text-xs mt-2 flex items-center gap-1.5" style={{ color: '#484F58' }}>
+            <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: '#484F58' }}>
               <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>Space</kbd>
               to reveal
             </div>
@@ -183,8 +186,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
 
           {/* Back */}
           <div
-            className="flip-card-back flex flex-col items-center justify-center p-10 gap-4"
+            className="flip-card-back flex flex-col items-center justify-center gap-4"
             style={{
+              padding: '28px 32px',
               borderRadius: '12px',
               background: dim ? `linear-gradient(150deg, ${color}4a 0%, #182030 100%)` : 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
               border: `1px solid ${dim ? color : color + '40'}`,
@@ -197,90 +201,92 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#3D7EFF' }}>
               Answer
             </div>
-            <div className="text-center leading-relaxed max-w-xl" style={{ fontSize: '15px', color: '#E6EDF3', lineHeight: 1.6 }}>
+            <div className="text-center" style={{ fontSize: '16px', color: '#E6EDF3', lineHeight: 1.65 }}>
               {card.back}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Controls */}
-      {srsMode ? (
-        flipped ? (
-          <div>
-            <div className="grid grid-cols-4 gap-2">
-              {RATINGS.map(r => (
-                <button
-                  key={r.key}
-                  onClick={() => handleRate(r.key)}
-                  className="h-11 text-sm font-semibold cursor-pointer transition-transform duration-150"
-                  style={{ background: r.color + '1A', color: r.color, border: `1px solid ${r.color}55`, borderRadius: '12px' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
-                  aria-label={`Rate ${r.label}`}
-                >
-                  {r.label}
-                  <span className="ml-1.5 text-[10px] opacity-60">{r.hint}</span>
-                </button>
-              ))}
+      {/* Controls — constrained to card width */}
+      <div style={{ width: cardW }}>
+        {srsMode ? (
+          flipped ? (
+            <div>
+              <div className="grid grid-cols-4 gap-2">
+                {RATINGS.map(r => (
+                  <button
+                    key={r.key}
+                    onClick={() => handleRate(r.key)}
+                    className="h-11 text-sm font-semibold cursor-pointer transition-transform duration-150"
+                    style={{ background: r.color + '1A', color: r.color, border: `1px solid ${r.color}55`, borderRadius: '12px' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+                    aria-label={`Rate ${r.label}`}
+                  >
+                    {r.label}
+                    <span className="ml-1.5 text-[10px] opacity-60">{r.hint}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
+                How well did you recall this? <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>–<kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
+              </div>
             </div>
-            <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
-              How well did you recall this? <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>–<kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
+          ) : (
+            <div className="flex flex-col items-center gap-3">
+              <button
+                onClick={flip}
+                className="h-11 px-8 text-sm font-semibold cursor-pointer"
+                style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
+              >
+                Show answer
+              </button>
+              <span className="text-xs" style={{ color: '#484F58' }}>{reviewed} reviewed this session</span>
             </div>
-          </div>
+          )
         ) : (
-          <div className="flex flex-col items-center gap-3">
-            <button
-              onClick={flip}
-              className="h-11 px-8 text-sm font-semibold cursor-pointer"
-              style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
-            >
-              Show answer
-            </button>
-            <span className="text-xs" style={{ color: '#484F58' }}>{reviewed} reviewed this session</span>
-          </div>
-        )
-      ) : (
-        <>
-          <div className="flex items-center gap-3 justify-center">
-            <button
-              onClick={prev}
-              disabled={index === 0}
-              className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-              style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
-              aria-label="Previous card"
-            >
-              ← Prev
-            </button>
+          <>
+            <div className="flex items-center gap-3 justify-center">
+              <button
+                onClick={prev}
+                disabled={index === 0}
+                className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
+                aria-label="Previous card"
+              >
+                ← Prev
+              </button>
 
-            <button
-              onClick={flip}
-              className="h-10 px-7 text-sm font-semibold transition-all duration-150 cursor-pointer btn-accent"
-              style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
-            >
-              Flip card
-            </button>
+              <button
+                onClick={flip}
+                className="h-10 px-7 text-sm font-semibold transition-all duration-150 cursor-pointer btn-accent"
+                style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
+              >
+                Flip card
+              </button>
 
-            <button
-              onClick={next}
-              disabled={index === cards.length - 1}
-              className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-              style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
-              aria-label="Next card"
-            >
-              Next →
-            </button>
-          </div>
+              <button
+                onClick={next}
+                disabled={index === cards.length - 1}
+                className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
+                aria-label="Next card"
+              >
+                Next →
+              </button>
+            </div>
 
-          {/* Keyboard hint */}
-          <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
-            <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>←</kbd>
-            {' '}/{' '}
-            <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>→</kbd>
-            {' '}navigate
-          </div>
-        </>
-      )}
+            {/* Keyboard hint */}
+            <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
+              <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>←</kbd>
+              {' '}/{' '}
+              <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>→</kbd>
+              {' '}navigate
+            </div>
+          </>
+        )}
+      </div>
     </div>
     </>
   );
