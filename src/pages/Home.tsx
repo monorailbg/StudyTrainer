@@ -1,16 +1,40 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useStore } from '../store/useStore';
 import { useResolvedSubjects } from '../store/useSubjects';
+import { useSRS, subjectSrsStats } from '../store/useSRS';
+import { useActivity, type ActivityEvent } from '../store/useActivity';
 import type { SubjectDef } from '../data/subjects';
 import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
 import notesData from '../data/notes-config.json';
+import { getAllFlashcardSets, getAllNotes, type StoredFlashcardSet, type StoredNote } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudFlashcardSets, getAllCloudNotes } from '../lib/cloudDb';
 import GlobeView from '../components/GlobeView';
 import MindMap from '../components/MindMap';
 import { ManageSubjects } from '../components/ManageSubjects';
 import { SubjectIcon } from '../data/subjectIcons';
+
+// ── Per-subject progress ───────────────────────────────────────────────────────
+
+interface SubjectStats {
+  notesTotal: number; notesRead: number;
+  cardsTotal: number; cardsKnown: number; cardsDue: number;
+}
+
+function relativeTime(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h !== 1 ? 's' : ''} ago`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return 'Yesterday';
+  if (d < 7) return `${d} days ago`;
+  return new Date(ts).toLocaleDateString();
+}
 
 // ── Greeting ───────────────────────────────────────────────────────────────────
 
@@ -117,16 +141,66 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
 
 // ── Subject card ───────────────────────────────────────────────────────────────
 
-function SubjectCard({ subject, isCore, index = 0 }: { subject: SubjectDef; isCore: boolean; index?: number }) {
+function ProgressRow({ label, read, total, color, delay, mounted }: {
+  label: string; read: number; total: number; color: string; delay: number; mounted: boolean;
+}) {
+  const pct = total > 0 ? Math.round((read / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] flex-shrink-0" style={{ color: '#8B949E', width: '34px' }}>{label}</span>
+      <div className="flex-1 overflow-hidden" style={{ height: '4px', background: '#0D1117', borderRadius: '999px' }}>
+        <div style={{
+          height: '100%', width: mounted && total > 0 ? `${pct}%` : '0%',
+          background: color, borderRadius: '999px',
+          transition: `width 600ms cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+        }} />
+      </div>
+      <span className="text-[10px] font-semibold flex-shrink-0 mono" style={{ color: total > 0 ? color : '#484F58', minWidth: '40px', textAlign: 'right' }}>
+        {total > 0 ? `${read} / ${total}` : '—'}
+      </span>
+    </div>
+  );
+}
+
+function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDef; isCore: boolean; index?: number; stats?: SubjectStats }) {
   const { t } = useLang();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const id = setTimeout(() => setMounted(true), 60); return () => clearTimeout(id); }, []);
 
   const fcCount = isCore && subject.flashcardTopic
     ? flashcardsData.filter(f => f.topic === subject.flashcardTopic).length : 0;
   const qCount  = isCore && subject.quizTopic
     ? quizData.filter(q => q.topic === subject.quizTopic).length : 0;
 
+  const hasProgress = stats && (stats.notesTotal > 0 || stats.cardsTotal > 0);
+  const due = stats?.cardsDue ?? 0;
+  const allDone = !!stats && stats.cardsTotal > 0 && due === 0;
+  const barDelay = index * 60;
+
   return (
-    <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms` }}>
+    <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms`, position: 'relative' }}>
+      {/* Due-for-review badge — overlaps the top-right corner */}
+      {due > 0 && (
+        <span style={{
+          position: 'absolute', top: '-7px', right: '-6px', zIndex: 3,
+          padding: '2px 9px', borderRadius: '999px',
+          background: 'linear-gradient(135deg, #F85149, #d2391f)', color: '#fff',
+          fontSize: '10px', fontWeight: 700, letterSpacing: '0.02em',
+          boxShadow: '0 4px 12px rgba(248,81,73,0.45)', whiteSpace: 'nowrap',
+        }}>
+          {due} due
+        </span>
+      )}
+      {due === 0 && allDone && (
+        <span style={{
+          position: 'absolute', top: '-7px', right: '-6px', zIndex: 3,
+          padding: '2px 8px', borderRadius: '999px',
+          background: 'rgba(46,160,67,0.16)', color: '#56D364', border: '1px solid rgba(46,160,67,0.4)',
+          fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap',
+        }}>
+          ✓ All done
+        </span>
+      )}
       <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}>
         <div className="p-5 flex flex-col h-full gap-3">
           {/* Icon + color accent */}
@@ -147,6 +221,14 @@ function SubjectCard({ subject, isCore, index = 0 }: { subject: SubjectDef; isCo
               {subject.description}
             </div>
           </div>
+
+          {/* Progress bars — notes read + cards known */}
+          {hasProgress && (
+            <div className="flex flex-col gap-1.5">
+              <ProgressRow label="Notes" read={stats!.notesRead} total={stats!.notesTotal} color={subject.color} delay={barDelay} mounted={mounted} />
+              <ProgressRow label="Cards" read={stats!.cardsKnown} total={stats!.cardsTotal} color="#2EA043" delay={barDelay + 120} mounted={mounted} />
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-between">
@@ -199,6 +281,44 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
   );
 }
 
+// ── Activity feed ──────────────────────────────────────────────────────────────
+
+function ActivityRow({ ev, subjects, isLast }: { ev: ActivityEvent; subjects: SubjectDef[]; isLast: boolean }) {
+  const color = subjects.find(s => s.id === ev.subjectId)?.color ?? '#8B949E';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', borderBottom: isLast ? 'none' : '1px solid #1c2129' }}>
+      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
+      <span style={{ flex: 1, minWidth: 0, fontSize: '12.5px', color: '#C9D1D9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.detail}</span>
+      <span style={{ fontSize: '11px', color: '#484F58', flexShrink: 0 }}>{relativeTime(ev.timestamp)}</span>
+    </div>
+  );
+}
+
+function ActivityModal({ events, subjects, onClose }: { events: ActivityEvent[]; subjects: SubjectDef[]; onClose: () => void }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(1,4,9,0.72)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        className="anim-fadein"
+        style={{ width: '100%', maxWidth: '560px', background: '#0D1117', border: '1px solid #21262D', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}
+      >
+        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #21262D' }}>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '16px', color: '#E6EDF3' }}>Activity log</div>
+          <button onClick={onClose} aria-label="Close" style={{ width: '32px', height: '32px', borderRadius: '999px', background: '#161B22', border: '1px solid #30363D', color: '#8B949E', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+          </button>
+        </div>
+        <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px 20px 20px' }}>
+          {events.map((ev, i) => <ActivityRow key={ev.id} ev={ev} subjects={subjects} isLast={i === events.length - 1} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -207,8 +327,47 @@ export default function Home() {
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
+  const [showActivityAll, setShowActivityAll] = useState(false);
   // Force the globe to rebuild when the set of subjects changes.
   const globeKey = allSubjects.map(s => s.id).join(',');
+
+  // Generated content across subjects — drives the per-subject progress bars,
+  // due badges and the global due count.
+  const [sets, setSets] = useState<StoredFlashcardSet[]>([]);
+  const [notesList, setNotesList] = useState<StoredNote[]>([]);
+  const srsCards = useSRS(s => s.cards);
+  const activityEvents = useActivity(s => s.events);
+
+  useEffect(() => {
+    (isFirebaseConfigured ? getAllCloudFlashcardSets() : getAllFlashcardSets())
+      .then(d => setSets(d as StoredFlashcardSet[])).catch(() => {});
+    (isFirebaseConfigured ? getAllCloudNotes() : getAllNotes())
+      .then(d => setNotesList(d as StoredNote[])).catch(() => {});
+  }, []);
+
+  const statsBySubject = useMemo(() => {
+    const map: Record<string, SubjectStats> = {};
+    const ensure = (id: string) => map[id] ?? (map[id] = { notesTotal: 0, notesRead: 0, cardsTotal: 0, cardsKnown: 0, cardsDue: 0 });
+    for (const n of notesList) {
+      const m = ensure(n.subjectId);
+      m.notesTotal++;
+      if (notesRead.includes(n.id)) m.notesRead++;
+    }
+    const idsBySubject: Record<string, string[]> = {};
+    for (const set of sets) {
+      const arr = idsBySubject[set.subjectId] ?? (idsBySubject[set.subjectId] = []);
+      for (const c of set.cards) arr.push(c.id);
+    }
+    for (const [sid, ids] of Object.entries(idsBySubject)) {
+      const m = ensure(sid);
+      const st = subjectSrsStats(srsCards, ids);
+      m.cardsTotal = st.total; m.cardsKnown = st.known; m.cardsDue = st.due;
+    }
+    return map;
+  }, [notesList, sets, notesRead, srsCards]);
+
+  const dueEntries = Object.entries(statsBySubject).filter(([, m]) => m.cardsDue > 0);
+  const totalDue = dueEntries.reduce((a, [, m]) => a + m.cardsDue, 0);
 
   const totalCards = flashcardsData.length;
   const totalNotes = notesData.length;
@@ -357,6 +516,48 @@ export default function Home() {
             icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>} />
         </div>
 
+        {/* Global due-for-review line */}
+        {totalDue > 0 && (
+          <Link
+            to="/flashcards"
+            className="no-underline flex items-center gap-2.5 anim-fadein"
+            style={{
+              marginTop: '-24px', marginBottom: '28px', padding: '10px 14px', borderRadius: '12px',
+              background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.22)', width: 'fit-content',
+              transition: 'border-color 0.2s ease, background 0.2s ease',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,81,73,0.5)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,81,73,0.22)'; }}
+          >
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#F85149', boxShadow: '0 0 8px #F85149', flexShrink: 0 }} />
+            <span style={{ fontSize: '13px', color: '#E6EDF3' }}>
+              You have <strong style={{ color: '#F97979' }}>{totalDue} card{totalDue !== 1 ? 's' : ''}</strong> due for review across {dueEntries.length} subject{dueEntries.length !== 1 ? 's' : ''}.
+            </span>
+            <span style={{ fontSize: '12px', color: '#F97979', fontWeight: 600 }}>Review →</span>
+          </Link>
+        )}
+
+        {/* Recent activity */}
+        {activityEvents.length > 0 && (
+          <div className="mb-10">
+            <SectionLabel>Recent Activity</SectionLabel>
+            <div style={{ background: '#12161D', border: '1px solid #21262D', borderRadius: '8px', padding: '16px', maxWidth: '720px' }}>
+              {activityEvents.slice(0, 8).map((ev, i) => (
+                <ActivityRow key={ev.id} ev={ev} subjects={allSubjects} isLast={i === Math.min(8, activityEvents.length) - 1} />
+              ))}
+              {activityEvents.length > 8 && (
+                <button
+                  onClick={() => setShowActivityAll(true)}
+                  className="cursor-pointer"
+                  style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, fontSize: '11px', fontWeight: 600, color: '#8B949E' }}
+                >
+                  View all {activityEvents.length} →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Continue where you left off */}
         {recentSubjects.length > 0 && (() => {
           const recents = recentSubjects
@@ -460,7 +661,7 @@ export default function Home() {
           </div>
           {coreSubjects.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {coreSubjects.map((s, i) => <SubjectCard key={s.id} subject={s} isCore={true} index={i} />)}
+              {coreSubjects.map((s, i) => <SubjectCard key={s.id} subject={s} isCore={true} index={i} stats={statsBySubject[s.id]} />)}
             </div>
           ) : (
             <div className="text-xs" style={{ color: '#8B949E' }}>
@@ -474,7 +675,7 @@ export default function Home() {
           <div>
             <SectionLabel count={extendedSubjects.length}>{t('extended')}</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {extendedSubjects.map((s, i) => <SubjectCard key={s.id} subject={s} isCore={false} index={i} />)}
+              {extendedSubjects.map((s, i) => <SubjectCard key={s.id} subject={s} isCore={false} index={i} stats={statsBySubject[s.id]} />)}
             </div>
           </div>
         )}
@@ -482,6 +683,7 @@ export default function Home() {
       </div>
 
       {managing && <ManageSubjects onClose={() => setManaging(false)} />}
+      {showActivityAll && <ActivityModal events={activityEvents} subjects={allSubjects} onClose={() => setShowActivityAll(false)} />}
     </div>
   );
 }
