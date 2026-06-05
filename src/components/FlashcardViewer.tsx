@@ -11,11 +11,13 @@ const RATINGS: { key: Rating; label: string; hint: string; color: string }[] = [
   { key: 'easy',  label: 'Easy',  hint: '4', color: '#2EA043' },
 ];
 
-export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
+export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQuiz, onBack }: {
   cards: GeneratedFlashcard[];
   color: string;
   subjectId?: string;
   onSessionEnd?: (reviewedCount: number) => void;
+  onGoToQuiz?: () => void;
+  onBack?: () => void;
 }) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -93,6 +95,24 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
         >
           Review again
         </button>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="h-10 px-6 text-sm font-semibold cursor-pointer"
+            style={{ background: 'transparent', color: '#8B949E', border: '1px solid #30363D', borderRadius: '999px' }}
+          >
+            ← Back to list
+          </button>
+        )}
+        {onGoToQuiz && (
+          <button
+            onClick={onGoToQuiz}
+            className="h-10 px-6 text-sm font-semibold cursor-pointer"
+            style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '999px' }}
+          >
+            Test your Knowledge →
+          </button>
+        )}
       </div>
       </>
     );
@@ -120,7 +140,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
         <span className="mono text-xs" style={{ color: '#8B949E' }}>
           {index + 1} / {cards.length}
         </span>
-        <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: color + '15', color, border: `1px solid ${color}30` }}>
+        <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: color + '10', color, border: `1px solid ${color}20` }}>
           {card.topic}
         </span>
       </div>
@@ -142,7 +162,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
             style={{
               borderRadius: '12px',
               background: dim ? `linear-gradient(150deg, ${color}33 0%, #161d28 100%)` : '#161B22',
-              border: `1px solid ${dim ? color : color + '25'}`,
+              border: `1px solid ${dim ? color + 'bb' : color + '25'}`,
               boxShadow: dim
                 ? `0 1px 0 rgba(255,255,255,0.12) inset, 0 10px 44px rgba(0,0,0,0.55), 0 0 56px ${color}33`
                 : '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',

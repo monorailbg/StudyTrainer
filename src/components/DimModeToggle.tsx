@@ -12,7 +12,7 @@ export function DimModeToggle() {
       aria-label="Toggle dim reading mode"
       aria-pressed={dim}
       style={{
-        position: 'fixed', top: '88px', right: '20px', zIndex: 60,
+        position: 'fixed', bottom: '80px', right: '16px', zIndex: 60,
         width: '38px', height: '38px', borderRadius: '50%',
         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
         background: dim ? 'rgba(61,126,255,0.18)' : 'rgba(22,27,34,0.9)',

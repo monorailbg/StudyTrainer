@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, forwardRef, useCallback } from 'react';
 import type { GeneratedNote, GeneratedNoteSection } from '../lib/generator';
+import { AskAI } from './AskAI';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -260,12 +261,15 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
 
 // ── NotesViewer ───────────────────────────────────────────────────────────────
 
-export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onRead }: {
+export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onRead, onGoToFlashcards, fullFocus, onToggleFullFocus }: {
   notes: GeneratedNote;
   color?: string;
   noteId?: string;
   scrollElRef?: React.RefObject<HTMLElement | null>;
   onRead?: () => void;
+  onGoToFlashcards?: () => void;
+  fullFocus?: boolean;
+  onToggleFullFocus?: () => void;
 }) {
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [scrollPct, setScrollPct] = useState(0);
@@ -392,7 +396,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       <div style={{ display: 'flex', gap: '48px', padding: '36px 28px 80px' }}>
 
         {/* ── Content column ── */}
-        <div style={{ flex: 1, minWidth: 0, maxWidth: '68ch' }}>
+        <div style={{ flex: 1, minWidth: 0, maxWidth: fullFocus ? '100%' : '68ch' }}>
 
           {/* Note metadata + completion header */}
           <div style={{ marginBottom: '28px' }}>
@@ -401,6 +405,22 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
               <span style={{ width: '3px', height: '3px', background: '#30363D', borderRadius: '50%' }} />
               <span style={{ fontSize: '11px', color: '#484F58' }}>{total} section{total !== 1 ? 's' : ''}</span>
               <span style={{ flex: 1 }} />
+              {onToggleFullFocus && (
+                <button
+                  onClick={onToggleFullFocus}
+                  title={fullFocus ? 'Exit full focus' : 'Full focus'}
+                  style={{
+                    background: fullFocus ? color + '20' : 'transparent',
+                    border: `1px solid ${fullFocus ? color + '50' : '#30363D'}`,
+                    borderRadius: '7px', padding: '3px 8px',
+                    cursor: 'pointer', color: fullFocus ? color : '#484F58',
+                    fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {fullFocus ? '⊡ Focused' : '⊞ Focus'}
+                </button>
+              )}
               {/* Understood progress bar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '68px', height: '3px', borderRadius: '2px', background: '#21262D', overflow: 'hidden' }}>
@@ -417,6 +437,33 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
                   {completionPct}% understood
                 </span>
               </div>
+            </div>
+            {/* Section prev/next */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+              <button
+                onClick={() => scrollToSection(activeSection - 1)}
+                disabled={activeSection === 0}
+                style={{
+                  height: '26px', padding: '0 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 600,
+                  background: 'transparent', border: '1px solid #30363D', color: '#8B949E',
+                  cursor: activeSection === 0 ? 'default' : 'pointer',
+                  opacity: activeSection === 0 ? 0.35 : 1, transition: 'opacity 0.15s',
+                }}
+              >
+                ← Prev
+              </button>
+              <button
+                onClick={() => scrollToSection(activeSection + 1)}
+                disabled={activeSection >= notes.sections.length - 1}
+                style={{
+                  height: '26px', padding: '0 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 600,
+                  background: 'transparent', border: '1px solid #30363D', color: '#8B949E',
+                  cursor: activeSection >= notes.sections.length - 1 ? 'default' : 'pointer',
+                  opacity: activeSection >= notes.sections.length - 1 ? 0.35 : 1, transition: 'opacity 0.15s',
+                }}
+              >
+                Next →
+              </button>
             </div>
 
             <h2 style={{
@@ -464,6 +511,27 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
               }}>{k}</kbd>
             ))}
           </div>
+
+          <AskAI
+            context={[notes.title, notes.summary, ...notes.sections.map(s => s.heading + '\n' + s.content + (s.keyPoints?.length ? '\n' + s.keyPoints.join('\n') : ''))].join('\n')}
+            color={color}
+          />
+
+          {onGoToFlashcards && (
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={onGoToFlashcards}
+                style={{
+                  height: '40px', padding: '0 22px', borderRadius: '999px',
+                  background: '#1D3461', color: '#93B8FF',
+                  border: '1px solid rgba(61,126,255,0.4)',
+                  fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Go to Flashcards →
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── ToC sidebar (xl screens only) ── */}
