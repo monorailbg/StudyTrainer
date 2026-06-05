@@ -6,6 +6,7 @@ const T = {
   en: {
     // Nav
     nav_dashboard: 'Dashboard',
+    nav_mindmap: 'Mind Map',
     nav_flashcards: 'Flashcards',
     nav_notes: 'Notes',
     nav_quiz: 'Quiz',
@@ -79,6 +80,7 @@ const T = {
   },
   ja: {
     nav_dashboard: 'ダッシュボード',
+    nav_mindmap: 'マインドマップ',
     nav_flashcards: 'フラッシュカード',
     nav_notes: 'ノート',
     nav_quiz: 'クイズ',

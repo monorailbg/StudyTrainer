@@ -8,37 +8,9 @@ import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
 import notesData from '../data/notes-config.json';
 import GlobeView from '../components/GlobeView';
+import MindMap from '../components/MindMap';
 import { ManageSubjects } from '../components/ManageSubjects';
-
-// ── Icons ──────────────────────────────────────────────────────────────────────
-
-const IconGlobe  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5"/><ellipse cx="12" cy="12" rx="4" ry="9" stroke={color} strokeWidth="1.5"/><path d="M3 12h18M3 8h18M3 16h18" stroke={color} strokeWidth="1.2" opacity=".5"/></svg>);
-const IconChart  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><rect x="3" y="12" width="4" height="9" rx="1" fill={color} opacity=".7"/><rect x="10" y="7" width="4" height="14" rx="1" fill={color}/><rect x="17" y="4" width="4" height="17" rx="1" fill={color} opacity=".7"/></svg>);
-const IconTrend  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><polyline points="3,17 8,12 13,15 21,7" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><polyline points="17,7 21,7 21,11" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>);
-const IconScale  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 4v16M5 20h14" stroke={color} strokeWidth="1.5" strokeLinecap="round"/><path d="M5 8L2 14h6L5 8z" stroke={color} strokeWidth="1.3" fill={color} opacity=".25" strokeLinejoin="round"/><path d="M19 8l-3 6h6l-3-6z" stroke={color} strokeWidth="1.3" fill={color} opacity=".25" strokeLinejoin="round"/></svg>);
-const IconKana   = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><text x="3" y="18" fontFamily="serif" fontSize="16" fill={color} fontWeight="400">日</text></svg>);
-const IconHanzi  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><text x="3" y="18" fontFamily="serif" fontSize="16" fill={color} fontWeight="400">中</text></svg>);
-const IconSearch = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><circle cx="10" cy="10" r="6" stroke={color} strokeWidth="1.5"/><path d="M21 21l-4.35-4.35" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><path d="M7 10h6M10 7v6" stroke={color} strokeWidth="1.3" strokeLinecap="round"/></svg>);
-const IconBrain  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 4C10 4 8 5.5 8 7.5c0 1-.5 2-1.5 2.5C5.5 10.5 5 11.5 5 12.5c0 2 1.5 3.5 3.5 3.5H12" stroke={color} strokeWidth="1.4" strokeLinecap="round"/><path d="M12 4c2 0 4 1.5 4 3.5 0 1 .5 2 1.5 2.5 1 .5 1.5 1.5 1.5 2.5 0 2-1.5 3.5-3.5 3.5H12" stroke={color} strokeWidth="1.4" strokeLinecap="round"/><path d="M12 16v4M9 20h6" stroke={color} strokeWidth="1.4" strokeLinecap="round"/></svg>);
-const IconBuild  = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><rect x="3" y="8" width="18" height="13" rx="1" stroke={color} strokeWidth="1.5"/><path d="M7 8V5a1 1 0 011-1h8a1 1 0 011 1v3" stroke={color} strokeWidth="1.5"/><rect x="7" y="13" width="3" height="3" rx=".5" stroke={color} strokeWidth="1.2"/><rect x="14" y="13" width="3" height="3" rx=".5" stroke={color} strokeWidth="1.2"/></svg>);
-const IconPencil = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M3 20l2-6L17 4l4 4L9 20H3z" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/><path d="M14.5 6.5l3 3" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg>);
-const IconCalc   = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><rect x="4" y="2" width="16" height="20" rx="2" stroke={color} strokeWidth="1.5"/><rect x="7" y="5" width="10" height="4" rx="1" fill={color} opacity=".25"/><circle cx="8" cy="14" r="1.2" fill={color}/><circle cx="12" cy="14" r="1.2" fill={color}/><circle cx="16" cy="14" r="1.2" fill={color}/><circle cx="8" cy="18" r="1.2" fill={color}/><circle cx="12" cy="18" r="1.2" fill={color}/></svg>);
-const IconOrg    = ({ color }: { color: string }) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><rect x="9" y="2" width="6" height="4" rx="1" stroke={color} strokeWidth="1.4"/><rect x="2" y="17" width="6" height="4" rx="1" stroke={color} strokeWidth="1.4"/><rect x="9" y="17" width="6" height="4" rx="1" stroke={color} strokeWidth="1.4"/><rect x="16" y="17" width="6" height="4" rx="1" stroke={color} strokeWidth="1.4"/><path d="M12 6v4M12 10H5v7M12 10h7v7M12 10v7" stroke={color} strokeWidth="1.4" strokeLinecap="round"/></svg>);
-
-const SubjectIconMap: Record<string, React.FC<{ color: string }>> = {
-  'international-trade': IconGlobe,
-  marketing:             IconChart,
-  finance:               IconTrend,
-  economics:             IconScale,
-  japanese:              IconKana,
-  chinese:               IconHanzi,
-  'research-business':   IconSearch,
-  'eq-pc':               IconBrain,
-  'business-economics':  IconBuild,
-  'pre-seminar':         IconPencil,
-  'accounting-advanced': IconCalc,
-  management:            IconOrg,
-};
+import { SubjectIcon } from '../data/subjectIcons';
 
 // ── Greeting ───────────────────────────────────────────────────────────────────
 
@@ -147,7 +119,6 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
 
 function SubjectCard({ subject, isCore, index = 0 }: { subject: SubjectDef; isCore: boolean; index?: number }) {
   const { t } = useLang();
-  const Icon = SubjectIconMap[subject.id] ?? IconGlobe;
 
   const fcCount = isCore && subject.flashcardTopic
     ? flashcardsData.filter(f => f.topic === subject.flashcardTopic).length : 0;
@@ -162,7 +133,7 @@ function SubjectCard({ subject, isCore, index = 0 }: { subject: SubjectDef; isCo
           <div className="flex items-start justify-between">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5"
               style={{ background: subject.color + '20', border: `1px solid ${subject.color}30` }}>
-              <Icon color={subject.color} />
+              <SubjectIcon id={subject.id} color={subject.color} />
             </div>
             <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: subject.color, boxShadow: `0 0 6px ${subject.color}` }} />
           </div>
@@ -235,6 +206,7 @@ export default function Home() {
   const { flashcardsStudied, flashcardsKnown, quizScores, notesRead, recentSubjects } = useStore();
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
+  const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
   // Force the globe to rebuild when the set of subjects changes.
   const globeKey = allSubjects.map(s => s.id).join(',');
 
@@ -258,10 +230,37 @@ export default function Home() {
           overflow: 'hidden',
         }}
       >
-        {/* Globe canvas */}
-        <GlobeView key={globeKey} subjects={allSubjects} />
+        {/* Globe / mind map canvas */}
+        {heroView === 'globe'
+          ? <GlobeView key={globeKey} subjects={allSubjects} />
+          : <MindMap />}
 
-        {/* Title overlay — top left */}
+        {/* View toggle — top right */}
+        <div style={{
+          position: 'absolute', top: 'clamp(16px, 4vw, 32px)', right: 'clamp(16px, 4vw, 32px)',
+          zIndex: 11, display: 'flex', gap: '3px', padding: '3px',
+          background: 'rgba(22,27,34,0.82)', border: '1px solid #30363D', borderRadius: '12px',
+          backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+        }}>
+          {([['globe', 'Globe'], ['mindmap', 'Mind Map']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setHeroView(key)}
+              style={{
+                height: '30px', padding: '0 12px', borderRadius: '9px', cursor: 'pointer', border: 'none',
+                fontSize: '12px', fontWeight: 600, fontFamily: "'Inter',sans-serif",
+                background: heroView === key ? 'rgba(61,126,255,0.18)' : 'transparent',
+                color: heroView === key ? '#93B8FF' : '#8B949E',
+                transition: 'background 0.2s ease, color 0.2s ease',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Title overlay — top left (globe only; the mind map has its own search here) */}
+        {heroView === 'globe' && (
         <div
           style={{
             position: 'absolute',
@@ -304,8 +303,10 @@ export default function Home() {
             Click a subject on the globe to dive in.
           </p>
         </div>
+        )}
 
         {/* Scroll hint */}
+        {heroView === 'globe' && (
         <div style={{
           position: 'absolute',
           bottom: '18px',
@@ -325,6 +326,7 @@ export default function Home() {
             <path d="M2 4l4 4 4-4" stroke="#8B949E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
+        )}
 
         {/* Bottom gradient — blends into content */}
         <div style={{
@@ -367,7 +369,6 @@ export default function Home() {
               <SectionLabel>Continue where you left off</SectionLabel>
               <div className="flex gap-3 flex-wrap">
                 {recents.map((s, i) => {
-                  const Icon = SubjectIconMap[s.id] ?? IconGlobe;
                   return (
                     <Link
                       key={s.id}
@@ -384,7 +385,7 @@ export default function Home() {
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
                     >
                       <span className="[&>svg]:w-[18px] [&>svg]:h-[18px]" style={{ width: '36px', height: '36px', borderRadius: '11px', background: s.color + '1F', border: `1px solid ${s.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon color={s.color} />
+                        <SubjectIcon id={s.id} color={s.color} />
                       </span>
                       <div className="min-w-0">
                         <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 600, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>

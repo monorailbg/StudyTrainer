@@ -13,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.100.0",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.107.0",
+    "@xyflow/react": "^12.11.0",
     "firebase": "^12.14.0",
     "globe.gl": "^2.46.1",
     "pdfjs-dist": "^5.7.284",
