@@ -9,8 +9,8 @@ import type { SubjectDef } from '../data/subjects';
 import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
 import notesData from '../data/notes-config.json';
-import { getAllFlashcardSets, getAllNotes, type StoredFlashcardSet, type StoredNote } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudFlashcardSets, getAllCloudNotes } from '../lib/cloudDb';
+import { getAllFlashcardSets, getAllNotes, getAllQuizResults, type StoredFlashcardSet, type StoredNote, type QuizResult } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudFlashcardSets, getAllCloudNotes, getAllCloudQuizResults } from '../lib/cloudDb';
 import GlobeView from '../components/GlobeView';
 import MindMap from '../components/MindMap';
 import { ManageSubjects } from '../components/ManageSubjects';
@@ -274,6 +274,7 @@ export default function Home() {
   // due badges and the global due count.
   const [sets, setSets] = useState<StoredFlashcardSet[]>([]);
   const [notesList, setNotesList] = useState<StoredNote[]>([]);
+  const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const srsCards = useSRS(s => s.cards);
 
   useEffect(() => {
@@ -281,6 +282,8 @@ export default function Home() {
       .then(d => setSets(d as StoredFlashcardSet[])).catch(() => {});
     (isFirebaseConfigured ? getAllCloudNotes() : getAllNotes())
       .then(d => setNotesList(d as StoredNote[])).catch(() => {});
+    (isFirebaseConfigured ? getAllCloudQuizResults() : getAllQuizResults())
+      .then(d => setQuizResults(d as QuizResult[])).catch(() => {});
   }, []);
 
   const statsBySubject = useMemo(() => {
@@ -309,9 +312,13 @@ export default function Home() {
 
   const totalCards = flashcardsData.length;
   const totalNotes = notesData.length;
-  const avgScore   = quizScores.length > 0
-    ? Math.round(quizScores.reduce((a, b) => a + (b.score / b.total) * 100, 0) / quizScores.length)
-    : 0;
+  const totalResultQs = quizResults.reduce((a, r) => a + r.totalQuestions, 0);
+  const totalResultCorrect = quizResults.reduce((a, r) => a + r.correctAnswers, 0);
+  const avgScore = totalResultQs > 0
+    ? Math.round((totalResultCorrect / totalResultQs) * 100)
+    : (quizScores.length > 0
+      ? Math.round(quizScores.reduce((a, b) => a + (b.score / b.total) * 100, 0) / quizScores.length)
+      : 0);
   const knownPct = totalCards > 0 ? Math.round((flashcardsKnown.length / totalCards) * 100) : 0;
   const notesPct = totalNotes > 0 ? Math.round((notesRead.length   / totalNotes) * 100) : 0;
 
@@ -448,7 +455,7 @@ export default function Home() {
           <StatChip index={1} label={t('stats_known')}   value={flashcardsKnown.length}   progress={knownPct} color="#3D7EFF"
             icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 8.2l1.8 1.8L11 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
           <StatChip index={2} label={t('stats_score')}   value={avgScore > 0 ? `${avgScore}%` : '—'} progress={avgScore || undefined} color="#D29922"
-            spark={quizScores.map(q => Math.round((q.score / q.total) * 100))}
+            spark={quizResults.length > 0 ? quizResults.slice(0, 20).reverse().map(r => r.scorePercent) : quizScores.map(q => Math.round((q.score / q.total) * 100))}
             icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><polyline points="2,11 6,7 9,9 14,4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
           <StatChip index={3} label={t('stats_notes')}   value={notesRead.length}         progress={notesPct} color="#2EA043"
             icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>} />

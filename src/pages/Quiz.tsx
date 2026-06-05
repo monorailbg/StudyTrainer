@@ -157,10 +157,13 @@ export default function Quiz() {
               key={activeQuiz.id}
               questions={activeQuiz.questions}
               color={activeColor}
-              onComplete={(pct, score, total) => {
+              quizId={activeQuiz.id}
+              quizTitle={activeQuiz.name}
+              subjectId={activeQuiz.subjectId}
+              onComplete={(result) => {
                 const name = activeSubject?.title ?? 'a subject';
-                addQuizScore(activeSubject?.id ?? activeQuiz.subjectId, score, total);
-                record({ type: 'quiz', subjectId: activeQuiz.subjectId, subjectName: name, detail: `Scored ${pct}% on ${name} quiz` });
+                addQuizScore(activeSubject?.id ?? activeQuiz.subjectId, result.correctAnswers, result.totalQuestions);
+                record({ type: 'quiz', subjectId: activeQuiz.subjectId, subjectName: name, detail: `Scored ${result.scorePercent}% on ${name} quiz` });
               }}
             />
           </div>

@@ -15,6 +15,7 @@ import {
   saveNote, getNotes, deleteNote, type StoredNote,
   saveFlashcardSet, getFlashcardSets, deleteFlashcardSet, type StoredFlashcardSet,
   saveFolder, getFolders, deleteFolder, type Folder, type FolderKind,
+  getQuizResults, type QuizResult,
 } from '../lib/db';
 import {
   isFirebaseConfigured, isSupabaseConfigured,
@@ -24,6 +25,7 @@ import {
   saveCloudQuiz, getCloudQuizzes, deleteCloudQuiz, renameCloudQuiz,
   saveCloudFolder, getCloudFolders, deleteCloudFolder,
   migrateSubjectFromIndexedDB,
+  getCloudQuizResults,
 } from '../lib/cloudDb';
 import type {
   GenerationType,
@@ -120,6 +122,120 @@ function SidebarItem({
       </span>
       {dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor || '#3D7EFF', boxShadow: `0 0 5px ${dotColor || '#3D7EFF'}` }} />}
     </button>
+  );
+}
+
+// ── Quiz history panel ────────────────────────────────────────────────────────
+
+function QuizHistoryPanel({ history, onRedo }: {
+  history: import('../lib/db').QuizResult[];
+  onRedo: (r: import('../lib/db').QuizResult) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+
+  const scoreColor = (pct: number) => pct >= 80 ? '#56D364' : pct >= 60 ? '#D29922' : '#F97979';
+  const relDate = (ts: number) => {
+    const d = Math.floor((Date.now() - ts) / 86400000);
+    if (d === 0) return 'Today'; if (d === 1) return 'Yesterday';
+    if (d < 7) return `${d}d ago`;
+    return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+  const fmtTime = (s: number) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60 > 0 ? `${s % 60}s` : ''}`.trim();
+
+  const grouped = history.reduce<Record<string, typeof history>>((acc, r) => {
+    (acc[r.quizTitle] ??= []).push(r);
+    return acc;
+  }, {});
+
+  const totalCorrect = history.reduce((a, r) => a + r.correctAnswers, 0);
+  const totalQs = history.reduce((a, r) => a + r.totalQuestions, 0);
+  const avgPct = totalQs > 0 ? Math.round((totalCorrect / totalQs) * 100) : 0;
+  const bestResult = history.reduce<typeof history[0] | null>((best, r) => (!best || r.scorePercent > best.scorePercent) ? r : best, null);
+
+  return (
+    <div style={{ marginTop: '32px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
+          Past Results
+        </span>
+        <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
+      </div>
+
+      {/* Summary */}
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '10px', background: '#161B22', border: '1px solid #21262D' }}>
+          <span style={{ fontSize: '11px', color: '#484F58' }}>Average</span>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: scoreColor(avgPct) }}>{avgPct}%</span>
+          <div style={{ width: '60px', height: '4px', background: '#21262D', borderRadius: '999px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${avgPct}%`, background: scoreColor(avgPct), borderRadius: '999px' }} />
+          </div>
+          <span style={{ fontSize: '10px', color: '#484F58' }}>{history.length} attempt{history.length !== 1 ? 's' : ''}</span>
+        </div>
+        {bestResult && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: '#161B22', border: '1px solid #21262D' }}>
+            <span style={{ fontSize: '11px', color: '#484F58' }}>Best</span>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#56D364' }}>{bestResult.scorePercent}%</span>
+            <span style={{ fontSize: '10px', color: '#484F58' }}>on {relDate(bestResult.completedAt)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Result rows grouped by quiz */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {Object.entries(grouped).map(([title, results]) => {
+          const shown = showAll ? results : results.slice(0, 5);
+          return (
+            <div key={title}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#8B949E', marginBottom: '8px' }}>{title}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {shown.map(r => (
+                  <div key={r.id} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+                    padding: '10px 14px', borderRadius: '10px',
+                    background: '#161B22', border: '1px solid #21262D',
+                  }}>
+                    <span style={{
+                      padding: '3px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+                      background: scoreColor(r.scorePercent) + '18',
+                      color: scoreColor(r.scorePercent),
+                      border: `1px solid ${scoreColor(r.scorePercent)}33`,
+                      flexShrink: 0,
+                    }}>
+                      {r.scorePercent}%
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#8B949E' }}>{r.correctAnswers} / {r.totalQuestions}</span>
+                    <span style={{ fontSize: '10px', color: '#484F58' }}>{relDate(r.completedAt)}</span>
+                    <span style={{ fontSize: '10px', color: '#484F58' }}>{fmtTime(r.timeTakenSeconds)}</span>
+                    <div style={{ flex: 1 }} />
+                    {r.incorrectAnswers > 0 && (
+                      <button
+                        onClick={() => onRedo(r)}
+                        style={{
+                          height: '26px', padding: '0 10px', borderRadius: '999px',
+                          background: 'rgba(210,153,34,0.1)', color: '#D29922',
+                          border: '1px solid rgba(210,153,34,0.3)',
+                          fontSize: '10px', fontWeight: 600, cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        Redo wrong →
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {results.length > 5 && (
+                <button onClick={() => setShowAll(s => !s)} style={{
+                  marginTop: '6px', fontSize: '11px', color: '#484F58', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+                }}>
+                  {showAll ? 'Show less' : `+ ${results.length - 5} more`}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -414,6 +530,8 @@ export default function SubjectPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [savedQuizzes, setSavedQuizzes] = useState<StoredQuiz[]>([]);
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
+  const [quizHistory, setQuizHistory] = useState<QuizResult[]>([]);
+  const [redoingResult, setRedoingResult] = useState<QuizResult | null>(null);
   const [savedNotes, setSavedNotes] = useState<StoredNote[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [savedFlashcardSets, setSavedFlashcardSets] = useState<StoredFlashcardSet[]>([]);
@@ -450,13 +568,15 @@ export default function SubjectPage() {
       try {
         if (isFirebaseConfigured) {
           await migrateSubjectFromIndexedDB(id!);
-          const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets, cloudFolders] = await Promise.all([
+          const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets, cloudFolders, cloudHistory] = await Promise.all([
             getCloudFiles(id!),
             getCloudQuizzes(id!),
             getCloudNotes(id!),
             getCloudFlashcardSets(id!),
             getCloudFolders(id!),
+            getCloudQuizResults(id!),
           ]);
+          setQuizHistory(cloudHistory as QuizResult[]);
           if (cloudFolders.length > 0) setFolders(cloudFolders);
           if (cloudQuizzes.length > 0) setSavedQuizzes(cloudQuizzes);
           if (cloudNotes.length > 0) setSavedNotes(cloudNotes);
@@ -471,13 +591,15 @@ export default function SubjectPage() {
             setSelectedFileIds(mapped.map(f => f.id));
           }
         } else {
-          const [storedFiles, storedQuizzes, storedNotes, storedSets, storedFolders] = await Promise.all([
+          const [storedFiles, storedQuizzes, storedNotes, storedSets, storedFolders, storedHistory] = await Promise.all([
             getFiles(id!),
             getQuizzes(id!),
             getNotes(id!),
             getFlashcardSets(id!),
             getFolders(id!),
+            getQuizResults(id!),
           ]);
+          setQuizHistory(storedHistory);
           if (storedFolders.length > 0) setFolders(storedFolders);
           if (storedQuizzes.length > 0) setSavedQuizzes(storedQuizzes.sort((a, b) => b.createdAt - a.createdAt));
           if (storedNotes.length > 0) setSavedNotes(storedNotes.sort((a, b) => b.createdAt - a.createdAt));
@@ -1674,12 +1796,18 @@ export default function SubjectPage() {
                     </div>
                   </div>
                   <QuizViewer
-                    key={activeQuiz.id}
+                    key={`${activeQuiz.id}${redoingResult ? '-redo' : ''}`}
                     questions={activeQuiz.questions}
                     color={subject.color}
-                    onComplete={(pct, score, total) => {
-                      useStore.getState().addQuizScore(subject.id, score, total);
-                      recordActivity({ type: 'quiz', subjectId: subject.id, subjectName: subject.title, detail: `Scored ${pct}% on ${subject.title} quiz` });
+                    quizId={activeQuiz.id}
+                    quizTitle={activeQuiz.name}
+                    subjectId={subject.id}
+                    initialRedoResult={redoingResult ?? undefined}
+                    onComplete={(result) => {
+                      setRedoingResult(null);
+                      setQuizHistory(prev => [result, ...prev.filter(r => r.id !== result.id)]);
+                      useStore.getState().addQuizScore(subject.id, result.correctAnswers, result.totalQuestions);
+                      recordActivity({ type: 'quiz', subjectId: subject.id, subjectName: subject.title, detail: `Scored ${result.scorePercent}% on ${subject.title} quiz` });
                     }}
                   />
                 </div>
@@ -1691,6 +1819,7 @@ export default function SubjectPage() {
             }
 
             return (
+              <>
               <FolderBoard<StoredQuiz>
                 kind="quiz" label="Previous quizzes" color={subject.color}
                 folders={folders} items={savedQuizzes}
@@ -1771,6 +1900,19 @@ export default function SubjectPage() {
                   );
                 }}
               />
+              {quizHistory.length > 0 && (
+                <QuizHistoryPanel
+                  history={quizHistory}
+                  onRedo={(result) => {
+                    const quiz = savedQuizzes.find(q => q.id === result.quizId);
+                    if (quiz) {
+                      setActiveQuizId(quiz.id);
+                      setRedoingResult(result);
+                    }
+                  }}
+                />
+              )}
+              </>
             );
           })()}
         </main>

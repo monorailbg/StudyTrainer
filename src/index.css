@@ -285,6 +285,12 @@ h1, h2, h3 {
 .anim-correct { animation: correctbounce 0.4s cubic-bezier(0.4, 0.0, 0.2, 1); }
 .anim-fadein  { animation: fadein 0.2s cubic-bezier(0.0, 0.0, 0.2, 1) forwards; }
 
+@keyframes confetti-fall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  80%  { opacity: 0.9; }
+  100% { transform: translateY(520px) rotate(680deg); opacity: 0; }
+}
+
 /* ── Page transition — keyed per route ───────────────────────────── */
 @keyframes pagein {
   from { opacity: 0; transform: translateY(8px); }

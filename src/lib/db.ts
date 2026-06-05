@@ -7,7 +7,7 @@
 import type { GeneratedFlashcard, GeneratedNote, GeneratedQuizQuestion } from './generator';
 
 const DB_NAME = 'StudyTrainerDB';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 let _db: Promise<IDBDatabase> | null = null;
 
@@ -39,6 +39,11 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('folders')) {
         const store = db.createObjectStore('folders', { keyPath: 'id' });
         store.createIndex('bySubject', 'subjectId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('quizResults')) {
+        const store = db.createObjectStore('quizResults', { keyPath: 'id' });
+        store.createIndex('bySubject', 'subjectId', { unique: false });
+        store.createIndex('byQuiz', 'quizId', { unique: false });
       }
     };
     req.onsuccess  = () => resolve(req.result);
@@ -309,5 +314,66 @@ export async function deleteFolder(folderId: string): Promise<void> {
     tx.objectStore('folders').delete(folderId);
     tx.oncomplete = () => resolve();
     tx.onerror    = () => reject(tx.error);
+  });
+}
+
+// ── Quiz results ─────────────────────────────────────────────────────────────
+
+export interface QuizResultQuestion {
+  questionId:    string;
+  questionText:  string;
+  userAnswer:    string;   // text of the chosen option
+  correctAnswer: string;   // text of the correct option
+  wasCorrect:    boolean;
+  options:       string[];
+  explanation?:  string;
+}
+
+export interface QuizResult {
+  id:               string;
+  subjectId:        string;
+  quizId:           string;
+  quizTitle:        string;
+  completedAt:      number;
+  totalQuestions:   number;
+  correctAnswers:   number;
+  incorrectAnswers: number;
+  scorePercent:     number;
+  timeTakenSeconds: number;
+  questions:        QuizResultQuestion[];
+}
+
+export async function saveQuizResult(result: QuizResult): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('quizResults', 'readwrite');
+    tx.objectStore('quizResults').put(result);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+export async function getQuizResults(subjectId: string): Promise<QuizResult[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('quizResults', 'readonly');
+    const req = tx.objectStore('quizResults').index('bySubject').getAll(subjectId);
+    req.onsuccess = () => resolve((req.result ?? []).sort((a, b) => b.completedAt - a.completedAt));
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function getLatestQuizResult(subjectId: string, quizId: string): Promise<QuizResult | undefined> {
+  const results = await getQuizResults(subjectId);
+  return results.find(r => r.quizId === quizId);
+}
+
+export async function getAllQuizResults(): Promise<QuizResult[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('quizResults', 'readonly');
+    const req = tx.objectStore('quizResults').getAll();
+    req.onsuccess = () => resolve((req.result ?? []).sort((a, b) => b.completedAt - a.completedAt));
+    req.onerror   = () => reject(req.error);
   });
 }

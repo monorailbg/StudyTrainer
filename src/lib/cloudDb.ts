@@ -220,6 +220,46 @@ export async function renameCloudQuiz(quizId: string, name: string): Promise<voi
   if (snap.exists()) await setDoc(ref_, { ...snap.data(), name });
 }
 
+// ── Quiz results CRUD ─────────────────────────────────────────────────────
+
+export interface CloudQuizResultQuestion {
+  questionId:    string;
+  questionText:  string;
+  userAnswer:    string;
+  correctAnswer: string;
+  wasCorrect:    boolean;
+  options:       string[];
+  explanation?:  string;
+}
+
+export interface CloudQuizResult {
+  id:               string;
+  subjectId:        string;
+  quizId:           string;
+  quizTitle:        string;
+  completedAt:      number;
+  totalQuestions:   number;
+  correctAnswers:   number;
+  incorrectAnswers: number;
+  scorePercent:     number;
+  timeTakenSeconds: number;
+  questions:        CloudQuizResultQuestion[];
+}
+
+export async function saveCloudQuizResult(result: CloudQuizResult): Promise<void> {
+  await setDoc(doc(db(), 'quizResults', result.id), result);
+}
+
+export async function getCloudQuizResults(subjectId: string): Promise<CloudQuizResult[]> {
+  const items = await getBySubject<CloudQuizResult>('quizResults', subjectId);
+  return items.sort((a, b) => b.completedAt - a.completedAt);
+}
+
+export async function getAllCloudQuizResults(): Promise<CloudQuizResult[]> {
+  const items = await getAll<CloudQuizResult>('quizResults');
+  return items.sort((a, b) => b.completedAt - a.completedAt);
+}
+
 // ── IndexedDB → Firestore migration ───────────────────────────────────────
 // Runs once per subject. Pushes any locally-generated content to Firestore
 // so existing users don't lose their work when switching to cloud mode.
