@@ -191,6 +191,7 @@ export interface GenerateOptions {
   notesIncludes?: string[];                                    // 'formulas' | 'diagrams' | 'mindmap'
   customPrompt?: string;                                       // free-text appended to the prompt
   language?: 'english' | 'japanese' | 'both';                 // output language (default english)
+  difficulty?: 'easy' | 'medium' | 'hard';                    // quiz question difficulty
 }
 
 function languageInstruction(language?: 'english' | 'japanese' | 'both'): string {
@@ -270,6 +271,17 @@ Return ONLY valid JSON — no markdown, no commentary:
 }`;
 }
 
+const DIFFICULTY_MAP: Record<'easy' | 'medium' | 'hard', string> = {
+  easy: 'EASY — test foundational recall and basic comprehension. Use clear, direct questions with plainly distinguishable options and obvious distractors. Suitable for someone first learning the material.',
+  medium: 'MEDIUM — test solid understanding and application. Require connecting concepts, with plausible distractors that reflect common misconceptions. The standard exam level.',
+  hard: 'HARD — test deep analysis, synthesis, and edge cases. Use challenging scenario- or calculation-based questions with subtle, closely competing distractors that demand careful reasoning. Suitable for advanced revision.',
+};
+
+function difficultyInstruction(difficulty?: 'easy' | 'medium' | 'hard'): string {
+  if (!difficulty) return '';
+  return `\nDifficulty level: ${DIFFICULTY_MAP[difficulty]}`;
+}
+
 function quizFilePrompt(subject: string, opts: GenerateOptions): string {
   const count = opts.questionCount ?? 10;
   const focus = opts.focusTopic?.trim();
@@ -277,7 +289,7 @@ function quizFilePrompt(subject: string, opts: GenerateOptions): string {
   return `You are an expert exam question writer for university-level ${subject}.
 
 Analyse the content in this file and create exactly ${count} multiple-choice questions.
-${focus ? `Focus specifically on the topic: "${focus}".` : ''}
+${focus ? `Focus specifically on the topic: "${focus}".` : ''}${difficultyInstruction(opts.difficulty)}
 ${custom ? `Additional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
 Return ONLY valid JSON — no markdown, no commentary:

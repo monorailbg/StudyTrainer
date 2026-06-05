@@ -522,6 +522,7 @@ export default function SubjectPage() {
   const [genState, setGenState] = useState<GenState>({ status: 'idle' });
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [quizCount, setQuizCount] = useState(10);
+  const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [cardCount, setCardCount] = useState(12);
   const [focusTopic, setFocusTopic] = useState('');
   const [notesDetail, setNotesDetail] = useState<'concise' | 'standard' | 'comprehensive'>('standard');
@@ -884,6 +885,7 @@ export default function SubjectPage() {
         const result = await generateFromFile(fileForGen, selectedType, subject!.title, {
           cardCount,
           questionCount: quizCount,
+          difficulty: quizDifficulty,
           focusTopic: focusTopic.trim() || undefined,
           notesDetail,
           notesIncludes,
@@ -2053,6 +2055,25 @@ export default function SubjectPage() {
                           {n}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
+                    <div className="flex gap-1.5">
+                      {([
+                        { key: 'easy', label: 'Easy', tint: '#48C78E' },
+                        { key: 'medium', label: 'Medium', tint: '#F6AD55' },
+                        { key: 'hard', label: 'Hard', tint: '#F87171' },
+                      ] as const).map(d => {
+                        const active = quizDifficulty === d.key;
+                        return (
+                          <button key={d.key} onClick={() => setQuizDifficulty(d.key)}
+                            className="h-8 flex-1 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
+                            style={{ borderRadius: '999px', background: active ? d.tint + '20' : 'transparent', color: active ? d.tint : '#8B949E', borderColor: active ? d.tint + '60' : '#30363D' }}>
+                            {d.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div>
