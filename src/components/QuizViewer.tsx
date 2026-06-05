@@ -249,50 +249,92 @@ function SetupScreen({ total, color, onStart, initialMode }: {
 
 // ── Option button ─────────────────────────────────────────────────────────────
 
+// Per-letter accent tints — gives each option a unique, scannable identity.
+const LETTER_TINTS = [
+  { bg: 'rgba(99,179,237,0.15)',  border: 'rgba(99,179,237,0.4)',  text: 'rgb(99,179,237)'  }, // A blue
+  { bg: 'rgba(154,117,234,0.15)', border: 'rgba(154,117,234,0.4)', text: 'rgb(154,117,234)' }, // B purple
+  { bg: 'rgba(72,199,142,0.15)',  border: 'rgba(72,199,142,0.4)',  text: 'rgb(72,199,142)'  }, // C green
+  { bg: 'rgba(246,173,85,0.15)',  border: 'rgba(246,173,85,0.4)',  text: 'rgb(246,173,85)'  }, // D amber
+  { bg: 'rgba(99,179,237,0.15)',  border: 'rgba(99,179,237,0.4)',  text: 'rgb(99,179,237)'  }, // E (fallback)
+];
+
 function OptionBtn({
-  letter, text, state, disabled, onClick, compact = false,
+  letter, text, state, disabled, onClick, color, compact = false,
 }: {
   letter: string; text: string;
   state: 'idle' | 'chosen' | 'right' | 'wrong';
-  disabled: boolean; onClick: () => void; compact?: boolean;
+  disabled: boolean; onClick: () => void; color: string; compact?: boolean;
 }) {
-  const colors = {
-    idle:   { bg: 'transparent', border: '#21262D', text: '#8B949E', lb: '#21262D', lc: '#8B949E' },
-    chosen: { bg: '#3D7EFF0F',   border: '#3D7EFF55', text: '#E6EDF3', lb: '#3D7EFF22', lc: '#3D7EFF' },
-    right:  { bg: 'rgba(46,160,67,0.09)', border: 'rgba(46,160,67,0.4)', text: '#56D364', lb: 'rgba(46,160,67,0.25)', lc: '#56D364' },
-    wrong:  { bg: 'rgba(248,81,73,0.09)', border: 'rgba(248,81,73,0.4)', text: '#F97979', lb: 'rgba(248,81,73,0.25)', lc: '#F97979' },
+  const [hover, setHover] = useState(false);
+  const [pulse, setPulse] = useState(false);
+
+  const tint = LETTER_TINTS[Math.max(0, LETTERS.indexOf(letter))] ?? LETTER_TINTS[0];
+
+  // Card surface + text per state.
+  const card = {
+    idle:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)', text: 'rgba(255,255,255,0.90)' },
+    chosen: { bg: `${color}1F`,             border: `${color}99`,             text: 'rgba(255,255,255,1)'    },
+    right:  { bg: 'rgba(72,199,142,0.15)',  border: 'rgba(72,199,142,0.70)',  text: 'rgb(72,199,142)'        },
+    wrong:  { bg: 'rgba(252,100,100,0.12)', border: 'rgba(252,100,100,0.60)', text: 'rgba(252,100,100,0.90)' },
   }[state];
+
+  // Badge follows letter tint at rest, switches to state colour once revealed/selected.
+  const badge =
+    state === 'right'  ? { bg: 'rgba(72,199,142,0.22)',  border: 'rgba(72,199,142,0.7)',  text: 'rgb(72,199,142)' }
+    : state === 'wrong'  ? { bg: 'rgba(252,100,100,0.2)',  border: 'rgba(252,100,100,0.6)', text: 'rgb(252,100,100)' }
+    : state === 'chosen' ? { bg: `${color}33`,             border: color,                   text: color }
+    : tint;
+
+  const hovering = hover && !disabled && state === 'idle';
+  const cardBg = hovering ? 'rgba(255,255,255,0.08)' : card.bg;
+  const cardBorder = hovering ? 'rgba(255,255,255,0.22)' : card.border;
+
+  function handleClick() {
+    if (!disabled) {
+      setPulse(true);
+      setTimeout(() => setPulse(false), 200);
+    }
+    onClick();
+  }
+
+  const badgeSize = compact ? 26 : 32;
 
   return (
     <button
       disabled={disabled}
-      onClick={onClick}
-      className={state === 'right' ? 'anim-correct' : state === 'wrong' ? 'anim-shake' : ''}
+      onClick={handleClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      className={`${pulse ? 'anim-option-pulse ' : ''}${state === 'right' ? 'anim-correct' : state === 'wrong' ? 'anim-shake' : ''}`}
       style={{
-        display: 'flex', alignItems: 'center', gap: compact ? '10px' : '14px',
-        padding: compact ? '10px 12px' : '16px 20px',
-        minHeight: compact ? undefined : '56px',
-        borderRadius: compact ? '10px' : '12px',
-        border: `1px solid ${colors.border}`, background: colors.bg,
+        display: 'flex', alignItems: 'center', gap: '16px',
+        padding: compact ? '12px 14px' : '16px 20px',
+        minHeight: compact ? '48px' : '56px',
+        borderRadius: '12px',
+        border: `1px solid ${cardBorder}`, background: cardBg,
         cursor: disabled ? 'default' : 'pointer', textAlign: 'left', width: '100%',
-        transition: 'background 0.12s, border-color 0.12s',
+        transform: hovering && !pulse ? 'translateX(4px)' : 'translateX(0)',
+        transition: 'background 180ms ease, border-color 180ms ease, transform 180ms ease',
       }}
-      onMouseEnter={e => { if (!disabled && state === 'idle') { const el = e.currentTarget as HTMLElement; el.style.background = '#3D7EFF08'; el.style.borderColor = '#3D7EFF33'; }}}
-      onMouseLeave={e => { if (!disabled && state === 'idle') { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent'; el.style.borderColor = '#21262D'; }}}
     >
       <span style={{
-        width: compact ? '24px' : '28px', height: compact ? '24px' : '28px',
-        borderRadius: compact ? '6px' : '8px', flexShrink: 0,
-        background: colors.lb, color: colors.lc,
+        width: `${badgeSize}px`, height: `${badgeSize}px`,
+        borderRadius: '8px', flexShrink: 0,
+        background: badge.bg, color: badge.text,
+        border: `1px solid ${badge.border}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '10px', fontWeight: 800, fontFamily: 'JetBrains Mono, monospace',
-        transition: 'all 0.12s',
+        fontSize: '14px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace',
+        transition: 'all 0.15s',
       }}>
         {state === 'right' ? (
-          <svg viewBox="0 0 12 12" width="10" height="10" fill="none"><path d="M2 6l2.5 2.5L10 3.5" stroke={colors.lc} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <svg viewBox="0 0 12 12" width="13" height="13" fill="none"><path d="M2 6l2.5 2.5L10 3.5" stroke={badge.text} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         ) : letter}
       </span>
-      <span style={{ fontSize: compact ? '12px' : '15px', color: colors.text, lineHeight: 1.5, fontWeight: state === 'chosen' || state === 'right' ? 500 : 400 }}>
+      <span style={{
+        fontSize: compact ? '14px' : '16px', color: card.text,
+        lineHeight: 1.5, letterSpacing: '0.01em',
+        fontWeight: state === 'idle' ? 500 : 600,
+      }}>
         {text}
       </span>
     </button>
@@ -421,21 +463,21 @@ function FocusedMode({
         overflow: 'hidden',
         boxShadow: '0 2px 20px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04) inset',
       }}>
-        <div style={{ padding: '32px 36px 24px' }}>
-          <div style={{ fontSize: '20px', fontWeight: 600, color: '#E6EDF3', lineHeight: 1.5 }}>
+        <div style={{ padding: '32px 36px 20px', margin: '0 0 4px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 700, color: 'rgba(255,255,255,0.97)', lineHeight: 1.5, letterSpacing: '0.005em' }}>
             {q.question}
           </div>
         </div>
-        <div style={{ height: '1px', background: '#21262D', margin: '0 28px' }} />
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0 28px' }} />
 
-        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ padding: '24px 24px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {q.options.map((opt, oi) => {
             const state = !revealed
               ? (chosen === oi ? 'chosen' : 'idle')
               : (oi === correct ? 'right' : (chosen === oi ? 'wrong' : 'idle'));
             return (
               <OptionBtn key={oi} letter={LETTERS[oi]} text={opt} state={state}
-                disabled={revealed} onClick={() => pick(oi)} />
+                color={color} disabled={revealed} onClick={() => pick(oi)} />
             );
           })}
         </div>
@@ -554,14 +596,14 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
               transition: 'border-color 0.2s',
             }}>
               <div style={{ padding: '18px 20px 14px' }}>
-                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#E6EDF3', lineHeight: 1.6 }}>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.97)', lineHeight: 1.55 }}>
                   <span className="mono" style={{ fontSize: '10px', color: '#484F58', marginRight: '10px', fontWeight: 700 }}>
                     {String(qi + 1).padStart(2, '0')}
                   </span>
                   {q.question}
                 </p>
               </div>
-              <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {q.options.map((opt, oi) => {
                   const state = !reveal
                     ? (chosen === oi ? 'chosen' : 'idle')
@@ -569,7 +611,7 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
                   return (
                     <OptionBtn key={oi} letter={LETTERS[oi]} text={opt}
                       state={state as 'idle' | 'chosen' | 'right' | 'wrong'}
-                      disabled={submitted} onClick={() => handleAnswer(q.id, oi, Number(q.correct))}
+                      color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi, Number(q.correct))}
                       compact />
                   );
                 })}
