@@ -865,8 +865,6 @@ export default function SubjectPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 72px)' }}>
-      {/* Dim toggle lives here — outside <main> so CSS filter on dim-mode never breaks position:fixed */}
-      {(view === 'flashcards' || view === 'notes' || view === 'quiz') && <DimModeToggle />}
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
@@ -913,6 +911,8 @@ export default function SubjectPage() {
             ))}
           </div>
         )}
+        {/* Dim toggle — inline in header so it's above <main> and never affected by the CSS filter */}
+        {(view === 'flashcards' || view === 'notes' || view === 'quiz') && <DimModeToggle inline />}
       </div>
 
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}

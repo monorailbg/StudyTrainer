@@ -4,7 +4,6 @@ import { useLang } from '../context/LanguageContext';
 import { useStore } from '../store/useStore';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
-import { useActivity, type ActivityEvent } from '../store/useActivity';
 import { useExamDates } from '../store/useExamDates';
 import type { SubjectDef } from '../data/subjects';
 import flashcardsData from '../data/flashcards.json';
@@ -271,44 +270,6 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
   );
 }
 
-// ── Activity feed ──────────────────────────────────────────────────────────────
-
-function ActivityRow({ ev, subjects, isLast }: { ev: ActivityEvent; subjects: SubjectDef[]; isLast: boolean }) {
-  const color = subjects.find(s => s.id === ev.subjectId)?.color ?? '#8B949E';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', borderBottom: isLast ? 'none' : '1px solid #1c2129' }}>
-      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
-      <span style={{ flex: 1, minWidth: 0, fontSize: '12.5px', color: '#C9D1D9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.detail}</span>
-      <span style={{ fontSize: '11px', color: '#484F58', flexShrink: 0 }}>{relativeTime(ev.timestamp)}</span>
-    </div>
-  );
-}
-
-function ActivityModal({ events, subjects, onClose }: { events: ActivityEvent[]; subjects: SubjectDef[]; onClose: () => void }) {
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(1,4,9,0.72)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="anim-fadein"
-        style={{ width: '100%', maxWidth: '560px', background: '#0D1117', border: '1px solid #21262D', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}
-      >
-        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #21262D' }}>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '16px', color: '#E6EDF3' }}>Activity log</div>
-          <button onClick={onClose} aria-label="Close" style={{ width: '32px', height: '32px', borderRadius: '999px', background: '#161B22', border: '1px solid #30363D', color: '#8B949E', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-          </button>
-        </div>
-        <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px 20px 20px' }}>
-          {events.map((ev, i) => <ActivityRow key={ev.id} ev={ev} subjects={subjects} isLast={i === events.length - 1} />)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -317,8 +278,6 @@ export default function Home() {
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
-  const [showActivityAll, setShowActivityAll] = useState(false);
-  const [activityMinimized, setActivityMinimized] = useState(false);
   const { dates: examDates } = useExamDates();
   // Force the globe to rebuild when the set of subjects changes.
   const globeKey = allSubjects.map(s => s.id).join(',');
@@ -328,7 +287,6 @@ export default function Home() {
   const [sets, setSets] = useState<StoredFlashcardSet[]>([]);
   const [notesList, setNotesList] = useState<StoredNote[]>([]);
   const srsCards = useSRS(s => s.cards);
-  const activityEvents = useActivity(s => s.events);
 
   useEffect(() => {
     (isFirebaseConfigured ? getAllCloudFlashcardSets() : getAllFlashcardSets())
@@ -529,38 +487,6 @@ export default function Home() {
           </Link>
         )}
 
-        {/* Recent activity */}
-        {activityEvents.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center gap-3 mb-5">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#8B949E' }}>Recent Activity</span>
-              <div className="flex-1 h-px" style={{ background: '#30363D' }} />
-              <button
-                onClick={() => setActivityMinimized(v => !v)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#484F58', padding: '2px 6px', borderRadius: '6px' }}
-              >
-                {activityMinimized ? '▸ Show' : '▾ Hide'}
-              </button>
-            </div>
-            {!activityMinimized && (
-              <div style={{ background: '#12161D', border: '1px solid #21262D', borderRadius: '8px', padding: '16px', maxWidth: '720px' }}>
-                {activityEvents.slice(0, 8).map((ev, i) => (
-                  <ActivityRow key={ev.id} ev={ev} subjects={allSubjects} isLast={i === Math.min(8, activityEvents.length) - 1} />
-                ))}
-                {activityEvents.length > 8 && (
-                  <button
-                    onClick={() => setShowActivityAll(true)}
-                    className="cursor-pointer"
-                    style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, fontSize: '11px', fontWeight: 600, color: '#8B949E' }}
-                  >
-                    View all {activityEvents.length} →
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Upcoming Exams */}
         {examDates.length > 0 && (() => {
           const upcoming = examDates
@@ -748,7 +674,6 @@ export default function Home() {
       </div>
 
       {managing && <ManageSubjects onClose={() => setManaging(false)} />}
-      {showActivityAll && <ActivityModal events={activityEvents} subjects={allSubjects} onClose={() => setShowActivityAll(false)} />}
     </div>
   );
 }
