@@ -7,6 +7,34 @@ import { isFirebaseConfigured, saveCloudQuizResult } from '../lib/cloudDb';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
+export type QuizMode = 'focused' | 'test' | 'practice';
+
+const LAST_MODE_KEY = 'gbs-last-quiz-mode';
+
+function loadLastMode(): QuizMode {
+  try {
+    const v = localStorage.getItem(LAST_MODE_KEY);
+    if (v === 'focused' || v === 'test' || v === 'practice') return v;
+  } catch { /* ignore */ }
+  return 'focused';
+}
+
+function saveLastMode(mode: QuizMode) {
+  try { localStorage.setItem(LAST_MODE_KEY, mode); } catch { /* ignore */ }
+}
+
+// Muted, non-distracting reminder shown during and after a practice session.
+function PracticeBanner({ text }: { text: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: '#8B949E' }}>
+      <svg viewBox="0 0 14 14" width="12" height="12" fill="none" style={{ flexShrink: 0 }}>
+        <circle cx="7" cy="7" r="5.5" stroke="#8B949E" strokeWidth="1.2" />
+      </svg>
+      <span style={{ fontSize: '12px', lineHeight: 1.4 }}>{text}</span>
+    </div>
+  );
+}
+
 function useCountUp(target: number, active: boolean, duration = 900) {
   const [val, setVal] = useState(0);
   const rafRef = useRef(0);
@@ -95,17 +123,24 @@ function Toggle({ on, color, onChange, label }: { on: boolean; color: string; on
 
 // ── Setup screen ───────────────────────────────────────────────────────────────
 
-function SetupScreen({ total, color, onStart }: {
+function SetupScreen({ total, color, onStart, initialMode }: {
   total: number;
   color: string;
-  onStart: (count: number, shuffle: boolean, mode: 'focused' | 'test') => void;
+  onStart: (count: number, shuffle: boolean, mode: QuizMode) => void;
+  initialMode?: QuizMode;
 }) {
   const rawOptions = [5, 10, 15, 20].filter(n => n < total);
   const countOptions = [...rawOptions, total];
   const defaultCount = countOptions.find(n => n >= Math.min(10, total)) ?? total;
   const [testCount, setTestCount] = useState(defaultCount);
   const [shuffle, setShuffle] = useState(true);
-  const [mode, setMode] = useState<'focused' | 'test'>('focused');
+  const [mode, setMode] = useState<QuizMode>(initialMode ?? loadLastMode());
+
+  const MODES: { id: QuizMode; title: string; desc: string }[] = [
+    { id: 'focused',  title: 'Focused',  desc: 'One question at a time' },
+    { id: 'test',     title: 'Test',     desc: 'All questions, submit at end' },
+    { id: 'practice', title: 'Practice', desc: 'No pressure — results not saved' },
+  ];
 
   return (
     <div style={{
@@ -131,19 +166,37 @@ function SetupScreen({ total, color, onStart }: {
         {/* Mode selector */}
         <div>
           <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>Mode</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', width: '100%' }}>
-            {(['focused', 'test'] as const).map(m => (
-              <button key={m} onClick={() => setMode(m)} style={{
-                padding: '12px 16px', borderRadius: '12px',
-                border: `1px solid ${mode === m ? color + '55' : '#21262D'}`,
-                background: mode === m ? color + '12' : '#161B22',
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', width: '100%' }}>
+            {MODES.map(m => (
+              <button key={m.id} onClick={() => setMode(m.id)} style={{
+                position: 'relative',
+                padding: '12px 14px', borderRadius: '12px',
+                border: `1px solid ${mode === m.id ? color + '55' : '#21262D'}`,
+                background: mode === m.id ? color + '12' : '#161B22',
                 cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
               }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: mode === m ? color : '#8B949E', marginBottom: '3px' }}>
-                  {m === 'focused' ? 'Focused' : 'Test'}
+                {m.id === 'practice' && (
+                  <span style={{
+                    position: 'absolute', top: '8px', right: '8px',
+                    padding: '2px 6px', borderRadius: '999px',
+                    fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em',
+                    background: '#21262D', color: '#8B949E', border: '1px solid #30363D',
+                  }}>
+                    No save
+                  </span>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
+                  {m.id === 'practice' && (
+                    <svg viewBox="0 0 12 12" width="10" height="10" fill="none" style={{ flexShrink: 0 }}>
+                      <circle cx="6" cy="6" r="4.5" stroke={mode === m.id ? color : '#8B949E'} strokeWidth="1.1" />
+                    </svg>
+                  )}
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: mode === m.id ? color : '#8B949E' }}>
+                    {m.title}
+                  </span>
                 </div>
                 <div style={{ fontSize: '11px', color: '#484F58', lineHeight: 1.4 }}>
-                  {m === 'focused' ? 'One question at a time' : 'All questions, submit at end'}
+                  {m.desc}
                 </div>
               </button>
             ))}
@@ -175,7 +228,7 @@ function SetupScreen({ total, color, onStart }: {
 
         {/* Begin */}
         <button
-          onClick={() => onStart(testCount, shuffle, mode)}
+          onClick={() => { saveLastMode(mode); onStart(testCount, shuffle, mode); }}
           style={{
             display: 'block', margin: '0 auto', minWidth: '200px',
             height: '46px', padding: '0 40px', borderRadius: '999px',
@@ -277,12 +330,13 @@ function Explanation({ correct, text }: { correct: boolean; text: string }) {
 // ── Focused mode ───────────────────────────────────────────────────────────────
 
 function FocusedMode({
-  questions, color, isRedoMode = false,
+  questions, color, isRedoMode = false, isPractice = false,
   onDone,
 }: {
   questions: GeneratedQuizQuestion[];
   color: string;
   isRedoMode?: boolean;
+  isPractice?: boolean;
   onDone: (answers: Record<string, number>, timeSec: number) => void;
 }) {
   const [idx, setIdx] = useState(0);
@@ -354,6 +408,11 @@ function FocusedMode({
             boxShadow: `0 0 8px ${color}80`,
           }} />
         </div>
+        {isPractice && (
+          <div style={{ marginTop: '12px' }}>
+            <PracticeBanner text="Practice mode — results won't be saved" />
+          </div>
+        )}
       </div>
 
       {/* Card */}
@@ -419,9 +478,10 @@ function FocusedMode({
 
 // ── Test mode ──────────────────────────────────────────────────────────────────
 
-function TestMode({ questions, color, onDone }: {
+function TestMode({ questions, color, isPractice = false, onDone }: {
   questions: GeneratedQuizQuestion[];
   color: string;
+  isPractice?: boolean;
   onDone: (answers: Record<string, number>, timeSec: number) => void;
 }) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -449,6 +509,11 @@ function TestMode({ questions, color, onDone }: {
 
   return (
     <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 8px' }}>
+      {isPractice && !submitted && (
+        <div style={{ marginBottom: '16px' }}>
+          <PracticeBanner text="Practice mode — results won't be saved" />
+        </div>
+      )}
       {submitted && (
         <div className="anim-fadein" style={{
           padding: '20px 24px', borderRadius: '16px', marginBottom: '20px',
@@ -639,13 +704,16 @@ function RedoResultsScreen({
 // ── Full results screen ───────────────────────────────────────────────────────
 
 function ResultsScreen({
-  result, color,
-  onRetry, onRedoWrong, onRetakeSetup,
+  result, color, isPractice = false,
+  onRetry, onRedoWrong, onRetakeSetup, onStartRated, onExit,
 }: {
   result: QuizResult; color: string;
+  isPractice?: boolean;
   onRetry: () => void;
   onRedoWrong: () => void;
   onRetakeSetup: () => void;
+  onStartRated?: () => void;
+  onExit?: () => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
@@ -666,6 +734,11 @@ function ResultsScreen({
 
   return (
     <div className="anim-fadein" style={{ maxWidth: '720px', margin: '0 auto' }}>
+      {isPractice && (
+        <div style={{ marginBottom: '16px' }}>
+          <PracticeBanner text="Practice session — this result has not been saved" />
+        </div>
+      )}
       {/* Score header */}
       <div style={{
         padding: '28px', borderRadius: '20px', marginBottom: '16px',
@@ -673,6 +746,9 @@ function ResultsScreen({
         border: `1px solid ${color}25`,
         boxShadow: '0 2px 20px rgba(0,0,0,0.3)',
       }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px' }}>
+          {isPractice ? 'Practice complete' : 'Quiz complete'}
+        </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
           <div>
             <div className="mono" style={{ fontSize: '3.6rem', fontWeight: 700, lineHeight: 1, color: gradeColor, letterSpacing: '-0.02em' }}>
@@ -714,34 +790,64 @@ function ResultsScreen({
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '24px' }}>
-        {result.incorrectAnswers > 0 && (
-          <button onClick={onRedoWrong} style={{
-            height: '40px', padding: '0 20px', borderRadius: '999px',
-            background: 'rgba(210,153,34,0.15)', color: '#D29922',
-            border: '1px solid rgba(210,153,34,0.4)',
-            fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(210,153,34,0.25)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(210,153,34,0.15)'; }}
-          >
-            Redo wrong answers →
-          </button>
+        {isPractice ? (
+          <>
+            <button onClick={onRetry} style={{
+              height: '40px', padding: '0 20px', borderRadius: '999px',
+              background: color + '18', color, border: `1px solid ${color}40`,
+              fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+            }}>
+              Practice again
+            </button>
+            <button onClick={onStartRated ?? onRetakeSetup} style={{
+              height: '40px', padding: '0 20px', borderRadius: '999px',
+              background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+              fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+            }}>
+              Start rated quiz →
+            </button>
+            {onExit && (
+              <button onClick={onExit} style={{
+                height: '40px', padding: '0 20px', borderRadius: '999px',
+                background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+              }}>
+                Back to subject
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            {result.incorrectAnswers > 0 && (
+              <button onClick={onRedoWrong} style={{
+                height: '40px', padding: '0 20px', borderRadius: '999px',
+                background: 'rgba(210,153,34,0.15)', color: '#D29922',
+                border: '1px solid rgba(210,153,34,0.4)',
+                fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(210,153,34,0.25)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(210,153,34,0.15)'; }}
+              >
+                Redo wrong answers →
+              </button>
+            )}
+            <button onClick={onRetry} style={{
+              height: '40px', padding: '0 20px', borderRadius: '999px',
+              background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+              fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+            }}>
+              Retry same questions
+            </button>
+            <button onClick={onRetakeSetup} style={{
+              height: '40px', padding: '0 20px', borderRadius: '999px',
+              background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+              fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+            }}>
+              New test
+            </button>
+          </>
         )}
-        <button onClick={onRetry} style={{
-          height: '40px', padding: '0 20px', borderRadius: '999px',
-          background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
-          fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-        }}>
-          Retry same questions
-        </button>
-        <button onClick={onRetakeSetup} style={{
-          height: '40px', padding: '0 20px', borderRadius: '999px',
-          background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
-          fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-        }}>
-          New test
-        </button>
       </div>
 
       {/* Question breakdown */}
@@ -848,6 +954,7 @@ export function QuizViewer({
   quizId = 'quiz', quizTitle = 'Quiz', subjectId = '',
   onComplete,
   initialRedoResult,
+  onExit,
 }: {
   questions: GeneratedQuizQuestion[];
   color: string;
@@ -856,6 +963,7 @@ export function QuizViewer({
   subjectId?: string;
   onComplete?: (result: QuizResult) => void;
   initialRedoResult?: QuizResult;
+  onExit?: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>(initialRedoResult ? 'redo' : 'setup');
   const [activeQuestions, setActiveQuestions] = useState<GeneratedQuizQuestion[]>(
@@ -863,7 +971,10 @@ export function QuizViewer({
       ? buildRedoQuestions(initialRedoResult).map(shuffleOptions)
       : []
   );
-  const [quizMode, setQuizMode] = useState<'focused' | 'test'>('focused');
+  const [quizMode, setQuizMode] = useState<QuizMode>('focused');
+  // When non-null, the setup screen pre-selects this mode (e.g. coming back from
+  // a practice session via "Start rated quiz"). Otherwise it remembers last used.
+  const [setupMode, setSetupMode] = useState<QuizMode | undefined>(initialRedoResult ? 'focused' : undefined);
   const [lastResult, setLastResult] = useState<QuizResult | null>(null);
   const [redoQuestions, setRedoQuestions] = useState<GeneratedQuizQuestion[]>(
     initialRedoResult ? buildRedoQuestions(initialRedoResult).map(shuffleOptions) : []
@@ -906,9 +1017,12 @@ export function QuizViewer({
 
   function handlePlayDone(answerMap: Record<string, number>, timeSec: number) {
     const result = buildResult(activeQuestions, answerMap, timeSec);
-    persistResult(result);
     setLastResult(result);
     setPhase('results');
+    // Practice mode: zero persistence. No storage write, no activity feed,
+    // no effect on averages or quiz history (onComplete is what updates those).
+    if (quizMode === 'practice') return;
+    persistResult(result);
     onComplete?.(result);
   }
 
@@ -929,10 +1043,12 @@ export function QuizViewer({
       <SetupScreen
         total={questions.length}
         color={color}
+        initialMode={setupMode}
         onStart={(count, shuffle, mode) => {
           const pool = shuffle ? [...questions].sort(() => Math.random() - 0.5) : [...questions];
           setActiveQuestions(pool.slice(0, count));
           setQuizMode(mode);
+          setSetupMode(undefined);
           setPhase('playing');
         }}
       />
@@ -940,16 +1056,19 @@ export function QuizViewer({
   }
 
   if (phase === 'playing') {
-    return quizMode === 'focused'
-      ? <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} />
-      : <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} />;
+    const isPractice = quizMode === 'practice';
+    return quizMode === 'test'
+      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} />
+      : <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} />;
   }
 
   if (phase === 'results' && lastResult) {
+    const isPractice = quizMode === 'practice';
     return (
       <ResultsScreen
         result={lastResult}
         color={color}
+        isPractice={isPractice}
         onRetry={() => {
           setPhase('playing');
         }}
@@ -959,6 +1078,8 @@ export function QuizViewer({
           setPhase('redo');
         }}
         onRetakeSetup={() => setPhase('setup')}
+        onStartRated={() => { setSetupMode('focused'); setPhase('setup'); }}
+        onExit={onExit}
       />
     );
   }

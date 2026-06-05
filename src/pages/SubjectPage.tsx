@@ -1803,6 +1803,7 @@ export default function SubjectPage() {
                     quizTitle={activeQuiz.name}
                     subjectId={subject.id}
                     initialRedoResult={redoingResult ?? undefined}
+                    onExit={() => { setRedoingResult(null); setActiveQuizId(null); }}
                     onComplete={(result) => {
                       setRedoingResult(null);
                       setQuizHistory(prev => [result, ...prev.filter(r => r.id !== result.id)]);

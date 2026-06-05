@@ -160,6 +160,7 @@ export default function Quiz() {
               quizId={activeQuiz.id}
               quizTitle={activeQuiz.name}
               subjectId={activeQuiz.subjectId}
+              onExit={() => setActiveQuiz(null)}
               onComplete={(result) => {
                 const name = activeSubject?.title ?? 'a subject';
                 addQuizScore(activeSubject?.id ?? activeQuiz.subjectId, result.correctAnswers, result.totalQuestions);
