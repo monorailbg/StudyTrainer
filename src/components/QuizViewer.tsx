@@ -108,73 +108,88 @@ function SetupScreen({ total, color, onStart }: {
   const [mode, setMode] = useState<'focused' | 'test'>('focused');
 
   return (
-    <div style={{ maxWidth: '460px', paddingTop: '8px' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '6px' }}>
-          Ready to study
+    <div style={{
+      minHeight: 'min(640px, calc(100vh - 220px))',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: '560px', margin: '0 auto',
+        padding: '16px',
+        display: 'flex', flexDirection: 'column', gap: '32px',
+      }}>
+        {/* Hero count */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '8px' }}>
+            Ready to study
+          </div>
+          <div className="mono" style={{ fontSize: 'clamp(56px, 12vw, 72px)', fontWeight: 800, lineHeight: 1, color, letterSpacing: '-0.02em' }}>
+            {total}
+          </div>
+          <div style={{ fontSize: '13px', color: '#8B949E', marginTop: '6px' }}>questions available</div>
         </div>
-        <div className="mono" style={{ fontSize: '3.5rem', fontWeight: 700, lineHeight: 1, color, letterSpacing: '-0.02em' }}>
-          {total}
+
+        {/* Mode selector */}
+        <div>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>Mode</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', width: '100%' }}>
+            {(['focused', 'test'] as const).map(m => (
+              <button key={m} onClick={() => setMode(m)} style={{
+                padding: '12px 16px', borderRadius: '12px',
+                border: `1px solid ${mode === m ? color + '55' : '#21262D'}`,
+                background: mode === m ? color + '12' : '#161B22',
+                cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: mode === m ? color : '#8B949E', marginBottom: '3px' }}>
+                  {m === 'focused' ? 'Focused' : 'Test'}
+                </div>
+                <div style={{ fontSize: '11px', color: '#484F58', lineHeight: 1.4 }}>
+                  {m === 'focused' ? 'One question at a time' : 'All questions, submit at end'}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-        <div style={{ fontSize: '13px', color: '#8B949E', marginTop: '4px' }}>questions available</div>
-      </div>
 
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px' }}>Mode</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          {(['focused', 'test'] as const).map(m => (
-            <button key={m} onClick={() => setMode(m)} style={{
-              padding: '12px 16px', borderRadius: '12px',
-              border: `1px solid ${mode === m ? color + '55' : '#21262D'}`,
-              background: mode === m ? color + '12' : '#161B22',
-              cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
-            }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: mode === m ? color : '#8B949E', marginBottom: '3px' }}>
-                {m === 'focused' ? 'Focused' : 'Test'}
-              </div>
-              <div style={{ fontSize: '11px', color: '#484F58', lineHeight: 1.4 }}>
-                {m === 'focused' ? 'One question at a time' : 'All questions, submit at end'}
-              </div>
-            </button>
-          ))}
+        {/* Question count */}
+        <div>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>Questions</div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {countOptions.map(n => (
+              <button key={n} onClick={() => setTestCount(n)} style={{
+                height: '36px', padding: '0 16px', borderRadius: '999px',
+                background: testCount === n ? color + '18' : '#161B22',
+                color: testCount === n ? color : '#8B949E',
+                border: `1px solid ${testCount === n ? color + '55' : '#21262D'}`,
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+                {n === total ? `All ${n}` : n}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px' }}>Questions</div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {countOptions.map(n => (
-            <button key={n} onClick={() => setTestCount(n)} style={{
-              height: '36px', padding: '0 16px', borderRadius: '999px',
-              background: testCount === n ? color + '18' : '#161B22',
-              color: testCount === n ? color : '#8B949E',
-              border: `1px solid ${testCount === n ? color + '55' : '#21262D'}`,
-              fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-            }}>
-              {n === total ? `All ${n}` : n}
-            </button>
-          ))}
+        {/* Shuffle */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
+          <Toggle on={shuffle} color={color} onChange={() => setShuffle(s => !s)} label="Shuffle questions" />
         </div>
-      </div>
 
-      <div style={{ marginBottom: '32px' }}>
-        <Toggle on={shuffle} color={color} onChange={() => setShuffle(s => !s)} label="Shuffle questions" />
+        {/* Begin */}
+        <button
+          onClick={() => onStart(testCount, shuffle, mode)}
+          style={{
+            display: 'block', margin: '0 auto', minWidth: '200px',
+            height: '46px', padding: '0 40px', borderRadius: '999px',
+            background: color, color: '#fff', border: 'none',
+            fontSize: '14px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
+            boxShadow: `0 4px 24px ${color}40, 0 1px 0 rgba(255,255,255,0.12) inset`,
+            transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.02)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+        >
+          Begin →
+        </button>
       </div>
-
-      <button
-        onClick={() => onStart(testCount, shuffle, mode)}
-        style={{
-          height: '46px', padding: '0 40px', borderRadius: '999px',
-          background: color, color: '#fff', border: 'none',
-          fontSize: '14px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
-          boxShadow: `0 4px 24px ${color}40, 0 1px 0 rgba(255,255,255,0.12) inset`,
-          transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.02)'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
-      >
-        Begin →
-      </button>
     </div>
   );
 }
@@ -201,8 +216,9 @@ function OptionBtn({
       onClick={onClick}
       className={state === 'right' ? 'anim-correct' : state === 'wrong' ? 'anim-shake' : ''}
       style={{
-        display: 'flex', alignItems: 'center', gap: compact ? '10px' : '12px',
-        padding: compact ? '10px 12px' : '13px 16px',
+        display: 'flex', alignItems: 'center', gap: compact ? '10px' : '14px',
+        padding: compact ? '10px 12px' : '16px 20px',
+        minHeight: compact ? undefined : '56px',
         borderRadius: compact ? '10px' : '12px',
         border: `1px solid ${colors.border}`, background: colors.bg,
         cursor: disabled ? 'default' : 'pointer', textAlign: 'left', width: '100%',
@@ -223,7 +239,7 @@ function OptionBtn({
           <svg viewBox="0 0 12 12" width="10" height="10" fill="none"><path d="M2 6l2.5 2.5L10 3.5" stroke={colors.lc} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         ) : letter}
       </span>
-      <span style={{ fontSize: compact ? '12px' : '13px', color: colors.text, lineHeight: 1.5, fontWeight: state === 'chosen' || state === 'right' ? 500 : 400 }}>
+      <span style={{ fontSize: compact ? '12px' : '15px', color: colors.text, lineHeight: 1.5, fontWeight: state === 'chosen' || state === 'right' ? 500 : 400 }}>
         {text}
       </span>
     </button>
@@ -305,7 +321,7 @@ function FocusedMode({
   }
 
   return (
-    <div style={{ maxWidth: '620px' }}>
+    <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 8px' }}>
       {isRedoMode && (
         <div className="anim-fadein" style={{
           padding: '8px 16px', borderRadius: '10px', marginBottom: '20px',
@@ -346,14 +362,14 @@ function FocusedMode({
         overflow: 'hidden',
         boxShadow: '0 2px 20px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04) inset',
       }}>
-        <div style={{ padding: '28px 28px 24px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', lineHeight: 1.65 }}>
+        <div style={{ padding: '32px 36px 24px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 600, color: '#E6EDF3', lineHeight: 1.5 }}>
             {q.question}
           </div>
         </div>
         <div style={{ height: '1px', background: '#21262D', margin: '0 28px' }} />
 
-        <div style={{ padding: '20px 20px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {q.options.map((opt, oi) => {
             const state = !revealed
               ? (chosen === oi ? 'chosen' : 'idle')
@@ -432,7 +448,7 @@ function TestMode({ questions, color, onDone }: {
   }
 
   return (
-    <div>
+    <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 8px' }}>
       {submitted && (
         <div className="anim-fadein" style={{
           padding: '20px 24px', borderRadius: '16px', marginBottom: '20px',
@@ -570,7 +586,7 @@ function RedoResultsScreen({
 }) {
   const perfect = correct === total;
   return (
-    <div className="anim-fadein" style={{ maxWidth: '420px', position: 'relative' }}>
+    <div className="anim-fadein" style={{ maxWidth: '420px', margin: '0 auto', position: 'relative' }}>
       {perfect && <Confetti />}
       <div style={{
         padding: '28px', borderRadius: '20px',
@@ -649,7 +665,7 @@ function ResultsScreen({
   const displayQuestions = showAll ? result.questions : result.questions.slice(0, 8);
 
   return (
-    <div className="anim-fadein" style={{ maxWidth: '640px' }}>
+    <div className="anim-fadein" style={{ maxWidth: '720px', margin: '0 auto' }}>
       {/* Score header */}
       <div style={{
         padding: '28px', borderRadius: '20px', marginBottom: '16px',
