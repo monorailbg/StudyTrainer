@@ -1042,7 +1042,7 @@ export default function SubjectPage() {
                         active={view === 'upload'}
                         dot={isFileSelected}
                         dotColor={subject.color}
-                        onClick={() => { toggleFileSelection(file.id); setView('upload'); setFullFocus(false); }}
+                        onClick={() => { setSelectedFileIds([file.id]); setView('upload'); setFullFocus(false); }}
                       />
                     </div>
                   );
