@@ -25,9 +25,15 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
   const progress = ((index + 1) / cards.length) * 100;
   const srsMode = !!subjectId;
   const rate = useSRS(s => s.rate);
-  // In dim mode the page is darkened around the card; the card itself is
-  // lightened and given a glow so it becomes the focal point.
+  // In dim mode a near-black scrim covers the page and the card view is lifted
+  // above it, so everything around the flashcard fades to near-invisible while
+  // the card stays at full brightness as the focal point.
   const dim = useDimMode(s => s.dim);
+  const scrimStyle: React.CSSProperties = {
+    position: 'fixed', inset: 0, zIndex: 55, pointerEvents: 'none',
+    background: 'rgba(3,4,8,0.94)',
+  };
+  const lift: React.CSSProperties = dim ? { position: 'relative', zIndex: 56 } : {};
 
   // Report the session (count of cards rated) exactly once — on completion or
   // when the viewer unmounts mid-way.
@@ -72,7 +78,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
 
   if (srsMode && done) {
     return (
-      <div className="anim-fadein" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', gap: '14px', textAlign: 'center' }}>
+      <>
+      {dim && <div style={scrimStyle} />}
+      <div className="anim-fadein" style={{ ...lift, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', gap: '14px', textAlign: 'center' }}>
         <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: color + '1A', border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
@@ -86,11 +94,14 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
           Review again
         </button>
       </div>
+      </>
     );
   }
 
   return (
-    <div>
+    <>
+    {dim && <div style={scrimStyle} />}
+    <div style={lift}>
       {/* Progress bar — top */}
       <div className="h-px mb-5 overflow-hidden" style={{ background: '#30363D', borderRadius: '1px' }}>
         <div
@@ -130,8 +141,8 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
             className="flip-card-front flex flex-col items-center justify-center p-10 gap-4"
             style={{
               borderRadius: '12px',
-              background: dim ? 'linear-gradient(150deg, #3a4656 0%, #2c3643 100%)' : '#161B22',
-              border: `1px solid ${dim ? color + '70' : color + '25'}`,
+              background: dim ? `linear-gradient(150deg, ${color}33 0%, #161d28 100%)` : '#161B22',
+              border: `1px solid ${dim ? color : color + '25'}`,
               boxShadow: dim
                 ? `0 1px 0 rgba(255,255,255,0.12) inset, 0 10px 44px rgba(0,0,0,0.55), 0 0 56px ${color}33`
                 : '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',
@@ -155,8 +166,8 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
             className="flip-card-back flex flex-col items-center justify-center p-10 gap-4"
             style={{
               borderRadius: '12px',
-              background: dim ? 'linear-gradient(135deg, #335a90 0%, #2b3644 100%)' : 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
-              border: `1px solid ${dim ? color + '70' : color + '40'}`,
+              background: dim ? `linear-gradient(150deg, ${color}4a 0%, #182030 100%)` : 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
+              border: `1px solid ${dim ? color : color + '40'}`,
               boxShadow: dim
                 ? `0 1px 0 rgba(255,255,255,0.14) inset, 0 10px 44px rgba(0,0,0,0.55), 0 0 56px ${color}33`
                 : '0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.4)',
@@ -251,5 +262,6 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd }: {
         </>
       )}
     </div>
+    </>
   );
 }

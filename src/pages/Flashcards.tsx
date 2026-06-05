@@ -120,7 +120,7 @@ export default function Flashcards() {
   return (
     <>
     <DimModeToggle />
-    <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
+    <div className={`study-dim-root${dim && !activeSet ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
