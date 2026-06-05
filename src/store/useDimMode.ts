@@ -17,6 +17,6 @@ export const useDimMode = create<DimModeStore>()(
       toggle: () => set((s) => ({ dim: !s.dim })),
       setDim: (v) => set({ dim: v }),
     }),
-    { name: 'dimMode' },
+    { name: 'gbs-dim-mode' },
   ),
 );

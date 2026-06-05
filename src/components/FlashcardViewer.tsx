@@ -27,15 +27,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   const progress = ((index + 1) / cards.length) * 100;
   const srsMode = !!subjectId;
   const rate = useSRS(s => s.rate);
-  // In dim mode a near-black scrim covers the page and the card view is lifted
-  // above it, so everything around the flashcard fades to near-invisible while
-  // the card stays at full brightness as the focal point.
+  // dim drives card border/glow changes; the actual dimming of the surrounding
+  // page is handled by the parent's study-dim-root CSS filter, not a scrim here.
   const dim = useDimMode(s => s.dim);
-  const scrimStyle: React.CSSProperties = {
-    position: 'fixed', inset: 0, zIndex: 55, pointerEvents: 'none',
-    background: 'rgba(3,4,8,0.94)',
-  };
-  const lift: React.CSSProperties = dim ? { position: 'relative', zIndex: 56 } : {};
 
   // Report the session (count of cards rated) exactly once — on completion or
   // when the viewer unmounts mid-way.
@@ -81,8 +75,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   if (srsMode && done) {
     return (
       <>
-      {dim && <div style={scrimStyle} />}
-      <div className="anim-fadein" style={{ ...lift, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: '14px', textAlign: 'center' }}>
+      <div className="anim-fadein" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: '14px', textAlign: 'center' }}>
         <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: color + '1A', border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
@@ -122,8 +115,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
 
   return (
     <>
-    {dim && <div style={scrimStyle} />}
-    <div style={{ ...lift, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '70vh', justifyContent: 'center', paddingTop: '12px', paddingBottom: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '70vh', justifyContent: 'center', paddingTop: '12px', paddingBottom: '24px' }}>
       {/* Progress bar — full width */}
       <div className="h-px mb-5 overflow-hidden" style={{ width: '100%', background: '#30363D', borderRadius: '1px' }}>
         <div

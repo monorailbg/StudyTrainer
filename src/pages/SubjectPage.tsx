@@ -866,6 +866,10 @@ export default function SubjectPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 72px)' }}>
 
+      {/* Dim toggle — rendered outside <main> so its fixed position is never broken
+          by the dim-mode CSS filter applied to the scroll container. */}
+      {(view === 'notes' || view === 'flashcards' || view === 'quiz') && <DimModeToggle />}
+
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
         borderBottom: '1px solid #21262D',
@@ -911,8 +915,6 @@ export default function SubjectPage() {
             ))}
           </div>
         )}
-        {/* Dim toggle for flashcards/quiz — notes has its own toggle inside NotesViewer */}
-        {(view === 'flashcards' || view === 'quiz') && <DimModeToggle inline />}
       </div>
 
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}
@@ -1150,7 +1152,7 @@ export default function SubjectPage() {
         </aside>
 
         {/* Main content area */}
-        <main ref={mainRef} className={`flex-1 overflow-y-auto p-4 md:p-8 study-dim-root${dim && (view === 'notes' || view === 'quiz') ? ' dim-mode' : ''}`} style={{ background: '#0D1117' }}>
+        <main ref={mainRef} className={`flex-1 overflow-y-auto p-4 md:p-8 study-dim-root${dim && (view === 'notes' || view === 'quiz' || view === 'flashcards') ? ' dim-mode' : ''}`} style={{ background: '#0D1117' }}>
 
           {/* Dashboard view */}
           {view === 'dashboard' && (

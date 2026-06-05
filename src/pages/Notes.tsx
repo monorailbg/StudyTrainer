@@ -5,6 +5,7 @@ import { useResolvedSubjects } from '../store/useSubjects';
 import { useDimMode } from '../store/useDimMode';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
+import { DimModeToggle } from '../components/DimModeToggle';
 import { NotesViewer } from '../components/NotesViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
 import type { SubjectDef } from '../data/subjects';
@@ -120,6 +121,7 @@ export default function Notes() {
 
   return (
     <>
+    <DimModeToggle />
     <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
