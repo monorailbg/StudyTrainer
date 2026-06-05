@@ -358,19 +358,28 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'j') {
-        const next = Math.min(activeSection + 1, notes.sections.length - 1);
-        sectionRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollToSection(Math.min(activeSection + 1, notes.sections.length - 1));
       } else if (e.key === 'k') {
-        const prev = Math.max(activeSection - 1, 0);
-        sectionRefs.current[prev]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollToSection(Math.max(activeSection - 1, 0));
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [activeSection, notes.sections.length]);
 
-  const scrollToSection = (i: number) =>
-    sectionRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const scrollToSection = (i: number) => {
+    const el = sectionRefs.current[i];
+    if (!el) return;
+    const container = scrollElRef?.current;
+    if (container) {
+      const elTop = el.getBoundingClientRect().top;
+      const containerTop = container.getBoundingClientRect().top;
+      container.scrollBy({ top: elTop - containerTop - 12, behavior: 'smooth' });
+    } else {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    setActiveSection(i);
+  };
 
   const backToTop = () =>
     scrollElRef?.current?.scrollTo({ top: 0, behavior: 'smooth' });

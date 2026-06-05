@@ -5,14 +5,14 @@ import { useLang, type Lang } from '../context/LanguageContext';
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
 const JapanFlag = () => (
-  <svg viewBox="0 0 30 20" width="18" height="12" style={{ borderRadius: '2px', display: 'block' }} aria-label="Japanese">
+  <svg viewBox="0 0 30 20" width="16" height="11" style={{ borderRadius: '2px', display: 'block' }} aria-label="Japanese">
     <rect width="30" height="20" fill="#fff" />
     <circle cx="15" cy="10" r="6" fill="#bc002d" />
   </svg>
 );
 
 const UKFlag = () => (
-  <svg viewBox="0 0 60 30" width="18" height="12" style={{ borderRadius: '2px', display: 'block' }} aria-label="English">
+  <svg viewBox="0 0 60 30" width="16" height="11" style={{ borderRadius: '2px', display: 'block' }} aria-label="English">
     <rect width="60" height="30" fill="#012169" />
     <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6" />
     <path d="M4.5,0 L30.9,13.2 M29.1,16.8 L55.5,30" stroke="#C8102E" strokeWidth="3" />
@@ -34,12 +34,14 @@ function LangToggle() {
       onClick={() => setLang(l)}
       title={label}
       aria-label={`Switch to ${label}`}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-all duration-300 cursor-pointer"
       style={{
-        borderRadius: '8px',
-        background: lang === l ? 'rgba(61,126,255,0.18)' : 'transparent',
-        color: lang === l ? '#93B8FF' : '#8B949E',
-        border: `1px solid ${lang === l ? 'rgba(61,126,255,0.35)' : 'transparent'}`,
+        display: 'flex', alignItems: 'center', gap: '5px',
+        padding: '5px 9px', borderRadius: '7px',
+        background: lang === l ? 'rgba(61,126,255,0.15)' : 'transparent',
+        color: lang === l ? '#93B8FF' : '#6B7280',
+        border: `1px solid ${lang === l ? 'rgba(61,126,255,0.3)' : 'transparent'}`,
+        cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+        letterSpacing: '0.04em', transition: 'all 0.15s ease',
       }}
     >
       <Flag />
@@ -47,45 +49,38 @@ function LangToggle() {
     </button>
   );
   return (
-    <div className="flex items-center gap-0.5" style={{ padding: '3px', background: '#161B22', borderRadius: '12px', border: '1px solid #30363D' }}>
+    <div style={{ display: 'flex', gap: '2px', padding: '3px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.07)' }}>
       {btn('en', UKFlag, 'English')}
       {btn('ja', JapanFlag, 'Japanese')}
     </div>
   );
 }
 
-// ── Logo ──────────────────────────────────────────────────────────────────────
+// ── Logo mark ─────────────────────────────────────────────────────────────────
 
-const GBSLogo = () => (
-  <svg viewBox="0 0 44 44" width="44" height="44" fill="none" aria-hidden="true">
-    <circle cx="22" cy="22" r="19" fill="rgba(61,126,255,0.06)" />
-    <circle cx="22" cy="22" r="16" stroke="#3D7EFF" strokeWidth="1.4" />
-    <ellipse cx="22" cy="22" rx="16" ry="7.5" stroke="#3D7EFF" strokeWidth="0.9" opacity="0.35" />
-    <ellipse cx="22" cy="22" rx="5.5" ry="16" stroke="#3D7EFF" strokeWidth="0.9" opacity="0.45" />
-    <line x1="6.5" y1="22" x2="37.5" y2="22" stroke="#3D7EFF" strokeWidth="0.7" opacity="0.3" />
-    <circle cx="29" cy="15" r="3.2" fill="#3D7EFF" />
-    <circle cx="29" cy="15" r="5.5" fill="#3D7EFF" opacity="0.18" />
-    <circle cx="14" cy="27" r="2.4" fill="#d4a843" />
-    <circle cx="14" cy="27" r="4.2" fill="#d4a843" opacity="0.18" />
-    <circle cx="33" cy="27" r="2.2" fill="#4ade80" />
-    <circle cx="33" cy="27" r="3.8" fill="#4ade80" opacity="0.18" />
-    <path d="M29 15 Q30.5 20 33 27" stroke="#3D7EFF" strokeWidth="0.9" opacity="0.55" strokeDasharray="2 2" />
-    <path d="M14 27 Q21 18 29 15" stroke="#d4a843" strokeWidth="0.9" opacity="0.55" strokeDasharray="2 2" />
-    <path d="M14 27 Q23 29 33 27" stroke="#4ade80" strokeWidth="0.8" opacity="0.45" strokeDasharray="2 2" />
+const LogoMark = () => (
+  <svg viewBox="0 0 36 36" width="34" height="34" fill="none" aria-hidden="true">
+    <circle cx="18" cy="18" r="15" stroke="#3D7EFF" strokeWidth="1.5" opacity="0.5" />
+    <circle cx="18" cy="18" r="8" fill="rgba(61,126,255,0.1)" stroke="#3D7EFF" strokeWidth="1.2" />
+    <path d="M3 18h30M18 3v30" stroke="#3D7EFF" strokeWidth="0.8" opacity="0.25" />
+    <ellipse cx="18" cy="18" rx="15" ry="6" stroke="#3D7EFF" strokeWidth="0.8" opacity="0.3" />
+    <circle cx="18" cy="18" r="2.5" fill="#3D7EFF" />
+    <circle cx="26" cy="11" r="2" fill="#d4a843" />
+    <circle cx="10" cy="25" r="1.8" fill="#4ade80" opacity="0.9" />
   </svg>
 );
 
-// ── Hamburger / close icons ───────────────────────────────────────────────────
+// ── Hamburger / close ─────────────────────────────────────────────────────────
 
-const IconHamburger = () => (
-  <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
-    <path d="M3 5h14M3 10h14M3 15h14" stroke="#E6EDF3" strokeWidth="1.6" strokeLinecap="round" />
+const IconMenu = () => (
+  <svg viewBox="0 0 18 18" width="18" height="18" fill="none">
+    <path d="M2 4.5h14M2 9h10M2 13.5h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
 
 const IconClose = () => (
-  <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
-    <path d="M5 5l10 10M15 5L5 15" stroke="#E6EDF3" strokeWidth="1.6" strokeLinecap="round" />
+  <svg viewBox="0 0 18 18" width="18" height="18" fill="none">
+    <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
 
@@ -97,7 +92,6 @@ const navItems = [
   { to: '/flashcards', labelKey: 'nav_flashcards' as const },
   { to: '/notes',      labelKey: 'nav_notes' as const },
   { to: '/quiz',       labelKey: 'nav_quiz' as const },
-  { to: '/generate',   labelKey: 'nav_generate' as const },
 ];
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
@@ -107,142 +101,184 @@ export default function Navbar() {
   const { t } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const navStyle: React.CSSProperties = {
-    position: 'sticky',
-    top: 0,
-    zIndex: 50,
-    height: '76px',
-    borderBottom: '1px solid rgba(48,54,61,0.7)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    background: 'rgba(13,17,23,0.92)',
-    boxShadow: '0 1px 0 rgba(255,255,255,0.03)',
-  };
-
   return (
     <>
-      <nav style={navStyle}>
-        <div className="max-w-7xl mx-auto px-4 md:px-6 h-full flex items-center justify-between gap-4">
+      <nav style={{
+        position: 'sticky', top: 0, zIndex: 50, height: '72px',
+        background: '#080B10',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+      }}>
+        <div style={{
+          maxWidth: '1400px', margin: '0 auto',
+          padding: '0 24px', height: '100%',
+          display: 'flex', alignItems: 'center', gap: '16px',
+        }}>
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 no-underline flex-shrink-0 group" onClick={() => setMenuOpen(false)}>
-            <div style={{ transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)' }} className="group-hover:scale-110">
-              <GBSLogo />
-            </div>
+          <Link
+            to="/"
+            onClick={() => setMenuOpen(false)}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flexShrink: 0 }}
+          >
+            <LogoMark />
             <div>
-              <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '16px', color: '#E6EDF3', letterSpacing: '-0.02em', lineHeight: 1 }}>
+              <div style={{
+                fontFamily: "'Sora', sans-serif", fontWeight: 800,
+                fontSize: '17px', color: '#E6EDF3', letterSpacing: '-0.03em', lineHeight: 1,
+              }}>
                 GBS
               </div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 500, fontSize: '9px', color: '#3D7EFF', letterSpacing: '0.18em', textTransform: 'uppercase', lineHeight: 1, marginTop: '4px' }}>
-                {t('tagline')}
+              <div style={{
+                fontFamily: "'Inter', sans-serif", fontSize: '8.5px', fontWeight: 500,
+                color: '#3D7EFF', letterSpacing: '0.22em', textTransform: 'uppercase',
+                lineHeight: 1, marginTop: '4px',
+              }}>
+                Study Trainer
               </div>
             </div>
           </Link>
 
-          {/* Desktop nav links */}
-          <div className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
-            {navItems.map(({ to, labelKey }) => {
-              const active = pathname === to || (to !== '/' && pathname.startsWith(to));
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  className="relative flex items-center px-4 h-10 text-sm font-medium no-underline whitespace-nowrap"
-                  style={{
-                    borderRadius: '12px',
-                    color: active ? '#E6EDF3' : '#8B949E',
-                    background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
-                    transition: 'color 0.25s ease, background 0.25s ease',
-                  }}
-                >
-                  {t(labelKey)}
-                  {active && (
-                    <span style={{
-                      position: 'absolute', bottom: 0, left: '10px', right: '10px',
-                      height: '2px', borderRadius: '2px 2px 0 0',
-                      background: '#3D7EFF', boxShadow: '0 0 10px rgba(61,126,255,0.7)',
-                    }} />
-                  )}
-                </Link>
-              );
-            })}
+          {/* Separator */}
+          <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
+
+          {/* Desktop nav pill */}
+          <div className="hidden md:flex" style={{ flex: 1, alignItems: 'center' }}>
+            <div style={{
+              display: 'flex', gap: '1px',
+              padding: '4px',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: '14px',
+            }}>
+              {navItems.map(({ to, labelKey }) => {
+                const active = pathname === to || (to !== '/' && pathname.startsWith(to));
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      padding: '6px 13px', borderRadius: '10px',
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: '13px', fontWeight: active ? 600 : 400,
+                      color: active ? '#E6EDF3' : '#5B6475',
+                      background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      textDecoration: 'none',
+                      transition: 'color 0.15s ease, background 0.15s ease',
+                      letterSpacing: active ? '-0.01em' : '0',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={e => {
+                      if (!active) (e.currentTarget as HTMLElement).style.color = '#9BA3AE';
+                    }}
+                    onMouseLeave={e => {
+                      if (!active) (e.currentTarget as HTMLElement).style.color = '#5B6475';
+                    }}
+                  >
+                    {active && (
+                      <span style={{
+                        width: '5px', height: '5px', borderRadius: '50%',
+                        background: '#3D7EFF', flexShrink: 0,
+                        boxShadow: '0 0 6px rgba(61,126,255,0.8)',
+                      }} />
+                    )}
+                    {t(labelKey)}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Desktop lang toggle */}
-          <div className="hidden md:block flex-shrink-0">
+          {/* Spacer on desktop */}
+          <div className="hidden md:block" style={{ flex: 1 }} />
+
+          {/* Desktop lang + generate */}
+          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+            <Link
+              to="/generate"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '7px 14px', borderRadius: '10px',
+                background: 'rgba(61,126,255,0.12)',
+                border: '1px solid rgba(61,126,255,0.25)',
+                color: '#93B8FF', textDecoration: 'none',
+                fontSize: '12px', fontWeight: 600,
+                transition: 'background 0.15s ease, border-color 0.15s ease',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(61,126,255,0.18)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(61,126,255,0.4)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(61,126,255,0.12)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(61,126,255,0.25)';
+              }}
+            >
+              <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+                <path d="M7 1v4M7 9v4M1 7h4M9 7h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M3 3l2.5 2.5M8.5 8.5L11 11M11 3L8.5 5.5M3 11l2.5-2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+              </svg>
+              Generate
+            </Link>
             <LangToggle />
           </div>
 
           {/* Mobile hamburger */}
           <button
             onClick={() => setMenuOpen(o => !o)}
-            className="flex md:hidden items-center justify-center w-10 h-10 flex-shrink-0 cursor-pointer border-none"
+            className="flex md:hidden items-center justify-center w-9 h-9 flex-shrink-0 cursor-pointer ml-auto"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             style={{
-              borderRadius: '12px',
-              background: menuOpen ? 'rgba(61,126,255,0.12)' : 'rgba(255,255,255,0.04)',
-              border: '1px solid #30363D',
-              transition: 'background 0.2s ease',
+              borderRadius: '10px',
+              background: menuOpen ? 'rgba(61,126,255,0.12)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${menuOpen ? 'rgba(61,126,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              color: '#8B949E', transition: 'all 0.15s ease',
             }}
           >
-            {menuOpen ? <IconClose /> : <IconHamburger />}
+            {menuOpen ? <IconClose /> : <IconMenu />}
           </button>
         </div>
       </nav>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile menu */}
       {menuOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '76px',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 49,
-            background: 'rgba(13,17,23,0.98)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '16px',
-            overflowY: 'auto',
-          }}
-        >
-          {/* Nav links */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {navItems.map(({ to, labelKey }) => {
+        <div style={{
+          position: 'fixed', top: '72px', left: 0, right: 0, bottom: 0,
+          zIndex: 49,
+          background: 'rgba(8,11,16,0.99)',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          display: 'flex', flexDirection: 'column', padding: '20px 16px',
+          overflowY: 'auto',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            {[...navItems, { to: '/generate', labelKey: 'nav_generate' as const }].map(({ to, labelKey }) => {
               const active = pathname === to || (to !== '/' && pathname.startsWith(to));
               return (
                 <Link
                   key={to}
                   to={to}
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 no-underline"
                   style={{
-                    padding: '14px 18px',
-                    borderRadius: '16px',
-                    color: active ? '#E6EDF3' : '#8B949E',
-                    background: active ? 'rgba(61,126,255,0.1)' : 'transparent',
-                    fontSize: '15px',
-                    fontWeight: active ? 600 : 500,
-                    transition: 'background 0.2s ease, color 0.2s ease',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '13px 16px', borderRadius: '12px', textDecoration: 'none',
+                    color: active ? '#E6EDF3' : '#6B7280',
+                    background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
+                    fontSize: '15px', fontWeight: active ? 600 : 400,
+                    transition: 'background 0.15s ease, color 0.15s ease',
                   }}
                 >
-                  {active && (
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3D7EFF', boxShadow: '0 0 8px #3D7EFF', flexShrink: 0 }} />
-                  )}
-                  {!active && (
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#30363D', flexShrink: 0 }} />
-                  )}
+                  <span style={{
+                    width: '6px', height: '6px', borderRadius: '50%',
+                    background: active ? '#3D7EFF' : '#2A3040', flexShrink: 0,
+                    boxShadow: active ? '0 0 6px rgba(61,126,255,0.7)' : 'none',
+                  }} />
                   {t(labelKey)}
                 </Link>
               );
             })}
           </div>
-
-          {/* Lang toggle at bottom */}
-          <div style={{ marginTop: 'auto', paddingTop: '24px', borderTop: '1px solid #21262D' }}>
+          <div style={{ marginTop: 'auto', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '10px' }}>
               Language
             </div>

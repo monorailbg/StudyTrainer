@@ -596,7 +596,7 @@ export default function SubjectPage() {
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [fullFocus, setFullFocus] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
-  useDimMode(s => s.dim);
+  const dim = useDimMode(s => s.dim);
   const { dates: examDatesList, setDate: setExamDate, removeDate: removeExamDate } = useExamDates();
   const examDate = examDatesList.find(d => d.subjectId === id);
 
@@ -864,7 +864,7 @@ export default function SubjectPage() {
   const selectedLevelFileIds = selectedFileIds.filter(id => levelFiles.some(f => f.id === id));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 76px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 72px)' }}>
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
@@ -1148,7 +1148,7 @@ export default function SubjectPage() {
         </aside>
 
         {/* Main content area */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: '#0D1117' }}>
+        <main ref={mainRef} className={`flex-1 overflow-y-auto p-4 md:p-8 study-dim-root${dim && (view === 'notes' || view === 'quiz') ? ' dim-mode' : ''}`} style={{ background: '#0D1117' }}>
 
           {(view === 'flashcards' || view === 'notes' || view === 'quiz') && <DimModeToggle />}
 
@@ -1209,10 +1209,17 @@ export default function SubjectPage() {
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#8B949E', marginBottom: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Exam Date</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <input
-                    type="date"
-                    value={examDate?.date ?? ''}
-                    onChange={e => setExamDate(id!, e.target.value)}
-                    style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '8px', color: '#E6EDF3', padding: '7px 12px', fontSize: '12px', outline: 'none', colorScheme: 'dark' }}
+                    type="text"
+                    value={examDate?.date ? examDate.date.replace(/-/g, '/') : ''}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      if (raw === '') { removeExamDate(id!); return; }
+                      const iso = raw.replace(/\//g, '-');
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) setExamDate(id!, iso);
+                    }}
+                    placeholder="YYYY/MM/DD"
+                    maxLength={10}
+                    style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '8px', color: '#E6EDF3', padding: '7px 12px', fontSize: '12px', outline: 'none', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '136px' }}
                   />
                   {examDate && (
                     <>

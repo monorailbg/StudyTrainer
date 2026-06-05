@@ -594,7 +594,7 @@ export default function Home() {
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{d.subject!.title}</div>
                         <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {new Date(d.date).toLocaleDateString()} · <span style={{ color, fontWeight: 600 }}>{diff > 0 ? `${diff} days left` : diff === 0 ? 'Today' : `${-diff} days ago`}</span>
+                          {d.date.replace(/-/g, '/')} · <span style={{ color, fontWeight: 600 }}>{diff > 0 ? `${diff} days left` : diff === 0 ? 'Today' : `${-diff} days ago`}</span>
                         </div>
                       </div>
                     </Link>
