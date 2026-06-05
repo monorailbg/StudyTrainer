@@ -911,8 +911,8 @@ export default function SubjectPage() {
             ))}
           </div>
         )}
-        {/* Dim toggle — inline in header so it's above <main> and never affected by the CSS filter */}
-        {(view === 'flashcards' || view === 'notes' || view === 'quiz') && <DimModeToggle inline />}
+        {/* Dim toggle for flashcards/quiz — notes has its own toggle inside NotesViewer */}
+        {(view === 'flashcards' || view === 'quiz') && <DimModeToggle inline />}
       </div>
 
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}

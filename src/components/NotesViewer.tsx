@@ -483,6 +483,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
 }) {
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const dim = useDimMode(s => s.dim);
+  const toggleDim = useDimMode(s => s.toggle);
   const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation, getForSection } = useAnnotations();
   const [toolbar, setToolbar] = useState<{
     x: number; y: number; sectionIndex: number; selectedText: string; existingId?: string;
@@ -691,6 +692,27 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
               <span style={{ width: '3px', height: '3px', background: '#30363D', borderRadius: '50%' }} />
               <span style={{ fontSize: '11px', color: '#484F58' }}>{total} section{total !== 1 ? 's' : ''}</span>
               <span style={{ flex: 1 }} />
+              {/* Dim reading mode toggle — lives in the notes header so it is always visible */}
+              <button
+                onClick={toggleDim}
+                title={dim ? 'Exit dim mode' : 'Dim reading mode'}
+                aria-pressed={dim}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                  background: dim ? 'rgba(61,126,255,0.18)' : 'transparent',
+                  border: `1px solid ${dim ? 'rgba(61,126,255,0.5)' : '#30363D'}`,
+                  borderRadius: '7px', padding: '3px 9px',
+                  cursor: 'pointer', color: dim ? '#93B8FF' : '#8B949E',
+                  fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <svg viewBox="0 0 18 18" width="11" height="11" fill={dim ? 'currentColor' : 'none'}>
+                  <path d="M14.5 11.2A6 6 0 016.8 3.5a.6.6 0 00-.8-.78A7 7 0 1015.3 12a.6.6 0 00-.8-.8z"
+                    stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                </svg>
+                {dim ? 'DIMMED' : 'DIM'}
+              </button>
               {onToggleFullFocus && (
                 <button
                   onClick={onToggleFullFocus}
