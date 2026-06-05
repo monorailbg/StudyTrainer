@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getAllFlashcardSets, type StoredFlashcardSet } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudFlashcardSets } from '../lib/cloudDb';
+import { getAllFlashcardSets, saveFlashcardSet, type StoredFlashcardSet } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudFlashcardSets, renameCloudFlashcardSet } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useDimMode } from '../store/useDimMode';
 import { useActivity } from '../store/useActivity';
@@ -94,8 +94,24 @@ export default function Flashcards() {
   const [loading, setLoading] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeSet, setActiveSet] = useState<StoredFlashcardSet | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const dim = useDimMode(s => s.dim);
   const record = useActivity(s => s.record);
+
+  const commitRename = () => {
+    if (!renaming) return;
+    const name = renaming.value.trim();
+    if (!name) { setRenaming(null); return; }
+    setSets(prev => prev.map(s => s.id === renaming.id ? { ...s, name } : s));
+    if (activeSet?.id === renaming.id) setActiveSet(prev => prev ? { ...prev, name } : prev);
+    if (isFirebaseConfigured) {
+      renameCloudFlashcardSet(renaming.id, name).catch(() => {});
+    } else {
+      const set = sets.find(s => s.id === renaming.id);
+      if (set) saveFlashcardSet({ ...set, name }).catch(() => {});
+    }
+    setRenaming(null);
+  };
 
   useEffect(() => {
     const p = isFirebaseConfigured
@@ -150,9 +166,30 @@ export default function Flashcards() {
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {activeSubject && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />}
-                <span style={{ fontSize: '11px', color: '#8B949E', fontWeight: 600 }}>
-                  {activeSubject?.title ?? ''} · {activeSet.name} · {activeSet.cards.length} cards
-                </span>
+                {renaming?.id === activeSet.id ? (
+                  <input
+                    autoFocus
+                    value={renaming.value}
+                    onChange={e => setRenaming({ ...renaming, value: e.target.value })}
+                    onBlur={commitRename}
+                    onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null); }}
+                    style={{
+                      background: '#0D1117', border: `1px solid ${activeColor}55`, borderRadius: '6px',
+                      color: '#E6EDF3', fontSize: '11px', fontWeight: 600, padding: '3px 8px', outline: 'none',
+                    }}
+                  />
+                ) : (
+                  <span style={{ fontSize: '11px', color: '#8B949E', fontWeight: 600 }}>
+                    {activeSubject?.title ?? ''} · {activeSet.name} · {activeSet.cards.length} cards
+                  </span>
+                )}
+                <button
+                  onClick={() => setRenaming({ id: activeSet.id, value: activeSet.name })}
+                  title="Rename set"
+                  style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '6px', color: '#484F58', cursor: 'pointer', fontSize: '12px', padding: '3px 8px' }}
+                >
+                  ✎
+                </button>
               </div>
             </div>
             <FlashcardViewer

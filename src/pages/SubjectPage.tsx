@@ -6,6 +6,9 @@ import { useStore } from '../store/useStore';
 import { useActivity } from '../store/useActivity';
 import { useToast } from '../components/Toast';
 import { generateFromFile } from '../lib/geminiGenerator';
+import { DimModeToggle } from '../components/DimModeToggle';
+import { useDimMode } from '../store/useDimMode';
+import { useExamDates } from '../store/useExamDates';
 import {
   saveFile, getFiles, deleteFile,
   saveQuiz, getQuizzes, deleteQuiz, type StoredQuiz,
@@ -589,13 +592,21 @@ export default function SubjectPage() {
   };
 
   // ── Rename ─────────────────────────────────────────────────────────────────
-  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [filesExpanded, setFilesExpanded] = useState(true);
+  const [fullFocus, setFullFocus] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  useDimMode(s => s.dim);
+  const { dates: examDatesList, setDate: setExamDate, removeDate: removeExamDate } = useExamDates();
+  const examDate = examDatesList.find(d => d.subjectId === id);
 
-  const startRename = (id: string, currentName: string) => {
-    setRenaming({ id, value: currentName });
+  const [renaming, setRenaming] = useState<{ id: string; value: string; kind: 'quiz' | 'note' | 'set' | 'file' } | null>(null);
+
+  const startRename = (itemId: string, currentName: string, kind: 'quiz' | 'note' | 'set' | 'file' = 'set') => {
+    setRenaming({ id: itemId, value: currentName, kind });
   };
 
-  const commitRename = (type: 'quiz' | 'note' | 'set') => {
+  const commitRename = (type: 'quiz' | 'note' | 'set' | 'file') => {
     if (!renaming) return;
     const name = renaming.value.trim();
     if (!name) { setRenaming(null); return; }
@@ -615,6 +626,18 @@ export default function SubjectPage() {
         const note = savedNotes.find(n => n.id === renaming.id);
         if (note) saveNote({ ...note, name }).catch(() => {});
       }
+    } else if (type === 'file') {
+      setFiles(prev => prev.map(f => f.id === renaming.id ? { ...f, name } : f));
+      if (isFirebaseConfigured) {
+        const file = files.find(f => f.id === renaming.id);
+        if (file) {
+          saveCloudFile({
+            id: file.id, subjectId: id!, name, type: file.type, size: file.size,
+            level: file.level, storageUrl: file.storageUrl ?? '', createdAt: Date.now(),
+            folderId: file.folderId ?? undefined,
+          }).catch(() => {});
+        }
+      }
     } else {
       setSavedFlashcardSets(prev => prev.map(s => s.id === renaming.id ? { ...s, name } : s));
       if (isFirebaseConfigured) {
@@ -626,6 +649,11 @@ export default function SubjectPage() {
     }
     setRenaming(null);
   };
+
+  function daysUntil(dateStr: string): number {
+    const diff = new Date(dateStr).getTime() - Date.now();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }
 
   const toggleInclude = (item: string) =>
     setNotesIncludes(prev => prev.includes(item) ? prev.filter(x => x !== item) : [...prev, item]);
@@ -917,20 +945,53 @@ export default function SubjectPage() {
       </div>
 
       {/* ── Sidebar + content ────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+
+        {/* Show-sidebar button when collapsed */}
+        {!sidebarOpen && (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            title="Show sidebar"
+            style={{
+              position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+              zIndex: 30, width: '20px', height: '48px', borderRadius: '0 8px 8px 0',
+              background: '#161B22', border: '1px solid #30363D', borderLeft: 'none',
+              color: '#8B949E', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '9px',
+            }}
+          >
+            ►
+          </button>
+        )}
 
         {/* Left sidebar — hidden on mobile */}
         <aside className="hidden md:flex flex-col" style={{
-          width: '320px',
+          width: fullFocus ? '0' : (sidebarOpen ? '320px' : '0'),
           flexShrink: 0,
-          borderRight: '1px solid #21262D',
+          borderRight: sidebarOpen && !fullFocus ? '1px solid #21262D' : 'none',
           background: '#0D1117',
           display: 'flex',
           flexDirection: 'column',
-          padding: '20px 16px',
+          padding: sidebarOpen && !fullFocus ? '20px 16px' : '0',
           gap: '3px',
           overflowY: 'auto',
+          overflowX: 'hidden',
+          transition: 'width 0.25s ease, padding 0.25s ease',
         }}>
+          {/* Sidebar header with collapse button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 4px', flexShrink: 0 }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+              {subject.title.slice(0, 18)}
+            </span>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              title="Collapse sidebar"
+              style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '6px', color: '#484F58', cursor: 'pointer', fontSize: '9px', padding: '3px 6px', flexShrink: 0 }}
+            >
+              ◄
+            </button>
+          </div>
+
           {/* Overview / dashboard */}
           <div style={{ marginBottom: '8px' }}>
             <SidebarItem
@@ -938,39 +999,52 @@ export default function SubjectPage() {
               label="Overview"
               sublabel="Subject dashboard"
               active={view === 'dashboard'}
-              onClick={() => setView('dashboard')}
+              onClick={() => { setView('dashboard'); setFullFocus(false); }}
             />
           </div>
 
           {/* Upload / files section */}
           <div style={{ marginBottom: '4px' }}>
-            <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
-              Files
-            </div>
+            <button
+              onClick={() => setFilesExpanded(v => !v)}
+              style={{
+                display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center',
+                background: 'none', border: 'none', cursor: 'pointer', padding: '0 10px', marginBottom: '4px',
+              }}
+            >
+              <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
+                Files ({levelFiles.length})
+              </span>
+              <span style={{ fontSize: '9px', color: '#484F58' }}>{filesExpanded ? '▾' : '▸'}</span>
+            </button>
 
-            <SidebarItem
-              icon={<IconPlus />}
-              label="Add Files"
-              active={view === 'upload' && levelFiles.length === 0}
-              onClick={() => { setView('upload'); }}
-            />
+            {filesExpanded && (
+              <>
+                <SidebarItem
+                  icon={<IconPlus />}
+                  label="Add Files"
+                  active={view === 'upload' && levelFiles.length === 0}
+                  onClick={() => { setView('upload'); setFullFocus(false); }}
+                />
 
-            {levelFiles.map(file => {
-              const isFileSelected = selectedFileIds.includes(file.id);
-              return (
-                <div key={file.id}>
-                  <SidebarItem
-                    icon={<IconFile />}
-                    label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
-                    sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : 'Image'}`}
-                    active={view === 'upload'}
-                    dot={isFileSelected}
-                    dotColor={subject.color}
-                    onClick={() => { toggleFileSelection(file.id); setView('upload'); }}
-                  />
-                </div>
-              );
-            })}
+                {levelFiles.map(file => {
+                  const isFileSelected = selectedFileIds.includes(file.id);
+                  return (
+                    <div key={file.id}>
+                      <SidebarItem
+                        icon={<IconFile />}
+                        label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
+                        sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : 'Image'}`}
+                        active={view === 'upload'}
+                        dot={isFileSelected}
+                        dotColor={subject.color}
+                        onClick={() => { toggleFileSelection(file.id); setView('upload'); setFullFocus(false); }}
+                      />
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
 
           {/* Generated content section */}
@@ -986,7 +1060,7 @@ export default function SubjectPage() {
               active={view === 'flashcards' && !activeSetId}
               dot={savedFlashcardSets.length > 0}
               dotColor={subject.color}
-              onClick={() => { setActiveSetId(null); setView('flashcards'); }}
+              onClick={() => { setActiveSetId(null); setView('flashcards'); setFullFocus(false); }}
             />
             <SidebarItem
               icon={<IconNote />}
@@ -995,7 +1069,7 @@ export default function SubjectPage() {
               active={view === 'notes' && !activeNoteId}
               dot={savedNotes.length > 0}
               dotColor={subject.color}
-              onClick={() => { setActiveNoteId(null); setView('notes'); }}
+              onClick={() => { setActiveNoteId(null); setView('notes'); setFullFocus(false); }}
             />
             <SidebarItem
               icon={<IconQuiz />}
@@ -1004,7 +1078,7 @@ export default function SubjectPage() {
               active={view === 'quiz' && !activeQuizId}
               dot={savedQuizzes.length > 0}
               dotColor={subject.color}
-              onClick={() => { setActiveQuizId(null); setView('quiz'); }}
+              onClick={() => { setActiveQuizId(null); setView('quiz'); setFullFocus(false); }}
             />
           </div>
 
@@ -1023,7 +1097,7 @@ export default function SubjectPage() {
                   active={view === 'flashcards' && activeSetId === set.id}
                   dot={view === 'flashcards' && activeSetId === set.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveSetId(set.id); setView('flashcards'); }}
+                  onClick={() => { setActiveSetId(set.id); setView('flashcards'); setFullFocus(false); }}
                 />
               ))}
             </div>
@@ -1044,7 +1118,7 @@ export default function SubjectPage() {
                   active={view === 'notes' && activeNoteId === n.id}
                   dot={view === 'notes' && activeNoteId === n.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveNoteId(n.id); setView('notes'); }}
+                  onClick={() => { setActiveNoteId(n.id); setView('notes'); setFullFocus(false); }}
                 />
               ))}
             </div>
@@ -1065,7 +1139,7 @@ export default function SubjectPage() {
                   active={view === 'quiz' && activeQuizId === quiz.id}
                   dot={view === 'quiz' && activeQuizId === quiz.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveQuizId(quiz.id); setView('quiz'); }}
+                  onClick={() => { setActiveQuizId(quiz.id); setView('quiz'); setFullFocus(false); }}
                 />
               ))}
             </div>
@@ -1074,8 +1148,9 @@ export default function SubjectPage() {
         </aside>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: '#0D1117' }}>
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: '#0D1117' }}>
 
+          {(view === 'flashcards' || view === 'notes' || view === 'quiz') && <DimModeToggle />}
 
           {/* Dashboard view */}
           {view === 'dashboard' && (
@@ -1128,6 +1203,32 @@ export default function SubjectPage() {
                   </div>
                 );
               })()}
+
+              {/* Exam Date */}
+              <div style={{ marginTop: '28px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#8B949E', marginBottom: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Exam Date</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    type="date"
+                    value={examDate?.date ?? ''}
+                    onChange={e => setExamDate(id!, e.target.value)}
+                    style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '8px', color: '#E6EDF3', padding: '7px 12px', fontSize: '12px', outline: 'none', colorScheme: 'dark' }}
+                  />
+                  {examDate && (
+                    <>
+                      <span style={{ fontSize: '11px', color: subject.color, fontWeight: 600 }}>
+                        {daysUntil(examDate.date)} days left
+                      </span>
+                      <button
+                        onClick={() => removeExamDate(id!)}
+                        style={{ background: 'none', border: 'none', color: '#484F58', cursor: 'pointer', fontSize: '11px' }}
+                      >
+                        ✕
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1246,10 +1347,26 @@ export default function SubjectPage() {
                             }
                           </svg>
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: 500, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {file.name}
-                          </div>
+                        <div style={{ flex: 1, minWidth: 0 }} onClick={e => renaming?.id === file.id && e.stopPropagation()}>
+                          {renaming?.id === file.id ? (
+                            <input
+                              autoFocus
+                              value={renaming.value}
+                              onChange={e => setRenaming({ ...renaming, value: e.target.value })}
+                              onBlur={() => commitRename('file')}
+                              onKeyDown={e => { if (e.key === 'Enter') commitRename('file'); if (e.key === 'Escape') setRenaming(null); }}
+                              style={{
+                                width: '100%', background: '#0D1117',
+                                border: `1px solid ${subject.color}55`, borderRadius: '6px',
+                                color: '#E6EDF3', fontSize: '13px', fontWeight: 500,
+                                padding: '2px 6px', outline: 'none',
+                              }}
+                            />
+                          ) : (
+                            <div style={{ fontSize: '13px', fontWeight: 500, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {file.name}
+                            </div>
+                          )}
                           <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
                             {(file.size / 1024 / 1024).toFixed(2)} MB · {isPDF ? 'PDF' : 'Image'}{activeLevel && ` · ${activeLevel}`}
                           </div>
@@ -1257,6 +1374,18 @@ export default function SubjectPage() {
                         {!isPDF && (
                           <img src={file.url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
                         )}
+                        <button
+                          onClick={e => { e.stopPropagation(); startRename(file.id, file.name, 'file'); }}
+                          title="Rename file"
+                          style={{
+                            height: '30px', padding: '0 10px', borderRadius: '999px',
+                            fontSize: '12px', cursor: 'pointer',
+                            background: 'transparent', color: '#8B949E',
+                            border: '1px solid #30363D', flexShrink: 0,
+                          }}
+                        >
+                          ✎
+                        </button>
                         <button
                           onClick={e => { e.stopPropagation(); removeFile(file.id); }}
                           style={{
@@ -1301,6 +1430,8 @@ export default function SubjectPage() {
                     color={subject.color}
                     subjectId={subject.id}
                     onSessionEnd={(n) => recordActivity({ type: 'flashcards', subjectId: subject.id, subjectName: subject.title, detail: `Reviewed ${n} card${n !== 1 ? 's' : ''} in ${subject.title}` })}
+                    onBack={() => setActiveSetId(null)}
+                    onGoToQuiz={savedQuizzes.length > 0 ? () => { setView('quiz'); setActiveQuizId(savedQuizzes[0].id); } : undefined}
                   />
                 </div>
               );
@@ -1413,7 +1544,15 @@ export default function SubjectPage() {
                       {activeNote.name} · {activeNote.note.sections.length} sections
                     </div>
                   </div>
-                  <NotesViewer notes={activeNote.note} color={subject.color} noteId={activeNote.id} />
+                  <NotesViewer
+                    notes={activeNote.note}
+                    color={subject.color}
+                    noteId={activeNote.id}
+                    scrollElRef={mainRef}
+                    onGoToFlashcards={savedFlashcardSets.length > 0 ? () => { setView('flashcards'); setActiveSetId(null); } : undefined}
+                    fullFocus={fullFocus}
+                    onToggleFullFocus={() => setFullFocus(v => !v)}
+                  />
                 </div>
               );
             }

@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
 import { useActivity, type ActivityEvent } from '../store/useActivity';
+import { useExamDates } from '../store/useExamDates';
 import type { SubjectDef } from '../data/subjects';
 import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
@@ -317,6 +318,8 @@ export default function Home() {
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
   const [showActivityAll, setShowActivityAll] = useState(false);
+  const [activityMinimized, setActivityMinimized] = useState(false);
+  const { dates: examDates } = useExamDates();
   // Force the globe to rebuild when the set of subjects changes.
   const globeKey = allSubjects.map(s => s.id).join(',');
 
@@ -529,23 +532,78 @@ export default function Home() {
         {/* Recent activity */}
         {activityEvents.length > 0 && (
           <div className="mb-10">
-            <SectionLabel>Recent Activity</SectionLabel>
-            <div style={{ background: '#12161D', border: '1px solid #21262D', borderRadius: '8px', padding: '16px', maxWidth: '720px' }}>
-              {activityEvents.slice(0, 8).map((ev, i) => (
-                <ActivityRow key={ev.id} ev={ev} subjects={allSubjects} isLast={i === Math.min(8, activityEvents.length) - 1} />
-              ))}
-              {activityEvents.length > 8 && (
-                <button
-                  onClick={() => setShowActivityAll(true)}
-                  className="cursor-pointer"
-                  style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, fontSize: '11px', fontWeight: 600, color: '#8B949E' }}
-                >
-                  View all {activityEvents.length} →
-                </button>
-              )}
+            <div className="flex items-center gap-3 mb-5">
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#8B949E' }}>Recent Activity</span>
+              <div className="flex-1 h-px" style={{ background: '#30363D' }} />
+              <button
+                onClick={() => setActivityMinimized(v => !v)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#484F58', padding: '2px 6px', borderRadius: '6px' }}
+              >
+                {activityMinimized ? '▸ Show' : '▾ Hide'}
+              </button>
             </div>
+            {!activityMinimized && (
+              <div style={{ background: '#12161D', border: '1px solid #21262D', borderRadius: '8px', padding: '16px', maxWidth: '720px' }}>
+                {activityEvents.slice(0, 8).map((ev, i) => (
+                  <ActivityRow key={ev.id} ev={ev} subjects={allSubjects} isLast={i === Math.min(8, activityEvents.length) - 1} />
+                ))}
+                {activityEvents.length > 8 && (
+                  <button
+                    onClick={() => setShowActivityAll(true)}
+                    className="cursor-pointer"
+                    style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, fontSize: '11px', fontWeight: 600, color: '#8B949E' }}
+                  >
+                    View all {activityEvents.length} →
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
+
+        {/* Upcoming Exams */}
+        {examDates.length > 0 && (() => {
+          const upcoming = examDates
+            .map(d => ({ ...d, subject: allSubjects.find(s => s.id === d.subjectId) }))
+            .filter(d => d.subject)
+            .sort((a, b) => a.date.localeCompare(b.date));
+          if (upcoming.length === 0) return null;
+          return (
+            <div className="mb-10">
+              <SectionLabel>Upcoming Exams</SectionLabel>
+              <div className="flex gap-3 flex-wrap">
+                {upcoming.map((d, i) => {
+                  const diff = Math.ceil((new Date(d.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  const color = d.subject!.color;
+                  return (
+                    <Link
+                      key={d.subjectId}
+                      to={`/subject/${d.subjectId}`}
+                      className="no-underline anim-rise"
+                      style={{
+                        ['--d' as string]: `${i * 50}ms`,
+                        display: 'flex', alignItems: 'center', gap: '11px',
+                        padding: '11px 16px', borderRadius: '14px',
+                        background: '#161B22', border: `1px solid ${color}30`,
+                        transition: 'transform 0.2s ease, border-color 0.2s ease',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '60'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = color + '30'; }}
+                    >
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{d.subject!.title}</div>
+                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                          {new Date(d.date).toLocaleDateString()} · <span style={{ color, fontWeight: 600 }}>{diff > 0 ? `${diff} days left` : diff === 0 ? 'Today' : `${-diff} days ago`}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Continue where you left off */}
         {recentSubjects.length > 0 && (() => {
