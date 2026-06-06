@@ -1,0 +1,52 @@
+/* Dim mode overrides loaded after index.css.
+   Keeps reading content visible without the full-screen black overlay. */
+
+body.notes-dim-immersive::before,
+body.flashcards-dim-immersive::before {
+  content: none !important;
+  display: none !important;
+}
+
+body.notes-dim-immersive nav,
+body.flashcards-dim-immersive nav {
+  opacity: 0.08 !important;
+  background: #010101 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.015) !important;
+  box-shadow: none !important;
+}
+
+body.notes-dim-immersive nav:hover,
+body.flashcards-dim-immersive nav:hover {
+  opacity: 0.22 !important;
+}
+
+body.notes-dim-immersive nav + div,
+body.flashcards-dim-immersive nav + div {
+  opacity: 0.08 !important;
+  background: #010101 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.015) !important;
+}
+
+body.notes-dim-immersive nav + div:hover,
+body.flashcards-dim-immersive nav + div:hover {
+  opacity: 0.22 !important;
+}
+
+body.notes-dim-immersive .notes-meta-row {
+  opacity: 1 !important;
+}
+
+body.notes-dim-immersive .notes-title,
+body.notes-dim-immersive .notes-meta-row > p,
+body.notes-dim-immersive .notes-section-body {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+body.notes-dim-immersive .notes-title {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+
+body.notes-dim-immersive .notes-content-main,
+body.flashcards-dim-immersive .flashcard-card {
+  z-index: auto !important;
+}
