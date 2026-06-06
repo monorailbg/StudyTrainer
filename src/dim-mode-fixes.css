@@ -99,7 +99,6 @@ body:has(main.study-dim-root.dim-mode .notes-content-main) aside:hover {
 }
 
 main.study-dim-root.dim-mode:has(.notes-content-main) {
-  filter: none !important;
   background: linear-gradient(170deg, #0c0f1e 0%, #08091a 45%, #0a0810 100%) !important;
 }
 

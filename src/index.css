@@ -501,10 +501,9 @@ h1, h2, h3 {
    overrides, no layout reflow. The moon toggle is rendered outside this
    container so it stays at full brightness. */
 .study-dim-root {
-  transition: filter 320ms ease, background-color 320ms ease;
+  transition: background-color 320ms ease;
 }
 .study-dim-root.dim-mode {
-  filter: brightness(0.80) saturate(0.80) contrast(0.98);
   background-color: #0a0a0f !important;
 }
 
@@ -597,16 +596,6 @@ body.notes-reading nav:hover {
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
-/* ── Immersive dim mode: counter-filter approach ────────────────────
-   study-dim-root.dim-mode applies brightness(0.80) saturate(0.80).
-   notes-content-main gets the exact inverse so it renders at full
-   natural brightness while everything else stays dark.
-   Navbar/banner opacity is set via direct DOM manipulation in Notes.tsx
-   (bypasses stacking-context / CSS-specificity limitations). */
-
-body.notes-dim-immersive .notes-content-main {
-  filter: brightness(1.25) saturate(1.25) contrast(1.02);
-}
 
 /* Sidebar and meta near-invisible in immersive dim */
 body.notes-dim-immersive .notes-sidebar {
