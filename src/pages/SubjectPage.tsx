@@ -722,6 +722,12 @@ export default function SubjectPage() {
   const [fullFocus, setFullFocus] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const { dates: examDatesList, setDate: setExamDate, removeDate: removeExamDate } = useExamDates();
+
+  useEffect(() => {
+    const active = fullFocus && view === 'notes';
+    document.body.classList.toggle('notes-focus-active', active);
+    return () => { document.body.classList.remove('notes-focus-active'); };
+  }, [fullFocus, view]);
   const examDate = examDatesList.find(d => d.subjectId === id);
 
   const [renaming, setRenaming] = useState<{ id: string; value: string; kind: 'quiz' | 'note' | 'set' | 'file' } | null>(null);
@@ -1090,14 +1096,14 @@ export default function SubjectPage() {
         )}
 
         {/* Left sidebar — hidden on mobile */}
-        <aside className="hidden md:flex flex-col" style={{
-          width: fullFocus ? '0' : (sidebarOpen ? '320px' : '0'),
+        <aside className="subject-sidebar hidden md:flex flex-col" style={{
+          width: sidebarOpen ? '320px' : '0',
           flexShrink: 0,
-          borderRight: sidebarOpen && !fullFocus ? '1px solid #21262D' : 'none',
+          borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
           background: '#0D1117',
           display: 'flex',
           flexDirection: 'column',
-          padding: sidebarOpen && !fullFocus ? '20px 16px' : '0',
+          padding: sidebarOpen ? '20px 16px' : '0',
           gap: '3px',
           overflowY: 'auto',
           overflowX: 'hidden',

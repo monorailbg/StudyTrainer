@@ -544,6 +544,45 @@ body.notes-reading nav:hover {
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
+/* ── Notes focus mode: dim chrome, spotlight content ──────────────────
+   Triggered by the Focus button inside the note reader on a subject page.
+   Navbar and breadcrumb strip fade to near-invisible; hover restores them. */
+body.notes-focus-active nav {
+  opacity: 0.05;
+  transition: opacity 220ms ease;
+}
+body.notes-focus-active nav:hover {
+  opacity: 0.80;
+  transition: opacity 120ms ease;
+}
+body.notes-focus-active .subject-breadcrumb-strip {
+  opacity: 0.05;
+  transition: opacity 220ms ease;
+}
+body.notes-focus-active .subject-breadcrumb-strip:hover {
+  opacity: 0.80;
+  transition: opacity 120ms ease;
+}
+body.notes-focus-active .subject-sidebar {
+  opacity: 0.05;
+  transition: opacity 220ms ease;
+}
+body.notes-focus-active .subject-sidebar:hover {
+  opacity: 0.70;
+  transition: opacity 120ms ease;
+}
+body.notes-focus-active .notes-content-main .notes-section-card {
+  background: rgba(255, 255, 255, 0.038) !important;
+  border-color: rgba(255, 255, 255, 0.11) !important;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+body.notes-focus-active .notes-content-main .notes-title {
+  color: rgba(255, 255, 255, 1.0) !important;
+}
+body.notes-focus-active .notes-content-main .notes-section-body {
+  color: rgba(255, 255, 255, 0.90) !important;
+}
+
 
 /* ── Notes ToC panel ─────────────────────────────────────────────────
    Hidden by default; toggled via the vertical pill on the right edge. */

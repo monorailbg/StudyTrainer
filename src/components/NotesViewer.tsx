@@ -812,7 +812,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       <div style={{ padding: '36px 28px 80px' }}>
 
         {/* ── Content column ── */}
-        <div className="notes-content-main" style={{ maxWidth: fullFocus ? '100%' : '740px', width: '100%', margin: '0 auto', minWidth: 0 }}>
+        <div className="notes-content-main" style={{ maxWidth: '740px', width: '100%', margin: '0 auto', minWidth: 0 }}>
 
           {/* Note metadata + completion header */}
           <div className="notes-meta-row" style={{ marginBottom: '28px' }}>
