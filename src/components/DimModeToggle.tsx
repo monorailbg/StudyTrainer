@@ -1,4 +1,5 @@
 import { useDimMode } from '../store/useDimMode';
+import { useLang } from '../context/LanguageContext';
 
 // One dim-mode control, used identically on Notes, Flashcards and Quiz (and the
 // SubjectPage versions of each). It is a labelled pill — moon icon + DIM/DIMMED —
@@ -7,6 +8,7 @@ import { useDimMode } from '../store/useDimMode';
 // floating pill; pass `inline` to drop it into a toolbar row instead.
 export function DimModeToggle({ inline }: { inline?: boolean }) {
   const { dim, toggle } = useDimMode();
+  const { ts } = useLang();
 
   const base: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: '7px',
@@ -26,8 +28,8 @@ export function DimModeToggle({ inline }: { inline?: boolean }) {
   return (
     <button
       onClick={toggle}
-      title={dim ? 'Exit dim mode' : 'Dim reading mode'}
-      aria-label="Toggle dim reading mode"
+      title={dim ? ts('Exit dim mode') : ts('Dim reading mode')}
+      aria-label={ts('Toggle dim reading mode')}
       aria-pressed={dim}
       style={inline ? base : { ...base, ...floating }}
     >
@@ -35,7 +37,7 @@ export function DimModeToggle({ inline }: { inline?: boolean }) {
         <path d="M14.5 11.2A6 6 0 016.8 3.5a.6.6 0 00-.8-.78A7 7 0 1015.3 12a.6.6 0 00-.8-.8z"
           stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
       </svg>
-      {dim ? 'DIMMED' : 'DIM'}
+      {dim ? ts('DIMMED') : ts('DIM')}
     </button>
   );
 }

@@ -4,6 +4,7 @@ import type { GeneratedNote, GeneratedNoteSection } from '../lib/generator';
 import { AskAI } from './AskAI';
 import { useAnnotations, type Annotation } from '../store/useAnnotations';
 import { useDimMode } from '../store/useDimMode';
+import { useLang } from '../context/LanguageContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -182,6 +183,7 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
   onRemove?: () => void;
   onDismiss: () => void;
 }) {
+  const { ts } = useLang();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; below: boolean } | null>(null);
 
@@ -242,7 +244,7 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
         <button
           key={c.id}
           onClick={() => onHighlight(c.value)}
-          title={`Highlight ${c.label}`}
+          title={ts('Highlight {color}', { color: ts(c.label) })}
           style={{
             width: '18px', height: '18px', borderRadius: '50%',
             background: c.value, border: '1.5px solid rgba(255,255,255,0.2)',
@@ -253,7 +255,7 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
       <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
       <button
         onClick={onUnderline}
-        title="Underline"
+        title={ts('Underline')}
         style={{
           width: '26px', height: '26px', borderRadius: '7px',
           background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
@@ -267,7 +269,7 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
           <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
           <button
             onClick={onRemove}
-            title="Remove"
+            title={ts('Remove')}
             style={{
               width: '26px', height: '26px', borderRadius: '7px',
               background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
@@ -297,6 +299,7 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
 // ── Recall card: inline self-test ─────────────────────────────────────────────
 
 function RecallCard({ heading, keyPoints, color }: { heading: string; keyPoints: string[]; color: string }) {
+  const { ts } = useLang();
   const [revealed, setRevealed] = useState(false);
   return (
     <div style={{
@@ -304,7 +307,7 @@ function RecallCard({ heading, keyPoints, color }: { heading: string; keyPoints:
       border: `1px solid ${color}28`, background: color + '0d', padding: '14px 16px',
     }}>
       <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, lineHeight: 1.5, color: 'rgba(230,237,243,0.8)' }}>
-        Can you explain: <span style={{ color }}>{heading}</span>?
+        {ts('Can you explain:')} <span style={{ color }}>{heading}</span>?
       </p>
       {!revealed ? (
         <button
@@ -315,7 +318,7 @@ function RecallCard({ heading, keyPoints, color }: { heading: string; keyPoints:
             color, cursor: 'pointer', fontSize: '12px', fontWeight: 600,
           }}
         >
-          Reveal key points
+          {ts('Reveal key points')}
         </button>
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -349,6 +352,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
   { index, section, color, understood, collapsed, annotations, dim, onToggleUnderstood, onToggleCollapsed },
   ref
 ) {
+  const { ts } = useLang();
   const [recallOpen, setRecallOpen] = useState(false);
   const num = String(index + 1).padStart(2, '0');
   const hasKeyPoints = (section.keyPoints ?? []).length > 0;
@@ -397,11 +401,11 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
               transition: 'all 0.15s',
             }}
           >
-            TL;DR
+            {ts('TL;DR')}
           </button>
           <button
             onClick={onToggleUnderstood}
-            title={understood ? 'Mark as not understood' : 'Got it'}
+            title={understood ? ts('Mark as not understood') : ts('Got it')}
             style={{
               width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0,
               border: `1px solid ${understood ? color + '60' : '#30363D'}`,
@@ -432,7 +436,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
                 onClick={onToggleCollapsed}
                 style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '13px', color, fontWeight: 500 }}
               >
-                Read more
+                {ts('Read more')}
               </button>
             </>
           ) : (
@@ -501,7 +505,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
               <path d="M3.5 4c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5c0 .6-.37 1.1-.9 1.35L5 5.7V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               <circle cx="5" cy="7.75" r=".4" fill="currentColor" />
             </svg>
-            {recallOpen ? 'Hide recall' : 'Test yourself'}
+            {recallOpen ? ts('Hide recall') : ts('Test yourself')}
           </button>
         )}
 
@@ -525,6 +529,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
   fullFocus?: boolean;
   onToggleFullFocus?: () => void;
 }) {
+  const { ts } = useLang();
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const dim = useDimMode(s => s.dim);
   const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation, getForSection } = useAnnotations();
@@ -743,14 +748,14 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
           {/* Note metadata + completion header */}
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: '#484F58' }}>~{readTime} min read</span>
+              <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('~{min} min read', { min: readTime })}</span>
               <span style={{ width: '3px', height: '3px', background: '#30363D', borderRadius: '50%' }} />
-              <span style={{ fontSize: '11px', color: '#484F58' }}>{total} section{total !== 1 ? 's' : ''}</span>
+              <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('{n} sections', { n: total })}</span>
               <span style={{ flex: 1 }} />
               {onToggleFullFocus && (
                 <button
                   onClick={onToggleFullFocus}
-                  title={fullFocus ? 'Exit full focus' : 'Full focus'}
+                  title={fullFocus ? ts('Exit full focus') : ts('Full focus')}
                   style={{
                     background: fullFocus ? color + '20' : 'transparent',
                     border: `1px solid ${fullFocus ? color + '50' : '#30363D'}`,
@@ -760,7 +765,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
                     transition: 'all 0.15s',
                   }}
                 >
-                  {fullFocus ? '⊡ Focused' : '⊞ Focus'}
+                  {fullFocus ? `⊡ ${ts('Focused')}` : `⊞ ${ts('Focus')}`}
                 </button>
               )}
               {/* Understood progress bar */}
@@ -776,7 +781,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
                   fontSize: '11px', fontWeight: 600,
                   color: completionPct === 100 ? '#4ade80' : color,
                 }}>
-                  {completionPct}% understood
+                  {ts('{pct}% understood', { pct: completionPct })}
                 </span>
               </div>
             </div>
@@ -792,7 +797,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
                   opacity: activeSection === 0 ? 0.35 : 1, transition: 'opacity 0.15s',
                 }}
               >
-                ← Prev
+                ← {ts('Prev')}
               </button>
               <button
                 onClick={() => scrollToSection(activeSection + 1)}
@@ -804,7 +809,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
                   opacity: activeSection >= notes.sections.length - 1 ? 0.35 : 1, transition: 'opacity 0.15s',
                 }}
               >
-                Next →
+                {ts('Next')} →
               </button>
             </div>
 
@@ -846,7 +851,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
             background: '#161B22', border: '1px solid #21262D',
             display: 'flex', alignItems: 'center', gap: '6px',
           }}>
-            <span style={{ fontSize: '11px', color: '#30363D' }}>Navigate sections with</span>
+            <span style={{ fontSize: '11px', color: '#30363D' }}>{ts('Navigate sections with')}</span>
             {(['j', 'k'] as const).map(k => (
               <kbd key={k} style={{
                 fontSize: '10px', background: '#21262D', border: '1px solid #30363D',
@@ -872,7 +877,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
                   fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Go to Flashcards →
+                {ts('Go to Flashcards')} →
               </button>
             </div>
           )}
@@ -885,7 +890,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
               margin: '0 0 8px', fontSize: '9px', fontWeight: 700,
               letterSpacing: '0.12em', textTransform: 'uppercase', color: '#30363D',
             }}>
-              Contents
+              {ts('Contents')}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
               {notes.sections.map((s, i) => (

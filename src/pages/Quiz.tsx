@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLang } from '../context/LanguageContext';
 import { getAllQuizzes, type StoredQuiz } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudQuizzes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
@@ -15,6 +16,7 @@ import type { SubjectDef } from '../data/subjects';
 function SubjectBtn({ subject, count, active, onClick }: {
   subject: SubjectDef | null; count: number; active: boolean; onClick: () => void;
 }) {
+  const { ts } = useLang();
   const color = subject?.color ?? '#3D7EFF';
   return (
     <button
@@ -32,7 +34,7 @@ function SubjectBtn({ subject, count, active, onClick }: {
         boxShadow: active ? `0 0 6px ${color}` : 'none',
       }} />
       <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? '#E6EDF3' : '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {subject?.title ?? 'All subjects'}
+        {subject?.title ?? ts('All subjects')}
       </span>
       <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : '#484F58' }}>
         {count}
@@ -44,6 +46,7 @@ function SubjectBtn({ subject, count, active, onClick }: {
 // ── Quiz card ─────────────────────────────────────────────────────────────────
 
 function QuizCard({ quiz, color, onClick, index = 0 }: { quiz: StoredQuiz; color: string; onClick: () => void; index?: number }) {
+  const { ts } = useLang();
   return (
     <button
       onClick={onClick}
@@ -67,7 +70,7 @@ function QuizCard({ quiz, color, onClick, index = 0 }: { quiz: StoredQuiz; color
         {quiz.name}
       </div>
       <div style={{ fontSize: '11px', color: '#8B949E' }}>
-        {quiz.questions.length} questions · {new Date(quiz.createdAt).toLocaleDateString()}
+        {ts('{n} questions', { n: quiz.questions.length })} · {new Date(quiz.createdAt).toLocaleDateString()}
       </div>
     </button>
   );
@@ -76,12 +79,13 @@ function QuizCard({ quiz, color, onClick, index = 0 }: { quiz: StoredQuiz; color
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function Empty() {
+  const { ts } = useLang();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: '#8B949E', textAlign: 'center', gap: '12px' }}>
       <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><circle cx="24" cy="24" r="18" stroke="#30363D" strokeWidth="2"/><path d="M18 18c0-3.3 2.7-6 6-6s6 2.7 6 6c0 2.5-1.5 4.6-3.7 5.5L24 25V30" stroke="#484F58" strokeWidth="2" strokeLinecap="round"/><circle cx="24" cy="36" r="1.5" fill="#484F58"/></svg>
       <div>
-        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>No quizzes yet</div>
-        <div style={{ fontSize: '13px' }}>Upload files to a subject and generate quizzes from the subject page.</div>
+        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>{ts('No quizzes yet')}</div>
+        <div style={{ fontSize: '13px' }}>{ts('Upload files to a subject and generate quizzes from the subject page.')}</div>
       </div>
     </div>
   );
@@ -90,6 +94,7 @@ function Empty() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Quiz() {
+  const { ts } = useLang();
   const { allSubjects } = useResolvedSubjects();
   const [quizzes, setQuizzes] = useState<StoredQuiz[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +131,7 @@ export default function Quiz() {
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
-          Quizzes
+          {ts('Quizzes')}
         </div>
         <SubjectBtn subject={null} count={quizzes.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveQuiz(null); }} />
         {subjectsWithQuizzes.map(s => (
@@ -144,12 +149,12 @@ export default function Quiz() {
                 onClick={() => setActiveQuiz(null)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#8B949E', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                ← All quizzes
+                ← {ts('All quizzes')}
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {activeSubject && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />}
                 <span style={{ fontSize: '11px', color: '#8B949E', fontWeight: 600 }}>
-                  {activeSubject?.title ?? ''} · {activeQuiz.name} · {activeQuiz.questions.length} questions
+                  {activeSubject?.title ?? ''} · {activeQuiz.name} · {ts('{n} questions', { n: activeQuiz.questions.length })}
                 </span>
               </div>
             </div>
@@ -162,9 +167,9 @@ export default function Quiz() {
               subjectId={activeQuiz.subjectId}
               onExit={() => setActiveQuiz(null)}
               onComplete={(result) => {
-                const name = activeSubject?.title ?? 'a subject';
+                const name = activeSubject?.title ?? ts('a subject');
                 addQuizScore(activeSubject?.id ?? activeQuiz.subjectId, result.correctAnswers, result.totalQuestions);
-                record({ type: 'quiz', subjectId: activeQuiz.subjectId, subjectName: name, detail: `Scored ${result.scorePercent}% on ${name} quiz` });
+                record({ type: 'quiz', subjectId: activeQuiz.subjectId, subjectName: name, detail: ts('Scored {percent}% on {name} quiz', { percent: result.scorePercent, name }) });
               }}
             />
           </div>
@@ -181,8 +186,8 @@ export default function Quiz() {
                 <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? 'Unknown subject'}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{groupQuizzes.length} quiz{groupQuizzes.length !== 1 ? 'zes' : ''}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? ts('Unknown subject')}</span>
+                    <span style={{ fontSize: '10px', color: '#484F58' }}>{groupQuizzes.length !== 1 ? ts('{n} quizzes', { n: groupQuizzes.length }) : ts('{n} quiz', { n: groupQuizzes.length })}</span>
                     <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>

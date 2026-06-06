@@ -7,6 +7,7 @@ import { useActivity } from '../store/useActivity';
 import { DimModeToggle } from '../components/DimModeToggle';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
+import { useLang } from '../context/LanguageContext';
 import type { SubjectDef } from '../data/subjects';
 
 // ── Subject sidebar item ──────────────────────────────────────────────────────
@@ -14,6 +15,7 @@ import type { SubjectDef } from '../data/subjects';
 function SubjectBtn({ subject, count, active, onClick }: {
   subject: SubjectDef | null; count: number; active: boolean; onClick: () => void;
 }) {
+  const { ts } = useLang();
   const color = subject?.color ?? '#3D7EFF';
   return (
     <button
@@ -31,7 +33,7 @@ function SubjectBtn({ subject, count, active, onClick }: {
         boxShadow: active ? `0 0 6px ${color}` : 'none',
       }} />
       <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? '#E6EDF3' : '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {subject?.title ?? 'All subjects'}
+        {subject?.title ?? ts('All subjects')}
       </span>
       <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : '#484F58' }}>
         {count}
@@ -43,6 +45,7 @@ function SubjectBtn({ subject, count, active, onClick }: {
 // ── Set card ─────────────────────────────────────────────────────────────────
 
 function SetCard({ set, color, onClick, index = 0 }: { set: StoredFlashcardSet; color: string; onClick: () => void; index?: number }) {
+  const { ts } = useLang();
   return (
     <button
       onClick={onClick}
@@ -66,7 +69,7 @@ function SetCard({ set, color, onClick, index = 0 }: { set: StoredFlashcardSet; 
         {set.name}
       </div>
       <div style={{ fontSize: '11px', color: '#8B949E' }}>
-        {set.cards.length} cards · {new Date(set.createdAt).toLocaleDateString()}
+        {ts('{n} cards', { n: set.cards.length })} · {new Date(set.createdAt).toLocaleDateString()}
       </div>
     </button>
   );
@@ -75,12 +78,13 @@ function SetCard({ set, color, onClick, index = 0 }: { set: StoredFlashcardSet; 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function Empty() {
+  const { ts } = useLang();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: '#8B949E', textAlign: 'center', gap: '12px' }}>
       <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><rect x="4" y="14" width="30" height="22" rx="5" stroke="#30363D" strokeWidth="2"/><rect x="14" y="8" width="30" height="22" rx="5" stroke="#484F58" strokeWidth="2" fill="none"/></svg>
       <div>
-        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>No flashcard sets yet</div>
-        <div style={{ fontSize: '13px' }}>Upload files to a subject and generate flashcards from the subject page.</div>
+        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>{ts('No flashcard sets yet')}</div>
+        <div style={{ fontSize: '13px' }}>{ts('Upload files to a subject and generate flashcards from the subject page.')}</div>
       </div>
     </div>
   );
@@ -89,6 +93,7 @@ function Empty() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Flashcards() {
+  const { ts } = useLang();
   const { allSubjects } = useResolvedSubjects();
   const [sets, setSets] = useState<StoredFlashcardSet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +146,7 @@ export default function Flashcards() {
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
-          Flashcards
+          {ts('Flashcards')}
         </div>
         <SubjectBtn subject={null} count={sets.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveSet(null); }} />
         {subjectsWithSets.map(s => (
@@ -162,7 +167,7 @@ export default function Flashcards() {
                 onClick={() => setActiveSet(null)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#8B949E', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                ← All flashcards
+                {ts('← All flashcards')}
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {activeSubject && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />}
@@ -180,12 +185,12 @@ export default function Flashcards() {
                   />
                 ) : (
                   <span style={{ fontSize: '11px', color: '#8B949E', fontWeight: 600 }}>
-                    {activeSubject?.title ?? ''} · {activeSet.name} · {activeSet.cards.length} cards
+                    {activeSubject?.title ?? ''} · {activeSet.name} · {ts('{n} cards', { n: activeSet.cards.length })}
                   </span>
                 )}
                 <button
                   onClick={() => setRenaming({ id: activeSet.id, value: activeSet.name })}
-                  title="Rename set"
+                  title={ts('Rename set')}
                   style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '6px', color: '#484F58', cursor: 'pointer', fontSize: '12px', padding: '3px 8px' }}
                 >
                   ✎
@@ -216,8 +221,8 @@ export default function Flashcards() {
                 <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? 'Unknown subject'}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{groupSets.length} set{groupSets.length !== 1 ? 's' : ''}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? ts('Unknown subject')}</span>
+                    <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} set{s}', { n: groupSets.length, s: groupSets.length !== 1 ? 's' : '' })}</span>
                     <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>

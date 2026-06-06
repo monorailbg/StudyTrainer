@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { isFirebaseConfigured } from '../lib/firebase';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { useLang } from '../context/LanguageContext';
 
 const allConfigured = isFirebaseConfigured && isSupabaseConfigured;
 
 // Surfaces the current persistence mode so a misconfigured deploy is
 // immediately obvious rather than silently falling back to local-only.
 export function CloudStatusBadge() {
+  const { ts } = useLang();
   const [dismissed, setDismissed] = useState(false);
   if (allConfigured || dismissed) return null;
 
@@ -14,10 +16,10 @@ export function CloudStatusBadge() {
   const missingSupabase = !isSupabaseConfigured;
 
   const detail = missingFirebase && missingSupabase
-    ? 'Firebase (notes/flashcards/quizzes) and Supabase (file storage) are not configured.'
+    ? ts('Firebase (notes/flashcards/quizzes) and Supabase (file storage) are not configured.')
     : missingFirebase
-      ? 'Firebase is not configured — notes, flashcards and quizzes will not be shared.'
-      : 'Supabase is not configured — uploaded files will not be shared.';
+      ? ts('Firebase is not configured — notes, flashcards and quizzes will not be shared.')
+      : ts('Supabase is not configured — uploaded files will not be shared.');
 
   return (
     <div
@@ -36,12 +38,12 @@ export function CloudStatusBadge() {
         <svg viewBox="0 0 16 16" width="16" height="16" fill="none"><path d="M8 1.5L15 14H1L8 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 6.5v3.2M8 12h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, marginBottom: '2px' }}>Local-only mode</div>
+        <div style={{ fontWeight: 600, marginBottom: '2px' }}>{ts('Local-only mode')}</div>
         <div style={{ color: '#C9A86A' }}>{detail}</div>
       </div>
       <button
         onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
+        aria-label={ts('Dismiss')}
         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8B7340', padding: '2px', flexShrink: 0, lineHeight: 0 }}
       >
         <svg viewBox="0 0 14 14" width="13" height="13" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>

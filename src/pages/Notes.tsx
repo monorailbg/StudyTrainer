@@ -8,6 +8,7 @@ import { useStore } from '../store/useStore';
 import { DimModeToggle } from '../components/DimModeToggle';
 import { NotesViewer } from '../components/NotesViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
+import { useLang } from '../context/LanguageContext';
 import type { SubjectDef } from '../data/subjects';
 
 // ── Subject sidebar item ──────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ import type { SubjectDef } from '../data/subjects';
 function SubjectBtn({ subject, count, active, onClick }: {
   subject: SubjectDef | null; count: number; active: boolean; onClick: () => void;
 }) {
+  const { ts } = useLang();
   const color = subject?.color ?? '#3D7EFF';
   return (
     <button
@@ -32,7 +34,7 @@ function SubjectBtn({ subject, count, active, onClick }: {
         boxShadow: active ? `0 0 6px ${color}` : 'none',
       }} />
       <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? '#E6EDF3' : '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {subject?.title ?? 'All subjects'}
+        {subject?.title ?? ts('All subjects')}
       </span>
       <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : '#484F58' }}>
         {count}
@@ -44,6 +46,7 @@ function SubjectBtn({ subject, count, active, onClick }: {
 // ── Note card ─────────────────────────────────────────────────────────────────
 
 function NoteCard({ note, color, onClick, index = 0 }: { note: StoredNote; color: string; onClick: () => void; index?: number }) {
+  const { ts } = useLang();
   return (
     <button
       onClick={onClick}
@@ -67,7 +70,7 @@ function NoteCard({ note, color, onClick, index = 0 }: { note: StoredNote; color
         {note.name}
       </div>
       <div style={{ fontSize: '11px', color: '#8B949E' }}>
-        {note.note.sections.length} sections · {new Date(note.createdAt).toLocaleDateString()}
+        {ts('{n} sections', { n: note.note.sections.length })} · {new Date(note.createdAt).toLocaleDateString()}
       </div>
     </button>
   );
@@ -76,12 +79,13 @@ function NoteCard({ note, color, onClick, index = 0 }: { note: StoredNote; color
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function Empty() {
+  const { ts } = useLang();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: '#8B949E', textAlign: 'center', gap: '12px' }}>
       <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><rect x="6" y="6" width="36" height="36" rx="6" stroke="#30363D" strokeWidth="2"/><line x1="14" y1="16" x2="34" y2="16" stroke="#484F58" strokeWidth="2"/><line x1="14" y1="24" x2="28" y2="24" stroke="#484F58" strokeWidth="2"/><line x1="14" y1="32" x2="22" y2="32" stroke="#484F58" strokeWidth="2"/></svg>
       <div>
-        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>No notes yet</div>
-        <div style={{ fontSize: '13px' }}>Upload files to a subject and generate notes from the subject page.</div>
+        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>{ts('No notes yet')}</div>
+        <div style={{ fontSize: '13px' }}>{ts('Upload files to a subject and generate notes from the subject page.')}</div>
       </div>
     </div>
   );
@@ -90,6 +94,7 @@ function Empty() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Notes() {
+  const { ts } = useLang();
   const { allSubjects } = useResolvedSubjects();
   const [notes, setNotes] = useState<StoredNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +132,7 @@ export default function Notes() {
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
-          Notes
+          {ts('Notes')}
         </div>
         <SubjectBtn subject={null} count={notes.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveNote(null); }} />
         {subjectsWithNotes.map(s => (
@@ -145,7 +150,7 @@ export default function Notes() {
                 onClick={() => setActiveNote(null)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#8B949E', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                ← All notes
+                ← {ts('All notes')}
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {activeSubject && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />}
@@ -164,8 +169,8 @@ export default function Notes() {
                 const already = useStore.getState().notesRead.includes(activeNote.id);
                 markNoteRead(activeNote.id);
                 if (!already) {
-                  const name = activeSubject?.title ?? 'a subject';
-                  record({ type: 'note', subjectId: activeNote.subjectId, subjectName: name, detail: `Read "${activeNote.name}" in ${name}` });
+                  const name = activeSubject?.title ?? ts('a subject');
+                  record({ type: 'note', subjectId: activeNote.subjectId, subjectName: name, detail: ts('Read "{note}" in {subject}', { note: activeNote.name, subject: name }) });
                 }
               }}
             />
@@ -183,8 +188,8 @@ export default function Notes() {
                 <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? 'Unknown subject'}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{groupNotes.length} note{groupNotes.length !== 1 ? 's' : ''}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? ts('Unknown subject')}</span>
+                    <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} notes', { n: groupNotes.length })}</span>
                     <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>

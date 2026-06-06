@@ -4,15 +4,20 @@ import { useLang, type Lang } from '../context/LanguageContext';
 
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
-const JapanFlag = () => (
-  <svg viewBox="0 0 30 20" width="16" height="11" style={{ borderRadius: '2px', display: 'block' }} aria-label="Japanese">
+const JapanFlag = () => {
+  const { ts } = useLang();
+  return (
+  <svg viewBox="0 0 30 20" width="16" height="11" style={{ borderRadius: '2px', display: 'block' }} aria-label={ts('Japanese')}>
     <rect width="30" height="20" fill="#fff" />
     <circle cx="15" cy="10" r="6" fill="#bc002d" />
   </svg>
-);
+  );
+};
 
-const UKFlag = () => (
-  <svg viewBox="0 0 60 30" width="16" height="11" style={{ borderRadius: '2px', display: 'block' }} aria-label="English">
+const UKFlag = () => {
+  const { ts } = useLang();
+  return (
+  <svg viewBox="0 0 60 30" width="16" height="11" style={{ borderRadius: '2px', display: 'block' }} aria-label={ts('English')}>
     <rect width="60" height="30" fill="#012169" />
     <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6" />
     <path d="M4.5,0 L30.9,13.2 M29.1,16.8 L55.5,30" stroke="#C8102E" strokeWidth="3" />
@@ -22,18 +27,19 @@ const UKFlag = () => (
     <rect y="12.5" width="60" height="5" fill="#C8102E" />
     <rect x="27.5" width="5" height="30" fill="#C8102E" />
   </svg>
-);
+  );
+};
 
 // ── Language toggle ────────────────────────────────────────────────────────────
 
 function LangToggle() {
-  const { lang, setLang } = useLang();
+  const { lang, setLang, ts } = useLang();
   const btn = (l: Lang, Flag: React.FC, label: string) => (
     <button
       key={l}
       onClick={() => setLang(l)}
       title={label}
-      aria-label={`Switch to ${label}`}
+      aria-label={ts('Switch to {label}', { label })}
       style={{
         display: 'flex', alignItems: 'center', gap: '5px',
         padding: '5px 9px', borderRadius: '7px',
@@ -50,8 +56,8 @@ function LangToggle() {
   );
   return (
     <div style={{ display: 'flex', gap: '2px', padding: '3px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.07)' }}>
-      {btn('en', UKFlag, 'English')}
-      {btn('ja', JapanFlag, 'Japanese')}
+      {btn('en', UKFlag, ts('English'))}
+      {btn('ja', JapanFlag, ts('Japanese'))}
     </div>
   );
 }
@@ -98,7 +104,7 @@ const navItems = [
 
 export default function Navbar() {
   const { pathname } = useLocation();
-  const { t } = useLang();
+  const { t, ts } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -134,7 +140,7 @@ export default function Navbar() {
                 color: '#3D7EFF', letterSpacing: '0.22em', textTransform: 'uppercase',
                 lineHeight: 1, marginTop: '4px',
               }}>
-                Study Trainer
+                {ts('Study Trainer')}
               </div>
             </div>
           </Link>
@@ -219,7 +225,7 @@ export default function Navbar() {
                 <path d="M7 1v4M7 9v4M1 7h4M9 7h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 <path d="M3 3l2.5 2.5M8.5 8.5L11 11M11 3L8.5 5.5M3 11l2.5-2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
               </svg>
-              Generate
+              {ts('Generate')}
             </Link>
             <LangToggle />
           </div>
@@ -228,7 +234,7 @@ export default function Navbar() {
           <button
             onClick={() => setMenuOpen(o => !o)}
             className="flex md:hidden items-center justify-center w-9 h-9 flex-shrink-0 cursor-pointer ml-auto"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={menuOpen ? ts('Close menu') : ts('Open menu')}
             style={{
               borderRadius: '10px',
               background: menuOpen ? 'rgba(61,126,255,0.12)' : 'rgba(255,255,255,0.05)',
@@ -280,7 +286,7 @@ export default function Navbar() {
           </div>
           <div style={{ marginTop: 'auto', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '10px' }}>
-              Language
+              {ts('Language')}
             </div>
             <LangToggle />
           </div>

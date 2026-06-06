@@ -1,6 +1,15 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { ja as jaStrings } from './ja';
 
 export type Lang = 'en' | 'ja';
+
+type Vars = Record<string, string | number>;
+
+// Replace {name} placeholders in a string with the matching var value.
+function format(str: string, vars?: Vars): string {
+  if (!vars) return str;
+  return str.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`));
+}
 
 const T = {
   en: {
@@ -157,13 +166,18 @@ export type TKey = keyof typeof T['en'];
 interface LangCtx {
   lang: Lang;
   setLang: (l: Lang) => void;
+  // Key-based lookup for the original curated strings.
   t: (key: TKey) => string;
+  // English-source lookup for general UI strings, with optional {var} interpolation.
+  // Falls back to the English source when no Japanese translation exists.
+  ts: (en: string, vars?: Vars) => string;
 }
 
 const Ctx = createContext<LangCtx>({
   lang: 'en',
   setLang: () => {},
   t: (k) => T.en[k],
+  ts: (en, vars) => format(en, vars),
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
@@ -176,8 +190,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('study-lang', l);
   };
 
+  // Toggle the Japanese font stack on the document root.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('lang-ja', lang === 'ja');
+    root.setAttribute('lang', lang);
+  }, [lang]);
+
+  const ts = (en: string, vars?: Vars) =>
+    format(lang === 'ja' ? (jaStrings[en] ?? en) : en, vars);
+
   return (
-    <Ctx.Provider value={{ lang, setLang: handleSet, t: (k) => T[lang][k] as string }}>
+    <Ctx.Provider value={{ lang, setLang: handleSet, t: (k) => T[lang][k] as string, ts }}>
       {children}
     </Ctx.Provider>
   );

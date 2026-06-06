@@ -100,6 +100,28 @@ body {
   line-height: 1.6;
 }
 
+/* ── Japanese language mode ──────────────────────────────────────────
+   When the UI is switched to Japanese, swap the Latin type stack for a
+   Japanese face that has full kana + kanji + Latin coverage (Shippori
+   Antique B1). Ma Shan Zheng is a Chinese brush face with no kana, so it
+   is reserved for the brand wordmark / large display accents only, where
+   per-glyph fallback to Shippori keeps kana readable. */
+html.lang-ja body,
+html.lang-ja {
+  font-family: 'Shippori Antique B1', 'Inter', system-ui, sans-serif;
+}
+html.lang-ja .font-display,
+html.lang-ja h1, html.lang-ja h2, html.lang-ja h3 {
+  font-family: 'Shippori Antique B1', 'Sora', system-ui, sans-serif;
+}
+html.lang-ja .font-mono {
+  font-family: 'JetBrains Mono', 'Shippori Antique B1', monospace;
+}
+/* Brand wordmark and opt-in decorative display accents. */
+html.lang-ja .font-brush {
+  font-family: 'Ma Shan Zheng', 'Shippori Antique B1', cursive;
+}
+
 /* ── Ambient depth glow ──────────────────────────────────────────── */
 body::before {
   content: '';

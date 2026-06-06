@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLang } from '../context/LanguageContext';
 import {
   useSubjects,
   useResolvedSubjects,
@@ -38,6 +39,7 @@ function EditRow({ subject, onSave, onCancel }: {
   onSave: (patch: SubjectEdit) => void;
   onCancel: () => void;
 }) {
+  const { ts } = useLang();
   const [title, setTitle] = useState(subject.title);
   const [description, setDescription] = useState(subject.description);
   const [color, setColor] = useState(subject.color);
@@ -59,17 +61,17 @@ function EditRow({ subject, onSave, onCancel }: {
         }}>
           <SubjectIcon id={subject.id} icon={icon || undefined} color={color} />
         </span>
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Subject name" style={inputStyle} autoFocus />
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder={ts('Subject name')} style={inputStyle} autoFocus />
       </div>
 
-      <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description"
+      <input value={description} onChange={e => setDescription(e.target.value)} placeholder={ts('Short description')}
         style={{ ...inputStyle, marginBottom: '12px' }} />
 
       {/* Colour */}
-      <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', marginBottom: '7px' }}>Colour</div>
+      <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', marginBottom: '7px' }}>{ts('Colour')}</div>
       <div className="flex items-center gap-1.5 flex-wrap" style={{ marginBottom: '12px' }}>
         {SUBJECT_COLORS.map(c => (
-          <button key={c} onClick={() => setColor(c)} aria-label={`Colour ${c}`}
+          <button key={c} onClick={() => setColor(c)} aria-label={ts('Colour {name}', { name: c })}
             style={{
               width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', background: c, flexShrink: 0,
               border: color === c ? '2px solid #E6EDF3' : '2px solid transparent',
@@ -79,12 +81,12 @@ function EditRow({ subject, onSave, onCancel }: {
       </div>
 
       {/* Icon */}
-      <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', marginBottom: '7px' }}>Icon</div>
+      <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', marginBottom: '7px' }}>{ts('Icon')}</div>
       <div className="flex items-center gap-1.5 flex-wrap" style={{ marginBottom: '14px' }}>
         {ICON_OPTIONS.map(opt => {
           const selected = icon === opt.key;
           return (
-            <button key={opt.key} onClick={() => setIcon(opt.key)} title={opt.label}
+            <button key={opt.key} onClick={() => setIcon(opt.key)} title={ts(opt.label)}
               style={{
                 width: '32px', height: '32px', borderRadius: '9px', cursor: 'pointer', flexShrink: 0,
                 background: selected ? color + '22' : '#0D1117',
@@ -100,7 +102,7 @@ function EditRow({ subject, onSave, onCancel }: {
       <div className="flex items-center gap-2">
         <button onClick={onCancel}
           style={{ height: '38px', padding: '0 16px', borderRadius: '10px', cursor: 'pointer', background: '#161B22', border: '1px solid #30363D', color: '#8B949E', fontSize: '12px', fontWeight: 600 }}>
-          Cancel
+          {ts('Cancel')}
         </button>
         <button onClick={() => onSave({ title, description, color, icon: icon || undefined })}
           disabled={!title.trim()}
@@ -109,7 +111,7 @@ function EditRow({ subject, onSave, onCancel }: {
             background: title.trim() ? color : '#1F2937', color: title.trim() ? '#0D1117' : '#8B949E',
             fontSize: '13px', fontWeight: 700, cursor: title.trim() ? 'pointer' : 'default',
           }}>
-          Save changes
+          {ts('Save changes')}
         </button>
       </div>
     </div>
@@ -119,6 +121,7 @@ function EditRow({ subject, onSave, onCancel }: {
 // ── Modal ────────────────────────────────────────────────────────────────────
 
 export function ManageSubjects({ onClose }: { onClose: () => void }) {
+  const { ts } = useLang();
   const { allSubjects, isCore } = useResolvedSubjects();
   const { addSubject, deleteSubject, setCore, editSubject, restoreDefaults } = useSubjects();
 
@@ -163,15 +166,15 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #21262D' }}>
           <div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '16px', color: '#E6EDF3' }}>
-              Manage subjects
+              {ts('Manage subjects')}
             </div>
             <div style={{ fontSize: '12px', color: '#8B949E', marginTop: '2px' }}>
-              Edit names and icons, star to mark as core, create new, or remove.
+              {ts('Edit names and icons, star to mark as core, create new, or remove.')}
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={ts('Close')}
             style={{
               width: '32px', height: '32px', borderRadius: '999px', flexShrink: 0,
               background: '#161B22', border: '1px solid #30363D', color: '#8B949E',
@@ -215,14 +218,14 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
                       {s.title}
                     </div>
                     <div style={{ fontSize: '10px', color: core ? s.color : '#484F58', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '1px' }}>
-                      {core ? 'Core' : 'Extended'}
+                      {core ? ts('Core') : ts('Extended')}
                     </div>
                   </div>
 
                   {/* Edit */}
                   <button
                     onClick={() => setEditingId(s.id)}
-                    aria-label="Edit subject"
+                    aria-label={ts('Edit subject')}
                     style={{
                       width: '30px', height: '30px', borderRadius: '999px', flexShrink: 0,
                       background: 'transparent', color: '#8B949E',
@@ -236,7 +239,7 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
                   {/* Core toggle */}
                   <button
                     onClick={() => setCore(s.id, !core)}
-                    aria-label={core ? 'Make extended' : 'Make core'}
+                    aria-label={core ? ts('Make extended') : ts('Make core')}
                     style={{
                       width: '30px', height: '30px', borderRadius: '999px', flexShrink: 0,
                       background: core ? s.color + '20' : 'transparent',
@@ -252,7 +255,7 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
                   {/* Delete */}
                   <button
                     onClick={() => deleteSubject(s.id)}
-                    aria-label="Delete subject"
+                    aria-label={ts('Delete subject')}
                     style={{
                       width: '30px', height: '30px', borderRadius: '999px', flexShrink: 0,
                       background: 'transparent', color: '#f87171',
@@ -267,7 +270,7 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
             })}
             {allSubjects.length === 0 && (
               <div style={{ textAlign: 'center', padding: '24px', fontSize: '13px', color: '#8B949E' }}>
-                No subjects. Create one below.
+                {ts('No subjects. Create one below.')}
               </div>
             )}
           </div>
@@ -276,13 +279,13 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
         {/* Create new */}
         <div style={{ padding: '16px', borderTop: '1px solid #21262D', background: '#0B0E13' }}>
           <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '10px' }}>
-            New subject
+            {ts('New subject')}
           </div>
 
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
-            placeholder="Subject title"
+            placeholder={ts('Subject title')}
             onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
             style={{
               width: '100%', height: '40px', padding: '0 14px', marginBottom: '8px',
@@ -293,7 +296,7 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
           <input
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="Short description (optional)"
+            placeholder={ts('Short description (optional)')}
             onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
             style={{
               width: '100%', height: '40px', padding: '0 14px', marginBottom: '12px',
@@ -308,7 +311,7 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                aria-label={`Color ${c}`}
+                aria-label={ts('Color {name}', { name: c })}
                 style={{
                   width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer',
                   background: c, flexShrink: 0,
@@ -334,7 +337,7 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
               }}
             >
               <IconStar filled={asCore} color={asCore ? color : '#8B949E'} />
-              Core subject
+              {ts('Core subject')}
             </button>
 
             <button
@@ -349,7 +352,7 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
                 transition: 'all 0.15s ease',
               }}
             >
-              Add subject
+              {ts('Add subject')}
             </button>
           </div>
 
@@ -360,7 +363,7 @@ export function ManageSubjects({ onClose }: { onClose: () => void }) {
               fontSize: '11px', color: '#8B949E', cursor: 'pointer', textDecoration: 'underline',
             }}
           >
-            Restore default subjects
+            {ts('Restore default subjects')}
           </button>
         </div>
       </div>

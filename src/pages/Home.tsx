@@ -151,7 +151,7 @@ function ProgressRow({ label, read, total, color, delay, mounted }: {
 }
 
 function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDef; isCore: boolean; index?: number; stats?: SubjectStats }) {
-  const { t } = useLang();
+  const { t, ts } = useLang();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const id = setTimeout(() => setMounted(true), 60); return () => clearTimeout(id); }, []);
 
@@ -175,7 +175,7 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
           fontSize: '10px', fontWeight: 700, letterSpacing: '0.02em',
           boxShadow: '0 4px 12px rgba(248,81,73,0.45)', whiteSpace: 'nowrap',
         }}>
-          {due} due
+          {ts('{n} due', { n: due })}
         </span>
       )}
       <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}>
@@ -202,8 +202,8 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
           {/* Progress bars — notes read + cards known */}
           {hasProgress && (
             <div className="flex flex-col gap-1.5">
-              <ProgressRow label="Notes" read={stats!.notesRead} total={stats!.notesTotal} color={subject.color} delay={barDelay} mounted={mounted} />
-              <ProgressRow label="Cards" read={stats!.cardsKnown} total={stats!.cardsTotal} color="#2EA043" delay={barDelay + 120} mounted={mounted} />
+              <ProgressRow label={ts('Notes')} read={stats!.notesRead} total={stats!.notesTotal} color={subject.color} delay={barDelay} mounted={mounted} />
+              <ProgressRow label={ts('Cards')} read={stats!.cardsKnown} total={stats!.cardsTotal} color="#2EA043" delay={barDelay + 120} mounted={mounted} />
             </div>
           )}
 
@@ -231,7 +231,7 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
                 ))}
               </div>
             ) : (
-              <span className="text-[10px] font-semibold" style={{ color: subject.color }}>Explore →</span>
+              <span className="text-[10px] font-semibold" style={{ color: subject.color }}>{ts('Explore')} →</span>
             )}
           </div>
         </div>
@@ -261,7 +261,7 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { t } = useLang();
+  const { t, ts } = useLang();
   const { flashcardsStudied, flashcardsKnown, quizScores, notesRead, recentSubjects, removeRecentSubject } = useStore();
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
@@ -358,7 +358,7 @@ export default function Home() {
                 transition: 'background 0.2s ease, color 0.2s ease',
               }}
             >
-              {label}
+              {ts(label)}
             </button>
           ))}
         </div>
@@ -384,7 +384,7 @@ export default function Home() {
             textTransform: 'uppercase',
             marginBottom: '8px',
           }}>
-            Global Business Studies
+            {ts('Global Business Studies')}
           </div>
           <h1 style={{
             fontFamily: "'Sora',sans-serif",
@@ -395,7 +395,7 @@ export default function Home() {
             lineHeight: 1.1,
             margin: 0,
           }}>
-            {getGreeting()}
+            {ts(getGreeting())}
           </h1>
           <p style={{
             fontFamily: "'Inter',sans-serif",
@@ -404,7 +404,7 @@ export default function Home() {
             margin: '8px 0 0',
             lineHeight: 1.5,
           }}>
-            Click a subject on the globe to dive in.
+            {ts('Click a subject on the globe to dive in.')}
           </p>
         </div>
         )}
@@ -424,7 +424,7 @@ export default function Home() {
           gap: '4px',
         }}>
           <div style={{ fontSize: '9px', color: '#484F58', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
-            Scroll
+            {ts('Scroll')}
           </div>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.4 }}>
             <path d="M2 4l4 4 4-4" stroke="#8B949E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -476,9 +476,12 @@ export default function Home() {
           >
             <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#F85149', boxShadow: '0 0 8px #F85149', flexShrink: 0 }} />
             <span style={{ fontSize: '13px', color: '#E6EDF3' }}>
-              You have <strong style={{ color: '#F97979' }}>{totalDue} card{totalDue !== 1 ? 's' : ''}</strong> due for review across {dueEntries.length} subject{dueEntries.length !== 1 ? 's' : ''}.
+              {ts('You have {cards} due for review across {subjects}.', {
+                cards: `${totalDue} card${totalDue !== 1 ? 's' : ''}`,
+                subjects: ts('{n} subjects', { n: dueEntries.length }),
+              })}
             </span>
-            <span style={{ fontSize: '12px', color: '#F97979', fontWeight: 600 }}>Review →</span>
+            <span style={{ fontSize: '12px', color: '#F97979', fontWeight: 600 }}>{ts('Review')} →</span>
           </Link>
         )}
 
@@ -491,7 +494,7 @@ export default function Home() {
           if (upcoming.length === 0) return null;
           return (
             <div className="mb-10">
-              <SectionLabel>Upcoming Exams</SectionLabel>
+              <SectionLabel>{ts('Upcoming Exams')}</SectionLabel>
               <div className="flex gap-3 flex-wrap">
                 {upcoming.map((d, i) => {
                   const diff = Math.ceil((new Date(d.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -515,7 +518,7 @@ export default function Home() {
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{d.subject!.title}</div>
                         <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {d.date.replace(/-/g, '/')} · <span style={{ color, fontWeight: 600 }}>{diff > 0 ? `${diff} days left` : diff === 0 ? 'Today' : `${-diff} days ago`}</span>
+                          {d.date.replace(/-/g, '/')} · <span style={{ color, fontWeight: 600 }}>{diff > 0 ? ts('{n} days left', { n: diff }) : diff === 0 ? ts('Today') : ts('{n} days ago', { n: -diff })}</span>
                         </div>
                       </div>
                     </Link>
@@ -535,7 +538,7 @@ export default function Home() {
           if (recents.length === 0) return null;
           return (
             <div className="mb-10">
-              <SectionLabel>Continue where you left off</SectionLabel>
+              <SectionLabel>{ts('Continue where you left off')}</SectionLabel>
               <div className="flex gap-3 flex-wrap">
                 {recents.map((s, i) => {
                   return (
@@ -561,13 +564,13 @@ export default function Home() {
                         <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 600, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
                           {s.title}
                         </div>
-                        <div style={{ fontSize: '11px', color: s.color, fontWeight: 600 }}>Resume →</div>
+                        <div style={{ fontSize: '11px', color: s.color, fontWeight: 600 }}>{ts('Resume')} →</div>
                       </div>
                       {/* Remove from recents */}
                       <button
                         onClick={e => { e.preventDefault(); e.stopPropagation(); removeRecentSubject(s.id); }}
-                        aria-label={`Remove ${s.title} from recents`}
-                        title="Remove"
+                        aria-label={ts('Remove {name} from recents', { name: s.title })}
+                        title={ts('Remove')}
                         style={{
                           position: 'absolute', top: '7px', right: '7px',
                           width: '18px', height: '18px', borderRadius: '50%', cursor: 'pointer',
@@ -591,10 +594,10 @@ export default function Home() {
         {/* Study modes — three pill links */}
         <div className="flex gap-3 mb-10 flex-wrap">
           {[
-            { to: '/flashcards', label: t('nav_flashcards'), color: '#3D7EFF', stat: `${totalCards} cards` },
-            { to: '/notes',      label: t('nav_notes'),      color: '#2EA043', stat: `${totalNotes} notes` },
-            { to: '/quiz',       label: t('nav_quiz'),       color: '#D29922', stat: `${quizData.length} questions` },
-            { to: '/generate',   label: t('nav_generate'),   color: '#a78bfa', stat: 'AI powered' },
+            { to: '/flashcards', label: t('nav_flashcards'), color: '#3D7EFF', stat: ts('{n} cards', { n: totalCards }) },
+            { to: '/notes',      label: t('nav_notes'),      color: '#2EA043', stat: ts('{n} notes', { n: totalNotes }) },
+            { to: '/quiz',       label: t('nav_quiz'),       color: '#D29922', stat: ts('{n} questions', { n: quizData.length }) },
+            { to: '/generate',   label: t('nav_generate'),   color: '#a78bfa', stat: ts('AI powered') },
           ].map(({ to, label, color, stat }) => (
             <Link
               key={to}
@@ -642,7 +645,7 @@ export default function Home() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
             >
               <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
-              Manage
+              {ts('Manage')}
             </button>
           </div>
           {coreSubjects.length > 0 ? (
@@ -651,7 +654,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="text-xs" style={{ color: '#8B949E' }}>
-              No core subjects. Star one in <button onClick={() => setManaging(true)} className="underline cursor-pointer bg-transparent border-none p-0" style={{ color: '#3D7EFF' }}>Manage</button>.
+              {ts('No core subjects. Star one in')} <button onClick={() => setManaging(true)} className="underline cursor-pointer bg-transparent border-none p-0" style={{ color: '#3D7EFF' }}>{ts('Manage')}</button>.
             </div>
           )}
         </div>

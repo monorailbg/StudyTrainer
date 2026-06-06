@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { getStoredApiKey } from '../lib/geminiGenerator';
+import { useLang } from '../context/LanguageContext';
 
 interface Message {
   role: 'user' | 'ai';
@@ -7,6 +8,7 @@ interface Message {
 }
 
 export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?: string }) {
+  const { ts } = useLang();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -61,7 +63,7 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
           <path d="M6 6.5c0-1.1.9-2 2-2s2 .9 2 2c0 .8-.5 1.5-1.2 1.8L8.5 9v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
           <circle cx="8.5" cy="11" r=".5" fill="currentColor" />
         </svg>
-        Ask a question
+        {ts('Ask a question')}
         <span style={{ marginLeft: 'auto', fontSize: '10px', opacity: 0.6 }}>{open ? '▴' : '▾'}</span>
       </button>
 
@@ -88,7 +90,7 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
               {loading && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <div style={{ padding: '8px 12px', borderRadius: '12px 12px 12px 3px', background: '#0D1117', border: '1px solid #30363D', fontSize: '13px', color: '#484F58' }}>
-                    Thinking…
+                    {ts('Thinking…')}
                   </div>
                 </div>
               )}
@@ -100,7 +102,7 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder="Ask about this content…"
+              placeholder={ts('Ask about this content…')}
               style={{
                 flex: 1, background: '#0D1117', border: `1px solid #30363D`,
                 borderRadius: '8px', padding: '8px 12px', fontSize: '12px',
@@ -120,7 +122,7 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
                 transition: 'opacity 0.15s',
               }}
             >
-              Send
+              {ts('Send')}
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
+import { useLang } from '../context/LanguageContext';
 import type { GeneratedQuizQuestion } from '../lib/generator';
 import { saveQuizResult, type QuizResult, type QuizResultQuestion } from '../lib/db';
 import { isFirebaseConfigured, saveCloudQuizResult } from '../lib/cloudDb';
@@ -129,6 +130,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
   onStart: (count: number, shuffle: boolean, mode: QuizMode) => void;
   initialMode?: QuizMode;
 }) {
+  const { ts } = useLang();
   const rawOptions = [5, 10, 15, 20].filter(n => n < total);
   const countOptions = [...rawOptions, total];
   const defaultCount = countOptions.find(n => n >= Math.min(10, total)) ?? total;
@@ -155,17 +157,17 @@ function SetupScreen({ total, color, onStart, initialMode }: {
         {/* Hero count */}
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '8px' }}>
-            Ready to study
+            {ts('Ready to study')}
           </div>
           <div className="mono" style={{ fontSize: 'clamp(56px, 12vw, 72px)', fontWeight: 800, lineHeight: 1, color, letterSpacing: '-0.02em' }}>
             {total}
           </div>
-          <div style={{ fontSize: '13px', color: '#8B949E', marginTop: '6px' }}>questions available</div>
+          <div style={{ fontSize: '13px', color: '#8B949E', marginTop: '6px' }}>{ts('questions available')}</div>
         </div>
 
         {/* Mode selector */}
         <div>
-          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>Mode</div>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>{ts('Mode')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', width: '100%' }}>
             {MODES.map(m => (
               <button key={m.id} onClick={() => setMode(m.id)} style={{
@@ -182,7 +184,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
                     fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em',
                     background: '#21262D', color: '#8B949E', border: '1px solid #30363D',
                   }}>
-                    No save
+                    {ts('No save')}
                   </span>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
@@ -192,11 +194,11 @@ function SetupScreen({ total, color, onStart, initialMode }: {
                     </svg>
                   )}
                   <span style={{ fontSize: '12px', fontWeight: 700, color: mode === m.id ? color : '#8B949E' }}>
-                    {m.title}
+                    {ts(m.title)}
                   </span>
                 </div>
                 <div style={{ fontSize: '11px', color: '#484F58', lineHeight: 1.4 }}>
-                  {m.desc}
+                  {ts(m.desc)}
                 </div>
               </button>
             ))}
@@ -205,7 +207,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
 
         {/* Question count */}
         <div>
-          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>Questions</div>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>{ts('Questions')}</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
             {countOptions.map(n => (
               <button key={n} onClick={() => setTestCount(n)} style={{
@@ -215,7 +217,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
                 border: `1px solid ${testCount === n ? color + '55' : '#21262D'}`,
                 fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
               }}>
-                {n === total ? `All ${n}` : n}
+                {n === total ? ts('All {n}', { n }) : n}
               </button>
             ))}
           </div>
@@ -223,7 +225,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
 
         {/* Shuffle */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
-          <Toggle on={shuffle} color={color} onChange={() => setShuffle(s => !s)} label="Shuffle questions" />
+          <Toggle on={shuffle} color={color} onChange={() => setShuffle(s => !s)} label={ts('Shuffle questions')} />
         </div>
 
         {/* Begin */}
@@ -240,7 +242,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.02)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
         >
-          Begin →
+          {ts('Begin')} →
         </button>
       </div>
     </div>
@@ -344,6 +346,7 @@ function OptionBtn({
 // ── Explanation panel ─────────────────────────────────────────────────────────
 
 function Explanation({ correct, text }: { correct: boolean; text: string }) {
+  const { ts } = useLang();
   return (
     <div className="anim-fadein" style={{
       padding: '14px 16px', borderRadius: '12px',
@@ -361,7 +364,7 @@ function Explanation({ correct, text }: { correct: boolean; text: string }) {
             : <svg viewBox="0 0 10 10" width="9" height="9" fill="none"><path d="M3 3l4 4M7 3l-4 4" stroke="#F97979" strokeWidth="1.5" strokeLinecap="round" /></svg>}
         </span>
         <span style={{ fontSize: '11px', fontWeight: 700, color: correct ? '#56D364' : '#F97979', letterSpacing: '0.05em' }}>
-          {correct ? 'CORRECT' : 'INCORRECT'}
+          {correct ? ts('CORRECT') : ts('INCORRECT')}
         </span>
       </div>
       <p style={{ fontSize: '12px', color: '#8B949E', lineHeight: 1.6, margin: 0 }}>{text}</p>
@@ -381,6 +384,7 @@ function FocusedMode({
   isPractice?: boolean;
   onDone: (answers: Record<string, number>, timeSec: number) => void;
 }) {
+  const { ts } = useLang();
   const [idx, setIdx] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -426,7 +430,7 @@ function FocusedMode({
         }}>
           <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#D29922" strokeWidth="1.2"/><path d="M7 4.5v3l1.5 1.5" stroke="#D29922" strokeWidth="1.2" strokeLinecap="round"/></svg>
           <span style={{ fontSize: '11px', fontWeight: 600, color: '#D29922' }}>
-            Review mode — {total} missed question{total !== 1 ? 's' : ''}
+            {total !== 1 ? ts('Review mode — {total} missed questions', { total }) : ts('Review mode — {total} missed question', { total })}
           </span>
         </div>
       )}
@@ -435,11 +439,11 @@ function FocusedMode({
       <div style={{ marginBottom: '28px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, color: '#484F58', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Question {idx + 1} of {total}
+            {ts('Question {n} of {total}', { n: idx + 1, total })}
           </span>
           {!isRedoMode && (
             <span className="mono" style={{ fontSize: '11px', color, fontWeight: 700 }}>
-              {doneCount} correct
+              {ts('{n} correct', { n: doneCount })}
             </span>
           )}
         </div>
@@ -452,7 +456,7 @@ function FocusedMode({
         </div>
         {isPractice && (
           <div style={{ marginTop: '12px' }}>
-            <PracticeBanner text="Practice mode — results won't be saved" />
+            <PracticeBanner text={ts("Practice mode — results won't be saved")} />
           </div>
         )}
       </div>
@@ -490,7 +494,7 @@ function FocusedMode({
         {revealed && !q.explanation && (
           <div className="anim-fadein" style={{ margin: '0 20px 12px' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, color: isCorrect ? '#56D364' : '#F97979' }}>
-              {isCorrect ? '✓ Correct' : `✗ Incorrect — correct: ${q.options[correct]}`}
+              {isCorrect ? `✓ ${ts('Correct')}` : `✗ ${ts('Incorrect — correct: {answer}', { answer: q.options[correct] })}`}
             </span>
           </div>
         )}
@@ -509,7 +513,7 @@ function FocusedMode({
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.04)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
             >
-              {idx + 1 >= total ? 'See Results' : 'Next →'}
+              {idx + 1 >= total ? ts('See Results') : `${ts('Next')} →`}
             </button>
           </div>
         )}
@@ -526,6 +530,7 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
   isPractice?: boolean;
   onDone: (answers: Record<string, number>, timeSec: number) => void;
 }) {
+  const { ts } = useLang();
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [shakingId, setShakingId] = useState<string | null>(null);
@@ -553,7 +558,7 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
     <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 8px' }}>
       {isPractice && !submitted && (
         <div style={{ marginBottom: '16px' }}>
-          <PracticeBanner text="Practice mode — results won't be saved" />
+          <PracticeBanner text={ts("Practice mode — results won't be saved")} />
         </div>
       )}
       {submitted && (
@@ -565,13 +570,13 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
               <span className="mono" style={{ fontSize: '2.8rem', color, lineHeight: 1, fontWeight: 700 }}>{counted}%</span>
-              <span style={{ fontSize: '13px', color: '#8B949E' }}>{score} / {questions.length} correct</span>
+              <span style={{ fontSize: '13px', color: '#8B949E' }}>{ts('{score} / {total} correct', { score, total: questions.length })}</span>
             </div>
             <button
               onClick={() => { setAnswers({}); setSubmitted(false); }}
               style={{ height: '32px', padding: '0 14px', borderRadius: '999px', background: '#1F2937', color: '#E6EDF3', border: '1px solid #30363D', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
             >
-              Retry
+              {ts('Retry')}
             </button>
           </div>
           <div style={{ display: 'flex', height: '6px', borderRadius: '999px', overflow: 'hidden', background: '#1F2937' }}>
@@ -642,10 +647,10 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
               transition: 'all 0.15s',
             }}
           >
-            Check Answers
+            {ts('Check Answers')}
           </button>
           {answered < questions.length && (
-            <span style={{ fontSize: '12px', color: '#484F58' }}>{answered} / {questions.length} answered</span>
+            <span style={{ fontSize: '12px', color: '#484F58' }}>{ts('{answered} / {total} answered', { answered, total: questions.length })}</span>
           )}
         </div>
       )}
@@ -691,6 +696,7 @@ function RedoResultsScreen({
   correct: number; total: number; color: string;
   onRedoAgain: () => void; onBack: () => void;
 }) {
+  const { ts } = useLang();
   const perfect = correct === total;
   return (
     <div className="anim-fadein" style={{ maxWidth: '420px', margin: '0 auto', position: 'relative' }}>
@@ -703,13 +709,13 @@ function RedoResultsScreen({
         marginBottom: '16px',
       }}>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '8px' }}>
-          Review complete
+          {ts('Review complete')}
         </div>
         <div className="mono" style={{ fontSize: '2.8rem', fontWeight: 700, color: perfect ? '#56D364' : color, lineHeight: 1, marginBottom: '8px' }}>
           {correct} / {total}
         </div>
         <div style={{ fontSize: '14px', fontWeight: 600, color: perfect ? '#56D364' : '#E6EDF3', marginBottom: '16px' }}>
-          {perfect ? 'All correct! Great improvement.' : `${total - correct} still incorrect`}
+          {perfect ? ts('All correct! Great improvement.') : ts('{n} still incorrect', { n: total - correct })}
         </div>
         <div style={{ height: '5px', background: '#21262D', borderRadius: '999px', overflow: 'hidden' }}>
           <div style={{
@@ -728,7 +734,7 @@ function RedoResultsScreen({
             border: '1px solid rgba(210,153,34,0.4)',
             fontSize: '12px', fontWeight: 600, cursor: 'pointer',
           }}>
-            Redo remaining
+            {ts('Redo remaining')}
           </button>
         )}
         <button onClick={onBack} style={{
@@ -736,7 +742,7 @@ function RedoResultsScreen({
           background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
           fontSize: '12px', fontWeight: 600, cursor: 'pointer',
         }}>
-          Back to results
+          {ts('Back to results')}
         </button>
       </div>
     </div>
@@ -757,12 +763,13 @@ function ResultsScreen({
   onStartRated?: () => void;
   onExit?: () => void;
 }) {
+  const { ts } = useLang();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
   const counted = useCountUp(result.scorePercent, true);
 
   const gradeColor = result.scorePercent >= 80 ? '#56D364' : result.scorePercent >= 60 ? '#D29922' : '#F97979';
-  const grade = result.scorePercent >= 90 ? 'Excellent' : result.scorePercent >= 75 ? 'Good job' : result.scorePercent >= 60 ? 'Decent' : 'Keep studying';
+  const grade = result.scorePercent >= 90 ? ts('Excellent') : result.scorePercent >= 75 ? ts('Good job') : result.scorePercent >= 60 ? ts('Decent') : ts('Keep studying');
 
   function toggleExpand(id: string) {
     setExpanded(prev => {
@@ -778,7 +785,7 @@ function ResultsScreen({
     <div className="anim-fadein" style={{ maxWidth: '720px', margin: '0 auto' }}>
       {isPractice && (
         <div style={{ marginBottom: '16px' }}>
-          <PracticeBanner text="Practice session — this result has not been saved" />
+          <PracticeBanner text={ts('Practice session — this result has not been saved')} />
         </div>
       )}
       {/* Score header */}
@@ -789,7 +796,7 @@ function ResultsScreen({
         boxShadow: '0 2px 20px rgba(0,0,0,0.3)',
       }}>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px' }}>
-          {isPractice ? 'Practice complete' : 'Quiz complete'}
+          {isPractice ? ts('Practice complete') : ts('Quiz complete')}
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
           <div>
@@ -799,7 +806,7 @@ function ResultsScreen({
             <div style={{ fontSize: '1.4rem', fontWeight: 700, color: gradeColor, marginTop: '4px' }}>{counted}% · {grade}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-            <span style={{ fontSize: '11px', color: '#8B949E' }}>Completed in <strong style={{ color: '#E6EDF3' }}>{formatTime(result.timeTakenSeconds)}</strong></span>
+            <span style={{ fontSize: '11px', color: '#8B949E' }}>{ts('Completed in')} <strong style={{ color: '#E6EDF3' }}>{formatTime(result.timeTakenSeconds)}</strong></span>
             <span style={{ fontSize: '11px', color: '#484F58' }}>{formatDate(result.completedAt)}</span>
           </div>
         </div>
@@ -813,9 +820,9 @@ function ResultsScreen({
         {/* Stat pills */}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {[
-            { icon: '✅', label: 'Correct', val: result.correctAnswers, c: '#56D364' },
-            { icon: '❌', label: 'Wrong', val: result.incorrectAnswers, c: '#F97979' },
-            { icon: '⏱', label: 'Time', val: formatTime(result.timeTakenSeconds), c: '#8B949E' },
+            { icon: '✅', label: ts('Correct'), val: result.correctAnswers, c: '#56D364' },
+            { icon: '❌', label: ts('Wrong'), val: result.incorrectAnswers, c: '#F97979' },
+            { icon: '⏱', label: ts('Time'), val: formatTime(result.timeTakenSeconds), c: '#8B949E' },
           ].map(p => (
             <div key={p.label} style={{
               display: 'flex', alignItems: 'center', gap: '6px',
@@ -839,14 +846,14 @@ function ResultsScreen({
               background: color + '18', color, border: `1px solid ${color}40`,
               fontSize: '12px', fontWeight: 700, cursor: 'pointer',
             }}>
-              Practice again
+              {ts('Practice again')}
             </button>
             <button onClick={onStartRated ?? onRetakeSetup} style={{
               height: '40px', padding: '0 20px', borderRadius: '999px',
               background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
               fontSize: '12px', fontWeight: 600, cursor: 'pointer',
             }}>
-              Start rated quiz →
+              {ts('Start rated quiz')} →
             </button>
             {onExit && (
               <button onClick={onExit} style={{
@@ -854,7 +861,7 @@ function ResultsScreen({
                 background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
                 fontSize: '12px', fontWeight: 600, cursor: 'pointer',
               }}>
-                Back to subject
+                {ts('Back to subject')}
               </button>
             )}
           </>
@@ -871,7 +878,7 @@ function ResultsScreen({
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(210,153,34,0.25)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(210,153,34,0.15)'; }}
               >
-                Redo wrong answers →
+                {ts('Redo wrong answers')} →
               </button>
             )}
             <button onClick={onRetry} style={{
@@ -879,14 +886,14 @@ function ResultsScreen({
               background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
               fontSize: '12px', fontWeight: 600, cursor: 'pointer',
             }}>
-              Retry same questions
+              {ts('Retry same questions')}
             </button>
             <button onClick={onRetakeSetup} style={{
               height: '40px', padding: '0 20px', borderRadius: '999px',
               background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
               fontSize: '12px', fontWeight: 600, cursor: 'pointer',
             }}>
-              New test
+              {ts('New test')}
             </button>
           </>
         )}
@@ -895,7 +902,7 @@ function ResultsScreen({
       {/* Question breakdown */}
       <div style={{ marginBottom: '8px' }}>
         <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px' }}>
-          Question breakdown
+          {ts('Question breakdown')}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {displayQuestions.map((rq, i) => {
@@ -923,13 +930,13 @@ function ResultsScreen({
                     </div>
                     {!rq.wasCorrect && (
                       <div style={{ fontSize: '11px', color: '#8B949E', lineHeight: 1.4 }}>
-                        <span style={{ color: '#F97979' }}>Your answer: {rq.userAnswer}</span>
+                        <span style={{ color: '#F97979' }}>{ts('Your answer:')} {rq.userAnswer}</span>
                         <span style={{ color: '#484F58', margin: '0 4px' }}>·</span>
-                        <span style={{ color: '#56D364' }}>Correct: {rq.correctAnswer}</span>
+                        <span style={{ color: '#56D364' }}>{ts('Correct:')} {rq.correctAnswer}</span>
                       </div>
                     )}
                     {rq.wasCorrect && (
-                      <div style={{ fontSize: '11px', color: '#56D364' }}>Your answer: {rq.userAnswer}</div>
+                      <div style={{ fontSize: '11px', color: '#56D364' }}>{ts('Your answer:')} {rq.userAnswer}</div>
                     )}
                   </div>
                   <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, marginTop: '4px', transform: isOpen ? 'rotate(180deg)' : '', transition: 'transform 0.2s' }}>
@@ -956,8 +963,8 @@ function ResultsScreen({
                             {LETTERS[oi]}
                           </span>
                           <span style={{ fontSize: '11px', color, lineHeight: 1.4 }}>{opt}</span>
-                          {isCorrect && <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#56D364', fontWeight: 700 }}>✓ Correct</span>}
-                          {isChosen && !isCorrect && <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#F97979', fontWeight: 700 }}>✗ Wrong</span>}
+                          {isCorrect && <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#56D364', fontWeight: 700 }}>✓ {ts('Correct')}</span>}
+                          {isChosen && !isCorrect && <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#F97979', fontWeight: 700 }}>✗ {ts('Wrong')}</span>}
                         </div>
                       );
                     })}
@@ -979,7 +986,7 @@ function ResultsScreen({
             background: 'transparent', border: '1px dashed #30363D', borderRadius: '10px',
             fontSize: '11px', color: '#8B949E', cursor: 'pointer', fontWeight: 600,
           }}>
-            {showAll ? 'Show less' : `Show all ${result.questions.length} questions`}
+            {showAll ? ts('Show less') : ts('Show all {n} questions', { n: result.questions.length })}
           </button>
         )}
       </div>

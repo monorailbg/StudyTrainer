@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useLang } from '../context/LanguageContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ const KIND: Record<ToastKind, { color: string; icon: React.ReactNode }> = {
 
 function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) => void }) {
   const { color, icon } = KIND[item.kind];
+  const { ts } = useLang();
   useEffect(() => {
     const t = setTimeout(() => onDismiss(item.id), 4200);
     return () => clearTimeout(t);
@@ -62,7 +64,7 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
       </div>
       <button
         onClick={() => onDismiss(item.id)}
-        aria-label="Dismiss"
+        aria-label={ts('Dismiss')}
         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#484F58', padding: '2px', flexShrink: 0, lineHeight: 0 }}
       >
         <svg viewBox="0 0 14 14" width="13" height="13" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>

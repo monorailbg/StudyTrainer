@@ -18,6 +18,7 @@ import {
   type InternalNode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useLang } from '../context/LanguageContext';
 import { useResolvedSubjects } from '../store/useSubjects';
 import type { SubjectDef } from '../data/subjects';
 import { SubjectIcon } from '../data/subjectIcons';
@@ -136,6 +137,7 @@ function Handles() {
 }
 
 function RootNode({ data }: NodeProps) {
+  const { ts } = useLang();
   const d = data as { dimmed?: boolean };
   return (
     <div
@@ -156,7 +158,7 @@ function RootNode({ data }: NodeProps) {
     >
       <Handles />
       <div style={{ fontFamily: "'Inter',sans-serif", fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#93B8FF' }}>
-        Mind Map
+        {ts('Mind Map')}
       </div>
       <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '17px', fontWeight: 800, color: '#E6EDF3', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
         {ROOT_LABEL}
@@ -166,6 +168,7 @@ function RootNode({ data }: NodeProps) {
 }
 
 function SubjectNode({ data }: NodeProps) {
+  const { ts } = useLang();
   const d = data as {
     subject: SubjectDef; expanded: boolean; topicCount: number;
     dimmed: boolean; highlight: boolean; idx: number;
@@ -204,7 +207,9 @@ function SubjectNode({ data }: NodeProps) {
           {s.title}
         </div>
         <div style={{ fontSize: '10px', color: '#8B949E', marginTop: '1px' }}>
-          {d.topicCount > 0 ? `${d.topicCount} topic${d.topicCount > 1 ? 's' : ''}` : 'No notes yet'}
+          {d.topicCount > 0
+            ? (d.topicCount > 1 ? ts('{count} topics', { count: d.topicCount }) : ts('{count} topic', { count: d.topicCount }))
+            : ts('No notes yet')}
         </div>
       </div>
       {/* Expand chevron + open shortcut */}
@@ -219,7 +224,7 @@ function SubjectNode({ data }: NodeProps) {
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); d.onOpen(s.id); }}
-          title={`Open ${s.title}`}
+          title={ts('Open {name}', { name: s.title })}
           className="nodrag"
           style={{
             width: '20px', height: '20px', borderRadius: '7px', cursor: 'pointer',
@@ -235,6 +240,7 @@ function SubjectNode({ data }: NodeProps) {
 }
 
 function TopicNode({ data }: NodeProps) {
+  const { ts } = useLang();
   const d = data as { label: string; color: string; empty?: boolean; dimmed: boolean; highlight: boolean; idx: number };
   return (
     <div
@@ -258,7 +264,7 @@ function TopicNode({ data }: NodeProps) {
         color: d.empty ? d.color : '#C9D1D9',
         lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
-        {d.empty ? 'No notes yet — Generate →' : d.label}
+        {d.empty ? ts('No notes yet — Generate →') : d.label}
       </div>
     </div>
   );
@@ -370,6 +376,7 @@ function Toolbar({
   onExpandAll: () => void; onCollapseAll: () => void; onReset: () => void;
   anyExpanded: boolean;
 }) {
+  const { ts } = useLang();
   const pill: React.CSSProperties = {
     height: '34px', padding: '0 13px', borderRadius: '10px', cursor: 'pointer',
     background: 'rgba(22,27,34,0.92)', border: '1px solid #30363D', color: '#C9D1D9',
@@ -389,11 +396,11 @@ function Toolbar({
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search topics…"
+            placeholder={ts('Search topics…')}
             style={{ width: '180px', background: 'transparent', border: 'none', outline: 'none', color: '#E6EDF3', fontSize: '13px' }}
           />
           {query && (
-            <button onClick={() => setQuery('')} aria-label="Clear search" style={{ cursor: 'pointer', background: 'none', border: 'none', color: '#8B949E', display: 'flex' }}>
+            <button onClick={() => setQuery('')} aria-label={ts('Clear search')} style={{ cursor: 'pointer', background: 'none', border: 'none', color: '#8B949E', display: 'flex' }}>
               <svg viewBox="0 0 12 12" width="12" height="12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
             </button>
           )}
@@ -404,12 +411,12 @@ function Toolbar({
       <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 6, display: 'flex', gap: '8px' }}>
         <button style={pill} onClick={anyExpanded ? onCollapseAll : onExpandAll}>
           {anyExpanded
-            ? <><svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M3 8.5L7 5l4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg> Collapse all</>
-            : <><svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M3 5.5L7 9l4-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg> Expand all</>}
+            ? <><svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M3 8.5L7 5l4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg> {ts('Collapse all')}</>
+            : <><svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M3 5.5L7 9l4-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg> {ts('Expand all')}</>}
         </button>
         <button style={pill} onClick={onReset}>
           <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M11.5 7a4.5 4.5 0 11-1.3-3.2M11.5 1.5V4H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          Reset view
+          {ts('Reset view')}
         </button>
       </div>
     </>

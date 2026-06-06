@@ -131,14 +131,15 @@ function QuizHistoryPanel({ history, onRedo }: {
   history: import('../lib/db').QuizResult[];
   onRedo: (r: import('../lib/db').QuizResult) => void;
 }) {
+  const { ts } = useLang();
   const [showAll, setShowAll] = useState(false);
 
   const scoreColor = (pct: number) => pct >= 80 ? '#56D364' : pct >= 60 ? '#D29922' : '#F97979';
-  const relDate = (ts: number) => {
-    const d = Math.floor((Date.now() - ts) / 86400000);
-    if (d === 0) return 'Today'; if (d === 1) return 'Yesterday';
+  const relDate = (tms: number) => {
+    const d = Math.floor((Date.now() - tms) / 86400000);
+    if (d === 0) return ts('Today'); if (d === 1) return ts('Yesterday');
     if (d < 7) return `${d}d ago`;
-    return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return new Date(tms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
   const fmtTime = (s: number) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60 > 0 ? `${s % 60}s` : ''}`.trim();
 
@@ -156,7 +157,7 @@ function QuizHistoryPanel({ history, onRedo }: {
     <div style={{ marginTop: '32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
-          Past Results
+          {ts('Past Results')}
         </span>
         <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
       </div>
@@ -164,18 +165,18 @@ function QuizHistoryPanel({ history, onRedo }: {
       {/* Summary */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '10px', background: '#161B22', border: '1px solid #21262D' }}>
-          <span style={{ fontSize: '11px', color: '#484F58' }}>Average</span>
+          <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('Average')}</span>
           <span style={{ fontSize: '13px', fontWeight: 700, color: scoreColor(avgPct) }}>{avgPct}%</span>
           <div style={{ width: '60px', height: '4px', background: '#21262D', borderRadius: '999px', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${avgPct}%`, background: scoreColor(avgPct), borderRadius: '999px' }} />
           </div>
-          <span style={{ fontSize: '10px', color: '#484F58' }}>{history.length} attempt{history.length !== 1 ? 's' : ''}</span>
+          <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} attempts', { n: history.length })}</span>
         </div>
         {bestResult && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: '#161B22', border: '1px solid #21262D' }}>
-            <span style={{ fontSize: '11px', color: '#484F58' }}>Best</span>
+            <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('Best')}</span>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#56D364' }}>{bestResult.scorePercent}%</span>
-            <span style={{ fontSize: '10px', color: '#484F58' }}>on {relDate(bestResult.completedAt)}</span>
+            <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('on {date}', { date: relDate(bestResult.completedAt) })}</span>
           </div>
         )}
       </div>
@@ -218,7 +219,7 @@ function QuizHistoryPanel({ history, onRedo }: {
                           flexShrink: 0,
                         }}
                       >
-                        Redo wrong →
+                        {ts('Redo wrong →')}
                       </button>
                     )}
                   </div>
@@ -228,7 +229,7 @@ function QuizHistoryPanel({ history, onRedo }: {
                 <button onClick={() => setShowAll(s => !s)} style={{
                   marginTop: '6px', fontSize: '11px', color: '#484F58', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
                 }}>
-                  {showAll ? 'Show less' : `+ ${results.length - 5} more`}
+                  {showAll ? ts('Show less') : ts('+ {n} more', { n: results.length - 5 })}
                 </button>
               )}
             </div>
@@ -242,6 +243,7 @@ function QuizHistoryPanel({ history, onRedo }: {
 // ── Empty state ────────────────────────────────────────────────────────────────
 
 function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }) {
+  const { ts } = useLang();
   return (
     <div className="flex flex-col items-center justify-center h-full" style={{ minHeight: '300px' }}>
       <div style={{
@@ -255,16 +257,16 @@ function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }
           <path d="M6 20h12" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
         </svg>
       </div>
-      <div className="text-sm font-semibold mb-2" style={{ color: '#E6EDF3' }}>No content yet</div>
+      <div className="text-sm font-semibold mb-2" style={{ color: '#E6EDF3' }}>{ts('No content yet')}</div>
       <div className="text-xs mb-5 text-center max-w-xs" style={{ color: '#8B949E' }}>
-        Upload a file and use AI to generate flashcards, notes, or a quiz.
+        {ts('Upload a file and use AI to generate flashcards, notes, or a quiz.')}
       </div>
       <button
         onClick={onUpload}
         className="flex items-center gap-2 h-9 px-5 text-xs font-semibold border cursor-pointer transition-all duration-300"
         style={{ borderRadius: '999px', background: color + '18', color, borderColor: color + '35' }}
       >
-        <IconPlus /> Add Files
+        <IconPlus /> {ts('Add Files')}
       </button>
     </div>
   );
@@ -369,6 +371,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   onDeleteFolder: (folderId: string) => void;
   renderItem: (item: T) => React.ReactNode;
 }) {
+  const { ts } = useLang();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [hoverFolder, setHoverFolder] = useState<string | null>(null);
@@ -411,7 +414,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
     <div>
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
-          {label} ({items.length}){kindFolders.length > 0 && ` · ${kindFolders.length} folder${kindFolders.length > 1 ? 's' : ''}`}
+          {label} ({items.length}){kindFolders.length > 0 && ` · ${ts('{n} folders', { n: kindFolders.length })}`}
         </div>
         <div className="flex items-center gap-3 ml-auto">
         {headerExtra}
@@ -421,7 +424,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
             onChange={e => setNewName(e.target.value)}
             onBlur={submit}
             onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setNewName(''); setCreating(false); } }}
-            placeholder="Folder name…"
+            placeholder={ts('Folder name…')}
             style={{ background: '#0D1117', border: `1px solid ${color}55`, borderRadius: '999px', color: '#E6EDF3', fontSize: '11px', padding: '5px 12px', outline: 'none', width: '160px' }}
           />
         ) : (
@@ -430,7 +433,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
             className="flex items-center gap-1.5 cursor-pointer"
             style={{ background: color + '14', color, border: `1px solid ${color}33`, borderRadius: '999px', fontSize: '11px', fontWeight: 600, padding: '5px 12px' }}
           >
-            <IconFolderPlus /> New folder
+            <IconFolderPlus /> {ts('New folder')}
           </button>
         )}
         </div>
@@ -438,7 +441,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
 
       {isDragging && (
         <div className="mb-3 text-[11px]" style={{ color: color }}>
-          Drop onto a folder to organise, or onto “Unfiled” to remove.
+          {ts('Drop onto a folder to organise, or onto “Unfiled” to remove.')}
         </div>
       )}
 
@@ -454,7 +457,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                 <span style={{ fontSize: '11px', color: '#8B949E' }}>{folderItems.length}</span>
                 <button
                   onClick={() => onDeleteFolder(folder.id)}
-                  aria-label="Delete folder"
+                  aria-label={ts('Delete folder')}
                   className="ml-auto cursor-pointer"
                   style={{ background: 'transparent', border: 'none', color: '#484F58', padding: '2px', lineHeight: 0 }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
@@ -464,7 +467,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                 </button>
               </div>
               {folderItems.length === 0 ? (
-                <div className="px-1 pb-1 text-[11px]" style={{ color: '#484F58' }}>Empty — drag items here.</div>
+                <div className="px-1 pb-1 text-[11px]" style={{ color: '#484F58' }}>{ts('Empty — drag items here.')}</div>
               ) : (
                 <div className={gridClass}>
                   {folderItems.map(it => (
@@ -484,7 +487,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
       {zone(null, <>
         {kindFolders.length > 0 && (
           <div className="flex items-center gap-2 mb-2.5 px-1">
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#8B949E' }}>Unfiled</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#8B949E' }}>{ts('Unfiled')}</span>
             <span style={{ fontSize: '11px', color: '#484F58' }}>{unfiled.length}</span>
           </div>
         )}
@@ -505,7 +508,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
 
 export default function SubjectPage() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useLang();
+  const { t, ts } = useLang();
   const { allSubjects } = useResolvedSubjects();
   const { toast } = useToast();
   const visitSubject = useStore(s => s.visitSubject);
@@ -635,7 +638,7 @@ export default function SubjectPage() {
     const valid = all.filter(f => ACCEPTED.includes(f.type));
     const rejected = all.length - valid.length;
     if (rejected > 0) {
-      toast('error', `${rejected} file${rejected > 1 ? 's' : ''} skipped`, 'Only PDF and image files are supported.');
+      toast('error', ts('{n} files skipped', { n: rejected }), ts('Only PDF and image files are supported.'));
     }
     if (valid.length === 0) return;
     const mapped: UploadedFile[] = valid.map(f => ({
@@ -662,18 +665,18 @@ export default function SubjectPage() {
         }
       }
       if (failed > 0) {
-        toast('error', `${failed} file${failed > 1 ? 's' : ''} not shared`, lastError || 'Cloud upload failed. Saved locally only.');
+        toast('error', ts('{n} files not shared', { n: failed }), lastError || ts('Cloud upload failed. Saved locally only.'));
       }
       if (uploaded > 0) {
-        toast('success', `${uploaded} file${uploaded > 1 ? 's' : ''} added`, 'Uploaded to the shared library.');
+        toast('success', ts('{n} files added', { n: uploaded }), ts('Uploaded to the shared library.'));
       }
     } else {
       for (const file of mapped) {
         await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
       }
-      toast('success', `${mapped.length} file${mapped.length > 1 ? 's' : ''} added`, undefined);
+      toast('success', ts('{n} files added', { n: mapped.length }), undefined);
     }
-  }, [activeLevel, id, toast]);
+  }, [activeLevel, id, toast, ts]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
@@ -963,12 +966,12 @@ export default function SubjectPage() {
 
       setGenState({ status: 'done', type: selectedType });
       setView(selectedType);
-      const typeLabel = selectedType === 'flashcards' ? 'Flashcards' : selectedType === 'quiz' ? 'Quiz' : 'Notes';
-      toast('success', `${typeLabel} ready`, `Generated from ${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}.`);
+      const typeLabel = selectedType === 'flashcards' ? ts('Flashcards') : selectedType === 'quiz' ? ts('Quiz') : ts('Notes');
+      toast('success', ts('{type} ready', { type: typeLabel }), ts('Generated from {n} files.', { n: selectedFiles.length }));
       recordActivity({ type: 'generate', subjectId: subject!.id, subjectName: subject!.title, detail: `Generated ${typeLabel.toLowerCase()} for ${subject!.title}` });
     } catch (err) {
       setGenState({ status: 'error', type: selectedType, error: String(err) });
-      toast('error', 'Generation failed', friendlyError(String(err)));
+      toast('error', ts('Generation failed'), ts(friendlyError(String(err))));
     } finally {
       setGenProgress(null);
     }
@@ -977,7 +980,7 @@ export default function SubjectPage() {
   if (!subject) {
     return (
       <div className="text-center py-20 px-6">
-        <div className="text-2xl mb-3" style={{ fontFamily: "'Sora',sans-serif", color: '#E6EDF3' }}>Subject not found</div>
+        <div className="text-2xl mb-3" style={{ fontFamily: "'Sora',sans-serif", color: '#E6EDF3' }}>{ts('Subject not found')}</div>
         <Link to="/" className="text-sm no-underline" style={{ color: '#3D7EFF' }}>{t('back')}</Link>
       </div>
     );
@@ -1014,7 +1017,7 @@ export default function SubjectPage() {
             <>
               <span className="flex-shrink-0 hidden sm:inline" style={{ color: '#484F58', fontSize: '11px' }}>›</span>
               <span className="hidden sm:inline" style={{ fontSize: '12px', fontWeight: 500, color: '#8B949E', textTransform: 'capitalize' }}>
-                {view === 'upload' ? 'Files' : view}
+                {view === 'upload' ? ts('Files') : view}
               </span>
             </>
           )}
@@ -1044,11 +1047,11 @@ export default function SubjectPage() {
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}
       <div className="md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: '#0D1117' }}>
         {([
-          { id: 'dashboard',  label: 'Overview', dot: false },
-          { id: 'upload',     label: 'Files',    dot: false },
-          { id: 'flashcards', label: 'Cards',    dot: savedFlashcardSets.length > 0 },
-          { id: 'notes',      label: 'Notes',    dot: savedNotes.length > 0 },
-          { id: 'quiz',       label: 'Quizzes',  dot: savedQuizzes.length > 0 },
+          { id: 'dashboard',  label: ts('Overview'), dot: false },
+          { id: 'upload',     label: ts('Files'),    dot: false },
+          { id: 'flashcards', label: ts('Cards'),    dot: savedFlashcardSets.length > 0 },
+          { id: 'notes',      label: ts('Notes'),    dot: savedNotes.length > 0 },
+          { id: 'quiz',       label: ts('Quizzes'),  dot: savedQuizzes.length > 0 },
         ] as { id: View; label: string; dot: boolean }[]).map(({ id, label, dot }) => (
           <button
             key={id}
@@ -1079,7 +1082,7 @@ export default function SubjectPage() {
         {!sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(true)}
-            title="Show sidebar"
+            title={ts('Show sidebar')}
             style={{
               position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
               zIndex: 30, width: '20px', height: '48px', borderRadius: '0 8px 8px 0',
@@ -1113,7 +1116,7 @@ export default function SubjectPage() {
             </span>
             <button
               onClick={() => setSidebarOpen(false)}
-              title="Collapse sidebar"
+              title={ts('Collapse sidebar')}
               style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '6px', color: '#484F58', cursor: 'pointer', fontSize: '9px', padding: '3px 6px', flexShrink: 0 }}
             >
               ◄
@@ -1124,8 +1127,8 @@ export default function SubjectPage() {
           <div style={{ marginBottom: '8px' }}>
             <SidebarItem
               icon={<IconDash />}
-              label="Overview"
-              sublabel="Subject dashboard"
+              label={ts('Overview')}
+              sublabel={ts('Subject dashboard')}
               active={view === 'dashboard'}
               onClick={() => { setView('dashboard'); setFullFocus(false); }}
             />
@@ -1141,7 +1144,7 @@ export default function SubjectPage() {
               }}
             >
               <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
-                Files ({levelFiles.length})
+                {ts('Files')} ({levelFiles.length})
               </span>
               <span style={{ fontSize: '9px', color: '#484F58' }}>{filesExpanded ? '▾' : '▸'}</span>
             </button>
@@ -1150,7 +1153,7 @@ export default function SubjectPage() {
               <>
                 <SidebarItem
                   icon={<IconPlus />}
-                  label="Add Files"
+                  label={ts('Add Files')}
                   active={view === 'upload' && levelFiles.length === 0}
                   onClick={() => { setView('upload'); setFullFocus(false); }}
                 />
@@ -1162,7 +1165,7 @@ export default function SubjectPage() {
                       <SidebarItem
                         icon={<IconFile />}
                         label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
-                        sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : 'Image'}`}
+                        sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : ts('Image')}`}
                         active={view === 'upload'}
                         dot={isFileSelected}
                         dotColor={subject.color}
@@ -1178,13 +1181,13 @@ export default function SubjectPage() {
           {/* Generated content section */}
           <div style={{ marginTop: '8px' }}>
             <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
-              Content
+              {ts('Content')}
             </div>
 
             <SidebarItem
               icon={<IconCards />}
               label={t('nav_flashcards')}
-              sublabel={savedFlashcardSets.length > 0 ? `${savedFlashcardSets.length} saved` : 'None yet'}
+              sublabel={savedFlashcardSets.length > 0 ? ts('{n} saved', { n: savedFlashcardSets.length }) : ts('None yet')}
               active={view === 'flashcards' && !activeSetId}
               dot={savedFlashcardSets.length > 0}
               dotColor={subject.color}
@@ -1193,7 +1196,7 @@ export default function SubjectPage() {
             <SidebarItem
               icon={<IconNote />}
               label={t('nav_notes')}
-              sublabel={savedNotes.length > 0 ? `${savedNotes.length} saved` : 'None yet'}
+              sublabel={savedNotes.length > 0 ? ts('{n} saved', { n: savedNotes.length }) : ts('None yet')}
               active={view === 'notes' && !activeNoteId}
               dot={savedNotes.length > 0}
               dotColor={subject.color}
@@ -1201,8 +1204,8 @@ export default function SubjectPage() {
             />
             <SidebarItem
               icon={<IconQuiz />}
-              label="Quizzes"
-              sublabel={savedQuizzes.length > 0 ? `${savedQuizzes.length} saved` : 'None yet'}
+              label={ts('Quizzes')}
+              sublabel={savedQuizzes.length > 0 ? ts('{n} saved', { n: savedQuizzes.length }) : ts('None yet')}
               active={view === 'quiz' && !activeQuizId}
               dot={savedQuizzes.length > 0}
               dotColor={subject.color}
@@ -1214,14 +1217,14 @@ export default function SubjectPage() {
           {savedFlashcardSets.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
-                Flashcard Sets
+                {ts('Flashcard Sets')}
               </div>
               {savedFlashcardSets.map(set => (
                 <SidebarItem
                   key={set.id}
                   icon={<IconCards />}
                   label={set.name}
-                  sublabel={`${set.cards.length} cards`}
+                  sublabel={ts('{n} cards', { n: set.cards.length })}
                   active={view === 'flashcards' && activeSetId === set.id}
                   dot={view === 'flashcards' && activeSetId === set.id}
                   dotColor={subject.color}
@@ -1235,14 +1238,14 @@ export default function SubjectPage() {
           {savedNotes.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
-                Notes
+                {ts('Notes')}
               </div>
               {savedNotes.map(n => (
                 <SidebarItem
                   key={n.id}
                   icon={<IconNote />}
                   label={n.name}
-                  sublabel={`${n.note.sections.length} sections`}
+                  sublabel={ts('{n} sections', { n: n.note.sections.length })}
                   active={view === 'notes' && activeNoteId === n.id}
                   dot={view === 'notes' && activeNoteId === n.id}
                   dotColor={subject.color}
@@ -1256,14 +1259,14 @@ export default function SubjectPage() {
           {savedQuizzes.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
-                Previous Quizzes
+                {ts('Previous Quizzes')}
               </div>
               {savedQuizzes.map(quiz => (
                 <SidebarItem
                   key={quiz.id}
                   icon={<IconQuiz />}
                   label={quiz.name}
-                  sublabel={`${quiz.questions.length} questions`}
+                  sublabel={ts('{n} questions', { n: quiz.questions.length })}
                   active={view === 'quiz' && activeQuizId === quiz.id}
                   dot={view === 'quiz' && activeQuizId === quiz.id}
                   dotColor={subject.color}
@@ -1292,38 +1295,38 @@ export default function SubjectPage() {
                 const totalMB = levelFiles.reduce((a, f) => a + f.size, 0) / 1024 / 1024;
                 const pdfCount = levelFiles.filter(f => f.type === 'application/pdf').length;
                 const imgCount = levelFiles.length - pdfCount;
-                const fileParts = [pdfCount > 0 ? `${pdfCount} PDF${pdfCount > 1 ? 's' : ''}` : '', imgCount > 0 ? `${imgCount} image${imgCount > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
+                const fileParts = [pdfCount > 0 ? ts('{n} PDFs', { n: pdfCount }) : '', imgCount > 0 ? ts('{n} images', { n: imgCount }) : ''].filter(Boolean).join(' · ');
                 const totalCards = savedFlashcardSets.reduce((a, s) => a + s.cards.length, 0);
                 const totalQs = savedQuizzes.reduce((a, q) => a + q.questions.length, 0);
                 const totalSections = savedNotes.reduce((a, n) => a + n.note.sections.length, 0);
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
                     <OverviewTile
-                      index={0} icon={<IconFile />} label="Files" color={subject.color}
+                      index={0} icon={<IconFile />} label={ts('Files')} color={subject.color}
                       active={levelFiles.length > 0}
-                      primary={levelFiles.length > 0 ? `${levelFiles.length} uploaded` : 'No files yet'}
-                      secondary={levelFiles.length > 0 ? `${fileParts} · ${totalMB.toFixed(1)} MB total` : 'Upload PDFs or images to begin'}
+                      primary={levelFiles.length > 0 ? ts('{n} uploaded', { n: levelFiles.length }) : ts('No files yet')}
+                      secondary={levelFiles.length > 0 ? `${fileParts} · ${ts('{n} MB total', { n: totalMB.toFixed(1) })}` : ts('Upload PDFs or images to begin')}
                       onClick={() => setView('upload')}
                     />
                     <OverviewTile
-                      index={1} icon={<IconNote />} label="Notes" color="#2EA043"
+                      index={1} icon={<IconNote />} label={ts('Notes')} color="#2EA043"
                       active={savedNotes.length > 0}
-                      primary={savedNotes.length > 0 ? `${savedNotes.length} note${savedNotes.length > 1 ? 's' : ''}` : 'None yet'}
-                      secondary={savedNotes.length > 0 ? `${totalSections} sections · updated ${timeAgo(savedNotes[0].createdAt)}` : 'Generate structured notes from files'}
+                      primary={savedNotes.length > 0 ? ts('{n} notes', { n: savedNotes.length }) : ts('None yet')}
+                      secondary={savedNotes.length > 0 ? `${ts('{n} sections', { n: totalSections })} · ${ts('updated {time}', { time: timeAgo(savedNotes[0].createdAt) })}` : ts('Generate structured notes from files')}
                       onClick={() => { setActiveNoteId(null); setView('notes'); }}
                     />
                     <OverviewTile
-                      index={2} icon={<IconCards />} label="Flashcards" color="#3D7EFF"
+                      index={2} icon={<IconCards />} label={ts('Flashcards')} color="#3D7EFF"
                       active={savedFlashcardSets.length > 0}
-                      primary={savedFlashcardSets.length > 0 ? `${totalCards} cards` : 'None yet'}
-                      secondary={savedFlashcardSets.length > 0 ? `in ${savedFlashcardSets.length} set${savedFlashcardSets.length > 1 ? 's' : ''} · updated ${timeAgo(savedFlashcardSets[0].createdAt)}` : 'Generate a deck from files'}
+                      primary={savedFlashcardSets.length > 0 ? ts('{n} cards', { n: totalCards }) : ts('None yet')}
+                      secondary={savedFlashcardSets.length > 0 ? `${ts('in {n} sets', { n: savedFlashcardSets.length })} · ${ts('updated {time}', { time: timeAgo(savedFlashcardSets[0].createdAt) })}` : ts('Generate a deck from files')}
                       onClick={() => { setActiveSetId(null); setView('flashcards'); }}
                     />
                     <OverviewTile
-                      index={3} icon={<IconQuiz />} label="Quizzes" color="#D29922"
+                      index={3} icon={<IconQuiz />} label={ts('Quizzes')} color="#D29922"
                       active={savedQuizzes.length > 0}
-                      primary={savedQuizzes.length > 0 ? `${totalQs} questions` : 'None yet'}
-                      secondary={savedQuizzes.length > 0 ? `in ${savedQuizzes.length} quiz${savedQuizzes.length > 1 ? 'zes' : ''} · updated ${timeAgo(savedQuizzes[0].createdAt)}` : 'Generate a quiz from files'}
+                      primary={savedQuizzes.length > 0 ? ts('{n} questions', { n: totalQs }) : ts('None yet')}
+                      secondary={savedQuizzes.length > 0 ? `${ts('in {n} quizzes', { n: savedQuizzes.length })} · ${ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) })}` : ts('Generate a quiz from files')}
                       onClick={() => { setActiveQuizId(null); setView('quiz'); }}
                     />
                   </div>
@@ -1332,7 +1335,7 @@ export default function SubjectPage() {
 
               {/* Exam Date */}
               <div style={{ marginTop: '28px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#8B949E', marginBottom: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Exam Date</div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#8B949E', marginBottom: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{ts('Exam Date')}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <input
                     type="text"
@@ -1350,7 +1353,7 @@ export default function SubjectPage() {
                   {examDate && (
                     <>
                       <span style={{ fontSize: '11px', color: subject.color, fontWeight: 600 }}>
-                        {daysUntil(examDate.date)} days left
+                        {ts('{n} days left', { n: daysUntil(examDate.date) })}
                       </span>
                       <button
                         onClick={() => removeExamDate(id!)}
@@ -1369,7 +1372,7 @@ export default function SubjectPage() {
           {view === 'upload' && (
             <>
               <div
-                role="button" tabIndex={0} aria-label="Upload files"
+                role="button" tabIndex={0} aria-label={ts('Upload files')}
                 onDrop={handleDrop}
                 onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
@@ -1431,12 +1434,12 @@ export default function SubjectPage() {
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedFileIds(levelFiles.map(f => f.id))}
                         style={{ fontSize: '10px', fontWeight: 600, color: subject.color, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        Select all
+                        {ts('Select all')}
                       </button>
                       <span style={{ color: '#30363D', fontSize: '10px' }}>·</span>
                       <button onClick={() => setSelectedFileIds([])}
                         style={{ fontSize: '10px', fontWeight: 600, color: '#8B949E', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        None
+                        {ts('None')}
                       </button>
                     </div>
                   }
@@ -1501,7 +1504,7 @@ export default function SubjectPage() {
                             </div>
                           )}
                           <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                            {(file.size / 1024 / 1024).toFixed(2)} MB · {isPDF ? 'PDF' : 'Image'}{activeLevel && ` · ${activeLevel}`}
+                            {(file.size / 1024 / 1024).toFixed(2)} MB · {isPDF ? 'PDF' : ts('Image')}{activeLevel && ` · ${activeLevel}`}
                           </div>
                         </div>
                         {!isPDF && (
@@ -1509,7 +1512,7 @@ export default function SubjectPage() {
                         )}
                         <button
                           onClick={e => { e.stopPropagation(); startRename(file.id, file.name, 'file'); }}
-                          title="Rename file"
+                          title={ts('Rename file')}
                           style={{
                             height: '30px', padding: '0 10px', borderRadius: '999px',
                             fontSize: '12px', cursor: 'pointer',
@@ -1528,7 +1531,7 @@ export default function SubjectPage() {
                             border: '1px solid rgba(248,113,113,0.25)', flexShrink: 0,
                           }}
                         >
-                          Remove
+                          {ts('Remove')}
                         </button>
                       </div>
                     );
@@ -1551,7 +1554,7 @@ export default function SubjectPage() {
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
                       style={{ color: '#8B949E' }}
                     >
-                      ← All flashcards
+                      ← {ts('All flashcards')}
                     </button>
                     <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
                       {activeSet.name} · {activeSet.cards.length} {t('cards')}
@@ -1576,7 +1579,7 @@ export default function SubjectPage() {
 
             return (
               <FolderBoard<StoredFlashcardSet>
-                kind="card" label="Flashcard sets" color={subject.color}
+                kind="card" label={ts('Flashcard sets')} color={subject.color}
                 folders={folders} items={savedFlashcardSets}
                 draggedId={draggedItem?.kind === 'card' ? draggedItem.id : null}
                 onDragStart={cid => setDraggedItem({ kind: 'card', id: cid })}
@@ -1620,12 +1623,12 @@ export default function SubjectPage() {
                           </div>
                         )}
                         <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {set.cards.length} cards · {new Date(set.createdAt).toLocaleDateString()}
+                          {ts('{n} cards', { n: set.cards.length })} · {new Date(set.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                       <button
                         onClick={e => { e.stopPropagation(); startRename(set.id, set.name); }}
-                        aria-label="Rename flashcard set"
+                        aria-label={ts('Rename flashcard set')}
                         style={{
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
@@ -1640,7 +1643,7 @@ export default function SubjectPage() {
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); removeSet(set.id); }}
-                        aria-label="Delete flashcard set"
+                        aria-label={ts('Delete flashcard set')}
                         style={{
                           width: '30px', height: '30px', borderRadius: '999px',
                           fontSize: '11px', cursor: 'pointer', flexShrink: 0,
@@ -1671,10 +1674,10 @@ export default function SubjectPage() {
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
                       style={{ color: '#8B949E' }}
                     >
-                      ← All notes
+                      ← {ts('All notes')}
                     </button>
                     <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
-                      {activeNote.name} · {activeNote.note.sections.length} sections
+                      {activeNote.name} · {ts('{n} sections', { n: activeNote.note.sections.length })}
                     </div>
                   </div>
                   <NotesViewer
@@ -1696,7 +1699,7 @@ export default function SubjectPage() {
 
             return (
               <FolderBoard<StoredNote>
-                kind="note" label="Notes" color={subject.color}
+                kind="note" label={ts('Notes')} color={subject.color}
                 folders={folders} items={savedNotes}
                 draggedId={draggedItem?.kind === 'note' ? draggedItem.id : null}
                 onDragStart={nid => setDraggedItem({ kind: 'note', id: nid })}
@@ -1740,12 +1743,12 @@ export default function SubjectPage() {
                           </div>
                         )}
                         <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {n.note.sections.length} sections · {new Date(n.createdAt).toLocaleDateString()}
+                          {ts('{n} sections', { n: n.note.sections.length })} · {new Date(n.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                       <button
                         onClick={e => { e.stopPropagation(); startRename(n.id, n.name); }}
-                        aria-label="Rename note"
+                        aria-label={ts('Rename note')}
                         style={{
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
@@ -1760,7 +1763,7 @@ export default function SubjectPage() {
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); removeNote(n.id); }}
-                        aria-label="Delete note"
+                        aria-label={ts('Delete note')}
                         style={{
                           width: '30px', height: '30px', borderRadius: '999px',
                           fontSize: '11px', cursor: 'pointer', flexShrink: 0,
@@ -1791,7 +1794,7 @@ export default function SubjectPage() {
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
                       style={{ color: '#8B949E' }}
                     >
-                      ← All quizzes
+                      ← {ts('All quizzes')}
                     </button>
                     <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
                       {activeQuiz.name} · {activeQuiz.questions.length} {t('questions')}
@@ -1824,7 +1827,7 @@ export default function SubjectPage() {
             return (
               <>
               <FolderBoard<StoredQuiz>
-                kind="quiz" label="Previous quizzes" color={subject.color}
+                kind="quiz" label={ts('Previous quizzes')} color={subject.color}
                 folders={folders} items={savedQuizzes}
                 draggedId={draggedItem?.kind === 'quiz' ? draggedItem.id : null}
                 onDragStart={qid => setDraggedItem({ kind: 'quiz', id: qid })}
@@ -1868,12 +1871,12 @@ export default function SubjectPage() {
                           </div>
                         )}
                         <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {quiz.questions.length} questions · {new Date(quiz.createdAt).toLocaleDateString()}
+                          {ts('{n} questions', { n: quiz.questions.length })} · {new Date(quiz.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                       <button
                         onClick={e => { e.stopPropagation(); startRename(quiz.id, quiz.name); }}
-                        aria-label="Rename quiz"
+                        aria-label={ts('Rename quiz')}
                         style={{
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
@@ -1888,7 +1891,7 @@ export default function SubjectPage() {
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); removeQuiz(quiz.id); }}
-                        aria-label="Delete quiz"
+                        aria-label={ts('Delete quiz')}
                         style={{
                           width: '30px', height: '30px', borderRadius: '999px',
                           fontSize: '11px', cursor: 'pointer', flexShrink: 0,
@@ -1934,9 +1937,9 @@ export default function SubjectPage() {
               className="anim-rise"
             >
               <div className="flex items-center justify-between mb-3">
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3' }}>Generate</div>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3' }}>{ts('Generate')}</div>
                 <div style={{ fontSize: '10px', color: selectedLevelFileIds.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
-                  {selectedLevelFileIds.length}/{levelFiles.length} selected
+                  {ts('{n}/{total} selected', { n: selectedLevelFileIds.length, total: levelFiles.length })}
                 </div>
               </div>
 

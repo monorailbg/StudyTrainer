@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GeneratedFlashcard } from '../lib/generator';
 import { useSRS } from '../store/useSRS';
 import { useDimMode } from '../store/useDimMode';
+import { useLang } from '../context/LanguageContext';
 import type { Rating } from '../lib/srs';
 
 const RATINGS: { key: Rating; label: string; hint: string; color: string }[] = [
@@ -19,6 +20,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   onGoToQuiz?: () => void;
   onBack?: () => void;
 }) {
+  const { ts } = useLang();
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
@@ -79,14 +81,14 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: color + '1A', border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>Session complete</div>
-        <div style={{ fontSize: '13px', color: '#8B949E' }}>You reviewed {reviewed} card{reviewed !== 1 ? 's' : ''}. Schedule updated.</div>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>{ts('Session complete')}</div>
+        <div style={{ fontSize: '13px', color: '#8B949E' }}>{ts('You reviewed {n} card{s}. Schedule updated.', { n: reviewed, s: reviewed !== 1 ? 's' : '' })}</div>
         <button
           onClick={() => { setIndex(0); setFlipped(false); setReviewed(0); setDone(false); reviewedRef.current = 0; reportedRef.current = false; }}
           className="h-10 px-6 text-sm font-semibold cursor-pointer"
           style={{ marginTop: '6px', background: color + '18', color, border: `1px solid ${color}45`, borderRadius: '999px' }}
         >
-          Review again
+          {ts('Review again')}
         </button>
         {onBack && (
           <button
@@ -94,7 +96,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             className="h-10 px-6 text-sm font-semibold cursor-pointer"
             style={{ background: 'transparent', color: '#8B949E', border: '1px solid #30363D', borderRadius: '999px' }}
           >
-            ← Back to list
+            {ts('← Back to list')}
           </button>
         )}
         {onGoToQuiz && (
@@ -103,7 +105,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             className="h-10 px-6 text-sm font-semibold cursor-pointer"
             style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '999px' }}
           >
-            Test your Knowledge →
+            {ts('Test your Knowledge →')}
           </button>
         )}
       </div>
@@ -146,7 +148,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         onClick={flip}
         role="button"
         tabIndex={0}
-        aria-label={flipped ? 'Showing answer — click to flip back' : 'Showing question — click to reveal answer'}
+        aria-label={flipped ? ts('Showing answer — click to flip back') : ts('Showing question — click to reveal answer')}
         onKeyDown={e => (e.key === 'Enter') && flip()}
       >
         <div className={`flip-card-inner${flipped ? ' flipped' : ''}`}>
@@ -165,14 +167,14 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             }}
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#8B949E' }}>
-              Question
+              {ts('Question')}
             </div>
             <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: '17px', color: '#E6EDF3', lineHeight: 1.45 }}>
               {card.front}
             </div>
             <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: '#484F58' }}>
               <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>Space</kbd>
-              to reveal
+              {ts('to reveal')}
             </div>
           </div>
 
@@ -191,7 +193,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             }}
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#3D7EFF' }}>
-              Answer
+              {ts('Answer')}
             </div>
             <div className="text-center" style={{ fontSize: '16px', color: '#E6EDF3', lineHeight: 1.65 }}>
               {card.back}
@@ -214,15 +216,15 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                     style={{ background: r.color + '1A', color: r.color, border: `1px solid ${r.color}55`, borderRadius: '12px' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
-                    aria-label={`Rate ${r.label}`}
+                    aria-label={ts('Rate {label}', { label: ts(r.label) })}
                   >
-                    {r.label}
+                    {ts(r.label)}
                     <span className="ml-1.5 text-[10px] opacity-60">{r.hint}</span>
                   </button>
                 ))}
               </div>
               <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
-                How well did you recall this? <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>–<kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
+                {ts('How well did you recall this?')} <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>–<kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
               </div>
             </div>
           ) : (
@@ -232,9 +234,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 className="h-11 px-8 text-sm font-semibold cursor-pointer"
                 style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
               >
-                Show answer
+                {ts('Show answer')}
               </button>
-              <span className="text-xs" style={{ color: '#484F58' }}>{reviewed} reviewed this session</span>
+              <span className="text-xs" style={{ color: '#484F58' }}>{ts('{n} reviewed this session', { n: reviewed })}</span>
             </div>
           )
         ) : (
@@ -245,9 +247,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 disabled={index === 0}
                 className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
                 style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
-                aria-label="Previous card"
+                aria-label={ts('Previous card')}
               >
-                ← Prev
+                {ts('← Prev')}
               </button>
 
               <button
@@ -255,7 +257,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 className="h-10 px-7 text-sm font-semibold transition-all duration-150 cursor-pointer btn-accent"
                 style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
               >
-                Flip card
+                {ts('Flip card')}
               </button>
 
               <button
@@ -263,9 +265,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 disabled={index === cards.length - 1}
                 className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
                 style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
-                aria-label="Next card"
+                aria-label={ts('Next card')}
               >
-                Next →
+                {ts('Next →')}
               </button>
             </div>
 
@@ -274,7 +276,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>←</kbd>
               {' '}/{' '}
               <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>→</kbd>
-              {' '}navigate
+              {' '}{ts('navigate')}
             </div>
           </>
         )}

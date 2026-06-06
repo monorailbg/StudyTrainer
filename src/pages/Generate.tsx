@@ -62,7 +62,7 @@ interface Result {
 }
 
 export default function Generate() {
-  useLang();
+  const { ts } = useLang();
   const { allSubjects: ALL_SUBJECTS } = useResolvedSubjects();
 
   const [topic, setTopic] = useState('');
@@ -115,13 +115,13 @@ export default function Generate() {
       {/* Header */}
       <div className="mb-8">
         <div className="text-md-primary text-[10px] tracking-[0.18em] uppercase font-semibold mb-2">
-          AI Generator
+          {ts('AI Generator')}
         </div>
         <h1 className="font-display text-md-on-surface m-0 mb-2 leading-tight" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)' }}>
-          Generate Study Materials
+          {ts('Generate Study Materials')}
         </h1>
         <p className="text-md-on-surface-variant text-sm m-0 leading-relaxed">
-          Type any topic and Gemini will build flashcards, structured notes, or a quiz.
+          {ts('Type any topic and Gemini will build flashcards, structured notes, or a quiz.')}
         </p>
       </div>
 
@@ -131,12 +131,12 @@ export default function Generate() {
         {/* Topic input */}
         <div className="px-6 py-5 border-b border-md-outline-variant">
           <label className="text-md-on-surface-variant text-[10px] tracking-[0.12em] uppercase font-semibold block mb-2.5">
-            Topic
+            {ts('Topic')}
           </label>
           <textarea
             value={topic}
             onChange={e => setTopic(e.target.value)}
-            placeholder="e.g. Comparative advantage and the Heckscher-Ohlin model, Porter's Five Forces, SWOT analysis..."
+            placeholder={ts("e.g. Comparative advantage and the Heckscher-Ohlin model, Porter's Five Forces, SWOT analysis...")}
             rows={3}
             className="md-textarea !rounded-2xl !text-sm"
           />
@@ -146,9 +146,9 @@ export default function Generate() {
         <div className="px-6 py-5 border-b border-md-outline-variant">
           <div className="flex items-baseline gap-2.5 mb-3">
             <span className="text-md-on-surface-variant text-[10px] tracking-[0.12em] uppercase font-semibold">
-              Subject context
+              {ts('Subject context')}
             </span>
-            <span className="text-md-outline text-[10px]">optional</span>
+            <span className="text-md-outline text-[10px]">{ts('optional')}</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {ALL_SUBJECTS.map(s => {
@@ -178,7 +178,7 @@ export default function Generate() {
           {/* Level */}
           <div>
             <div className="text-md-on-surface-variant text-[10px] tracking-[0.12em] uppercase font-semibold mb-2">
-              Level
+              {ts('Level')}
             </div>
             <div className="flex gap-1">
               {levels.map(l => (
@@ -191,7 +191,7 @@ export default function Generate() {
                       : 'bg-transparent text-md-on-surface-variant border-md-outline-variant hover:bg-md-surface-container-high'
                   }`}
                 >
-                  {l.label}
+                  {ts(l.label)}
                 </button>
               ))}
             </div>
@@ -202,7 +202,7 @@ export default function Generate() {
           {/* Content type */}
           <div>
             <div className="text-md-on-surface-variant text-[10px] tracking-[0.12em] uppercase font-semibold mb-2">
-              Generate
+              {ts('Generate')}
             </div>
             <div className="flex gap-1.5">
               {types.map(tp => {
@@ -218,8 +218,8 @@ export default function Generate() {
                       color: isSelected ? accentColor : 'var(--color-md-on-surface-variant)',
                     }}
                   >
-                    <span className="text-xs font-semibold">{tp.label}</span>
-                    <span className="text-[10px] opacity-60 font-normal">{tp.count}</span>
+                    <span className="text-xs font-semibold">{ts(tp.label)}</span>
+                    <span className="text-[10px] opacity-60 font-normal">{ts(tp.count)}</span>
                   </button>
                 );
               })}
@@ -238,9 +238,9 @@ export default function Generate() {
               }}
             >
               {status === 'generating' ? (
-                <><Spinner color={accentColor} />Generating...</>
+                <><Spinner color={accentColor} />{ts('Generating...')}</>
               ) : (
-                <><SparkleIcon color={canGenerate ? '#E6EDF3' : 'var(--color-md-on-surface-variant)'} />Generate</>
+                <><SparkleIcon color={canGenerate ? '#E6EDF3' : 'var(--color-md-on-surface-variant)'} />{ts('Generate')}</>
               )}
             </button>
           </div>
@@ -250,7 +250,7 @@ export default function Generate() {
       {/* Error */}
       {status === 'error' && (
         <div className="bg-red-500/10 border border-red-500/25 rounded-2xl px-5 py-4 text-red-400 text-sm mb-6">
-          <div>{friendlyError(error)}</div>
+          <div>{ts(friendlyError(error))}</div>
           {error && (
             <div className="mt-2 text-[11px] opacity-50 break-all" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               {error.slice(0, 220)}
@@ -266,9 +266,9 @@ export default function Generate() {
             <div className="flex items-center gap-2.5">
               <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: result.color }} />
               <span className="text-md-on-surface-variant text-[10px] tracking-[0.12em] uppercase font-semibold">
-                {result.type === 'flashcards' ? `${result.flashcards?.length} Flashcards`
-                  : result.type === 'notes' ? `${result.notes?.sections.length} Sections`
-                  : `${result.quiz?.length} Questions`}
+                {result.type === 'flashcards' ? ts('{count} Flashcards', { count: result.flashcards?.length ?? 0 })
+                  : result.type === 'notes' ? ts('{count} Sections', { count: result.notes?.sections.length ?? 0 })
+                  : ts('{count} Questions', { count: result.quiz?.length ?? 0 })}
               </span>
               <span className="text-md-outline text-[10px]">·</span>
               <span className="text-md-on-surface-variant text-xs max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
@@ -279,7 +279,7 @@ export default function Generate() {
               onClick={() => { setResult(null); setStatus('idle'); }}
               className="bg-transparent border-none text-md-on-surface-variant text-xs cursor-pointer underline p-0 hover:text-md-on-surface"
             >
-              Clear
+              {ts('Clear')}
             </button>
           </div>
 
@@ -296,7 +296,7 @@ export default function Generate() {
             <SparkleIcon color="var(--color-md-on-surface-variant)" />
           </div>
           <div className="text-md-on-surface-variant text-sm">
-            Enter a topic above to generate study materials
+            {ts('Enter a topic above to generate study materials')}
           </div>
         </div>
       )}
