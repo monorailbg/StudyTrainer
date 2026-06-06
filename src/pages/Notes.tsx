@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { getAllNotes, type StoredNote } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudNotes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
-import { useDimMode } from '../store/useDimMode';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
 import { NotesViewer } from '../components/NotesViewer';
@@ -101,8 +100,6 @@ export default function Notes() {
   const [activeNote, setActiveNote] = useState<StoredNote | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const mainRef = useRef<HTMLElement>(null);
-  const dim = useDimMode(s => s.dim);
-  const { toggle: toggleDim } = useDimMode();
   const record = useActivity(s => s.record);
   const markNoteRead = useStore(s => s.markNoteRead);
 
@@ -127,30 +124,12 @@ export default function Notes() {
 
   useEffect(() => {
     const reading = !!activeNote;
-    const immersive = reading && dim;
     document.body.classList.toggle('notes-reading', reading);
-    document.body.classList.toggle('notes-dim-immersive', immersive);
-
-    // Directly style elements outside this component's DOM tree
-    const nav = document.querySelector('nav') as HTMLElement | null;
-    const banner = nav?.nextElementSibling as HTMLElement | null;
-    if (nav) nav.style.opacity = immersive ? '0.04' : reading ? '0.12' : '';
-    if (banner) banner.style.opacity = immersive ? '0.04' : '';
-    if (nav) nav.style.transition = 'opacity 200ms ease';
-    if (banner) banner.style.transition = 'opacity 200ms ease';
-
-    return () => {
-      document.body.classList.remove('notes-reading', 'notes-dim-immersive');
-      if (nav) { nav.style.opacity = ''; nav.style.transition = ''; }
-      if (banner) { banner.style.opacity = ''; banner.style.transition = ''; }
-    };
-  }, [activeNote, dim]);
+    return () => { document.body.classList.remove('notes-reading'); };
+  }, [activeNote]);
 
   const rootClasses = [
-    'study-dim-root',
-    dim && 'dim-mode',
     activeNote && 'page-notes-reading',
-    activeNote && dim && 'dim-active',
   ].filter(Boolean).join(' ');
 
   return (
@@ -172,26 +151,6 @@ export default function Notes() {
         {subjectsWithNotes.map(s => (
           <SubjectBtn key={s.id} subject={s} count={notes.filter(n => n.subjectId === s.id).length} active={filterId === s.id} onClick={() => { setFilterId(s.id); setActiveNote(null); setSidebarOpen(true); }} />
         ))}
-        {/* Dim toggle at sidebar bottom */}
-        <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-          <button
-            onClick={toggleDim}
-            title={dim ? ts('Exit dim mode') : ts('Dim reading mode')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '8px 12px', borderRadius: '10px', cursor: 'pointer',
-              background: dim ? 'rgba(212,175,55,0.08)' : 'transparent',
-              border: `1px solid ${dim ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.08)'}`,
-              color: dim ? 'rgba(212,175,55,0.85)' : 'rgba(255,255,255,0.45)',
-              fontSize: '12px', fontWeight: 500, transition: 'all 180ms ease',
-            }}
-          >
-            <svg viewBox="0 0 18 18" width="13" height="13" fill={dim ? 'currentColor' : 'none'}>
-              <path d="M14.5 11.2A6 6 0 016.8 3.5a.6.6 0 00-.8-.78A7 7 0 1015.3 12a.6.6 0 00-.8-.8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-            </svg>
-            {dim ? ts('Dimmed') : ts('Dim')}
-          </button>
-        </div>
       </aside>
 
       {/* Main */}

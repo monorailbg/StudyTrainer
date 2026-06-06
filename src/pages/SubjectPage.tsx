@@ -7,7 +7,6 @@ import { useActivity } from '../store/useActivity';
 import { useToast } from '../components/Toast';
 import { generateFromFile } from '../lib/geminiGenerator';
 
-import { useDimMode } from '../store/useDimMode';
 import { useExamDates } from '../store/useExamDates';
 import {
   saveFile, getFiles, deleteFile,
@@ -722,14 +721,7 @@ export default function SubjectPage() {
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [fullFocus, setFullFocus] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
-  const dim = useDimMode(s => s.dim);
   const { dates: examDatesList, setDate: setExamDate, removeDate: removeExamDate } = useExamDates();
-
-  useEffect(() => {
-    const active = dim && (['notes', 'quiz', 'flashcards'] as View[]).includes(view);
-    document.body.classList.toggle('subject-dim-active', active);
-    return () => { document.body.classList.remove('subject-dim-active'); };
-  }, [dim, view]);
   const examDate = examDatesList.find(d => d.subjectId === id);
 
   const [renaming, setRenaming] = useState<{ id: string; value: string; kind: 'quiz' | 'note' | 'set' | 'file' } | null>(null);
@@ -998,10 +990,6 @@ export default function SubjectPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 72px)' }}>
-
-      {/* Dim toggle — rendered outside <main> so its fixed position is never broken
-          by the dim-mode CSS filter applied to the scroll container. */}
-      {/* DimModeToggle is rendered globally in App.tsx */}
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="subject-breadcrumb-strip flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
@@ -1282,32 +1270,10 @@ export default function SubjectPage() {
             </div>
           )}
 
-          {/* Dim toggle at sidebar bottom */}
-          {sidebarOpen && !fullFocus && (
-            <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-              <button
-                onClick={() => useDimMode.getState().toggle()}
-                title={dim ? ts('Exit dim mode') : ts('Dim reading mode')}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '8px 12px', borderRadius: '10px', cursor: 'pointer',
-                  background: dim ? 'rgba(212,175,55,0.08)' : 'transparent',
-                  border: `1px solid ${dim ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                  color: dim ? 'rgba(212,175,55,0.85)' : 'rgba(255,255,255,0.45)',
-                  fontSize: '12px', fontWeight: 500, transition: 'all 180ms ease',
-                }}
-              >
-                <svg viewBox="0 0 18 18" width="13" height="13" fill={dim ? 'currentColor' : 'none'}>
-                  <path d="M14.5 11.2A6 6 0 016.8 3.5a.6.6 0 00-.8-.78A7 7 0 1015.3 12a.6.6 0 00-.8-.8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                </svg>
-                {dim ? ts('Dimmed') : ts('Dim')}
-              </button>
-            </div>
-          )}
         </aside>
 
         {/* Main content area */}
-        <main ref={mainRef} className={`flex-1 overflow-y-auto p-4 md:p-8 study-dim-root${dim && (view === 'notes' || view === 'quiz' || view === 'flashcards') ? ' dim-mode' : ''}`} style={{ background: '#0D1117' }}>
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: '#0D1117' }}>
 
           {/* Dashboard view */}
           {view === 'dashboard' && (
@@ -1953,7 +1919,7 @@ export default function SubjectPage() {
       </div>
 
       {/* ── Floating Generate button + popover ──────────────────────────────── */}
-      {!dim && levelFiles.length > 0 && (
+      {levelFiles.length > 0 && (
         <div style={{ position: 'fixed', right: '24px', bottom: '24px', zIndex: 200, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
           {showGenPanel && (
             <div

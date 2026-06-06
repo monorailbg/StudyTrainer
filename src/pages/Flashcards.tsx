@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { getAllFlashcardSets, saveFlashcardSet, type StoredFlashcardSet } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudFlashcardSets, renameCloudFlashcardSet } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
-import { useDimMode } from '../store/useDimMode';
 import { useActivity } from '../store/useActivity';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
@@ -99,8 +98,6 @@ export default function Flashcards() {
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeSet, setActiveSet] = useState<StoredFlashcardSet | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
-  const dim = useDimMode(s => s.dim);
-  const { toggle: toggleDim } = useDimMode();
   const record = useActivity(s => s.record);
 
   const commitRename = () => {
@@ -139,16 +136,11 @@ export default function Flashcards() {
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
   useEffect(() => {
-    const session = !!activeSet;
-    const immersive = session && dim;
-    document.body.classList.toggle('flashcards-session', session);
-    document.body.classList.toggle('flashcards-dim-immersive', immersive);
-    return () => { document.body.classList.remove('flashcards-session', 'flashcards-dim-immersive'); };
-  }, [activeSet, dim]);
+    document.body.classList.toggle('flashcards-session', !!activeSet);
+    return () => { document.body.classList.remove('flashcards-session'); };
+  }, [activeSet]);
 
   const rootClasses = [
-    'study-dim-root',
-    dim && 'dim-mode',
     activeSet && 'page-flashcards-session',
   ].filter(Boolean).join(' ');
 
@@ -171,26 +163,6 @@ export default function Flashcards() {
         {subjectsWithSets.map(s => (
           <SubjectBtn key={s.id} subject={s} count={sets.filter(x => x.subjectId === s.id).length} active={filterId === s.id} onClick={() => { setFilterId(s.id); setActiveSet(null); }} />
         ))}
-        {/* Dim toggle at sidebar bottom */}
-        <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-          <button
-            onClick={toggleDim}
-            title={dim ? ts('Exit dim mode') : ts('Dim reading mode')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '8px 12px', borderRadius: '10px', cursor: 'pointer',
-              background: dim ? 'rgba(212,175,55,0.08)' : 'transparent',
-              border: `1px solid ${dim ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.08)'}`,
-              color: dim ? 'rgba(212,175,55,0.85)' : 'rgba(255,255,255,0.45)',
-              fontSize: '12px', fontWeight: 500, transition: 'all 180ms ease',
-            }}
-          >
-            <svg viewBox="0 0 18 18" width="13" height="13" fill={dim ? 'currentColor' : 'none'}>
-              <path d="M14.5 11.2A6 6 0 016.8 3.5a.6.6 0 00-.8-.78A7 7 0 1015.3 12a.6.6 0 00-.8-.8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-            </svg>
-            {dim ? ts('Dimmed') : ts('Dim')}
-          </button>
-        </div>
       </aside>
 
       {/* Mobile subject strip */}

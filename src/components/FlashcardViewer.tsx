@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GeneratedFlashcard } from '../lib/generator';
 import { useSRS } from '../store/useSRS';
-import { useDimMode } from '../store/useDimMode';
 import { useLang } from '../context/LanguageContext';
 import type { Rating } from '../lib/srs';
 
@@ -29,10 +28,6 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   const progress = ((index + 1) / cards.length) * 100;
   const srsMode = !!subjectId;
   const rate = useSRS(s => s.rate);
-  // dim drives card border/glow changes; the actual dimming of the surrounding
-  // page is handled by the parent's study-dim-root CSS filter, not a scrim here.
-  const dim = useDimMode(s => s.dim);
-
   // Report the session (count of cards rated) exactly once — on completion or
   // when the viewer unmounts mid-way.
   const reviewedRef = useRef(0);
@@ -158,11 +153,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             style={{
               padding: '28px 32px',
               borderRadius: '12px',
-              background: dim ? `linear-gradient(150deg, ${color}33 0%, #161d28 100%)` : '#161B22',
-              border: `1px solid ${dim ? color + 'bb' : color + '25'}`,
-              boxShadow: dim
-                ? `0 1px 0 rgba(255,255,255,0.12) inset, 0 10px 44px rgba(0,0,0,0.55), 0 0 56px ${color}33`
-                : '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',
+              background: '#161B22',
+              border: `1px solid ${color}25`,
+              boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',
               transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
             }}
           >
@@ -184,11 +177,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             style={{
               padding: '28px 32px',
               borderRadius: '12px',
-              background: dim ? `linear-gradient(150deg, ${color}4a 0%, #182030 100%)` : 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
-              border: `1px solid ${dim ? color : color + '40'}`,
-              boxShadow: dim
-                ? `0 1px 0 rgba(255,255,255,0.14) inset, 0 10px 44px rgba(0,0,0,0.55), 0 0 56px ${color}33`
-                : '0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.4)',
+              background: 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
+              border: `1px solid ${color}40`,
+              boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.4)',
               transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
             }}
           >

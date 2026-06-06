@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import type { GeneratedNote, GeneratedNoteSection } from '../lib/generator';
 import { AskAI } from './AskAI';
 import { useAnnotations, type Annotation } from '../store/useAnnotations';
-import { useDimMode } from '../store/useDimMode';
 import { useLang } from '../context/LanguageContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -124,11 +123,10 @@ function buildSegments(rawText: string, annotations: Annotation[]): Segment[] {
 
 // ── AnnotatedRichText ─────────────────────────────────────────────────────────
 
-function AnnotatedRichText({ rawText, accent, annotations, dim }: {
+function AnnotatedRichText({ rawText, accent, annotations }: {
   rawText: string;
   accent: string;
   annotations: Annotation[];
-  dim: boolean;
 }) {
   const segments = useMemo(() => buildSegments(rawText, annotations), [rawText, annotations]);
   return (
@@ -141,7 +139,7 @@ function AnnotatedRichText({ rawText, accent, annotations, dim }: {
             annStyle = {
               background: ann.color ?? 'rgba(255,214,0,0.35)',
               borderRadius: '2px', padding: '0 1px',
-              opacity: dim ? 0.7 : 1,
+              opacity: 1,
             };
           } else {
             annStyle = { textDecoration: 'underline', textDecorationColor: accent, textUnderlineOffset: '3px' };
@@ -343,13 +341,12 @@ interface SectionCardProps {
   understood: boolean;
   collapsed: boolean;
   annotations: Annotation[];
-  dim: boolean;
   onToggleUnderstood: () => void;
   onToggleCollapsed: () => void;
 }
 
 const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function SectionCard(
-  { index, section, color, understood, collapsed, annotations, dim, onToggleUnderstood, onToggleCollapsed },
+  { index, section, color, understood, collapsed, annotations, onToggleUnderstood, onToggleCollapsed },
   ref
 ) {
   const { ts } = useLang();
@@ -450,7 +447,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
               </button>
             </>
           ) : (
-            <AnnotatedRichText rawText={section.content} accent={color} annotations={annotations} dim={dim} />
+            <AnnotatedRichText rawText={section.content} accent={color} annotations={annotations} />
           )}
         </p>
 
@@ -549,7 +546,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
 }) {
   const { ts } = useLang();
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const dim = useDimMode(s => s.dim);
   const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation, getForSection } = useAnnotations();
   const [toolbar, setToolbar] = useState<{
     rect: SelRect; sectionIndex: number; selectedText: string; existingId?: string;
@@ -913,7 +909,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
               understood={understood.has(i)}
               collapsed={collapsed.has(i)}
               annotations={noteId ? getForSection(noteId, i) : []}
-              dim={dim}
               onToggleUnderstood={() => toggleUnderstood(i)}
               onToggleCollapsed={() => toggleCollapsed(i)}
             />

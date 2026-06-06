@@ -493,20 +493,6 @@ h1, h2, h3 {
   .flip-card-inner { transition-duration: 0.01ms !important; }
 }
 
-/* ── Dim reading mode ────────────────────────────────────────────────
-   Shared by the Notes, Flashcards and Quiz pages. The app is styled with
-   inline hex colours rather than CSS variables, so dim mode is applied as a
-   single root-level filter layer: it darkens the surface toward near-black,
-   eases off contrast and desaturates accents/glows in one pass — no per-element
-   overrides, no layout reflow. The moon toggle is rendered outside this
-   container so it stays at full brightness. */
-.study-dim-root {
-  transition: background-color 320ms ease;
-}
-.study-dim-root.dim-mode {
-  background-color: #0a0a0f !important;
-}
-
 /* ── Notes reading: extreme chrome dimming ──────────────────────────
    When a note is open, nearly everything except the content column
    disappears. Hover restores each element for usability. */
@@ -558,26 +544,6 @@ body.notes-reading nav:hover {
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
-
-/* Sidebar and meta near-invisible in immersive dim */
-body.notes-dim-immersive .notes-sidebar {
-  opacity: 0.03 !important;
-}
-body.notes-dim-immersive .notes-sidebar:hover {
-  opacity: 0.50 !important;
-}
-body.notes-dim-immersive .notes-breadcrumb {
-  opacity: 0.04;
-}
-body.notes-dim-immersive .notes-breadcrumb:hover {
-  opacity: 0.60;
-}
-body.notes-dim-immersive .notes-meta-row {
-  opacity: 0.04 !important;
-}
-body.notes-dim-immersive .notes-meta-row:hover {
-  opacity: 0.65 !important;
-}
 
 /* ── Notes ToC panel ─────────────────────────────────────────────────
    Hidden by default; toggled via the vertical pill on the right edge. */

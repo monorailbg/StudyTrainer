@@ -45,14 +45,6 @@ export const ja: Record<string, string> = {
     'Supabase が設定されていません — アップロードしたファイルは共有されません。',
   'Local-only mode': 'ローカルのみモード',
   'Dismiss': '閉じる',
-  'Exit dim mode': '暗めモードを終了',
-  'Dim reading mode': '暗め読書モード',
-  'Toggle dim reading mode': '暗め読書モードを切り替え',
-  'DIMMED': '暗め オン',
-  'DIM': '暗め',
-  'Dimmed': '暗め中',
-  'Dim': '暗め',
-
   // ── Home / dashboard ──────────────────────────────────────────────────────
   'Cards': 'カード',
   'Explore': '見る',

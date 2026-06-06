@@ -1,10 +1,8 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
 import { LanguageProvider } from './context/LanguageContext';
 import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
 import { CloudStatusBadge } from './components/CloudStatusBadge';
-import { useDimMode } from './store/useDimMode';
 import Home from './pages/Home';
 import MindMapPage from './pages/MindMap';
 import Flashcards from './pages/Flashcards';
@@ -30,19 +28,6 @@ function AnimatedRoutes() {
   );
 }
 
-function DimBodyClass() {
-  const { pathname } = useLocation();
-  const dim = useDimMode(s => s.dim);
-  const show = ['/notes', '/flashcards', '/quiz', '/subject/'].some(p => pathname.startsWith(p));
-
-  useEffect(() => {
-    document.body.classList.toggle('app-dim-active', dim && show);
-    return () => { document.body.classList.remove('app-dim-active'); };
-  }, [dim, show]);
-
-  return null;
-}
-
 export default function App() {
   return (
     <LanguageProvider>
@@ -50,7 +35,6 @@ export default function App() {
         <BrowserRouter>
           <Navbar />
           <AnimatedRoutes />
-          <DimBodyClass />
           <CloudStatusBadge />
         </BrowserRouter>
       </ToastProvider>
