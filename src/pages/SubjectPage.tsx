@@ -1049,7 +1049,7 @@ export default function SubjectPage() {
       </div>
 
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}
-      <div className="md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: '#0D1117' }}>
+      <div className="subject-mobile-tabs md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: '#0D1117' }}>
         {([
           { id: 'dashboard',  label: ts('Overview'), dot: false },
           { id: 'upload',     label: ts('Files'),    dot: false },
