@@ -559,12 +559,13 @@ h1, h2, h3 {
 .page-notes-reading .notes-sidebar:hover {
   opacity: 0.70;
 }
+/* nav dimming handled by overlay in dim mode; base reading mode uses opacity */
 body.notes-reading nav {
-  opacity: 0.07;
+  opacity: 0.12;
   transition: opacity 200ms ease;
 }
 body.notes-reading nav:hover {
-  opacity: 0.75;
+  opacity: 0.80;
 }
 .page-notes-reading .notes-meta-row {
   opacity: 0.15;
@@ -596,21 +597,65 @@ body.notes-reading nav:hover {
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
-/* Combined with dim mode — super-dark chrome (~95% dark) */
-.page-notes-reading.dim-active .notes-sidebar { opacity: 0.04; }
-.page-notes-reading.dim-active .notes-sidebar:hover { opacity: 0.55; }
-.page-notes-reading .notes-breadcrumb { transition: opacity 200ms ease; }
-.page-notes-reading.dim-active .notes-breadcrumb { opacity: 0.05; }
-.page-notes-reading.dim-active .notes-breadcrumb:hover { opacity: 0.70; }
-.page-notes-reading.dim-active .notes-meta-row { opacity: 0.08; }
+/* ── Immersive dim overlay ───────────────────────────────────────────
+   When dim mode is active while reading a note (or studying flashcards),
+   a full-screen overlay covers EVERYTHING including the navbar.
+   The notes content is elevated above the overlay via z-index.
+   We must remove the filter from study-dim-root so it stops creating
+   a stacking context that would trap the notes content below the overlay. */
 
-/* Dim mode: super-dark navbar + sidebar (~95% dark) */
-body.notes-dim-immersive nav { opacity: 0.05; }
-body.notes-dim-immersive nav:hover { opacity: 0.60; }
-body.flashcards-dim-immersive nav { opacity: 0.05; }
-body.flashcards-dim-immersive nav:hover { opacity: 0.60; }
-body.flashcards-dim-immersive .flashcards-sidebar { opacity: 0.04; }
-body.flashcards-dim-immersive .flashcards-sidebar:hover { opacity: 0.55; }
+body.notes-dim-immersive::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 60;
+  pointer-events: none;
+  transition: opacity 280ms ease;
+}
+
+/* Remove stacking context so notes content can escape above the overlay */
+body.notes-dim-immersive .study-dim-root {
+  filter: none !important;
+}
+
+/* Notes content floats above the overlay */
+body.notes-dim-immersive .notes-content-main {
+  position: relative;
+  z-index: 61;
+}
+
+/* ToC panel and toggle also above overlay */
+body.notes-dim-immersive .notes-toc-panel {
+  z-index: 62 !important;
+}
+body.notes-dim-immersive .notes-toc-toggle {
+  z-index: 62 !important;
+}
+
+/* Flashcard overlay — same technique */
+body.flashcards-dim-immersive::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 60;
+  pointer-events: none;
+  transition: opacity 280ms ease;
+}
+body.flashcards-dim-immersive .study-dim-root {
+  filter: none !important;
+}
+body.flashcards-dim-immersive .flashcard-card {
+  position: relative;
+  z-index: 61;
+}
+body.flashcards-dim-immersive .flashcard-controls,
+body.flashcards-dim-immersive .flashcard-meta,
+body.flashcards-dim-immersive .flashcard-progress-bar-track {
+  position: relative;
+  z-index: 61;
+}
 
 /* ── Notes ToC panel ─────────────────────────────────────────────────
    Hidden by default; toggled via the vertical pill on the right edge. */
@@ -679,11 +724,11 @@ body.flashcards-dim-immersive .flashcards-sidebar:hover { opacity: 0.55; }
   opacity: 0.65;
 }
 body.flashcards-session nav {
-  opacity: 0.06;
+  opacity: 0.08;
   transition: opacity 200ms ease;
 }
 body.flashcards-session nav:hover {
-  opacity: 0.70;
+  opacity: 0.75;
 }
 .page-flashcards-session .flashcard-progress-bar-track {
   opacity: 0.15;
