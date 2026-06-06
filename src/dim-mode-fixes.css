@@ -7,6 +7,47 @@ body.flashcards-dim-immersive::before {
   display: none !important;
 }
 
+/* Normal reading mode should look normal. The original notes-reading rules faded
+   the whole page even when the dim toggle was off. */
+body.notes-reading:not(.notes-dim-immersive) nav,
+body.notes-reading:not(.notes-dim-immersive) nav + div,
+body.notes-reading:not(.notes-dim-immersive) .notes-sidebar,
+body.notes-reading:not(.notes-dim-immersive) .notes-meta-row {
+  opacity: 1 !important;
+}
+
+body.notes-reading:not(.notes-dim-immersive) nav:hover,
+body.notes-reading:not(.notes-dim-immersive) .notes-sidebar:hover,
+body.notes-reading:not(.notes-dim-immersive) .notes-meta-row:hover {
+  opacity: 1 !important;
+}
+
+/* Subject -> Notes and All Notes both render NotesViewer. When the reader is
+   present, normalize the outer subject-page padding so the layout matches. */
+main.study-dim-root:has(.notes-content-main) {
+  padding: 0 !important;
+}
+
+main.study-dim-root:has(.notes-content-main) > div > .flex.items-center.justify-between.mb-5 {
+  margin: 0 !important;
+  padding: 18px 28px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* The scroll progress strip should not sit as a heavy sticky overlay above the
+   note. Keep it present, but static and quiet. */
+div:has(> .notes-toc-toggle) > div[style*="position: sticky"] {
+  position: static !important;
+  height: 1px !important;
+  z-index: 1 !important;
+  opacity: 0.38 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+div:has(> .notes-toc-toggle) > div[style*="position: sticky"] > div {
+  opacity: 0.75 !important;
+}
+
 body.notes-dim-immersive nav,
 body.flashcards-dim-immersive nav {
   opacity: 0.08 !important;
@@ -30,6 +71,14 @@ body.flashcards-dim-immersive nav + div {
 body.notes-dim-immersive nav + div:hover,
 body.flashcards-dim-immersive nav + div:hover {
   opacity: 0.22 !important;
+}
+
+body.notes-dim-immersive .notes-sidebar {
+  opacity: 0.12 !important;
+}
+
+body.notes-dim-immersive .notes-sidebar:hover {
+  opacity: 0.45 !important;
 }
 
 body.notes-dim-immersive .notes-meta-row {
