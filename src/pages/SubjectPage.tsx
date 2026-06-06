@@ -694,7 +694,9 @@ export default function SubjectPage() {
   };
 
   const toggleFileSelection = (fileId: string) => {
-    setSelectedFileIds(prev => prev.includes(fileId) ? [] : [fileId]);
+    setSelectedFileIds(prev =>
+      prev.includes(fileId) ? prev.filter(fid => fid !== fileId) : [...prev, fileId]
+    );
   };
 
   const removeQuiz = (quizId: string) => {
@@ -1170,7 +1172,7 @@ export default function SubjectPage() {
                         icon={<IconFile />}
                         label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
                         sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : ts('Image')}`}
-                        active={view === 'upload'}
+                        active={isFileSelected}
                         dot={isFileSelected}
                         dotColor={subject.color}
                         onClick={() => { setSelectedFileIds([file.id]); setView('upload'); setFullFocus(false); }}
