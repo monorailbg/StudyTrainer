@@ -596,12 +596,21 @@ h1, h2, h3 {
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
-/* Combined with dim mode */
+/* Combined with dim mode — super-dark navbar + breadcrumb (~95%) */
 .page-notes-reading.dim-active .notes-sidebar { opacity: 0.04; }
 .page-notes-reading.dim-active .notes-sidebar:hover { opacity: 0.55; }
-.page-notes-reading.dim-active nav { opacity: 0.04; }
+.page-notes-reading.dim-active nav { opacity: 0.05; }
 .page-notes-reading.dim-active nav:hover { opacity: 0.60; }
+.page-notes-reading .notes-breadcrumb { transition: opacity 200ms ease; }
+.page-notes-reading.dim-active .notes-breadcrumb { opacity: 0.05; }
+.page-notes-reading.dim-active .notes-breadcrumb:hover { opacity: 0.70; }
 .page-notes-reading.dim-active .notes-meta-row { opacity: 0.08; }
+
+/* Dim mode on flashcards — super-dark navbar */
+.page-flashcards-session.dim-mode nav { opacity: 0.05 !important; }
+.page-flashcards-session.dim-mode nav:hover { opacity: 0.60 !important; }
+.page-flashcards-session.dim-mode .flashcards-sidebar { opacity: 0.04; }
+.page-flashcards-session.dim-mode .flashcards-sidebar:hover { opacity: 0.55; }
 
 /* ── Notes ToC panel ─────────────────────────────────────────────────
    Hidden by default; toggled via the vertical pill on the right edge. */
@@ -700,4 +709,11 @@ h1, h2, h3 {
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 8px 48px rgba(0, 0, 0, 0.80),
     0 0 80px rgba(72, 199, 142, 0.06);
+}
+
+/* ── Responsive: notes section cards ────────────────────────────────── */
+@media (max-width: 768px) {
+  .notes-section-card { padding: 20px 18px !important; }
+  .notes-section-body,
+  .notes-section-card ul li { max-width: none !important; }
 }

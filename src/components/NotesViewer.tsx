@@ -363,42 +363,50 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
       data-section-idx={String(index)}
       className="notes-section-card"
       style={{
-        marginBottom: '18px',
-        borderRadius: '14px',
-        border: `1px solid ${understood ? color + '55' : '#21262D'}`,
-        background: understood ? color + '0a' : '#161B22',
+        marginBottom: '24px',
+        borderRadius: '16px',
+        border: `1px solid ${understood ? 'rgba(72,199,142,0.35)' : 'rgba(255,255,255,0.075)'}`,
+        background: understood ? 'rgba(72,199,142,0.04)' : 'rgba(255,255,255,0.030)',
         transition: 'border-color 0.2s ease, background 0.2s ease',
         scrollMarginTop: '16px',
+        boxShadow: '0 2px 20px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.02)',
       }}
     >
       {/* Section header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '11px', padding: '22px 28px 16px' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '14px',
+        padding: '24px 36px 0',
+        marginBottom: '20px', paddingBottom: '16px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
         <div style={{
-          flexShrink: 0, width: '26px', height: '26px', borderRadius: '7px',
-          background: '#1D3461', border: '1px solid rgba(61,126,255,0.22)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1px',
+          flexShrink: 0, width: '32px', height: '32px', minWidth: '32px', borderRadius: '8px',
+          background: 'rgba(99,102,241,0.20)', border: '1px solid rgba(99,102,241,0.35)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '9px', fontWeight: 700, color: '#93B8FF' }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', fontWeight: 700, color: 'rgba(99,102,241,0.90)', fontVariantNumeric: 'tabular-nums' }}>
             {num}
           </span>
         </div>
 
         <h3 style={{
-          flex: 1, margin: 0, fontSize: '15px', fontWeight: 600,
-          color: '#E6EDF3', fontFamily: 'Sora, sans-serif', lineHeight: 1.4,
+          flex: 1, margin: 0, fontSize: '17px', fontWeight: 700,
+          color: 'rgba(255,255,255,0.95)', fontFamily: 'Sora, sans-serif', lineHeight: 1.3,
+          letterSpacing: '-0.01em',
         }}>
           {section.heading}
         </h3>
 
-        <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
           <button
             onClick={onToggleCollapsed}
             style={{
-              background: collapsed ? color + '22' : 'transparent',
-              border: `1px solid ${collapsed ? color + '55' : '#30363D'}`,
-              borderRadius: '7px', padding: '3px 8px',
-              cursor: 'pointer', fontSize: '10px', fontWeight: 700,
-              color: collapsed ? color : '#484F58', letterSpacing: '0.04em',
+              background: collapsed ? 'rgba(255,255,255,0.06)' : 'transparent',
+              border: `1px solid ${collapsed ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.10)'}`,
+              borderRadius: '6px', padding: '4px 10px',
+              cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+              color: collapsed ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)',
+              letterSpacing: '0.06em', whiteSpace: 'nowrap',
               transition: 'all 0.15s',
             }}
           >
@@ -408,15 +416,15 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
             onClick={onToggleUnderstood}
             title={understood ? ts('Mark as not understood') : ts('Got it')}
             style={{
-              width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0,
-              border: `1px solid ${understood ? color + '60' : '#30363D'}`,
-              background: understood ? color + '22' : 'transparent',
-              color: understood ? color : '#484F58',
+              width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0,
+              border: `1px solid ${understood ? 'rgba(72,199,142,0.40)' : 'rgba(255,255,255,0.10)'}`,
+              background: understood ? 'rgba(72,199,142,0.15)' : 'transparent',
+              color: understood ? 'rgba(72,199,142,0.90)' : 'rgba(255,255,255,0.20)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.15s',
             }}
           >
-            <svg viewBox="0 0 12 12" width="11" height="11" fill="none">
+            <svg viewBox="0 0 12 12" width="12" height="12" fill="none">
               <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
@@ -424,10 +432,11 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
       </div>
 
       {/* Body */}
-      <div style={{ padding: '0 28px 24px 28px' }}>
+      <div style={{ padding: '0 36px 28px 36px' }}>
         <p className="notes-section-body" style={{
-          margin: '0 0 13px', fontSize: '15px', lineHeight: 1.78,
-          color: 'rgba(230,237,243,0.83)',
+          margin: '0 0 20px', fontSize: '15px', lineHeight: 1.80,
+          color: 'rgba(255,255,255,0.82)', fontWeight: 400,
+          maxWidth: '640px', letterSpacing: '0.01em',
         }}>
           {collapsed ? (
             <>
@@ -448,40 +457,46 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
         {/* Formula block */}
         {!collapsed && section.formula && (
           <div style={{
-            margin: '0 0 13px', padding: '10px 14px', borderRadius: '9px',
-            background: '#0D1117', border: `1px solid ${color}30`,
+            margin: '16px 0 20px', padding: '16px 20px', borderRadius: '8px',
+            background: 'rgba(0,0,0,0.35)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderLeft: '3px solid rgba(72,199,142,0.50)',
             fontFamily: 'JetBrains Mono, monospace', fontSize: '13px',
-            color: color, lineHeight: 1.6,
-            display: 'flex', alignItems: 'flex-start', gap: '8px',
+            color: 'rgba(72,199,142,0.90)', lineHeight: 1.7,
+            display: 'flex', alignItems: 'flex-start', gap: '10px',
+            overflowX: 'auto',
           }}>
-            <span style={{ opacity: 0.6, fontSize: '11px', marginTop: '1px', flexShrink: 0 }}>∑</span>
-            <span>{section.formula}</span>
+            <span style={{ opacity: 0.5, fontSize: '12px', marginTop: '1px', flexShrink: 0, color: 'rgba(255,255,255,0.35)' }}>∑</span>
+            <span style={{ whiteSpace: 'pre-wrap' }}>{section.formula}</span>
           </div>
         )}
 
         {/* Diagram block */}
         {!collapsed && section.diagram && (
           <div style={{
-            margin: '0 0 13px', padding: '10px 14px', borderRadius: '9px',
-            background: '#0D1117', border: '1px solid #30363D',
-            fontFamily: 'JetBrains Mono, monospace', fontSize: '12px',
-            color: '#8B949E', lineHeight: 1.7, whiteSpace: 'pre-wrap',
-            display: 'flex', alignItems: 'flex-start', gap: '8px',
+            margin: '16px 0 20px', padding: '16px 20px', borderRadius: '8px',
+            background: 'rgba(0,0,0,0.35)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderLeft: '3px solid rgba(255,255,255,0.15)',
+            fontFamily: 'JetBrains Mono, monospace', fontSize: '13px',
+            color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, whiteSpace: 'pre-wrap',
+            display: 'flex', alignItems: 'flex-start', gap: '10px',
+            overflowX: 'auto',
           }}>
-            <span style={{ opacity: 0.5, fontSize: '11px', marginTop: '1px', flexShrink: 0 }}>→</span>
+            <span style={{ opacity: 0.4, fontSize: '12px', marginTop: '1px', flexShrink: 0, color: 'rgba(255,255,255,0.35)' }}>→</span>
             <span>{section.diagram}</span>
           </div>
         )}
 
         {!collapsed && hasKeyPoints && (
-          <ul style={{ margin: '0 0 13px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+          <ul style={{ margin: '16px 0 4px', padding: '0 0 0 4px', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {(section.keyPoints ?? []).map((pt, j) => (
-              <li key={j} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <li key={j} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', maxWidth: '640px' }}>
                 <span style={{
-                  flexShrink: 0, width: '5px', height: '5px', borderRadius: '50%',
-                  background: color, opacity: 0.6, marginTop: '9px',
+                  flexShrink: 0, width: '5px', height: '5px', minWidth: '5px', borderRadius: '50%',
+                  background: 'rgba(72,199,142,0.60)', marginTop: '8px',
                 }} />
-                <span style={{ fontSize: '14px', lineHeight: 1.68, color: 'rgba(230,237,243,0.74)' }}>
+                <span style={{ fontSize: '14px', lineHeight: 1.65, color: 'rgba(255,255,255,0.72)' }}>
                   <RichText text={pt} accent={color} />
                 </span>
               </li>
@@ -490,24 +505,26 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
         )}
 
         {!collapsed && (
-          <button
-            onClick={() => setRecallOpen(v => !v)}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-              fontSize: '11px', fontWeight: 500, color: '#484F58',
-              display: 'flex', alignItems: 'center', gap: '5px',
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = color; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#484F58'; }}
-          >
-            <svg viewBox="0 0 10 10" width="10" height="10" fill="none">
-              <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M3.5 4c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5c0 .6-.37 1.1-.9 1.35L5 5.7V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              <circle cx="5" cy="7.75" r=".4" fill="currentColor" />
-            </svg>
-            {recallOpen ? ts('Hide recall') : ts('Test yourself')}
-          </button>
+          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <button
+              onClick={() => setRecallOpen(v => !v)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.28)',
+                display: 'flex', alignItems: 'center', gap: '6px', width: 'fit-content',
+                transition: 'color 0.15s', letterSpacing: '0.02em',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(212,175,55,0.80)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.28)'; }}
+            >
+              <svg viewBox="0 0 10 10" width="14" height="14" fill="none" style={{ opacity: 0.5 }}>
+                <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M3.5 4c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5c0 .6-.37 1.1-.9 1.35L5 5.7V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <circle cx="5" cy="7.75" r=".4" fill="currentColor" />
+              </svg>
+              {recallOpen ? ts('Hide recall') : ts('Test yourself')}
+            </button>
+          </div>
         )}
 
         {!collapsed && recallOpen && (
@@ -871,14 +888,15 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
 
             <h2 className="notes-title" style={{
               margin: '0 0 12px',
-              fontFamily: 'Sora, sans-serif', fontWeight: 700,
-              fontSize: '28px', color: '#E6EDF3', lineHeight: 1.3,
+              fontFamily: 'Sora, sans-serif', fontWeight: 800,
+              fontSize: '26px', color: '#E6EDF3', lineHeight: 1.3,
+              letterSpacing: '-0.02em',
             }}>
               {notes.title}
             </h2>
             <p className="notes-section-body" style={{
-              margin: '0 0 40px', fontSize: '15px', lineHeight: 1.7,
-              color: 'rgba(255,255,255,0.70)', maxWidth: '660px',
+              margin: '0 0 40px', fontSize: '14px', lineHeight: 1.7,
+              color: 'rgba(255,255,255,0.48)', maxWidth: '600px',
             }}>
               <RichText text={notes.summary} accent={color} />
             </p>
