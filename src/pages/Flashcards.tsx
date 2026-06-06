@@ -137,6 +137,14 @@ export default function Flashcards() {
   const activeSubject = activeSet ? subjectMap.get(activeSet.subjectId) : undefined;
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
+  useEffect(() => {
+    const session = !!activeSet;
+    const immersive = session && dim;
+    document.body.classList.toggle('flashcards-session', session);
+    document.body.classList.toggle('flashcards-dim-immersive', immersive);
+    return () => { document.body.classList.remove('flashcards-session', 'flashcards-dim-immersive'); };
+  }, [activeSet, dim]);
+
   const rootClasses = [
     'study-dim-root',
     dim && 'dim-mode',

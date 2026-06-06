@@ -559,11 +559,11 @@ h1, h2, h3 {
 .page-notes-reading .notes-sidebar:hover {
   opacity: 0.70;
 }
-.page-notes-reading nav {
+body.notes-reading nav {
   opacity: 0.07;
   transition: opacity 200ms ease;
 }
-.page-notes-reading nav:hover {
+body.notes-reading nav:hover {
   opacity: 0.75;
 }
 .page-notes-reading .notes-meta-row {
@@ -596,21 +596,21 @@ h1, h2, h3 {
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
-/* Combined with dim mode — super-dark navbar + breadcrumb (~95%) */
+/* Combined with dim mode — super-dark chrome (~95% dark) */
 .page-notes-reading.dim-active .notes-sidebar { opacity: 0.04; }
 .page-notes-reading.dim-active .notes-sidebar:hover { opacity: 0.55; }
-.page-notes-reading.dim-active nav { opacity: 0.05; }
-.page-notes-reading.dim-active nav:hover { opacity: 0.60; }
 .page-notes-reading .notes-breadcrumb { transition: opacity 200ms ease; }
 .page-notes-reading.dim-active .notes-breadcrumb { opacity: 0.05; }
 .page-notes-reading.dim-active .notes-breadcrumb:hover { opacity: 0.70; }
 .page-notes-reading.dim-active .notes-meta-row { opacity: 0.08; }
 
-/* Dim mode on flashcards — super-dark navbar */
-.page-flashcards-session.dim-mode nav { opacity: 0.05 !important; }
-.page-flashcards-session.dim-mode nav:hover { opacity: 0.60 !important; }
-.page-flashcards-session.dim-mode .flashcards-sidebar { opacity: 0.04; }
-.page-flashcards-session.dim-mode .flashcards-sidebar:hover { opacity: 0.55; }
+/* Dim mode: super-dark navbar + sidebar (~95% dark) */
+body.notes-dim-immersive nav { opacity: 0.05; }
+body.notes-dim-immersive nav:hover { opacity: 0.60; }
+body.flashcards-dim-immersive nav { opacity: 0.05; }
+body.flashcards-dim-immersive nav:hover { opacity: 0.60; }
+body.flashcards-dim-immersive .flashcards-sidebar { opacity: 0.04; }
+body.flashcards-dim-immersive .flashcards-sidebar:hover { opacity: 0.55; }
 
 /* ── Notes ToC panel ─────────────────────────────────────────────────
    Hidden by default; toggled via the vertical pill on the right edge. */
@@ -678,11 +678,11 @@ h1, h2, h3 {
 .page-flashcards-session .flashcards-sidebar:hover {
   opacity: 0.65;
 }
-.page-flashcards-session nav {
+body.flashcards-session nav {
   opacity: 0.06;
   transition: opacity 200ms ease;
 }
-.page-flashcards-session nav:hover {
+body.flashcards-session nav:hover {
   opacity: 0.70;
 }
 .page-flashcards-session .flashcard-progress-bar-track {

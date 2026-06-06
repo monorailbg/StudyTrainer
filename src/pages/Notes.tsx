@@ -123,6 +123,14 @@ export default function Notes() {
   const activeSubject = activeNote ? subjectMap.get(activeNote.subjectId) : undefined;
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
+  useEffect(() => {
+    const reading = !!activeNote;
+    const immersive = reading && dim;
+    document.body.classList.toggle('notes-reading', reading);
+    document.body.classList.toggle('notes-dim-immersive', immersive);
+    return () => { document.body.classList.remove('notes-reading', 'notes-dim-immersive'); };
+  }, [activeNote, dim]);
+
   const rootClasses = [
     'study-dim-root',
     dim && 'dim-mode',
