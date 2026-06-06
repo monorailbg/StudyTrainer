@@ -49,7 +49,8 @@ div:has(> .notes-toc-toggle) > div[style*="position: sticky"] > div {
 }
 
 body.notes-dim-immersive nav,
-body.flashcards-dim-immersive nav {
+body.flashcards-dim-immersive nav,
+body:has(main.study-dim-root.dim-mode .notes-content-main) nav {
   opacity: 0.08 !important;
   background: #010101 !important;
   border-bottom-color: rgba(255, 255, 255, 0.015) !important;
@@ -57,45 +58,61 @@ body.flashcards-dim-immersive nav {
 }
 
 body.notes-dim-immersive nav:hover,
-body.flashcards-dim-immersive nav:hover {
+body.flashcards-dim-immersive nav:hover,
+body:has(main.study-dim-root.dim-mode .notes-content-main) nav:hover {
   opacity: 0.22 !important;
 }
 
 body.notes-dim-immersive nav + div,
-body.flashcards-dim-immersive nav + div {
+body.flashcards-dim-immersive nav + div,
+body:has(main.study-dim-root.dim-mode .notes-content-main) nav + div {
   opacity: 0.08 !important;
   background: #010101 !important;
   border-bottom-color: rgba(255, 255, 255, 0.015) !important;
 }
 
 body.notes-dim-immersive nav + div:hover,
-body.flashcards-dim-immersive nav + div:hover {
+body.flashcards-dim-immersive nav + div:hover,
+body:has(main.study-dim-root.dim-mode .notes-content-main) nav + div:hover {
   opacity: 0.22 !important;
 }
 
-body.notes-dim-immersive .notes-sidebar {
+body.notes-dim-immersive .notes-sidebar,
+body:has(main.study-dim-root.dim-mode .notes-content-main) aside {
   opacity: 0.12 !important;
 }
 
-body.notes-dim-immersive .notes-sidebar:hover {
+body.notes-dim-immersive .notes-sidebar:hover,
+body:has(main.study-dim-root.dim-mode .notes-content-main) aside:hover {
   opacity: 0.45 !important;
 }
 
-body.notes-dim-immersive .notes-meta-row {
+main.study-dim-root.dim-mode:has(.notes-content-main) {
+  filter: none !important;
+  background: #07070f !important;
+}
+
+body.notes-dim-immersive .notes-meta-row,
+main.study-dim-root.dim-mode:has(.notes-content-main) .notes-meta-row {
   opacity: 1 !important;
 }
 
 body.notes-dim-immersive .notes-title,
 body.notes-dim-immersive .notes-meta-row > p,
-body.notes-dim-immersive .notes-section-body {
+body.notes-dim-immersive .notes-section-body,
+main.study-dim-root.dim-mode:has(.notes-content-main) .notes-title,
+main.study-dim-root.dim-mode:has(.notes-content-main) .notes-meta-row > p,
+main.study-dim-root.dim-mode:has(.notes-content-main) .notes-section-body {
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
-body.notes-dim-immersive .notes-title {
+body.notes-dim-immersive .notes-title,
+main.study-dim-root.dim-mode:has(.notes-content-main) .notes-title {
   color: rgba(255, 255, 255, 0.96) !important;
 }
 
 body.notes-dim-immersive .notes-content-main,
-body.flashcards-dim-immersive .flashcard-card {
+body.flashcards-dim-immersive .flashcard-card,
+main.study-dim-root.dim-mode:has(.notes-content-main) .notes-content-main {
   z-index: auto !important;
 }
