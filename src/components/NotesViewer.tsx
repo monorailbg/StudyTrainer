@@ -361,6 +361,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
     <div
       ref={ref}
       data-section-idx={String(index)}
+      className="notes-section-card"
       style={{
         marginBottom: '18px',
         borderRadius: '14px',
@@ -424,7 +425,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
 
       {/* Body */}
       <div style={{ padding: '0 19px 17px 19px' }}>
-        <p style={{
+        <p className="notes-section-body" style={{
           margin: '0 0 13px', fontSize: '15px', lineHeight: 1.78,
           color: 'rgba(230,237,243,0.83)',
         }}>
@@ -743,10 +744,10 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       <div style={{ display: 'flex', gap: '48px', padding: '36px 28px 80px', justifyContent: 'center' }}>
 
         {/* ── Content column ── */}
-        <div style={{ maxWidth: fullFocus ? '100%' : '780px', width: '100%', minWidth: 0 }}>
+        <div className="notes-content-main" style={{ maxWidth: fullFocus ? '100%' : '780px', width: '100%', minWidth: 0 }}>
 
           {/* Note metadata + completion header */}
-          <div style={{ marginBottom: '28px' }}>
+          <div className="notes-meta-row" style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
               <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('~{min} min read', { min: readTime })}</span>
               <span style={{ width: '3px', height: '3px', background: '#30363D', borderRadius: '50%' }} />
@@ -813,7 +814,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
               </button>
             </div>
 
-            <h2 style={{
+            <h2 className="notes-title" style={{
               margin: '0 0 10px',
               fontFamily: 'Sora, sans-serif', fontWeight: 700,
               fontSize: '1.45rem', color: '#E6EDF3', lineHeight: 1.3,
@@ -884,7 +885,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
         </div>
 
         {/* ── ToC sidebar (xl screens only) ── */}
-        <div className="hidden xl:block" style={{ width: '168px', flexShrink: 0 }}>
+        <div className="notes-toc hidden xl:block" style={{ width: '168px', flexShrink: 0 }}>
           <div style={{ position: 'sticky', top: '20px' }}>
             <p style={{
               margin: '0 0 8px', fontSize: '9px', fontWeight: 700,

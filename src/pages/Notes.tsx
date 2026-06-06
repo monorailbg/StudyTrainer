@@ -5,7 +5,6 @@ import { useResolvedSubjects } from '../store/useSubjects';
 import { useDimMode } from '../store/useDimMode';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
-import { DimModeToggle } from '../components/DimModeToggle';
 import { NotesViewer } from '../components/NotesViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
 import { useLang } from '../context/LanguageContext';
@@ -124,13 +123,18 @@ export default function Notes() {
   const activeSubject = activeNote ? subjectMap.get(activeNote.subjectId) : undefined;
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
+  const rootClasses = [
+    'study-dim-root',
+    dim && 'dim-mode',
+    activeNote && 'page-notes-reading',
+    activeNote && dim && 'dim-active',
+  ].filter(Boolean).join(' ');
+
   return (
-    <>
-    <DimModeToggle />
-    <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
+    <div className={rootClasses} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
+      <aside className="notes-sidebar hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Notes')}
         </div>
@@ -204,6 +208,5 @@ export default function Notes() {
         )}
       </main>
     </div>
-    </>
   );
 }

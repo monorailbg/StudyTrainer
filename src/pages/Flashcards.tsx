@@ -4,7 +4,6 @@ import { isFirebaseConfigured, getAllCloudFlashcardSets, renameCloudFlashcardSet
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useDimMode } from '../store/useDimMode';
 import { useActivity } from '../store/useActivity';
-import { DimModeToggle } from '../components/DimModeToggle';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
 import { useLang } from '../context/LanguageContext';
@@ -139,8 +138,6 @@ export default function Flashcards() {
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
   return (
-    <>
-    <DimModeToggle />
     <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
@@ -237,6 +234,5 @@ export default function Flashcards() {
         )}
       </main>
     </div>
-    </>
   );
 }

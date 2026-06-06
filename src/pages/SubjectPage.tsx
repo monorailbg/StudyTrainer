@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore';
 import { useActivity } from '../store/useActivity';
 import { useToast } from '../components/Toast';
 import { generateFromFile } from '../lib/geminiGenerator';
-import { DimModeToggle } from '../components/DimModeToggle';
+
 import { useDimMode } from '../store/useDimMode';
 import { useExamDates } from '../store/useExamDates';
 import {
@@ -995,7 +995,7 @@ export default function SubjectPage() {
 
       {/* Dim toggle — rendered outside <main> so its fixed position is never broken
           by the dim-mode CSS filter applied to the scroll container. */}
-      {(view === 'notes' || view === 'flashcards' || view === 'quiz') && <DimModeToggle />}
+      {/* DimModeToggle is rendered globally in App.tsx */}
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{

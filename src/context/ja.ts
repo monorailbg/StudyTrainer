@@ -50,6 +50,8 @@ export const ja: Record<string, string> = {
   'Toggle dim reading mode': '暗め読書モードを切り替え',
   'DIMMED': '暗め オン',
   'DIM': '暗め',
+  'Dimmed': '暗め中',
+  'Dim': '暗め',
 
   // ── Home / dashboard ──────────────────────────────────────────────────────
   'Cards': 'カード',

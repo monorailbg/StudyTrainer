@@ -4,6 +4,7 @@ import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
 import { ApiKeyBanner } from './components/ApiKeyBanner';
 import { CloudStatusBadge } from './components/CloudStatusBadge';
+import { DimModeToggle } from './components/DimModeToggle';
 import Home from './pages/Home';
 import MindMapPage from './pages/MindMap';
 import Flashcards from './pages/Flashcards';
@@ -12,7 +13,6 @@ import Quiz from './pages/Quiz';
 import SubjectPage from './pages/SubjectPage';
 import Generate from './pages/Generate';
 
-// Keyed wrapper so each route re-triggers the entrance transition.
 function AnimatedRoutes() {
   const location = useLocation();
   return (
@@ -30,6 +30,13 @@ function AnimatedRoutes() {
   );
 }
 
+function GlobalDimToggle() {
+  const { pathname } = useLocation();
+  const show = ['/notes', '/flashcards', '/quiz', '/subject/'].some(p => pathname.startsWith(p));
+  if (!show) return null;
+  return <DimModeToggle />;
+}
+
 export default function App() {
   return (
     <LanguageProvider>
@@ -38,6 +45,7 @@ export default function App() {
           <Navbar />
           <ApiKeyBanner />
           <AnimatedRoutes />
+          <GlobalDimToggle />
           <CloudStatusBadge />
         </BrowserRouter>
       </ToastProvider>

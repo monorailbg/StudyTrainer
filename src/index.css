@@ -507,3 +507,121 @@ h1, h2, h3 {
   filter: brightness(0.80) saturate(0.80) contrast(0.98);
   background-color: #0a0a0f !important;
 }
+
+/* ── Dim toggle button ──────────────────────────────────────────────
+   Fixed bottom-left pill, rendered once in the root layout. */
+.dim-mode-toggle {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 20, 30, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: all 180ms ease;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.55);
+}
+.dim-mode-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(30, 30, 45, 0.90);
+}
+.dim-mode-toggle.active {
+  border-color: rgba(212, 175, 55, 0.50);
+  color: rgba(212, 175, 55, 0.90);
+  background: rgba(212, 175, 55, 0.08);
+}
+.dim-mode-toggle.active:hover {
+  border-color: rgba(212, 175, 55, 0.65);
+  background: rgba(212, 175, 55, 0.14);
+}
+
+/* ── Notes reading: chrome dimming ──────────────────────────────────
+   When a note is open for reading, fade the surrounding chrome so the
+   content column feels like a lit stage. Hover restores usability. */
+.page-notes-reading .notes-sidebar {
+  opacity: 0.25;
+  transition: opacity 200ms ease;
+}
+.page-notes-reading .notes-sidebar:hover {
+  opacity: 0.75;
+}
+
+.page-notes-reading nav {
+  opacity: 0.20;
+  transition: opacity 200ms ease;
+}
+.page-notes-reading nav:hover {
+  opacity: 0.85;
+}
+
+.page-notes-reading .notes-toc {
+  opacity: 0.22;
+  transition: opacity 200ms ease;
+}
+.page-notes-reading .notes-toc:hover {
+  opacity: 0.80;
+}
+
+.page-notes-reading .notes-meta-row {
+  opacity: 0.35;
+  transition: opacity 200ms ease;
+}
+.page-notes-reading .notes-meta-row:hover {
+  opacity: 0.85;
+}
+
+/* Elevate note content */
+.page-notes-reading .notes-content-main {
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    rgba(255, 255, 255, 0.015) 0%,
+    transparent 70%
+  );
+}
+.page-notes-reading .notes-section-card {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.40);
+}
+.page-notes-reading .notes-title {
+  color: rgba(255, 255, 255, 1.0);
+}
+.page-notes-reading .notes-section-body {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* ── Notes reading + dim mode combined ─────────────────────────────
+   When both chrome dimming and dim mode are active, push the chrome
+   even further back. */
+.page-notes-reading .study-dim-root.dim-mode ~ * .notes-sidebar,
+.page-notes-reading.dim-active .notes-sidebar {
+  opacity: 0.10;
+}
+.page-notes-reading.dim-active .notes-sidebar:hover {
+  opacity: 0.55;
+}
+.page-notes-reading.dim-active nav {
+  opacity: 0.08;
+}
+.page-notes-reading.dim-active nav:hover {
+  opacity: 0.60;
+}
+.page-notes-reading.dim-active .notes-toc {
+  opacity: 0.10;
+}
+.page-notes-reading.dim-active .notes-toc:hover {
+  opacity: 0.55;
+}
+.page-notes-reading.dim-active .notes-meta-row {
+  opacity: 0.15;
+}
