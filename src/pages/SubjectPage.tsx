@@ -724,8 +724,8 @@ export default function SubjectPage() {
   const { dates: examDatesList, setDate: setExamDate, removeDate: removeExamDate } = useExamDates();
 
   useEffect(() => {
-    if (view !== 'notes' && fullFocus) setFullFocus(false);
-  }, [view]);
+    if (fullFocus && (view !== 'notes' || !activeNoteId)) setFullFocus(false);
+  }, [view, activeNoteId]);
 
   useEffect(() => {
     const active = fullFocus && view === 'notes';
