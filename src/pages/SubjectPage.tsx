@@ -1004,7 +1004,7 @@ export default function SubjectPage() {
       {/* DimModeToggle is rendered globally in App.tsx */}
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
+      <div className="subject-breadcrumb-strip flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
         borderBottom: '1px solid #21262D',
         background: '#0D1117',
       }}>
@@ -1554,7 +1554,7 @@ export default function SubjectPage() {
             if (activeSet) {
               return (
                 <div>
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
                     <button
                       onClick={() => setActiveSetId(null)}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
@@ -1674,7 +1674,7 @@ export default function SubjectPage() {
             if (activeNote) {
               return (
                 <div>
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
                     <button
                       onClick={() => setActiveNoteId(null)}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
@@ -1794,7 +1794,7 @@ export default function SubjectPage() {
             if (activeQuiz) {
               return (
                 <div>
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
                     <button
                       onClick={() => setActiveQuizId(null)}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
@@ -1931,7 +1931,7 @@ export default function SubjectPage() {
       </div>
 
       {/* ── Floating Generate button + popover ──────────────────────────────── */}
-      {levelFiles.length > 0 && (
+      {!dim && levelFiles.length > 0 && (
         <div style={{ position: 'fixed', right: '24px', bottom: '24px', zIndex: 200, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
           {showGenPanel && (
             <div

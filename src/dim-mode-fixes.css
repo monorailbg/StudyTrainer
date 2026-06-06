@@ -52,6 +52,7 @@ body.notes-dim-immersive nav,
 body.flashcards-dim-immersive nav,
 body.quiz-dim-active nav,
 body.subject-dim-active nav,
+body.app-dim-active nav,
 body:has(main.study-dim-root.dim-mode .notes-content-main) nav {
   opacity: 0.08 !important;
   background: #010101 !important;
@@ -64,6 +65,7 @@ body.notes-dim-immersive nav:hover,
 body.flashcards-dim-immersive nav:hover,
 body.quiz-dim-active nav:hover,
 body.subject-dim-active nav:hover,
+body.app-dim-active nav:hover,
 body:has(main.study-dim-root.dim-mode .notes-content-main) nav:hover {
   opacity: 0.30 !important;
 }
@@ -127,15 +129,35 @@ main.study-dim-root.dim-mode:has(.notes-content-main) .notes-content-main {
   z-index: auto !important;
 }
 
-/* ── Quiz + Subject page dim: sidebar dimming ──────────────────────── */
+/* ── Global dim: sidebar dimming across all study pages ──────────────── */
+body.app-dim-active aside,
 body.quiz-dim-active aside,
 body.subject-dim-active aside {
   opacity: 0.12 !important;
   transition: opacity 200ms ease !important;
 }
+body.app-dim-active aside:hover,
 body.quiz-dim-active aside:hover,
 body.subject-dim-active aside:hover {
   opacity: 0.50 !important;
+}
+
+/* ── Dim mode: hide navbar Generate button ───────────────────────────── */
+body.app-dim-active .navbar-generate-link {
+  display: none !important;
+}
+
+/* ── Dim mode: hide breadcrumb navigation ────────────────────────────── */
+body.app-dim-active .subject-breadcrumb-strip {
+  display: none !important;
+}
+
+body.app-dim-active .subject-content-breadcrumb {
+  display: none !important;
+}
+
+body.notes-dim-immersive .notes-breadcrumb {
+  display: none !important;
 }
 
 /* Notes background when reading in a subject context (notes view in SubjectPage) */

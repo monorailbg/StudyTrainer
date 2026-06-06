@@ -205,6 +205,7 @@ export default function Navbar() {
             <SettingsPanel />
             <Link
               to="/generate"
+              className="navbar-generate-link"
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 padding: '7px 14px', borderRadius: '10px',
