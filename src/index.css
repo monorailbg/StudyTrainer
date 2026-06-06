@@ -507,44 +507,6 @@ h1, h2, h3 {
   background-color: #0a0a0f !important;
 }
 
-/* ── Dim toggle button ──────────────────────────────────────────────
-   Fixed bottom-left pill, rendered once in the root layout. */
-.dim-mode-toggle {
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(20, 20, 30, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  cursor: pointer;
-  transition: all 180ms ease;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.55);
-}
-.dim-mode-toggle:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(30, 30, 45, 0.90);
-}
-.dim-mode-toggle.active {
-  border-color: rgba(212, 175, 55, 0.50);
-  color: rgba(212, 175, 55, 0.90);
-  background: rgba(212, 175, 55, 0.08);
-}
-.dim-mode-toggle.active:hover {
-  border-color: rgba(212, 175, 55, 0.65);
-  background: rgba(212, 175, 55, 0.14);
-}
-
 /* ── Notes reading: extreme chrome dimming ──────────────────────────
    When a note is open, nearly everything except the content column
    disappears. Hover restores each element for usability. */

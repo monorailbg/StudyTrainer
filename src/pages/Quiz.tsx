@@ -100,6 +100,7 @@ export default function Quiz() {
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<StoredQuiz | null>(null);
   const dim = useDimMode(s => s.dim);
+  const { toggle: toggleDim } = useDimMode();
   const record = useActivity(s => s.record);
   const addQuizScore = useStore(s => s.addQuizScore);
 
@@ -131,7 +132,14 @@ export default function Quiz() {
     <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
+      <aside className="hidden md:flex flex-col" style={{
+        width: activeQuiz ? '0' : '220px',
+        flexShrink: 0,
+        borderRight: activeQuiz ? 'none' : '1px solid #21262D',
+        padding: activeQuiz ? '0' : '16px 10px',
+        gap: '2px', overflowY: 'auto', overflowX: 'hidden',
+        transition: 'width 0.25s ease, padding 0.25s ease',
+      }}>
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Quizzes')}
         </div>
@@ -139,6 +147,26 @@ export default function Quiz() {
         {subjectsWithQuizzes.map(s => (
           <SubjectBtn key={s.id} subject={s} count={quizzes.filter(q => q.subjectId === s.id).length} active={filterId === s.id} onClick={() => { setFilterId(s.id); setActiveQuiz(null); }} />
         ))}
+        {/* Dim toggle at sidebar bottom */}
+        <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+          <button
+            onClick={toggleDim}
+            title={dim ? ts('Exit dim mode') : ts('Dim reading mode')}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '8px 12px', borderRadius: '10px', cursor: 'pointer',
+              background: dim ? 'rgba(212,175,55,0.08)' : 'transparent',
+              border: `1px solid ${dim ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              color: dim ? 'rgba(212,175,55,0.85)' : 'rgba(255,255,255,0.45)',
+              fontSize: '12px', fontWeight: 500, transition: 'all 180ms ease',
+            }}
+          >
+            <svg viewBox="0 0 18 18" width="13" height="13" fill={dim ? 'currentColor' : 'none'}>
+              <path d="M14.5 11.2A6 6 0 016.8 3.5a.6.6 0 00-.8-.78A7 7 0 1015.3 12a.6.6 0 00-.8-.8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+            </svg>
+            {dim ? ts('Dimmed') : ts('Dim')}
+          </button>
+        </div>
       </aside>
 
       {/* Main */}

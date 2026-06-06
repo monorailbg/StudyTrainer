@@ -4,7 +4,6 @@ import { LanguageProvider } from './context/LanguageContext';
 import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
 import { CloudStatusBadge } from './components/CloudStatusBadge';
-import { DimModeToggle } from './components/DimModeToggle';
 import { useDimMode } from './store/useDimMode';
 import Home from './pages/Home';
 import MindMapPage from './pages/MindMap';
@@ -31,7 +30,7 @@ function AnimatedRoutes() {
   );
 }
 
-function GlobalDimToggle() {
+function DimBodyClass() {
   const { pathname } = useLocation();
   const dim = useDimMode(s => s.dim);
   const show = ['/notes', '/flashcards', '/quiz', '/subject/'].some(p => pathname.startsWith(p));
@@ -41,8 +40,7 @@ function GlobalDimToggle() {
     return () => { document.body.classList.remove('app-dim-active'); };
   }, [dim, show]);
 
-  if (!show) return null;
-  return <DimModeToggle />;
+  return null;
 }
 
 export default function App() {
@@ -52,7 +50,7 @@ export default function App() {
         <BrowserRouter>
           <Navbar />
           <AnimatedRoutes />
-          <GlobalDimToggle />
+          <DimBodyClass />
           <CloudStatusBadge />
         </BrowserRouter>
       </ToastProvider>

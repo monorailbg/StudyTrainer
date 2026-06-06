@@ -694,9 +694,7 @@ export default function SubjectPage() {
   };
 
   const toggleFileSelection = (fileId: string) => {
-    setSelectedFileIds(prev =>
-      prev.includes(fileId) ? prev.filter(fid => fid !== fileId) : [...prev, fileId]
-    );
+    setSelectedFileIds(prev => prev.includes(fileId) ? [] : [fileId]);
   };
 
   const removeQuiz = (quizId: string) => {
@@ -1234,7 +1232,7 @@ export default function SubjectPage() {
                   active={view === 'flashcards' && activeSetId === set.id}
                   dot={view === 'flashcards' && activeSetId === set.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveSetId(set.id); setView('flashcards'); setFullFocus(false); }}
+                  onClick={() => { setActiveSetId(set.id); setView('flashcards'); setFullFocus(false); setSidebarOpen(false); }}
                 />
               ))}
             </div>
@@ -1255,7 +1253,7 @@ export default function SubjectPage() {
                   active={view === 'notes' && activeNoteId === n.id}
                   dot={view === 'notes' && activeNoteId === n.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveNoteId(n.id); setView('notes'); setFullFocus(false); }}
+                  onClick={() => { setActiveNoteId(n.id); setView('notes'); setFullFocus(false); setSidebarOpen(false); }}
                 />
               ))}
             </div>
@@ -1276,12 +1274,34 @@ export default function SubjectPage() {
                   active={view === 'quiz' && activeQuizId === quiz.id}
                   dot={view === 'quiz' && activeQuizId === quiz.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveQuizId(quiz.id); setView('quiz'); setFullFocus(false); }}
+                  onClick={() => { setActiveQuizId(quiz.id); setView('quiz'); setFullFocus(false); setSidebarOpen(false); }}
                 />
               ))}
             </div>
           )}
 
+          {/* Dim toggle at sidebar bottom */}
+          {sidebarOpen && !fullFocus && (
+            <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+              <button
+                onClick={() => useDimMode.getState().toggle()}
+                title={dim ? ts('Exit dim mode') : ts('Dim reading mode')}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '8px 12px', borderRadius: '10px', cursor: 'pointer',
+                  background: dim ? 'rgba(212,175,55,0.08)' : 'transparent',
+                  border: `1px solid ${dim ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  color: dim ? 'rgba(212,175,55,0.85)' : 'rgba(255,255,255,0.45)',
+                  fontSize: '12px', fontWeight: 500, transition: 'all 180ms ease',
+                }}
+              >
+                <svg viewBox="0 0 18 18" width="13" height="13" fill={dim ? 'currentColor' : 'none'}>
+                  <path d="M14.5 11.2A6 6 0 016.8 3.5a.6.6 0 00-.8-.78A7 7 0 1015.3 12a.6.6 0 00-.8-.8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                </svg>
+                {dim ? ts('Dimmed') : ts('Dim')}
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* Main content area */}
@@ -1556,7 +1576,7 @@ export default function SubjectPage() {
                 <div>
                   <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
                     <button
-                      onClick={() => setActiveSetId(null)}
+                      onClick={() => { setActiveSetId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
                       style={{ color: '#8B949E' }}
                     >
@@ -1597,7 +1617,7 @@ export default function SubjectPage() {
                   const isRenaming = renaming?.id === set.id;
                   return (
                     <div
-                      onClick={() => { if (!isRenaming) setActiveSetId(set.id); }}
+                      onClick={() => { if (!isRenaming) { setActiveSetId(set.id); setSidebarOpen(false); } }}
                       className="card-panel card-panel-lift p-4 flex items-center gap-3"
                       style={{ cursor: isRenaming ? 'default' : 'pointer' }}
                     >
@@ -1676,7 +1696,7 @@ export default function SubjectPage() {
                 <div>
                   <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
                     <button
-                      onClick={() => setActiveNoteId(null)}
+                      onClick={() => { setActiveNoteId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
                       style={{ color: '#8B949E' }}
                     >
@@ -1717,7 +1737,7 @@ export default function SubjectPage() {
                   const isRenaming = renaming?.id === n.id;
                   return (
                     <div
-                      onClick={() => { if (!isRenaming) setActiveNoteId(n.id); }}
+                      onClick={() => { if (!isRenaming) { setActiveNoteId(n.id); setSidebarOpen(false); } }}
                       className="card-panel card-panel-lift p-4 flex items-center gap-3"
                       style={{ cursor: isRenaming ? 'default' : 'pointer' }}
                     >
@@ -1796,7 +1816,7 @@ export default function SubjectPage() {
                 <div>
                   <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
                     <button
-                      onClick={() => setActiveQuizId(null)}
+                      onClick={() => { setActiveQuizId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
                       style={{ color: '#8B949E' }}
                     >
@@ -1845,7 +1865,7 @@ export default function SubjectPage() {
                   const isRenaming = renaming?.id === quiz.id;
                   return (
                     <div
-                      onClick={() => { if (!isRenaming) setActiveQuizId(quiz.id); }}
+                      onClick={() => { if (!isRenaming) { setActiveQuizId(quiz.id); setSidebarOpen(false); } }}
                       className="card-panel card-panel-lift p-4 flex items-center gap-3"
                       style={{ cursor: isRenaming ? 'default' : 'pointer' }}
                     >

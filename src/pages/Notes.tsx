@@ -99,8 +99,10 @@ export default function Notes() {
   const [loading, setLoading] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeNote, setActiveNote] = useState<StoredNote | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const mainRef = useRef<HTMLElement>(null);
   const dim = useDimMode(s => s.dim);
+  const { toggle: toggleDim } = useDimMode();
   const record = useActivity(s => s.record);
   const markNoteRead = useStore(s => s.markNoteRead);
 
@@ -155,14 +157,41 @@ export default function Notes() {
     <div className={rootClasses} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
-      <aside className="notes-sidebar hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
+      <aside className="notes-sidebar hidden md:flex flex-col" style={{
+        width: sidebarOpen ? '220px' : '0',
+        flexShrink: 0,
+        borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
+        padding: sidebarOpen ? '16px 10px' : '0',
+        gap: '2px', overflowY: 'auto', overflowX: 'hidden',
+        transition: 'width 0.25s ease, padding 0.25s ease',
+      }}>
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Notes')}
         </div>
-        <SubjectBtn subject={null} count={notes.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveNote(null); }} />
+        <SubjectBtn subject={null} count={notes.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveNote(null); setSidebarOpen(true); }} />
         {subjectsWithNotes.map(s => (
-          <SubjectBtn key={s.id} subject={s} count={notes.filter(n => n.subjectId === s.id).length} active={filterId === s.id} onClick={() => { setFilterId(s.id); setActiveNote(null); }} />
+          <SubjectBtn key={s.id} subject={s} count={notes.filter(n => n.subjectId === s.id).length} active={filterId === s.id} onClick={() => { setFilterId(s.id); setActiveNote(null); setSidebarOpen(true); }} />
         ))}
+        {/* Dim toggle at sidebar bottom */}
+        <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+          <button
+            onClick={toggleDim}
+            title={dim ? ts('Exit dim mode') : ts('Dim reading mode')}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '8px 12px', borderRadius: '10px', cursor: 'pointer',
+              background: dim ? 'rgba(212,175,55,0.08)' : 'transparent',
+              border: `1px solid ${dim ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              color: dim ? 'rgba(212,175,55,0.85)' : 'rgba(255,255,255,0.45)',
+              fontSize: '12px', fontWeight: 500, transition: 'all 180ms ease',
+            }}
+          >
+            <svg viewBox="0 0 18 18" width="13" height="13" fill={dim ? 'currentColor' : 'none'}>
+              <path d="M14.5 11.2A6 6 0 016.8 3.5a.6.6 0 00-.8-.78A7 7 0 1015.3 12a.6.6 0 00-.8-.8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+            </svg>
+            {dim ? ts('Dimmed') : ts('Dim')}
+          </button>
+        </div>
       </aside>
 
       {/* Main */}
@@ -172,7 +201,7 @@ export default function Notes() {
           <div>
             <div className="notes-breadcrumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <button
-                onClick={() => setActiveNote(null)}
+                onClick={() => { setActiveNote(null); setSidebarOpen(true); }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#8B949E', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 ← {ts('All notes')}
@@ -219,7 +248,7 @@ export default function Notes() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
                     {groupNotes.map((note, i) => (
-                      <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => setActiveNote(note)} />
+                      <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
                     ))}
                   </div>
                 </div>
