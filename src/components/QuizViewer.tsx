@@ -168,7 +168,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
         {/* Mode selector */}
         <div>
           <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>{ts('Mode')}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', width: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', width: '100%' }}>
             {MODES.map(m => (
               <button key={m.id} onClick={() => setMode(m.id)} style={{
                 position: 'relative',
@@ -210,7 +210,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
           <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>{ts('Questions')}</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
             {countOptions.map(n => (
-              <button key={n} onClick={() => setTestCount(n)} style={{
+              <button key={n} onClick={() => setTestCount(n)} className="quiz-count-btn" style={{
                 height: '36px', padding: '0 16px', borderRadius: '999px',
                 background: testCount === n ? color + '18' : '#161B22',
                 color: testCount === n ? color : '#8B949E',
@@ -467,14 +467,14 @@ function FocusedMode({
         overflow: 'hidden',
         boxShadow: '0 2px 20px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04) inset',
       }}>
-        <div style={{ padding: '32px 36px 20px', margin: '0 0 4px' }}>
+        <div style={{ padding: 'clamp(16px, 4vw, 32px) clamp(14px, 4vw, 36px) clamp(12px, 2vw, 20px)', margin: '0 0 4px' }}>
           <div style={{ fontSize: '20px', fontWeight: 700, color: 'rgba(255,255,255,0.97)', lineHeight: 1.5, letterSpacing: '0.005em' }}>
             {q.question}
           </div>
         </div>
-        <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0 28px' }} />
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0 clamp(12px, 3vw, 28px)' }} />
 
-        <div style={{ padding: '24px 24px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ padding: 'clamp(12px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {q.options.map((opt, oi) => {
             const state = !revealed
               ? (chosen === oi ? 'chosen' : 'idle')
@@ -487,12 +487,12 @@ function FocusedMode({
         </div>
 
         {revealed && q.explanation && (
-          <div style={{ margin: '0 20px 20px' }}>
+          <div style={{ margin: '0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px)' }}>
             <Explanation correct={isCorrect} text={q.explanation} />
           </div>
         )}
         {revealed && !q.explanation && (
-          <div className="anim-fadein" style={{ margin: '0 20px 12px' }}>
+          <div className="anim-fadein" style={{ margin: '0 clamp(10px, 3vw, 20px) 12px' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, color: isCorrect ? '#56D364' : '#F97979' }}>
               {isCorrect ? `✓ ${ts('Correct')}` : `✗ ${ts('Incorrect — correct: {answer}', { answer: q.options[correct] })}`}
             </span>
@@ -500,7 +500,7 @@ function FocusedMode({
         )}
 
         {revealed && (
-          <div className="anim-fadein" style={{ padding: '0 20px 20px', display: 'flex', justifyContent: 'flex-end' }}>
+          <div className="anim-fadein" style={{ padding: '0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px)', display: 'flex', justifyContent: 'flex-end' }}>
             <button
               onClick={next}
               style={{

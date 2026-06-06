@@ -1304,7 +1304,7 @@ export default function SubjectPage() {
                 const totalQs = savedQuizzes.reduce((a, q) => a + q.questions.length, 0);
                 const totalSections = savedNotes.reduce((a, n) => a + n.note.sections.length, 0);
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap: '14px' }}>
                     <OverviewTile
                       index={0} icon={<IconFile />} label={ts('Files')} color={subject.color}
                       active={levelFiles.length > 0}

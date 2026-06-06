@@ -154,7 +154,7 @@ export default function Notes() {
       </aside>
 
       {/* Main */}
-      <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', padding: activeNote ? 0 : '24px 28px' }}>
+      <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', padding: activeNote ? 0 : 'clamp(14px, 4vw, 28px)' }}>
 
         {activeNote ? (
           <div>
@@ -205,7 +205,7 @@ export default function Notes() {
                     <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} notes', { n: groupNotes.length })}</span>
                     <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                  <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
                     {groupNotes.map((note, i) => (
                       <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
                     ))}

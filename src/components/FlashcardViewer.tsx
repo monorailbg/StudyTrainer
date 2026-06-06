@@ -151,7 +151,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <div
             className="flip-card-front flex flex-col items-center justify-center gap-4"
             style={{
-              padding: '28px 32px',
+              padding: 'clamp(16px, 4vw, 28px) clamp(16px, 5vw, 32px)',
               borderRadius: '12px',
               background: '#161B22',
               border: `1px solid ${color}25`,
@@ -165,7 +165,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: '17px', color: '#E6EDF3', lineHeight: 1.45 }}>
               {card.front}
             </div>
-            <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: '#484F58' }}>
+            <div className="hidden md:flex text-xs mt-1 items-center gap-1.5" style={{ color: '#484F58' }}>
               <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>Space</kbd>
               {ts('to reveal')}
             </div>
@@ -214,7 +214,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                   </button>
                 ))}
               </div>
-              <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
+              <div className="hidden md:block text-center mt-3 text-xs" style={{ color: '#484F58' }}>
                 {ts('How well did you recall this?')} <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>–<kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
               </div>
             </div>

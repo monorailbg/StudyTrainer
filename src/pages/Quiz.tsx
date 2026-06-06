@@ -142,7 +142,7 @@ export default function Quiz() {
       </aside>
 
       {/* Main */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+      <main style={{ flex: 1, overflowY: 'auto', padding: 'clamp(14px, 4vw, 28px)' }}>
 
         {activeQuiz ? (
           <div>
@@ -192,7 +192,7 @@ export default function Quiz() {
                     <span style={{ fontSize: '10px', color: '#484F58' }}>{groupQuizzes.length !== 1 ? ts('{n} quizzes', { n: groupQuizzes.length }) : ts('{n} quiz', { n: groupQuizzes.length })}</span>
                     <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                  <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
                     {groupQuizzes.map((quiz, i) => (
                       <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />
                     ))}

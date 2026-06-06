@@ -372,7 +372,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
       {/* Section header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '14px',
-        padding: '24px 36px 0',
+        padding: 'clamp(14px, 3vw, 24px) clamp(14px, 4vw, 36px) 0',
         marginBottom: '20px', paddingBottom: '16px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
@@ -429,7 +429,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
       </div>
 
       {/* Body */}
-      <div style={{ padding: '0 36px 28px 36px' }}>
+      <div style={{ padding: '0 clamp(14px, 4vw, 36px) 28px' }}>
         <p className="notes-section-body" style={{
           margin: '0 0 20px', fontSize: '15px', lineHeight: 1.80,
           color: 'rgba(255,255,255,0.82)', fontWeight: 400,
@@ -809,7 +809,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       </div>
 
       {/* Centered reading layout */}
-      <div style={{ padding: '36px 28px 80px' }}>
+      <div style={{ padding: 'clamp(16px, 4vw, 36px) clamp(12px, 4vw, 28px) clamp(40px, 8vw, 80px)' }}>
 
         {/* ── Content column ── */}
         <div className="notes-content-main" style={{ maxWidth: '740px', width: '100%', margin: '0 auto', minWidth: 0 }}>
@@ -914,11 +914,11 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
             />
           ))}
 
-          {/* Keyboard hint */}
-          <div style={{
+          {/* Keyboard hint — desktop only */}
+          <div className="hidden md:flex" style={{
             marginTop: '8px', padding: '10px 14px', borderRadius: '10px',
             background: '#161B22', border: '1px solid #21262D',
-            display: 'flex', alignItems: 'center', gap: '6px',
+            alignItems: 'center', gap: '6px',
           }}>
             <span style={{ fontSize: '11px', color: '#30363D' }}>{ts('Navigate sections with')}</span>
             {(['j', 'k'] as const).map(k => (
@@ -960,7 +960,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
           onClick={backToTop}
           style={{
             position: 'fixed', bottom: '28px', right: '72px', zIndex: 20,
-            width: '36px', height: '36px', borderRadius: '50%',
+            width: '44px', height: '44px', borderRadius: '50%',
             background: '#161B22', border: '1px solid #30363D',
             cursor: 'pointer', color: '#8B949E',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

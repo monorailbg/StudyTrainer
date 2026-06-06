@@ -169,7 +169,7 @@ export default function Flashcards() {
       <div className="md:hidden" style={{ display: 'none' }} />
 
       {/* Main */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+      <main style={{ flex: 1, overflowY: 'auto', padding: 'clamp(14px, 4vw, 28px)' }}>
 
         {activeSet ? (
           <div>
@@ -236,7 +236,7 @@ export default function Flashcards() {
                     <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} set{s}', { n: groupSets.length, s: groupSets.length !== 1 ? 's' : '' })}</span>
                     <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                  <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
                     {groupSets.map((set, i) => (
                       <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />
                     ))}

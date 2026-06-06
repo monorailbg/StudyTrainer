@@ -693,3 +693,26 @@ body.flashcards-session nav:hover {
   .notes-section-body,
   .notes-section-card ul li { max-width: none !important; }
 }
+
+/* ── Mobile-specific overrides ───────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Force single-column set/note/quiz card grids on very small phones */
+  .flashcard-set-grid,
+  .notes-set-grid,
+  .quiz-set-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Shrink formula/diagram blocks so they don't cause horizontal scroll */
+  .notes-section-card pre,
+  .notes-section-card code {
+    font-size: 11px !important;
+    word-break: break-all;
+  }
+}
+
+/* Ensure touch targets are always tall enough on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  /* Widen quiz count-selector pills so they're easier to tap */
+  .quiz-count-btn { min-height: 44px !important; padding: 0 20px !important; }
+}
