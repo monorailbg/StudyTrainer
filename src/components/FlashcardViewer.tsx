@@ -119,7 +119,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
     <>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '70vh', justifyContent: 'center', paddingTop: '12px', paddingBottom: '24px' }}>
       {/* Progress bar — full width */}
-      <div className="h-px mb-5 overflow-hidden" style={{ width: '100%', background: '#30363D', borderRadius: '1px' }}>
+      <div className="flashcard-progress-bar-track h-px mb-5 overflow-hidden" style={{ width: '100%', background: '#30363D', borderRadius: '1px' }}>
         <div
           className="h-full"
           style={{
@@ -132,7 +132,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
       </div>
 
       {/* Counter + topic */}
-      <div className="flex items-center justify-between mb-4" style={{ width: cardW }}>
+      <div className="flashcard-meta flex items-center justify-between mb-4" style={{ width: cardW }}>
         <span className="mono text-xs" style={{ color: '#8B949E' }}>
           {index + 1} / {cards.length}
         </span>
@@ -143,7 +143,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
 
       {/* Flip card */}
       <div
-        className="flip-card cursor-pointer mb-5"
+        className="flashcard-card flip-card cursor-pointer mb-5"
         style={{ width: cardW, minHeight: '160px' }}
         onClick={flip}
         role="button"
@@ -203,7 +203,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
       </div>
 
       {/* Controls — constrained to card width */}
-      <div style={{ width: cardW }}>
+      <div className="flashcard-controls" style={{ width: cardW }}>
         {srsMode ? (
           flipped ? (
             <div>

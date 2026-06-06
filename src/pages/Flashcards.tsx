@@ -137,11 +137,17 @@ export default function Flashcards() {
   const activeSubject = activeSet ? subjectMap.get(activeSet.subjectId) : undefined;
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
+  const rootClasses = [
+    'study-dim-root',
+    dim && 'dim-mode',
+    activeSet && 'page-flashcards-session',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className={`study-dim-root${dim ? ' dim-mode' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
+    <div className={rootClasses} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
 
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
+      <aside className="flashcards-sidebar hidden md:flex flex-col" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid #21262D', padding: '16px 10px', gap: '2px', overflowY: 'auto' }}>
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Flashcards')}
         </div>

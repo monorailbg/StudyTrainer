@@ -546,35 +546,28 @@ h1, h2, h3 {
   background: rgba(212, 175, 55, 0.14);
 }
 
-/* ── Notes reading: chrome dimming ──────────────────────────────────
-   When a note is open for reading, fade the surrounding chrome so the
-   content column feels like a lit stage. Hover restores usability. */
+/* ── Notes reading: extreme chrome dimming ──────────────────────────
+   When a note is open, nearly everything except the content column
+   disappears. Hover restores each element for usability. */
+.page-notes-reading {
+  background: #07070f !important;
+}
 .page-notes-reading .notes-sidebar {
-  opacity: 0.25;
+  opacity: 0.06;
   transition: opacity 200ms ease;
 }
 .page-notes-reading .notes-sidebar:hover {
-  opacity: 0.75;
+  opacity: 0.70;
 }
-
 .page-notes-reading nav {
-  opacity: 0.20;
+  opacity: 0.07;
   transition: opacity 200ms ease;
 }
 .page-notes-reading nav:hover {
-  opacity: 0.85;
+  opacity: 0.75;
 }
-
-.page-notes-reading .notes-toc {
-  opacity: 0.22;
-  transition: opacity 200ms ease;
-}
-.page-notes-reading .notes-toc:hover {
-  opacity: 0.80;
-}
-
 .page-notes-reading .notes-meta-row {
-  opacity: 0.35;
+  opacity: 0.15;
   transition: opacity 200ms ease;
 }
 .page-notes-reading .notes-meta-row:hover {
@@ -590,38 +583,121 @@ h1, h2, h3 {
   );
 }
 .page-notes-reading .notes-section-card {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.40);
+  background: rgba(255, 255, 255, 0.035) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    0 4px 32px rgba(0, 0, 0, 0.60),
+    0 0 0 1px rgba(255, 255, 255, 0.04) !important;
 }
 .page-notes-reading .notes-title {
-  color: rgba(255, 255, 255, 1.0);
+  color: rgba(255, 255, 255, 1.0) !important;
 }
 .page-notes-reading .notes-section-body {
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.88) !important;
 }
 
-/* ── Notes reading + dim mode combined ─────────────────────────────
-   When both chrome dimming and dim mode are active, push the chrome
-   even further back. */
-.page-notes-reading .study-dim-root.dim-mode ~ * .notes-sidebar,
-.page-notes-reading.dim-active .notes-sidebar {
-  opacity: 0.10;
+/* Combined with dim mode */
+.page-notes-reading.dim-active .notes-sidebar { opacity: 0.04; }
+.page-notes-reading.dim-active .notes-sidebar:hover { opacity: 0.55; }
+.page-notes-reading.dim-active nav { opacity: 0.04; }
+.page-notes-reading.dim-active nav:hover { opacity: 0.60; }
+.page-notes-reading.dim-active .notes-meta-row { opacity: 0.08; }
+
+/* ── Notes ToC panel ─────────────────────────────────────────────────
+   Hidden by default; toggled via the vertical pill on the right edge. */
+.notes-toc-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 220px;
+  background: rgba(10, 10, 18, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 80px 20px 32px;
+  overflow-y: auto;
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(16px);
+  transition: opacity 200ms ease, transform 200ms ease;
 }
-.page-notes-reading.dim-active .notes-sidebar:hover {
-  opacity: 0.55;
+.notes-toc-panel.visible {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(0);
 }
-.page-notes-reading.dim-active nav {
-  opacity: 0.08;
+.notes-toc-toggle {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 41;
+  opacity: 0.20;
+  transition: opacity 150ms ease, right 200ms ease;
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 14px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  background: rgba(15, 15, 25, 0.80);
+  color: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-.page-notes-reading.dim-active nav:hover {
+.notes-toc-toggle:hover { opacity: 0.80; }
+.notes-toc-toggle.panel-open {
+  right: 232px;
   opacity: 0.60;
 }
-.page-notes-reading.dim-active .notes-toc {
-  opacity: 0.10;
+
+/* ── Flashcard session: extreme immersive dimming ───────────────────
+   During an active flashcard session, the card is the stage.
+   Everything else recedes almost to black. */
+.page-flashcards-session {
+  background: #080810 !important;
 }
-.page-notes-reading.dim-active .notes-toc:hover {
-  opacity: 0.55;
+.page-flashcards-session .flashcards-sidebar {
+  opacity: 0.05;
+  transition: opacity 200ms ease;
 }
-.page-notes-reading.dim-active .notes-meta-row {
+.page-flashcards-session .flashcards-sidebar:hover {
+  opacity: 0.65;
+}
+.page-flashcards-session nav {
+  opacity: 0.06;
+  transition: opacity 200ms ease;
+}
+.page-flashcards-session nav:hover {
+  opacity: 0.70;
+}
+.page-flashcards-session .flashcard-progress-bar-track {
   opacity: 0.15;
+  transition: opacity 200ms ease;
+}
+.page-flashcards-session .flashcard-meta {
+  opacity: 0.18;
+  transition: opacity 200ms ease;
+}
+.page-flashcards-session .flashcard-meta:hover {
+  opacity: 0.70;
+}
+.page-flashcards-session .flashcard-controls {
+  opacity: 0.30;
+  transition: opacity 200ms ease;
+}
+.page-flashcards-session .flashcard-controls:hover {
+  opacity: 1.0;
+}
+/* Card itself stays fully visible with a glow */
+.page-flashcards-session .flashcard-card {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 8px 48px rgba(0, 0, 0, 0.80),
+    0 0 80px rgba(72, 199, 142, 0.06);
 }

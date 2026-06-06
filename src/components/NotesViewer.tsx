@@ -372,7 +372,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
       }}
     >
       {/* Section header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '11px', padding: '17px 19px 13px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '11px', padding: '22px 28px 16px' }}>
         <div style={{
           flexShrink: 0, width: '26px', height: '26px', borderRadius: '7px',
           background: '#1D3461', border: '1px solid rgba(61,126,255,0.22)',
@@ -424,7 +424,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
       </div>
 
       {/* Body */}
-      <div style={{ padding: '0 19px 17px 19px' }}>
+      <div style={{ padding: '0 28px 24px 28px' }}>
         <p className="notes-section-body" style={{
           margin: '0 0 13px', fontSize: '15px', lineHeight: 1.78,
           color: 'rgba(230,237,243,0.83)',
@@ -540,6 +540,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
   const [scrollPct, setScrollPct] = useState(0);
   const [showBackTop, setShowBackTop] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
+  const [showToc, setShowToc] = useState(false);
 
   // Fire `onRead` once when the reader scrolls past 80% (or when the note is
   // short enough to fit without scrolling). Refs reset on remount per note.
@@ -740,11 +741,65 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
         }} />
       </div>
 
-      {/* Two-column reading layout */}
-      <div style={{ display: 'flex', gap: '48px', padding: '36px 28px 80px', justifyContent: 'center' }}>
+      {/* Vertical "Contents" toggle pill */}
+      <button
+        onClick={() => setShowToc(v => !v)}
+        className={`notes-toc-toggle${showToc ? ' panel-open' : ''}`}
+        aria-label={showToc ? ts('Close contents') : ts('Open contents')}
+      >
+        {ts('Contents')}
+      </button>
+
+      {/* Fixed ToC panel */}
+      <div className={`notes-toc-panel${showToc ? ' visible' : ''}`} role="navigation" aria-label={ts('Table of contents')}>
+        {/* Reading progress bar */}
+        <div className="contents-reading-progress" style={{ height: '2px', background: 'rgba(255,255,255,0.08)', borderRadius: '999px', marginBottom: '20px', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: `${scrollPct * 100}%`,
+            background: 'linear-gradient(90deg, rgba(212,175,55,0.60), rgba(212,175,55,1.0))',
+            borderRadius: '999px',
+            transition: 'width 300ms ease',
+          }} />
+        </div>
+        <p style={{ margin: '0 0 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase' }}>
+          {ts('Contents')}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {notes.sections.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => { scrollToSection(i); setShowToc(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '8px 12px', borderRadius: '8px', marginBottom: '2px',
+                cursor: 'pointer', background: 'none', border: 'none', textAlign: 'left',
+                borderLeft: activeSection === i ? '2px solid rgba(212,175,55,0.80)' : '2px solid transparent',
+                backgroundColor: activeSection === i ? 'rgba(212,175,55,0.10)' : 'transparent',
+                transition: 'background 150ms ease',
+              }}
+              onMouseEnter={e => { if (activeSection !== i) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.06)'; }}
+              onMouseLeave={e => { if (activeSection !== i) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+            >
+              <span style={{ fontSize: '10px', fontWeight: 700, color: activeSection === i ? 'rgba(212,175,55,0.80)' : 'rgba(255,255,255,0.25)', minWidth: '20px', fontVariantNumeric: 'tabular-nums', fontFamily: 'JetBrains Mono, monospace', flexShrink: 0 }}>
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span style={{ fontSize: '12px', color: activeSection === i ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.45)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                {s.heading}
+              </span>
+              {understood.has(i) && (
+                <span style={{ marginLeft: 'auto', color: 'rgba(72,199,142,0.80)', fontSize: '11px', flexShrink: 0 }}>✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Centered reading layout */}
+      <div style={{ padding: '36px 28px 80px' }}>
 
         {/* ── Content column ── */}
-        <div className="notes-content-main" style={{ maxWidth: fullFocus ? '100%' : '780px', width: '100%', minWidth: 0 }}>
+        <div className="notes-content-main" style={{ maxWidth: fullFocus ? '100%' : '740px', width: '100%', margin: '0 auto', minWidth: 0 }}>
 
           {/* Note metadata + completion header */}
           <div className="notes-meta-row" style={{ marginBottom: '28px' }}>
@@ -815,15 +870,15 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
             </div>
 
             <h2 className="notes-title" style={{
-              margin: '0 0 10px',
+              margin: '0 0 12px',
               fontFamily: 'Sora, sans-serif', fontWeight: 700,
-              fontSize: '1.45rem', color: '#E6EDF3', lineHeight: 1.3,
+              fontSize: '28px', color: '#E6EDF3', lineHeight: 1.3,
             }}>
               {notes.title}
             </h2>
-            <p style={{
-              margin: 0, fontSize: '15px', lineHeight: 1.78,
-              color: 'rgba(230,237,243,0.72)',
+            <p className="notes-section-body" style={{
+              margin: '0 0 40px', fontSize: '15px', lineHeight: 1.7,
+              color: 'rgba(255,255,255,0.70)', maxWidth: '660px',
             }}>
               <RichText text={notes.summary} accent={color} />
             </p>
@@ -884,53 +939,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
           )}
         </div>
 
-        {/* ── ToC sidebar (xl screens only) ── */}
-        <div className="notes-toc hidden xl:block" style={{ width: '168px', flexShrink: 0 }}>
-          <div style={{ position: 'sticky', top: '20px' }}>
-            <p style={{
-              margin: '0 0 8px', fontSize: '9px', fontWeight: 700,
-              letterSpacing: '0.12em', textTransform: 'uppercase', color: '#30363D',
-            }}>
-              {ts('Contents')}
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-              {notes.sections.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => scrollToSection(i)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
-                    padding: '5px 8px', borderRadius: '6px',
-                    borderLeft: `2px solid ${activeSection === i ? color : '#21262D'}`,
-                    display: 'flex', alignItems: 'flex-start', gap: '6px',
-                    transition: 'border-color 0.15s',
-                  }}
-                >
-                  <span style={{
-                    fontSize: '9px', fontWeight: 700,
-                    color: activeSection === i ? color : '#30363D',
-                    flexShrink: 0, marginTop: '2px',
-                    fontFamily: 'JetBrains Mono, monospace',
-                  }}>
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span style={{
-                    fontSize: '11px', lineHeight: 1.35,
-                    color: activeSection === i ? '#C9D1D9' : '#484F58',
-                    fontWeight: activeSection === i ? 500 : 400,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    maxWidth: '112px',
-                  }}>
-                    {s.heading}
-                  </span>
-                  {understood.has(i) && (
-                    <span style={{ marginLeft: 'auto', color: '#4ade80', fontSize: '9px', flexShrink: 0 }}>✓</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Back to top (fixed, appears after 300px scroll) */}
@@ -938,7 +946,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
         <button
           onClick={backToTop}
           style={{
-            position: 'fixed', bottom: '28px', right: '28px', zIndex: 20,
+            position: 'fixed', bottom: '28px', right: '72px', zIndex: 20,
             width: '36px', height: '36px', borderRadius: '50%',
             background: '#161B22', border: '1px solid #30363D',
             cursor: 'pointer', color: '#8B949E',
