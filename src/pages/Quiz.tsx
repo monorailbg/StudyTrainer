@@ -104,6 +104,11 @@ export default function Quiz() {
   const addQuizScore = useStore(s => s.addQuizScore);
 
   useEffect(() => {
+    document.body.classList.toggle('quiz-dim-active', dim);
+    return () => { document.body.classList.remove('quiz-dim-active'); };
+  }, [dim]);
+
+  useEffect(() => {
     const p = isFirebaseConfigured
       ? getAllCloudQuizzes().then(data => setQuizzes(data as StoredQuiz[]))
       : getAllQuizzes().then(data => setQuizzes(data.sort((a, b) => b.createdAt - a.createdAt)));

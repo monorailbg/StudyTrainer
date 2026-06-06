@@ -724,6 +724,12 @@ export default function SubjectPage() {
   const mainRef = useRef<HTMLElement>(null);
   const dim = useDimMode(s => s.dim);
   const { dates: examDatesList, setDate: setExamDate, removeDate: removeExamDate } = useExamDates();
+
+  useEffect(() => {
+    const active = dim && (['notes', 'quiz', 'flashcards'] as View[]).includes(view);
+    document.body.classList.toggle('subject-dim-active', active);
+    return () => { document.body.classList.remove('subject-dim-active'); };
+  }, [dim, view]);
   const examDate = examDatesList.find(d => d.subjectId === id);
 
   const [renaming, setRenaming] = useState<{ id: string; value: string; kind: 'quiz' | 'note' | 'set' | 'file' } | null>(null);

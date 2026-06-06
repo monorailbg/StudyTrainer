@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLang, type Lang } from '../context/LanguageContext';
+import { SettingsPanel } from './SettingsPanel';
 
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
@@ -199,8 +200,9 @@ export default function Navbar() {
           {/* Spacer on desktop */}
           <div className="hidden md:block" style={{ flex: 1 }} />
 
-          {/* Desktop lang + generate */}
+          {/* Desktop lang + settings + generate */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+            <SettingsPanel />
             <Link
               to="/generate"
               style={{

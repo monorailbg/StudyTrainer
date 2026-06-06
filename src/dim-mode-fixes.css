@@ -50,31 +50,42 @@ div:has(> .notes-toc-toggle) > div[style*="position: sticky"] > div {
 
 body.notes-dim-immersive nav,
 body.flashcards-dim-immersive nav,
+body.quiz-dim-active nav,
+body.subject-dim-active nav,
 body:has(main.study-dim-root.dim-mode .notes-content-main) nav {
   opacity: 0.08 !important;
   background: #010101 !important;
   border-bottom-color: rgba(255, 255, 255, 0.015) !important;
   box-shadow: none !important;
+  transition: opacity 200ms ease !important;
 }
 
 body.notes-dim-immersive nav:hover,
 body.flashcards-dim-immersive nav:hover,
+body.quiz-dim-active nav:hover,
+body.subject-dim-active nav:hover,
 body:has(main.study-dim-root.dim-mode .notes-content-main) nav:hover {
-  opacity: 0.22 !important;
+  opacity: 0.30 !important;
 }
 
+/* The nav + div is the old ApiKeyBanner slot — now unused but kept for safety */
 body.notes-dim-immersive nav + div,
 body.flashcards-dim-immersive nav + div,
+body.quiz-dim-active nav + div,
+body.subject-dim-active nav + div,
 body:has(main.study-dim-root.dim-mode .notes-content-main) nav + div {
   opacity: 0.08 !important;
   background: #010101 !important;
   border-bottom-color: rgba(255, 255, 255, 0.015) !important;
+  transition: opacity 200ms ease !important;
 }
 
 body.notes-dim-immersive nav + div:hover,
 body.flashcards-dim-immersive nav + div:hover,
+body.quiz-dim-active nav + div:hover,
+body.subject-dim-active nav + div:hover,
 body:has(main.study-dim-root.dim-mode .notes-content-main) nav + div:hover {
-  opacity: 0.22 !important;
+  opacity: 0.30 !important;
 }
 
 body.notes-dim-immersive .notes-sidebar,
@@ -89,7 +100,7 @@ body:has(main.study-dim-root.dim-mode .notes-content-main) aside:hover {
 
 main.study-dim-root.dim-mode:has(.notes-content-main) {
   filter: none !important;
-  background: #07070f !important;
+  background: linear-gradient(170deg, #0c0f1e 0%, #08091a 45%, #0a0810 100%) !important;
 }
 
 body.notes-dim-immersive .notes-meta-row,
@@ -115,4 +126,25 @@ body.notes-dim-immersive .notes-content-main,
 body.flashcards-dim-immersive .flashcard-card,
 main.study-dim-root.dim-mode:has(.notes-content-main) .notes-content-main {
   z-index: auto !important;
+}
+
+/* ── Quiz + Subject page dim: sidebar dimming ──────────────────────── */
+body.quiz-dim-active aside,
+body.subject-dim-active aside {
+  opacity: 0.12 !important;
+  transition: opacity 200ms ease !important;
+}
+body.quiz-dim-active aside:hover,
+body.subject-dim-active aside:hover {
+  opacity: 0.50 !important;
+}
+
+/* Notes background when reading in a subject context (notes view in SubjectPage) */
+body.subject-dim-active main.study-dim-root {
+  background: linear-gradient(170deg, #0c0f1e 0%, #08091a 45%, #0a0810 100%) !important;
+}
+
+/* Quiz dim mode: darken the whole quiz area background */
+body.quiz-dim-active .study-dim-root {
+  background: linear-gradient(170deg, #0c0f1e 0%, #08091a 45%, #0a0810 100%) !important;
 }

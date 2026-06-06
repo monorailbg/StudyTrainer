@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { LanguageProvider } from './context/LanguageContext';
 import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
-import { ApiKeyBanner } from './components/ApiKeyBanner';
 import { CloudStatusBadge } from './components/CloudStatusBadge';
 import { DimModeToggle } from './components/DimModeToggle';
 import Home from './pages/Home';
@@ -43,7 +42,6 @@ export default function App() {
       <ToastProvider>
         <BrowserRouter>
           <Navbar />
-          <ApiKeyBanner />
           <AnimatedRoutes />
           <GlobalDimToggle />
           <CloudStatusBadge />
