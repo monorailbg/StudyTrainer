@@ -556,12 +556,9 @@ body.notes-focus-active nav:hover {
   transition: opacity 120ms ease;
 }
 body.notes-focus-active .subject-breadcrumb-strip {
-  opacity: 0.05;
+  opacity: 0;
+  pointer-events: none;
   transition: opacity 220ms ease;
-}
-body.notes-focus-active .subject-breadcrumb-strip:hover {
-  opacity: 0.80;
-  transition: opacity 120ms ease;
 }
 body.notes-focus-active .subject-sidebar {
   opacity: 0.05;
