@@ -128,7 +128,20 @@ export default function Notes() {
     const immersive = reading && dim;
     document.body.classList.toggle('notes-reading', reading);
     document.body.classList.toggle('notes-dim-immersive', immersive);
-    return () => { document.body.classList.remove('notes-reading', 'notes-dim-immersive'); };
+
+    // Directly style elements outside this component's DOM tree
+    const nav = document.querySelector('nav') as HTMLElement | null;
+    const banner = nav?.nextElementSibling as HTMLElement | null;
+    if (nav) nav.style.opacity = immersive ? '0.04' : reading ? '0.12' : '';
+    if (banner) banner.style.opacity = immersive ? '0.04' : '';
+    if (nav) nav.style.transition = 'opacity 200ms ease';
+    if (banner) banner.style.transition = 'opacity 200ms ease';
+
+    return () => {
+      document.body.classList.remove('notes-reading', 'notes-dim-immersive');
+      if (nav) { nav.style.opacity = ''; nav.style.transition = ''; }
+      if (banner) { banner.style.opacity = ''; banner.style.transition = ''; }
+    };
   }, [activeNote, dim]);
 
   const rootClasses = [

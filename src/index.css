@@ -597,64 +597,35 @@ body.notes-reading nav:hover {
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
-/* ── Immersive dim overlay ───────────────────────────────────────────
-   When dim mode is active while reading a note (or studying flashcards),
-   a full-screen overlay covers EVERYTHING including the navbar.
-   The notes content is elevated above the overlay via z-index.
-   We must remove the filter from study-dim-root so it stops creating
-   a stacking context that would trap the notes content below the overlay. */
+/* ── Immersive dim mode: counter-filter approach ────────────────────
+   study-dim-root.dim-mode applies brightness(0.80) saturate(0.80).
+   notes-content-main gets the exact inverse so it renders at full
+   natural brightness while everything else stays dark.
+   Navbar/banner opacity is set via direct DOM manipulation in Notes.tsx
+   (bypasses stacking-context / CSS-specificity limitations). */
 
-body.notes-dim-immersive::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.95);
-  z-index: 60;
-  pointer-events: none;
-  transition: opacity 280ms ease;
-}
-
-/* Remove stacking context so notes content can escape above the overlay */
-body.notes-dim-immersive .study-dim-root {
-  filter: none !important;
-}
-
-/* Notes content floats above the overlay */
 body.notes-dim-immersive .notes-content-main {
-  position: relative;
-  z-index: 61;
+  filter: brightness(1.25) saturate(1.25) contrast(1.02);
 }
 
-/* ToC panel and toggle also above overlay */
-body.notes-dim-immersive .notes-toc-panel {
-  z-index: 62 !important;
+/* Sidebar and meta near-invisible in immersive dim */
+body.notes-dim-immersive .notes-sidebar {
+  opacity: 0.03 !important;
 }
-body.notes-dim-immersive .notes-toc-toggle {
-  z-index: 62 !important;
+body.notes-dim-immersive .notes-sidebar:hover {
+  opacity: 0.50 !important;
 }
-
-/* Flashcard overlay — same technique */
-body.flashcards-dim-immersive::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.95);
-  z-index: 60;
-  pointer-events: none;
-  transition: opacity 280ms ease;
+body.notes-dim-immersive .notes-breadcrumb {
+  opacity: 0.04;
 }
-body.flashcards-dim-immersive .study-dim-root {
-  filter: none !important;
+body.notes-dim-immersive .notes-breadcrumb:hover {
+  opacity: 0.60;
 }
-body.flashcards-dim-immersive .flashcard-card {
-  position: relative;
-  z-index: 61;
+body.notes-dim-immersive .notes-meta-row {
+  opacity: 0.04 !important;
 }
-body.flashcards-dim-immersive .flashcard-controls,
-body.flashcards-dim-immersive .flashcard-meta,
-body.flashcards-dim-immersive .flashcard-progress-bar-track {
-  position: relative;
-  z-index: 61;
+body.notes-dim-immersive .notes-meta-row:hover {
+  opacity: 0.65 !important;
 }
 
 /* ── Notes ToC panel ─────────────────────────────────────────────────
