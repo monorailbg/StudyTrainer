@@ -938,7 +938,7 @@ export default function SubjectPage() {
     if (!trimmed) return;
     const pendingId = Math.random().toString(36).slice(2);
     setDictPending(p => [...p, { id: pendingId, term: trimmed }]);
-    toast(`Adding "${trimmed}" to dictionary…`);
+    toast('info', `Adding "${trimmed}" to dictionary…`);
     try {
       const definition = await generateDefinition(trimmed, subject?.title ?? '');
       const entry: DictionaryEntry = {
@@ -952,9 +952,9 @@ export default function SubjectPage() {
       };
       await saveDictionaryEntry(entry);
       setDictEntries(prev => [...prev, entry].sort((a, b) => a.term.localeCompare(b.term)));
-      toast(`"${trimmed}" added to dictionary`);
+      toast('success', `"${trimmed}" added to dictionary`);
     } catch (err) {
-      toast(`Failed to define "${trimmed}": ${String(err).slice(0, 80)}`);
+      toast('error', `Failed to define "${trimmed}"`, String(err).slice(0, 80));
     } finally {
       setDictPending(p => p.filter(x => x.id !== pendingId));
     }

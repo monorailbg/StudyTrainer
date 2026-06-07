@@ -184,9 +184,8 @@ function AnnotatedRichText({ rawText, accent, annotations }: {
 
 interface SelRect { left: number; top: number; bottom: number; width: number }
 
-function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline, onAddToDictionary, onRemove, onDismiss }: {
+function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddToDictionary, onRemove, onDismiss }: {
   rect: SelRect;
-  accent: string;
   existingId?: string;
   onHighlight: (color: string) => void;
   onUnderline: (color: string) => void;
@@ -847,7 +846,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
       {toolbar && (
         <AnnotationToolbar
           rect={toolbar.rect}
-          accent={color}
           existingId={toolbar.existingId}
           onHighlight={(c) => applyAnnotation('highlight', c)}
           onUnderline={(c) => applyAnnotation('underline', c)}
