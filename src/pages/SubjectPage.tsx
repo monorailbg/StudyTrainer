@@ -638,7 +638,6 @@ export default function SubjectPage() {
               folderId: cf.folderId ?? null,
             }));
             setFiles(mapped);
-            setSelectedFileIds(mapped.map(f => f.id));
           }
         } else {
           const [storedFiles, storedQuizzes, storedNotes, storedSets, storedFolders, storedHistory] = await Promise.all([
@@ -663,7 +662,6 @@ export default function SubjectPage() {
               folderId: sf.folderId ?? null,
             }));
             setFiles(mapped);
-            setSelectedFileIds(mapped.map(f => f.id));
           }
         }
       } catch (err) {
@@ -1249,48 +1247,78 @@ export default function SubjectPage() {
                 />
 
                 {(() => {
+                  const fileFolders = folders.filter(f => f.kind === 'file');
                   const sorted = [...levelFiles].sort((a, b) => {
                     const ta = parseInt(a.id.split('-')[0]) || 0;
                     const tb = parseInt(b.id.split('-')[0]) || 0;
                     return tb - ta;
                   });
-                  const visible = sidebarFilesExpanded ? sorted : sorted.slice(0, 3);
-                  const hidden = sorted.length - 3;
+
+                  const sidebarFileItem = (file: UploadedFile, indent = false) => {
+                    const isSidebarActive = activeSidebarFileId === file.id;
+                    return (
+                      <div key={file.id} style={indent ? { paddingLeft: '8px' } : {}}>
+                        <SidebarItem
+                          icon={<IconFile />}
+                          label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
+                          sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : ts('Image')}`}
+                          active={isSidebarActive}
+                          dot={isSidebarActive}
+                          dotColor={subject.color}
+                          onClick={() => { setActiveSidebarFileId(file.id); setSelectedFileIds([file.id]); setView('upload'); setFullFocus(false); }}
+                        />
+                      </div>
+                    );
+                  };
+
+                  if (fileFolders.length === 0) {
+                    const visible = sidebarFilesExpanded ? sorted : sorted.slice(0, 3);
+                    const hidden = sorted.length - 3;
+                    return (<>
+                      {visible.map(f => sidebarFileItem(f))}
+                      {sorted.length > 3 && (
+                        <button
+                          onClick={() => setSidebarFilesExpanded(v => !v)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: '8px', color: '#484F58', fontSize: '10px', fontWeight: 600, transition: 'color 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.color = '#8B949E')}
+                          onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
+                        >
+                          <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ flexShrink: 0, transform: sidebarFilesExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                            <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          {sidebarFilesExpanded ? ts('Show less') : ts('{n} more files', { n: hidden })}
+                        </button>
+                      )}
+                    </>);
+                  }
+
+                  const sidebarFolderHeader = (folder: typeof fileFolders[0], count: number, onClick: () => void) => (
+                    <button
+                      key={folder.id + '-hdr'}
+                      onClick={onClick}
+                      style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left' }}
+                    >
+                      <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                      {count > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{count}</span>}
+                    </button>
+                  );
+
+                  const unfiledFiles = sorted.filter(f => !fileFolders.some(fo => fo.id === f.folderId));
                   return (<>
-                    {visible.map(file => {
-                      const isSidebarActive = activeSidebarFileId === file.id;
+                    {fileFolders.map(folder => {
+                      const folderFiles = sorted.filter(f => f.folderId === folder.id);
                       return (
-                        <div key={file.id}>
-                          <SidebarItem
-                            icon={<IconFile />}
-                            label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
-                            sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : ts('Image')}`}
-                            active={isSidebarActive}
-                            dot={isSidebarActive}
-                            dotColor={subject.color}
-                            onClick={() => { setActiveSidebarFileId(file.id); setSelectedFileIds([file.id]); setView('upload'); setFullFocus(false); }}
-                          />
+                        <div key={folder.id}>
+                          {sidebarFolderHeader(folder, folderFiles.length, () => { setActiveSidebarFileId(null); setView('upload'); setFullFocus(false); })}
+                          {folderFiles.map(f => sidebarFileItem(f, true))}
                         </div>
                       );
                     })}
-                    {sorted.length > 3 && (
-                      <button
-                        onClick={() => setSidebarFilesExpanded(v => !v)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-                          padding: '4px 12px', borderRadius: '8px', color: '#484F58',
-                          fontSize: '10px', fontWeight: 600, transition: 'color 0.15s',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#8B949E')}
-                        onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
-                      >
-                        <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ flexShrink: 0, transform: sidebarFilesExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
-                          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        {sidebarFilesExpanded ? ts('Show less') : ts('{n} more files', { n: hidden })}
-                      </button>
-                    )}
+                    {unfiledFiles.length > 0 && (<>
+                      <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#484F58', padding: '4px 10px' }}>{ts('Unfiled')}</div>
+                      {unfiledFiles.map(f => sidebarFileItem(f, true))}
+                    </>)}
                   </>);
                 })()}
               </>
@@ -1347,18 +1375,43 @@ export default function SubjectPage() {
               <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
                 {ts('Flashcard Sets')}
               </div>
-              {savedFlashcardSets.map(set => (
-                <SidebarItem
-                  key={set.id}
-                  icon={<IconCards />}
-                  label={set.name}
-                  sublabel={ts('{n} cards', { n: set.cards.length })}
-                  active={view === 'flashcards' && activeSetId === set.id}
-                  dot={view === 'flashcards' && activeSetId === set.id}
-                  dotColor={subject.color}
-                  onClick={() => { setActiveSidebarFileId(null); setActiveSetId(set.id); setView('flashcards'); setFullFocus(false); setSidebarOpen(false); }}
-                />
-              ))}
+              {(() => {
+                const cardFolders = folders.filter(f => f.kind === 'card');
+                const setItem = (set: typeof savedFlashcardSets[0], indent = false) => (
+                  <div key={set.id} style={indent ? { paddingLeft: '8px' } : {}}>
+                    <SidebarItem
+                      icon={<IconCards />}
+                      label={set.name}
+                      sublabel={ts('{n} cards', { n: set.cards.length })}
+                      active={view === 'flashcards' && activeSetId === set.id}
+                      dot={view === 'flashcards' && activeSetId === set.id}
+                      dotColor={subject.color}
+                      onClick={() => { setActiveSidebarFileId(null); setActiveSetId(set.id); setView('flashcards'); setFullFocus(false); setSidebarOpen(false); }}
+                    />
+                  </div>
+                );
+                if (cardFolders.length === 0) return savedFlashcardSets.map(s => setItem(s));
+                const unfiled = savedFlashcardSets.filter(s => !cardFolders.some(fo => fo.id === s.folderId));
+                return (<>
+                  {cardFolders.map(folder => {
+                    const items = savedFlashcardSets.filter(s => s.folderId === folder.id);
+                    return (
+                      <div key={folder.id}>
+                        <button onClick={() => { setActiveSidebarFileId(null); setActiveSetId(null); setView('flashcards'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left' }}>
+                          <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                          {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
+                        </button>
+                        {items.map(s => setItem(s, true))}
+                      </div>
+                    );
+                  })}
+                  {unfiled.length > 0 && (<>
+                    <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#484F58', padding: '4px 10px' }}>{ts('Unfiled')}</div>
+                    {unfiled.map(s => setItem(s, true))}
+                  </>)}
+                </>);
+              })()}
             </div>
           )}
 
@@ -1368,18 +1421,43 @@ export default function SubjectPage() {
               <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
                 {ts('Notes')}
               </div>
-              {savedNotes.map(n => (
-                <SidebarItem
-                  key={n.id}
-                  icon={<IconNote />}
-                  label={n.name}
-                  sublabel={ts('{n} sections', { n: n.note.sections.length })}
-                  active={view === 'notes' && activeNoteId === n.id}
-                  dot={view === 'notes' && activeNoteId === n.id}
-                  dotColor={subject.color}
-                  onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(n.id); setView('notes'); setFullFocus(false); setSidebarOpen(false); }}
-                />
-              ))}
+              {(() => {
+                const noteFolders = folders.filter(f => f.kind === 'note');
+                const noteItem = (n: typeof savedNotes[0], indent = false) => (
+                  <div key={n.id} style={indent ? { paddingLeft: '8px' } : {}}>
+                    <SidebarItem
+                      icon={<IconNote />}
+                      label={n.name}
+                      sublabel={ts('{n} sections', { n: n.note.sections.length })}
+                      active={view === 'notes' && activeNoteId === n.id}
+                      dot={view === 'notes' && activeNoteId === n.id}
+                      dotColor={subject.color}
+                      onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(n.id); setView('notes'); setFullFocus(false); setSidebarOpen(false); }}
+                    />
+                  </div>
+                );
+                if (noteFolders.length === 0) return savedNotes.map(n => noteItem(n));
+                const unfiled = savedNotes.filter(n => !noteFolders.some(fo => fo.id === n.folderId));
+                return (<>
+                  {noteFolders.map(folder => {
+                    const items = savedNotes.filter(n => n.folderId === folder.id);
+                    return (
+                      <div key={folder.id}>
+                        <button onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(null); setView('notes'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left' }}>
+                          <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                          {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
+                        </button>
+                        {items.map(n => noteItem(n, true))}
+                      </div>
+                    );
+                  })}
+                  {unfiled.length > 0 && (<>
+                    <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#484F58', padding: '4px 10px' }}>{ts('Unfiled')}</div>
+                    {unfiled.map(n => noteItem(n, true))}
+                  </>)}
+                </>);
+              })()}
             </div>
           )}
 
@@ -1389,18 +1467,43 @@ export default function SubjectPage() {
               <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
                 {ts('Previous Quizzes')}
               </div>
-              {savedQuizzes.map(quiz => (
-                <SidebarItem
-                  key={quiz.id}
-                  icon={<IconQuiz />}
-                  label={quiz.name}
-                  sublabel={ts('{n} questions', { n: quiz.questions.length })}
-                  active={view === 'quiz' && activeQuizId === quiz.id}
-                  dot={view === 'quiz' && activeQuizId === quiz.id}
-                  dotColor={subject.color}
-                  onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(quiz.id); setView('quiz'); setFullFocus(false); setSidebarOpen(false); }}
-                />
-              ))}
+              {(() => {
+                const quizFolders = folders.filter(f => f.kind === 'quiz');
+                const quizItem = (quiz: typeof savedQuizzes[0], indent = false) => (
+                  <div key={quiz.id} style={indent ? { paddingLeft: '8px' } : {}}>
+                    <SidebarItem
+                      icon={<IconQuiz />}
+                      label={quiz.name}
+                      sublabel={ts('{n} questions', { n: quiz.questions.length })}
+                      active={view === 'quiz' && activeQuizId === quiz.id}
+                      dot={view === 'quiz' && activeQuizId === quiz.id}
+                      dotColor={subject.color}
+                      onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(quiz.id); setView('quiz'); setFullFocus(false); setSidebarOpen(false); }}
+                    />
+                  </div>
+                );
+                if (quizFolders.length === 0) return savedQuizzes.map(q => quizItem(q));
+                const unfiled = savedQuizzes.filter(q => !quizFolders.some(fo => fo.id === q.folderId));
+                return (<>
+                  {quizFolders.map(folder => {
+                    const items = savedQuizzes.filter(q => q.folderId === folder.id);
+                    return (
+                      <div key={folder.id}>
+                        <button onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setView('quiz'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left' }}>
+                          <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                          {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
+                        </button>
+                        {items.map(q => quizItem(q, true))}
+                      </div>
+                    );
+                  })}
+                  {unfiled.length > 0 && (<>
+                    <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#484F58', padding: '4px 10px' }}>{ts('Unfiled')}</div>
+                    {unfiled.map(q => quizItem(q, true))}
+                  </>)}
+                </>);
+              })()}
             </div>
           )}
 
