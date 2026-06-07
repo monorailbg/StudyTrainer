@@ -1082,16 +1082,17 @@ export default function SubjectPage() {
       {/* ── Sidebar + content ────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
 
-        {/* Show-sidebar button when collapsed */}
+        {/* Show-sidebar button when collapsed — desktop only */}
         {!sidebarOpen && (
           <button
+            className="hidden md:flex"
             onClick={() => setSidebarOpen(true)}
             title={ts('Show sidebar')}
             style={{
               position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
               zIndex: 30, width: '20px', height: '48px', borderRadius: '0 8px 8px 0',
               background: '#161B22', border: '1px solid #30363D', borderLeft: 'none',
-              color: '#8B949E', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#8B949E', cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
               fontSize: '9px',
             }}
           >
@@ -1105,8 +1106,6 @@ export default function SubjectPage() {
           flexShrink: 0,
           borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
           background: '#0D1117',
-          display: 'flex',
-          flexDirection: 'column',
           padding: sidebarOpen ? '20px 16px' : '0',
           gap: '3px',
           overflowY: 'auto',

@@ -191,5 +191,5 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />;
+  return <div ref={containerRef} className="globe-canvas-container" style={{ position: 'absolute', inset: 0 }} />;
 }

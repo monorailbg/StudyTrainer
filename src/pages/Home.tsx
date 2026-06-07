@@ -327,6 +327,7 @@ export default function Home() {
 
       {/* ── GLOBE HERO ─────────────────────────────────────────────────────── */}
       <section
+        className="home-hero-section"
         style={{
           position: 'relative',
           height: 'calc(82vh - 38px)',

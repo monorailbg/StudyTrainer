@@ -694,6 +694,21 @@ body.flashcards-session nav:hover {
   .notes-section-card ul li { max-width: none !important; }
 }
 
+/* ── Globe: mobile — smaller hero, pass scroll through ──────────────── */
+@media (max-width: 768px) {
+  .home-hero-section {
+    height: 42vh !important;
+    min-height: 260px !important;
+  }
+  /* Let touch events pass through the canvas so the page can scroll.
+     Auto-rotate continues since it runs in the Three.js animation loop. */
+  .globe-canvas-container,
+  .globe-canvas-container canvas {
+    pointer-events: none !important;
+    touch-action: pan-y !important;
+  }
+}
+
 /* ── Mobile-specific overrides ───────────────────────────────────────── */
 @media (max-width: 480px) {
   /* Force single-column set/note/quiz card grids on very small phones */
