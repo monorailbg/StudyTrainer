@@ -527,6 +527,13 @@ body.notes-reading .subject-page-root {
 .notes-reading-fade { opacity: 0; }
 body.notes-reading .notes-reading-fade { opacity: 1; }
 
+/* Top fade tracks the navbar: sits below it when visible, snaps to viewport
+   top when the navbar scrolls away. The transition is driven by the
+   inline style transition on the element itself. */
+.notes-reading-fade-top { top: 0; }
+body.notes-reading .notes-reading-fade-top { top: 72px; }
+body.notes-reading.notes-scrolling-down .notes-reading-fade-top { top: 0; }
+
 .page-notes-reading .notes-meta-row {
   opacity: 0.15;
   transition: opacity 200ms ease;
