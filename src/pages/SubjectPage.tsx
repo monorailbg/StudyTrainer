@@ -119,8 +119,8 @@ function SidebarItem({
     >
       <span style={{ flexShrink: 0, color: active ? '#E6EDF3' : '#8B949E' }}>{icon}</span>
       <span className="flex-1 min-w-0">
-        <span className="block text-xs font-medium leading-tight truncate">{label}</span>
-        {sublabel && <span className="block text-[10px] mt-0.5 leading-tight" style={{ color: active ? '#8B949E' : '#484F58' }}>{sublabel}</span>}
+        <span className="block text-[13px] font-medium leading-tight truncate">{label}</span>
+        {sublabel && <span className="block text-[11px] mt-0.5 leading-tight" style={{ color: active ? '#8B949E' : '#484F58' }}>{sublabel}</span>}
       </span>
       {dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor || '#3D7EFF', boxShadow: `0 0 5px ${dotColor || '#3D7EFF'}` }} />}
     </button>
@@ -437,7 +437,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
       onDragStart={e => {
         e.dataTransfer.setData('text/plain', it.id);
         e.dataTransfer.effectAllowed = 'move';
-        onDragStart(it.id);
+        // Defer so the drag ghost is captured before React re-renders the item.
+        requestAnimationFrame(() => onDragStart(it.id));
       }}
       onDragEnd={() => {
         enterCounts.current.clear();
@@ -1188,7 +1189,7 @@ export default function SubjectPage() {
 
         {/* Left sidebar — hidden on mobile */}
         <aside className="subject-sidebar hidden md:flex flex-col" style={{
-          width: sidebarOpen ? '400px' : '0',
+          width: sidebarOpen ? '360px' : '0',
           flexShrink: 0,
           borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
           background: '#0D1117',
@@ -1203,8 +1204,8 @@ export default function SubjectPage() {
             borderBottom: '1px solid #21262D',
             background: '#0D1117',
           }}>
-            <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px' }}>
-              {subject.title.slice(0, 28)}
+            <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+              {subject.title.slice(0, 22)}
             </span>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -1238,10 +1239,10 @@ export default function SubjectPage() {
                 background: 'none', border: 'none', cursor: 'pointer', padding: '0 10px', marginBottom: '4px',
               }}
             >
-              <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58' }}>
                 {ts('Files')} ({levelFiles.length})
               </span>
-              <span style={{ fontSize: '9px', color: '#484F58' }}>{filesExpanded ? '▾' : '▸'}</span>
+              <span style={{ fontSize: '10px', color: '#484F58' }}>{filesExpanded ? '▾' : '▸'}</span>
             </button>
 
             {filesExpanded && (
@@ -1350,7 +1351,7 @@ export default function SubjectPage() {
 
           {/* Generated content section */}
           <div style={{ marginTop: '8px' }}>
-            <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
               {ts('Content')}
             </div>
 
@@ -1395,7 +1396,7 @@ export default function SubjectPage() {
           {/* Flashcard sets folder */}
           {savedFlashcardSets.length > 0 && (
             <div style={{ marginTop: '8px' }}>
-              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
                 {ts('Flashcard Sets')}
               </div>
               {(() => {
@@ -1449,7 +1450,7 @@ export default function SubjectPage() {
           {/* Notes folder */}
           {savedNotes.length > 0 && (
             <div style={{ marginTop: '8px' }}>
-              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
                 {ts('Notes')}
               </div>
               {(() => {
@@ -1503,7 +1504,7 @@ export default function SubjectPage() {
           {/* Previous quizzes folder */}
           {savedQuizzes.length > 0 && (
             <div style={{ marginTop: '8px' }}>
-              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
                 {ts('Previous Quizzes')}
               </div>
               {(() => {
@@ -1763,7 +1764,7 @@ export default function SubjectPage() {
                             </svg>
                           </div>
                         ) : (
-                          <img src={file.url} alt="" style={{ width: '100%', height: '40px', objectFit: 'cover', borderRadius: '7px' }} />
+                          <img src={file.url} alt="" draggable={false} style={{ width: '100%', height: '40px', objectFit: 'cover', borderRadius: '7px' }} />
                         )}
 
                         {/* Name */}
@@ -1779,7 +1780,7 @@ export default function SubjectPage() {
                               style={{ width: '100%', background: '#0D1117', border: `1px solid ${subject.color}55`, borderRadius: '4px', color: '#E6EDF3', fontSize: '10px', padding: '1px 4px', outline: 'none' }}
                             />
                           ) : (
-                            <div style={{ fontSize: '10px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {file.name}
                             </div>
                           )}

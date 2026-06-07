@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
 import { useExamDates } from '../store/useExamDates';
+import { useActivity } from '../store/useActivity';
 import type { SubjectDef } from '../data/subjects';
 import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
@@ -267,6 +268,7 @@ export default function Home() {
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
   const { dates: examDates } = useExamDates();
+  const activityEvents = useActivity(s => s.events);
   // Force the globe to rebuild when the set of subjects changes.
   const globeKey = allSubjects.map(s => s.id).join(',');
 
@@ -312,17 +314,34 @@ export default function Home() {
 
   const totalCards = flashcardsData.length;
   const totalNotes = notesData.length;
-  const totalResultQs = quizResults.reduce((a, r) => a + r.totalQuestions, 0);
-  const totalResultCorrect = quizResults.reduce((a, r) => a + r.correctAnswers, 0);
-  const avgScore = totalResultQs > 0
-    ? Math.round((totalResultCorrect / totalResultQs) * 100)
+  const avgScore = quizResults.length > 0
+    ? Math.round(quizResults.reduce((a, r) => a + r.scorePercent, 0) / quizResults.length)
     : (quizScores.length > 0
       ? Math.round(quizScores.reduce((a, b) => a + (b.score / b.total) * 100, 0) / quizScores.length)
       : 0);
   const knownPct = totalCards > 0 ? Math.round((flashcardsKnown.length / totalCards) * 100) : 0;
   const notesPct = totalNotes > 0 ? Math.round((notesRead.length   / totalNotes) * 100) : 0;
 
+  const streak = useMemo(() => {
+    const seen = new Set<string>();
+    for (const e of activityEvents) {
+      const d = new Date(e.timestamp);
+      seen.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    }
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+    const startOffset = seen.has(todayKey) ? 0 : 1;
+    let count = 0;
+    for (let i = startOffset; i < 365; i++) {
+      const d = new Date(Date.now() - i * 86400000);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (seen.has(key)) count++; else break;
+    }
+    return count;
+  }, [activityEvents]);
+
   const hasAnyProgress =
+    streak > 0 ||
     flashcardsStudied.length > 0 ||
     flashcardsKnown.length > 0 ||
     notesRead.length > 0 ||
@@ -458,7 +477,7 @@ export default function Home() {
 
         {/* Stats strip — only shown once the user has recorded some activity */}
         {hasAnyProgress && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-10">
             <StatChip index={0} label={t('stats_studied')} value={flashcardsStudied.length} color="#3D7EFF"
               icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="1.5" y="4.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><rect x="4" y="2.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>} />
             <StatChip index={1} label={t('stats_known')}   value={flashcardsKnown.length}   progress={knownPct} color="#3D7EFF"
@@ -468,6 +487,9 @@ export default function Home() {
               icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><polyline points="2,11 6,7 9,9 14,4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
             <StatChip index={3} label={t('stats_notes')}   value={notesRead.length}         progress={notesPct} color="#2EA043"
               icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>} />
+            <StatChip index={4} label={ts('Streak')} value={streak > 0 ? `${streak}d` : '—'} color="#F97316"
+              icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 13.5c-2.5 0-4-1.8-4-3.5 0-1.2.5-2 1.2-2.8C5.5 8 6 9 6 9c0-1.8.6-3.5 2-5 .3 1.5.8 2 1.5 3.2.4-.6.5-1.5.5-2C11 6.5 12 8 12 10c0 2-1.5 3.5-4 3.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>}
+            />
           </div>
         )}
 
