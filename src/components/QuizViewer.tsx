@@ -533,7 +533,6 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
   const { ts } = useLang();
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [shakingId, setShakingId] = useState<string | null>(null);
   const startTime = useRef(Date.now());
 
   const score = submitted ? questions.filter(q => answers[q.id] === Number(q.correct)).length : 0;
@@ -541,12 +540,8 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
   const answered = Object.keys(answers).length;
   const counted = useCountUp(pct, submitted);
 
-  function handleAnswer(qid: string, oi: number, correctIndex: number) {
+  function handleAnswer(qid: string, oi: number) {
     setAnswers(a => ({ ...a, [qid]: oi }));
-    if (oi !== correctIndex) {
-      setShakingId(qid);
-      setTimeout(() => setShakingId(null), 400);
-    }
   }
 
   function submit() {
@@ -590,15 +585,12 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
         {questions.map((q, qi) => {
           const chosen = answers[q.id];
           const reveal = submitted;
-          const isCorrect = reveal && chosen === Number(q.correct);
           const answeredCorrectly = chosen !== undefined && chosen === Number(q.correct);
-          const shaking = shakingId === q.id;
 
           return (
-            <div key={q.id} className={shaking ? 'anim-shake' : ''} style={{
+            <div key={q.id} style={{
               background: '#161B22', borderRadius: '16px', overflow: 'hidden',
-              border: `1px solid ${submitted && chosen !== undefined ? (isCorrect ? 'rgba(46,160,67,0.3)' : 'rgba(248,81,73,0.3)') : '#21262D'}`,
-              transition: 'border-color 0.2s',
+              border: '1px solid #21262D',
             }}>
               <div style={{ padding: '18px 20px 14px' }}>
                 <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.97)', lineHeight: 1.55 }}>
@@ -612,11 +604,11 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
                 {q.options.map((opt, oi) => {
                   const state = !reveal
                     ? (chosen === oi ? 'chosen' : 'idle')
-                    : (oi === Number(q.correct) ? 'right' : (chosen === oi ? 'wrong' : 'idle'));
+                    : (oi === Number(q.correct) ? 'right' : (chosen === oi ? 'chosen' : 'idle'));
                   return (
                     <OptionBtn key={oi} letter={LETTERS[oi]} text={opt}
                       state={state as 'idle' | 'chosen' | 'right' | 'wrong'}
-                      color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi, Number(q.correct))}
+                      color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi)}
                       compact />
                   );
                 })}
