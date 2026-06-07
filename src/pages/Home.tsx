@@ -10,7 +10,7 @@ import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
 import notesData from '../data/notes-config.json';
 import { getAllFlashcardSets, getAllNotes, getAllQuizResults, type StoredFlashcardSet, type StoredNote, type QuizResult } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudFlashcardSets, getAllCloudNotes, getAllCloudQuizResults } from '../lib/cloudDb';
+import { isFirebaseConfigured, getAllCloudFlashcardSets, getAllCloudNotes } from '../lib/cloudDb';
 import GlobeView from '../components/GlobeView';
 import MindMap from '../components/MindMap';
 import { ManageSubjects } from '../components/ManageSubjects';
@@ -282,7 +282,7 @@ export default function Home() {
       .then(d => setSets(d as StoredFlashcardSet[])).catch(() => {});
     (isFirebaseConfigured ? getAllCloudNotes() : getAllNotes())
       .then(d => setNotesList(d as StoredNote[])).catch(() => {});
-    (isFirebaseConfigured ? getAllCloudQuizResults() : getAllQuizResults())
+    getAllQuizResults()
       .then(d => setQuizResults(d as QuizResult[])).catch(() => {});
   }, []);
 
@@ -321,6 +321,13 @@ export default function Home() {
       : 0);
   const knownPct = totalCards > 0 ? Math.round((flashcardsKnown.length / totalCards) * 100) : 0;
   const notesPct = totalNotes > 0 ? Math.round((notesRead.length   / totalNotes) * 100) : 0;
+
+  const hasAnyProgress =
+    flashcardsStudied.length > 0 ||
+    flashcardsKnown.length > 0 ||
+    notesRead.length > 0 ||
+    quizResults.length > 0 ||
+    quizScores.length > 0;
 
   return (
     <div style={{ background: '#0D1117' }}>
@@ -449,18 +456,20 @@ export default function Home() {
       {/* ── CONTENT — starts in the lower third ────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 pb-16 md:pb-20" style={{ position: 'relative', zIndex: 10 }}>
 
-        {/* Stats strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-          <StatChip index={0} label={t('stats_studied')} value={flashcardsStudied.length} color="#3D7EFF"
-            icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="1.5" y="4.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><rect x="4" y="2.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>} />
-          <StatChip index={1} label={t('stats_known')}   value={flashcardsKnown.length}   progress={knownPct} color="#3D7EFF"
-            icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 8.2l1.8 1.8L11 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
-          <StatChip index={2} label={t('stats_score')}   value={avgScore > 0 ? `${avgScore}%` : '—'} progress={avgScore || undefined} color="#D29922"
-            spark={quizResults.length > 0 ? quizResults.slice(0, 20).reverse().map(r => r.scorePercent) : quizScores.map(q => Math.round((q.score / q.total) * 100))}
-            icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><polyline points="2,11 6,7 9,9 14,4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
-          <StatChip index={3} label={t('stats_notes')}   value={notesRead.length}         progress={notesPct} color="#2EA043"
-            icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>} />
-        </div>
+        {/* Stats strip — only shown once the user has recorded some activity */}
+        {hasAnyProgress && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+            <StatChip index={0} label={t('stats_studied')} value={flashcardsStudied.length} color="#3D7EFF"
+              icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="1.5" y="4.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><rect x="4" y="2.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>} />
+            <StatChip index={1} label={t('stats_known')}   value={flashcardsKnown.length}   progress={knownPct} color="#3D7EFF"
+              icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 8.2l1.8 1.8L11 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
+            <StatChip index={2} label={t('stats_score')}   value={avgScore > 0 ? `${avgScore}%` : '—'} progress={avgScore || undefined} color="#D29922"
+              spark={quizResults.length > 0 ? quizResults.slice(0, 20).reverse().map(r => r.scorePercent) : quizScores.map(q => Math.round((q.score / q.total) * 100))}
+              icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><polyline points="2,11 6,7 9,9 14,4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
+            <StatChip index={3} label={t('stats_notes')}   value={notesRead.length}         progress={notesPct} color="#2EA043"
+              icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>} />
+          </div>
+        )}
 
         {/* Global due-for-review line */}
         {totalDue > 0 && (

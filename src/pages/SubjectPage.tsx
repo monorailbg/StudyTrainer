@@ -24,7 +24,6 @@ import {
   saveCloudQuiz, getCloudQuizzes, deleteCloudQuiz, renameCloudQuiz,
   saveCloudFolder, getCloudFolders, deleteCloudFolder,
   migrateSubjectFromIndexedDB,
-  getCloudQuizResults,
 } from '../lib/cloudDb';
 import type {
   GenerationType,
@@ -573,15 +572,15 @@ export default function SubjectPage() {
       try {
         if (isFirebaseConfigured) {
           await migrateSubjectFromIndexedDB(id!);
-          const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets, cloudFolders, cloudHistory] = await Promise.all([
+          const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets, cloudFolders, localHistory] = await Promise.all([
             getCloudFiles(id!),
             getCloudQuizzes(id!),
             getCloudNotes(id!),
             getCloudFlashcardSets(id!),
             getCloudFolders(id!),
-            getCloudQuizResults(id!),
+            getQuizResults(id!),
           ]);
-          setQuizHistory(cloudHistory as QuizResult[]);
+          setQuizHistory(localHistory);
           if (cloudFolders.length > 0) setFolders(cloudFolders);
           if (cloudQuizzes.length > 0) setSavedQuizzes(cloudQuizzes);
           if (cloudNotes.length > 0) setSavedNotes(cloudNotes);

@@ -2,7 +2,6 @@ import { useState, useRef, useMemo } from 'react';
 import { useLang } from '../context/LanguageContext';
 import type { GeneratedQuizQuestion } from '../lib/generator';
 import { saveQuizResult, type QuizResult, type QuizResultQuestion } from '../lib/db';
-import { isFirebaseConfigured, saveCloudQuizResult } from '../lib/cloudDb';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -84,11 +83,7 @@ function shuffleOptions(q: GeneratedQuizQuestion): GeneratedQuizQuestion {
 
 async function persistResult(result: QuizResult) {
   try {
-    if (isFirebaseConfigured) {
-      await saveCloudQuizResult(result);
-    } else {
-      await saveQuizResult(result);
-    }
+    await saveQuizResult(result);
   } catch { /* best-effort */ }
 }
 
