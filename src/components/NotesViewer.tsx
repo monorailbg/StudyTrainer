@@ -603,8 +603,14 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       const max = scrollHeight - clientHeight;
       const pct = max > 0 ? scrollTop / max : 0;
       const atTop = scrollTop < 80;
-      const scrollingDown = scrollTop > prevScrollTopRef.current + 4;
-      document.body.classList.toggle('notes-scrolling-down', scrollingDown && !atTop);
+      const delta = scrollTop - prevScrollTopRef.current;
+      if (atTop) {
+        document.body.classList.remove('notes-scrolling-down');
+      } else if (delta > 4) {
+        document.body.classList.add('notes-scrolling-down');
+      } else if (delta < -4) {
+        document.body.classList.remove('notes-scrolling-down');
+      }
       prevScrollTopRef.current = scrollTop;
       setScrollPct(pct);
       setShowBackTop(scrollTop > 300);
@@ -751,16 +757,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
           onDismiss={() => setToolbar(null)}
         />
       )}
-
-      {/* Reading progress bar — sticky at top of scroll container */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, height: '2px', background: '#21262D' }}>
-        <div style={{
-          height: '100%', background: color,
-          width: `${scrollPct * 100}%`,
-          transition: 'width 80ms linear',
-          borderRadius: '0 1px 1px 0',
-        }} />
-      </div>
 
       {/* Vertical "Contents" toggle pill */}
       <button
