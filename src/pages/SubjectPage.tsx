@@ -364,7 +364,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   folders: Folder[];
   items: T[];
   draggedId: string | null;
-  cols?: 1 | 2;
+  cols?: 1 | 2 | 3;
   headerExtra?: React.ReactNode;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
@@ -381,7 +381,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   // Per-zone enter-count counters fix the "dragLeave fires on child-enter" bug.
   const enterCounts = useRef<Map<string, number>>(new Map());
   const isDragging = draggedId != null;
-  const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+  const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : cols === 3 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
 
   const toggleFolder = (folderId: string) => setCollapsedFolders(prev => {
     const next = new Set(prev);
@@ -1654,7 +1654,7 @@ export default function SubjectPage() {
               {levelFiles.length > 0 && (
                 <FolderBoard<UploadedFile>
                   kind="file" label={t('uploaded_files')} color={subject.color}
-                  folders={folders} items={levelFiles} cols={1}
+                  folders={folders} items={levelFiles} cols={3}
                   draggedId={draggedItem?.kind === 'file' ? draggedItem.id : null}
                   onDragStart={fid => setDraggedItem({ kind: 'file', id: fid })}
                   onDragEnd={() => setDraggedItem(null)}
@@ -1682,19 +1682,21 @@ export default function SubjectPage() {
                       <div
                         onClick={() => toggleFileSelection(file.id)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '12px',
+                          display: 'flex', flexDirection: 'column', gap: '10px',
                           background: isFileSelected ? subject.color + '08' : '#161B22',
                           border: `1px solid ${isFileSelected ? subject.color + '40' : '#30363D'}`,
-                          borderRadius: '16px', padding: '12px 16px',
-                          cursor: 'pointer', transition: 'all 0.2s ease',
+                          borderRadius: '16px', padding: '14px',
+                          cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative',
                         }}
                       >
+                        {/* Checkbox */}
                         <div style={{
-                          width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0,
+                          position: 'absolute', top: '12px', left: '12px',
+                          width: '18px', height: '18px', borderRadius: '5px',
                           background: isFileSelected ? subject.color : 'transparent',
                           border: `2px solid ${isFileSelected ? subject.color : '#484F58'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          transition: 'all 0.2s ease',
+                          transition: 'all 0.2s ease', zIndex: 1,
                         }}>
                           {isFileSelected && (
                             <svg viewBox="0 0 12 12" width="9" height="9" fill="none">
@@ -1702,19 +1704,22 @@ export default function SubjectPage() {
                             </svg>
                           )}
                         </div>
-                        <div style={{
-                          width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
-                          background: iconColor + '18',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <svg viewBox="0 0 20 20" width="17" height="17" fill="none">
-                            {isPDF
-                              ? <><path d="M5 2h8l4 4v12H5V2z" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/><path d="M13 2v4h4" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/><path d="M7 10h6M7 13h4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round"/></>
-                              : <><rect x="2" y="3" width="16" height="14" rx="2" stroke={iconColor} strokeWidth="1.3"/><circle cx="7" cy="8" r="1.5" stroke={iconColor} strokeWidth="1.2"/><path d="M3 14l4-5 4 4 2-2 4 3" stroke={iconColor} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></>
-                            }
-                          </svg>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }} onClick={e => renaming?.id === file.id && e.stopPropagation()}>
+
+                        {/* Preview */}
+                        {isPDF ? (
+                          <div style={{ width: '100%', height: '80px', borderRadius: '10px', background: iconColor + '14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg viewBox="0 0 20 20" width="36" height="36" fill="none">
+                              <path d="M5 2h8l4 4v12H5V2z" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>
+                              <path d="M13 2v4h4" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>
+                              <path d="M7 10h6M7 13h4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round"/>
+                            </svg>
+                          </div>
+                        ) : (
+                          <img src={file.url} alt="" style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '10px' }} />
+                        )}
+
+                        {/* Name + metadata */}
+                        <div onClick={e => renaming?.id === file.id && e.stopPropagation()}>
                           {renaming?.id === file.id ? (
                             <input
                               autoFocus
@@ -1722,81 +1727,58 @@ export default function SubjectPage() {
                               onChange={e => setRenaming({ ...renaming, value: e.target.value })}
                               onBlur={() => commitRename('file')}
                               onKeyDown={e => { if (e.key === 'Enter') commitRename('file'); if (e.key === 'Escape') setRenaming(null); }}
-                              style={{
-                                width: '100%', background: '#0D1117',
-                                border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                                color: '#E6EDF3', fontSize: '13px', fontWeight: 500,
-                                padding: '2px 6px', outline: 'none',
-                              }}
+                              style={{ width: '100%', background: '#0D1117', border: `1px solid ${subject.color}55`, borderRadius: '6px', color: '#E6EDF3', fontSize: '12px', fontWeight: 500, padding: '2px 6px', outline: 'none' }}
                             />
                           ) : (
-                            <div style={{ fontSize: '13px', fontWeight: 500, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {file.name}
                             </div>
                           )}
-                          <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                          <div style={{ fontSize: '10px', color: '#8B949E', marginTop: '3px' }}>
                             {(file.size / 1024 / 1024).toFixed(2)} MB · {isPDF ? 'PDF' : ts('Image')}{activeLevel && ` · ${activeLevel}`}
                           </div>
                         </div>
-                        {!isPDF && (
-                          <img src={file.url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
-                        )}
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            const href = file.storageUrl || file.url;
-                            if (!href) return;
-                            if (file.rawFile) {
-                              const a = document.createElement('a');
-                              a.href = URL.createObjectURL(file.rawFile);
-                              a.download = file.name;
-                              a.click();
-                            } else {
-                              fetch(href)
-                                .then(r => r.blob())
-                                .then(blob => {
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: '6px', marginTop: 'auto' }} onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              const href = file.storageUrl || file.url;
+                              if (!href) return;
+                              if (file.rawFile) {
+                                const a = document.createElement('a');
+                                a.href = URL.createObjectURL(file.rawFile);
+                                a.download = file.name; a.click();
+                              } else {
+                                fetch(href).then(r => r.blob()).then(blob => {
                                   const a = document.createElement('a');
                                   a.href = URL.createObjectURL(blob);
-                                  a.download = file.name;
-                                  a.click();
+                                  a.download = file.name; a.click();
                                   URL.revokeObjectURL(a.href);
-                                })
-                                .catch(() => window.open(href, '_blank'));
-                            }
-                          }}
-                          title={ts('Download file')}
-                          style={{
-                            height: '30px', padding: '0 10px', borderRadius: '999px',
-                            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                            background: 'transparent', color: '#60a5fa',
-                            border: '1px solid rgba(96,165,250,0.35)', flexShrink: 0,
-                          }}
-                        >
-                          ↓ {ts('Download')}
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); startRename(file.id, file.name, 'file'); }}
-                          title={ts('Rename file')}
-                          style={{
-                            height: '30px', padding: '0 10px', borderRadius: '999px',
-                            fontSize: '12px', cursor: 'pointer',
-                            background: 'transparent', color: '#8B949E',
-                            border: '1px solid #30363D', flexShrink: 0,
-                          }}
-                        >
-                          ✎
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); removeFile(file.id); }}
-                          style={{
-                            height: '30px', padding: '0 12px', borderRadius: '999px',
-                            fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                            background: 'transparent', color: '#f87171',
-                            border: '1px solid rgba(248,113,113,0.25)', flexShrink: 0,
-                          }}
-                        >
-                          {ts('Remove')}
-                        </button>
+                                }).catch(() => window.open(href, '_blank'));
+                              }
+                            }}
+                            title={ts('Download file')}
+                            style={{ flex: 1, height: '28px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: 'transparent', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.35)' }}
+                          >
+                            ↓ {ts('Download')}
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); startRename(file.id, file.name, 'file'); }}
+                            title={ts('Rename file')}
+                            style={{ width: '28px', height: '28px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', background: 'transparent', color: '#8B949E', border: '1px solid #30363D' }}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); removeFile(file.id); }}
+                            title={ts('Remove file')}
+                            style={{ width: '28px', height: '28px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', background: 'transparent', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
                     );
                   }}
