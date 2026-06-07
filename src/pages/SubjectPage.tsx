@@ -1142,7 +1142,7 @@ export default function SubjectPage() {
               label={ts('Overview')}
               sublabel={ts('Subject dashboard')}
               active={view === 'dashboard'}
-              onClick={() => { setView('dashboard'); setFullFocus(false); }}
+              onClick={() => { setActiveSidebarFileId(null); setView('dashboard'); setFullFocus(false); }}
             />
           </div>
 
@@ -1167,7 +1167,7 @@ export default function SubjectPage() {
                   icon={<IconPlus />}
                   label={ts('Add Files')}
                   active={view === 'upload' && levelFiles.length === 0}
-                  onClick={() => { setView('upload'); setFullFocus(false); }}
+                  onClick={() => { setActiveSidebarFileId(null); setView('upload'); setFullFocus(false); }}
                 />
 
                 {levelFiles.map(file => {
@@ -1203,7 +1203,7 @@ export default function SubjectPage() {
               active={view === 'flashcards' && !activeSetId}
               dot={savedFlashcardSets.length > 0}
               dotColor={subject.color}
-              onClick={() => { setActiveSetId(null); setView('flashcards'); setFullFocus(false); }}
+              onClick={() => { setActiveSidebarFileId(null); setActiveSetId(null); setView('flashcards'); setFullFocus(false); }}
             />
             <SidebarItem
               icon={<IconNote />}
@@ -1212,7 +1212,7 @@ export default function SubjectPage() {
               active={view === 'notes' && !activeNoteId}
               dot={savedNotes.length > 0}
               dotColor={subject.color}
-              onClick={() => { setActiveNoteId(null); setView('notes'); setFullFocus(false); }}
+              onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(null); setView('notes'); setFullFocus(false); }}
             />
             <SidebarItem
               icon={<IconQuiz />}
@@ -1221,7 +1221,7 @@ export default function SubjectPage() {
               active={view === 'quiz' && !activeQuizId}
               dot={savedQuizzes.length > 0}
               dotColor={subject.color}
-              onClick={() => { setActiveQuizId(null); setView('quiz'); setFullFocus(false); }}
+              onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setView('quiz'); setFullFocus(false); }}
             />
           </div>
 
@@ -1240,7 +1240,7 @@ export default function SubjectPage() {
                   active={view === 'flashcards' && activeSetId === set.id}
                   dot={view === 'flashcards' && activeSetId === set.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveSetId(set.id); setView('flashcards'); setFullFocus(false); setSidebarOpen(false); }}
+                  onClick={() => { setActiveSidebarFileId(null); setActiveSetId(set.id); setView('flashcards'); setFullFocus(false); setSidebarOpen(false); }}
                 />
               ))}
             </div>
@@ -1261,7 +1261,7 @@ export default function SubjectPage() {
                   active={view === 'notes' && activeNoteId === n.id}
                   dot={view === 'notes' && activeNoteId === n.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveNoteId(n.id); setView('notes'); setFullFocus(false); setSidebarOpen(false); }}
+                  onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(n.id); setView('notes'); setFullFocus(false); setSidebarOpen(false); }}
                 />
               ))}
             </div>
@@ -1282,7 +1282,7 @@ export default function SubjectPage() {
                   active={view === 'quiz' && activeQuizId === quiz.id}
                   dot={view === 'quiz' && activeQuizId === quiz.id}
                   dotColor={subject.color}
-                  onClick={() => { setActiveQuizId(quiz.id); setView('quiz'); setFullFocus(false); setSidebarOpen(false); }}
+                  onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(quiz.id); setView('quiz'); setFullFocus(false); setSidebarOpen(false); }}
                 />
               ))}
             </div>
