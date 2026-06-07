@@ -374,6 +374,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const [newName, setNewName] = useState('');
   const [hoverFolder, setHoverFolder] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  // Per-zone enter-count counters fix the "dragLeave fires on child-enter" bug.
+  const enterCounts = useRef<Map<string, number>>(new Map());
   const isDragging = draggedId != null;
   const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
 
@@ -392,21 +394,28 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const kindFolders = folders.filter(f => f.kind === kind);
   const unfiled = items.filter(it => !it.folderId || !kindFolders.some(f => f.id === it.folderId));
 
-  // Plain render helper (not a component) so dropping into a folder never
-  // remounts the subtree — keeps the rename input focused while typing.
   const zone = (folderId: string | null, children: React.ReactNode) => {
     const key = folderId ?? '__unfiled__';
     const isHover = hoverFolder === key && isDragging;
+    const inc = () => { const n = (enterCounts.current.get(key) ?? 0) + 1; enterCounts.current.set(key, n); return n; };
+    const dec = () => { const n = Math.max(0, (enterCounts.current.get(key) ?? 0) - 1); enterCounts.current.set(key, n); return n; };
     return (
       <div
-        onDragOver={e => { e.preventDefault(); if (isDragging) setHoverFolder(key); }}
-        onDragLeave={() => setHoverFolder(prev => (prev === key ? null : prev))}
-        onDrop={e => { e.preventDefault(); onDropToFolder(folderId); setHoverFolder(null); }}
+        onDragEnter={e => { e.preventDefault(); if (inc() >= 1 && isDragging) setHoverFolder(key); }}
+        onDragLeave={() => { if (dec() === 0) setHoverFolder(h => h === key ? null : h); }}
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+        onDrop={e => {
+          e.preventDefault();
+          enterCounts.current.set(key, 0);
+          setHoverFolder(null);
+          onDropToFolder(folderId);
+        }}
         style={{
           borderRadius: '16px',
           border: `1px dashed ${isHover ? color : 'transparent'}`,
           background: isHover ? color + '0E' : 'transparent',
           padding: isDragging ? '4px' : 0,
+          minHeight: isDragging ? '48px' : undefined,
           transition: 'background 0.15s ease, border-color 0.15s ease',
         }}
       >
@@ -414,6 +423,30 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
       </div>
     );
   };
+
+  // Wrap each draggable item: sets dataTransfer so the browser treats it as a
+  // valid drag, and clears all enter-counts + hover on drag-end.
+  const draggableItem = (it: T) => (
+    <div
+      key={it.id}
+      draggable
+      onDragStart={e => {
+        e.dataTransfer.setData('text/plain', it.id);
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart(it.id);
+      }}
+      onDragEnd={() => {
+        enterCounts.current.clear();
+        setHoverFolder(null);
+        onDragEnd();
+      }}
+      style={{ opacity: draggedId === it.id ? 0.35 : 1, cursor: 'grab', transition: 'opacity 0.15s', userSelect: 'none', WebkitUserSelect: 'none' }}
+    >
+      <div style={{ pointerEvents: isDragging ? 'none' : 'auto' }}>
+        {renderItem(it)}
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -484,12 +517,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                 <div className="px-1 pb-1 text-[11px]" style={{ color: '#484F58' }}>{ts('Empty — drag items here.')}</div>
               ) : (
                 <div className={gridClass}>
-                  {folderItems.map(it => (
-                    <div key={it.id} draggable onDragStart={() => onDragStart(it.id)} onDragEnd={onDragEnd}
-                      style={{ opacity: draggedId === it.id ? 0.4 : 1, cursor: 'grab' }}>
-                      {renderItem(it)}
-                    </div>
-                  ))}
+                  {folderItems.map(it => draggableItem(it))}
                 </div>
               ))}
             </>)}
@@ -506,12 +534,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
           </div>
         )}
         <div className={gridClass}>
-          {unfiled.map(it => (
-            <div key={it.id} draggable onDragStart={() => onDragStart(it.id)} onDragEnd={onDragEnd}
-              style={{ opacity: draggedId === it.id ? 0.4 : 1, cursor: 'grab' }}>
-              {renderItem(it)}
-            </div>
-          ))}
+          {unfiled.map(it => draggableItem(it))}
         </div>
       </>)}
     </div>
