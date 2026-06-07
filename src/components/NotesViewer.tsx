@@ -48,17 +48,15 @@ function RichText({ text, accent }: { text: string; accent: string }) {
 // ── Annotation constants ──────────────────────────────────────────────────────
 
 const HIGHLIGHT_COLORS = [
-  { id: 'yellow', label: 'Yellow', value: 'rgba(255,214,0,0.35)' },
-  { id: 'teal',   label: 'Teal',   value: 'rgba(0,210,190,0.30)' },
-  { id: 'pink',   label: 'Pink',   value: 'rgba(255,100,150,0.28)' },
+  { id: 'yellow', label: 'Yellow', dot: '#FBBF24', value: 'rgba(251,191,36,0.30)' },
+  { id: 'teal',   label: 'Teal',   dot: '#2DD4BF', value: 'rgba(45,212,191,0.28)' },
+  { id: 'pink',   label: 'Pink',   dot: '#F472B6', value: 'rgba(244,114,182,0.28)' },
 ] as const;
 
 const UNDERLINE_COLORS = [
-  { id: 'sky',     value: '#38BDF8' },
-  { id: 'violet',  value: '#A78BFA' },
-  { id: 'rose',    value: '#FB7185' },
-  { id: 'amber',   value: '#FCD34D' },
-  { id: 'emerald', value: '#34D399' },
+  { id: 'sky',    value: '#38BDF8' },
+  { id: 'violet', value: '#A78BFA' },
+  { id: 'rose',   value: '#FB7185' },
 ] as const;
 
 // ── buildSegments: merges bold markers + annotations into renderable segments ──
@@ -240,16 +238,18 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
   return createPortal(
     <div
       ref={ref}
-      onMouseDown={e => e.preventDefault()} // keep selection; don't trigger outside-hide
+      onMouseDown={e => e.preventDefault()}
+      onMouseUp={e => e.stopPropagation()}
+      onClick={e => e.stopPropagation()}
       style={{
         position: 'fixed',
         left: pos ? pos.left : rect.left,
         top: pos ? pos.top : rect.top - 50,
         visibility: pos ? 'visible' : 'hidden',
         zIndex: 9999,
-        display: 'flex', alignItems: 'center', gap: '3px', padding: '5px 8px',
-        background: '#111827', border: '1px solid rgba(255,255,255,0.12)',
-        borderRadius: '999px', boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+        display: 'flex', alignItems: 'center', gap: '2px', padding: '5px 7px',
+        background: '#0D1117', border: '1px solid rgba(255,255,255,0.14)',
+        borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)',
         userSelect: 'none',
       }}
     >
@@ -259,23 +259,23 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
           onClick={() => onHighlight(c.value)}
           title={ts('Highlight {color}', { color: ts(c.label) })}
           style={{
-            width: '18px', height: '18px', borderRadius: '50%',
-            background: c.value, border: '1.5px solid rgba(255,255,255,0.2)',
+            width: '20px', height: '20px', borderRadius: '50%',
+            background: c.dot, border: '2px solid rgba(0,0,0,0.25)',
             cursor: 'pointer', flexShrink: 0,
           }}
         />
       ))}
-      <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
+      <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
       {UNDERLINE_COLORS.map(c => (
         <button
           key={c.id}
           onClick={() => onUnderline(c.value)}
           title={ts('Underline')}
           style={{
-            width: '22px', height: '22px', borderRadius: '5px',
+            width: '24px', height: '24px', borderRadius: '6px',
             background: 'transparent', border: 'none',
             cursor: 'pointer', color: c.value,
-            fontSize: '13px', fontWeight: 800, lineHeight: 1,
+            fontSize: '13px', fontWeight: 900, lineHeight: 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             textDecoration: 'underline', textDecorationColor: c.value,
             textDecorationThickness: '2px', textUnderlineOffset: '3px',
@@ -283,24 +283,24 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
           }}
         >U</button>
       ))}
-      <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
+      <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
       <button
         onClick={onAddToDictionary}
         title={ts('Add to dictionary')}
         style={{
-          width: '28px', height: '28px', borderRadius: '7px',
-          background: 'rgba(61,126,255,0.12)', border: '1px solid rgba(61,126,255,0.25)',
-          cursor: 'pointer', color: '#3D7EFF', fontSize: '13px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
+          height: '28px', padding: '0 9px', borderRadius: '7px',
+          background: 'rgba(61,126,255,0.15)', border: '1px solid rgba(61,126,255,0.3)',
+          cursor: 'pointer', color: '#3D7EFF', fontSize: '11px', fontWeight: 700,
+          display: 'flex', alignItems: 'center', gap: '5px',
+          flexShrink: 0, whiteSpace: 'nowrap',
         }}
       >
-        <svg viewBox="0 0 16 16" width="13" height="13" fill="none">
-          <path d="M2 2.5A1.5 1.5 0 013.5 1h9A1.5 1.5 0 0114 2.5v10a1.5 1.5 0 01-1.5 1.5H3.5A1.5 1.5 0 012 12.5v-10z" stroke="currentColor" strokeWidth="1.3"/>
-          <path d="M5 5h6M5 7.5h6M5 10h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          <circle cx="13" cy="13" r="2.8" fill="#0D1117" stroke="currentColor" strokeWidth="1.2"/>
-          <path d="M13 11.8v2.4M11.8 13h2.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+        <svg viewBox="0 0 14 14" width="11" height="11" fill="none">
+          <path d="M2 2A1 1 0 013 1h8a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V2z" stroke="currentColor" strokeWidth="1.3"/>
+          <path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+          <path d="M10.5 10.5v3M9 12h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
         </svg>
+        {ts('Define')}
       </button>
       {existingId && onRemove && (
         <>

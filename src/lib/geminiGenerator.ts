@@ -409,12 +409,14 @@ export async function generateDefinition(term: string, subjectTitle: string): Pr
 
 Define the term or concept: "${term}"
 
-Write a clear, precise definition of 2–4 sentences aimed at a university student. Include:
-- what the term means in the context of ${subjectTitle}
-- any key relationships or mechanisms (cause/effect, formula, framework)
-- one concrete real-world example if it adds clarity
+Return EXACTLY 1–2 bullet points (•). Each bullet is one concise sentence. Cover:
+• what the term means in the context of ${subjectTitle}
+• (optional second bullet) a key mechanism, formula, or real-world example only if it genuinely adds clarity
 
-Return ONLY the definition text. No headings, no bullet points, no JSON, no markdown.`;
+Rules:
+- Start each line with •
+- No headings, no JSON, no markdown bold, no extra text before or after
+- If one bullet fully captures the term, use only one`;
 
   return callGeminiAuto([{ text: prompt }]);
 }

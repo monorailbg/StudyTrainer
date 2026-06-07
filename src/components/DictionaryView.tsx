@@ -219,6 +219,24 @@ export function DictionaryView({
   );
 }
 
+function renderDefinition(definition: string) {
+  const lines = definition.split('\n').map(l => l.trim()).filter(Boolean);
+  const bullets = lines.filter(l => l.startsWith('•') || l.startsWith('-') || l.startsWith('*'));
+  if (bullets.length > 0) {
+    return (
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        {bullets.map((b, i) => (
+          <li key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            <span style={{ flexShrink: 0, marginTop: '2px', fontSize: '11px', opacity: 0.5 }}>•</span>
+            <span>{b.replace(/^[•\-*]\s*/, '')}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return <span>{definition}</span>;
+}
+
 function EntryCard({
   entry, color, onDelete, sort,
 }: {
@@ -228,9 +246,6 @@ function EntryCard({
   sort: SortMode;
 }) {
   const { ts } = useLang();
-  const [expanded, setExpanded] = useState(false);
-  const isLong = entry.definition.length > 200;
-  const preview = isLong && !expanded ? entry.definition.slice(0, 200) + '…' : entry.definition;
 
   return (
     <div
@@ -264,23 +279,9 @@ function EntryCard({
           </div>
 
           {/* Definition */}
-          <p style={{
-            margin: 0, fontSize: '13.5px', lineHeight: 1.65,
-            color: 'rgba(230,237,243,0.78)',
-          }}>
-            {preview}
-            {isLong && (
-              <button
-                onClick={() => setExpanded(v => !v)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color, fontSize: '12px', fontWeight: 600, marginLeft: '4px', padding: 0,
-                }}
-              >
-                {expanded ? ts('Show less') : ts('Read more')}
-              </button>
-            )}
-          </p>
+          <div style={{ fontSize: '13px', lineHeight: 1.65, color: 'rgba(230,237,243,0.75)' }}>
+            {renderDefinition(entry.definition)}
+          </div>
         </div>
 
         {/* Delete */}
