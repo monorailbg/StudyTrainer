@@ -373,8 +373,15 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [hoverFolder, setHoverFolder] = useState<string | null>(null);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const isDragging = draggedId != null;
   const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+
+  const toggleFolder = (folderId: string) => setCollapsedFolders(prev => {
+    const next = new Set(prev);
+    if (next.has(folderId)) next.delete(folderId); else next.add(folderId);
+    return next;
+  });
 
   const submit = () => {
     const n = newName.trim();
@@ -446,25 +453,34 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
       {/* Folder sections */}
       {kindFolders.map(folder => {
         const folderItems = items.filter(it => it.folderId === folder.id);
+        const isCollapsed = collapsedFolders.has(folder.id);
         return (
           <div key={folder.id} style={{ marginBottom: '18px' }}>
             {zone(folder.id, <>
               <div className="flex items-center gap-2 mb-2.5 px-1">
-                <span style={{ color }}><IconFolder /></span>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{folder.name}</span>
-                <span style={{ fontSize: '11px', color: '#8B949E' }}>{folderItems.length}</span>
+                <button
+                  onClick={() => toggleFolder(folder.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flex: 1, minWidth: 0 }}
+                >
+                  <span style={{ color }}><IconFolder /></span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', flex: 1, textAlign: 'left' }}>{folder.name}</span>
+                  <span style={{ fontSize: '11px', color: '#8B949E' }}>{folderItems.length}</span>
+                  <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: '#484F58' }}>
+                    <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
                 <button
                   onClick={() => onDeleteFolder(folder.id)}
                   aria-label={ts('Delete folder')}
-                  className="ml-auto cursor-pointer"
-                  style={{ background: 'transparent', border: 'none', color: '#484F58', padding: '2px', lineHeight: 0 }}
+                  className="cursor-pointer"
+                  style={{ background: 'transparent', border: 'none', color: '#484F58', padding: '2px', lineHeight: 0, flexShrink: 0 }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
                   onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
                 >
                   <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               </div>
-              {folderItems.length === 0 ? (
+              {!isCollapsed && (folderItems.length === 0 ? (
                 <div className="px-1 pb-1 text-[11px]" style={{ color: '#484F58' }}>{ts('Empty — drag items here.')}</div>
               ) : (
                 <div className={gridClass}>
@@ -475,7 +491,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                     </div>
                   ))}
                 </div>
-              )}
+              ))}
             </>)}
           </div>
         );
@@ -558,6 +574,7 @@ export default function SubjectPage() {
     setFiles([]);
     setSelectedFileIds([]);
     setActiveSidebarFileId(null);
+    setSidebarFilesExpanded(false);
     setSavedQuizzes([]);
     setActiveQuizId(null);
     setSavedNotes([]);
@@ -720,6 +737,7 @@ export default function SubjectPage() {
   // ── Rename ─────────────────────────────────────────────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [filesExpanded, setFilesExpanded] = useState(true);
+  const [sidebarFilesExpanded, setSidebarFilesExpanded] = useState(false);
   const [fullFocus, setFullFocus] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const { dates: examDatesList, setDate: setExamDate, removeDate: removeExamDate } = useExamDates();
@@ -1169,22 +1187,51 @@ export default function SubjectPage() {
                   onClick={() => { setActiveSidebarFileId(null); setView('upload'); setFullFocus(false); }}
                 />
 
-                {levelFiles.map(file => {
-                  const isSidebarActive = activeSidebarFileId === file.id;
-                  return (
-                    <div key={file.id}>
-                      <SidebarItem
-                        icon={<IconFile />}
-                        label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
-                        sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : ts('Image')}`}
-                        active={isSidebarActive}
-                        dot={isSidebarActive}
-                        dotColor={subject.color}
-                        onClick={() => { setActiveSidebarFileId(file.id); setSelectedFileIds([file.id]); setView('upload'); setFullFocus(false); }}
-                      />
-                    </div>
-                  );
-                })}
+                {(() => {
+                  const sorted = [...levelFiles].sort((a, b) => {
+                    const ta = parseInt(a.id.split('-')[0]) || 0;
+                    const tb = parseInt(b.id.split('-')[0]) || 0;
+                    return tb - ta;
+                  });
+                  const visible = sidebarFilesExpanded ? sorted : sorted.slice(0, 3);
+                  const hidden = sorted.length - 3;
+                  return (<>
+                    {visible.map(file => {
+                      const isSidebarActive = activeSidebarFileId === file.id;
+                      return (
+                        <div key={file.id}>
+                          <SidebarItem
+                            icon={<IconFile />}
+                            label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
+                            sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : ts('Image')}`}
+                            active={isSidebarActive}
+                            dot={isSidebarActive}
+                            dotColor={subject.color}
+                            onClick={() => { setActiveSidebarFileId(file.id); setSelectedFileIds([file.id]); setView('upload'); setFullFocus(false); }}
+                          />
+                        </div>
+                      );
+                    })}
+                    {sorted.length > 3 && (
+                      <button
+                        onClick={() => setSidebarFilesExpanded(v => !v)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                          padding: '4px 12px', borderRadius: '8px', color: '#484F58',
+                          fontSize: '10px', fontWeight: 600, transition: 'color 0.15s',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#8B949E')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
+                      >
+                        <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ flexShrink: 0, transform: sidebarFilesExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        {sidebarFilesExpanded ? ts('Show less') : ts('{n} more files', { n: hidden })}
+                      </button>
+                    )}
+                  </>);
+                })()}
               </>
             )}
           </div>
