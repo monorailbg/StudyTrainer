@@ -1303,14 +1303,14 @@ export default function SubjectPage() {
                   const sidebarFolderHeader = (folder: typeof fileFolders[0], count: number, onClick: () => void) => {
                     const isCollapsed = collapsedSidebarFolderIds.has(folder.id);
                     return (
-                      <div key={folder.id + '-hdr'} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      <div key={folder.id + '-hdr'} style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: '2px' }}>
                         <button
                           onClick={onClick}
-                          style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '3px 4px 3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '7px 4px 7px 10px', borderRadius: '10px', color: '#C9D1D9', fontSize: '13px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}
                         >
-                          <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                          <span style={{ color: subject.color, flexShrink: 0, transform: 'scale(1.2)', transformOrigin: 'center' }}><IconFolder /></span>
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
-                          {count > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{count}</span>}
+                          {count > 0 && <span style={{ color: '#8B949E', flexShrink: 0, fontSize: '12px' }}>{count}</span>}
                         </button>
                         <button
                           onClick={() => setCollapsedSidebarFolderIds(prev => {
@@ -1318,9 +1318,9 @@ export default function SubjectPage() {
                             if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id);
                             return next;
                           })}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px 3px 4px', color: '#484F58', flexShrink: 0, lineHeight: 0 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 10px 7px 4px', color: '#8B949E', flexShrink: 0, lineHeight: 0 }}
                         >
-                          <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                          <svg viewBox="0 0 10 6" width="11" height="11" fill="none" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
                             <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
@@ -1340,7 +1340,7 @@ export default function SubjectPage() {
                       );
                     })}
                     {unfiledFiles.length > 0 && (<>
-                      <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#484F58', padding: '4px 10px' }}>{ts('Unfiled')}</div>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', padding: '6px 10px 4px' }}>{ts('Unfiled')}</div>
                       {unfiledFiles.map(f => sidebarFileItem(f, true))}
                     </>)}
                   </>);
