@@ -275,7 +275,7 @@ function OptionBtn({
   // Card surface + text per state.
   const card = {
     idle:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)', text: 'rgba(255,255,255,0.90)' },
-    chosen: { bg: `${color}1F`,             border: `${color}99`,             text: 'rgba(255,255,255,1)'    },
+    chosen: { bg: `${color}1F`,             border: 'rgba(255,255,255,0.75)', text: 'rgba(255,255,255,1)'    },
     right:  { bg: 'rgba(72,199,142,0.15)',  border: 'rgba(72,199,142,0.70)',  text: 'rgb(72,199,142)'        },
     wrong:  { bg: 'rgba(252,100,100,0.12)', border: 'rgba(252,100,100,0.60)', text: 'rgba(252,100,100,0.90)' },
   }[state];

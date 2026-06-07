@@ -986,6 +986,20 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
         </button>
       )}
 
+      {/* Top fade — fixed overlay, only shown while reading */}
+      {createPortal(
+        <div
+          className="notes-reading-fade"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 25,
+            height: '72px', pointerEvents: 'none',
+            background: 'linear-gradient(to bottom, rgba(7,7,15,0.98) 0%, rgba(7,7,15,0.6) 40%, transparent 100%)',
+            transition: 'opacity 0.3s ease',
+          }}
+        />,
+        document.body
+      )}
+
       {/* Bottom reading-progress fade — fixed overlay, only shown while reading */}
       {createPortal(
         <div
