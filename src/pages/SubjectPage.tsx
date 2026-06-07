@@ -399,7 +399,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
     const isHover = hoverFolder === key && isDragging;
     return (
       <div
-        onDragOver={e => { if (isDragging) { e.preventDefault(); setHoverFolder(key); } }}
+        onDragOver={e => { e.preventDefault(); if (isDragging) setHoverFolder(key); }}
         onDragLeave={() => setHoverFolder(prev => (prev === key ? null : prev))}
         onDrop={e => { e.preventDefault(); onDropToFolder(folderId); setHoverFolder(null); }}
         style={{
