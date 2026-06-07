@@ -552,6 +552,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
   } | null>(null);
   const [scrollPct, setScrollPct] = useState(0);
   const [showBackTop, setShowBackTop] = useState(false);
+  const prevScrollTopRef = useRef(0);
   const [activeSection, setActiveSection] = useState(0);
   const [showToc, setShowToc] = useState(false);
 
@@ -601,16 +602,23 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
       const { scrollTop, scrollHeight, clientHeight } = el;
       const max = scrollHeight - clientHeight;
       const pct = max > 0 ? scrollTop / max : 0;
+      const atTop = scrollTop < 80;
+      const scrollingDown = scrollTop > prevScrollTopRef.current + 4;
+      document.body.classList.toggle('notes-scrolling-down', scrollingDown && !atTop);
+      prevScrollTopRef.current = scrollTop;
       setScrollPct(pct);
       setShowBackTop(scrollTop > 300);
       if (max <= 0 || pct >= 0.8) fireRead();
     };
     el.addEventListener('scroll', handler, { passive: true });
-    // Short notes that don't scroll count as read once laid out.
     const t = setTimeout(() => {
       if ((el.scrollHeight - el.clientHeight) <= 0) fireRead();
     }, 800);
-    return () => { el.removeEventListener('scroll', handler); clearTimeout(t); };
+    return () => {
+      el.removeEventListener('scroll', handler);
+      clearTimeout(t);
+      document.body.classList.remove('notes-scrolling-down');
+    };
   }, [scrollElRef, fireRead]);
 
   // IntersectionObserver: track which section is currently in view
@@ -980,6 +988,34 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
             <path d="M6 9V3M3 5.5l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+      )}
+
+      {/* Bottom reading-progress fade — fixed overlay, only shown while reading */}
+      {createPortal(
+        <div
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 25,
+            height: '72px', pointerEvents: 'none',
+            background: 'linear-gradient(to top, rgba(7,7,15,0.98) 0%, rgba(7,7,15,0.6) 40%, transparent 100%)',
+            transition: 'opacity 0.3s ease',
+          }}
+          className="notes-reading-fade"
+        >
+          {/* Progress bar at the very bottom */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px',
+            background: 'rgba(255,255,255,0.06)',
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${scrollPct * 100}%`,
+              background: color,
+              transition: 'width 0.25s ease',
+              boxShadow: `0 0 8px ${color}70`,
+            }} />
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

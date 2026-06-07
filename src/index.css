@@ -506,14 +506,27 @@ h1, h2, h3 {
 .page-notes-reading .notes-sidebar:hover {
   opacity: 0.70;
 }
-/* nav dimming handled by overlay in dim mode; base reading mode uses opacity */
+/* Navbar becomes a fixed overlay when reading notes: slides up on scroll-down,
+   slides back on scroll-up. Content fills full viewport height since nav is
+   now out of the layout flow. */
 body.notes-reading nav {
-  opacity: 0.12;
-  transition: opacity 200ms ease;
+  position: fixed !important;
+  top: 0; left: 0; right: 0;
+  transform: translateY(0);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  opacity: 1 !important;
 }
-body.notes-reading nav:hover {
-  opacity: 0.80;
+body.notes-reading.notes-scrolling-down nav {
+  transform: translateY(-100%);
 }
+body.notes-reading .page-notes-reading,
+body.notes-reading .subject-page-root {
+  height: 100vh !important;
+}
+/* Bottom fade only visible during notes reading */
+.notes-reading-fade { opacity: 0; }
+body.notes-reading .notes-reading-fade { opacity: 1; }
+
 .page-notes-reading .notes-meta-row {
   opacity: 0.15;
   transition: opacity 200ms ease;

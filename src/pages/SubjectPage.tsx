@@ -732,6 +732,13 @@ export default function SubjectPage() {
     document.body.classList.toggle('notes-focus-active', active);
     return () => { document.body.classList.remove('notes-focus-active'); };
   }, [fullFocus, view]);
+
+  useEffect(() => {
+    const reading = view === 'notes' && !!activeNoteId;
+    document.body.classList.toggle('notes-reading', reading);
+    return () => { document.body.classList.remove('notes-reading'); };
+  }, [view, activeNoteId]);
+
   const examDate = examDatesList.find(d => d.subjectId === id);
 
   const [renaming, setRenaming] = useState<{ id: string; value: string; kind: 'quiz' | 'note' | 'set' | 'file' } | null>(null);
@@ -999,7 +1006,7 @@ export default function SubjectPage() {
   const selectedLevelFileIds = selectedFileIds.filter(id => levelFiles.some(f => f.id === id));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 72px)' }}>
+    <div className="subject-page-root" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 72px)' }}>
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="subject-breadcrumb-strip flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
