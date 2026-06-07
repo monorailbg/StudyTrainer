@@ -520,6 +520,7 @@ export default function SubjectPage() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
+  const [activeSidebarFileId, setActiveSidebarFileId] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<GenerationType>('flashcards');
   const [genState, setGenState] = useState<GenState>({ status: 'idle' });
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
@@ -557,6 +558,7 @@ export default function SubjectPage() {
     // Reset all state when navigating to a different subject
     setFiles([]);
     setSelectedFileIds([]);
+    setActiveSidebarFileId(null);
     setSavedQuizzes([]);
     setActiveQuizId(null);
     setSavedNotes([]);
@@ -1169,17 +1171,17 @@ export default function SubjectPage() {
                 />
 
                 {levelFiles.map(file => {
-                  const isFileSelected = selectedFileIds.includes(file.id);
+                  const isSidebarActive = activeSidebarFileId === file.id;
                   return (
                     <div key={file.id}>
                       <SidebarItem
                         icon={<IconFile />}
                         label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
                         sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : ts('Image')}`}
-                        active={isFileSelected}
-                        dot={isFileSelected}
+                        active={isSidebarActive}
+                        dot={isSidebarActive}
                         dotColor={subject.color}
-                        onClick={() => { setSelectedFileIds([file.id]); setView('upload'); setFullFocus(false); }}
+                        onClick={() => { setActiveSidebarFileId(file.id); setSelectedFileIds([file.id]); setView('upload'); setFullFocus(false); }}
                       />
                     </div>
                   );
