@@ -307,13 +307,14 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
         title="翻訳 (Japanese definition)"
         style={{
           height: '28px', padding: '0 9px', borderRadius: '7px',
-          background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.28)',
-          cursor: 'pointer', color: '#f87171', fontSize: '11px', fontWeight: 700,
+          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
+          cursor: 'pointer', color: 'rgba(230,237,243,0.85)', fontSize: '11px', fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: '5px',
           flexShrink: 0, whiteSpace: 'nowrap',
+          letterSpacing: '0.02em',
         }}
       >
-        <span style={{ fontSize: '12px', lineHeight: 1 }}>あ</span>
+        <span style={{ fontSize: '13px', lineHeight: 1, fontWeight: 400, opacity: 0.9 }}>あ</span>
         翻訳
       </button>
       {existingId && onRemove && (

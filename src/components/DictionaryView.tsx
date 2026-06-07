@@ -229,15 +229,15 @@ export function DictionaryView({
           <div style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             marginBottom: '16px', paddingBottom: '10px',
-            borderBottom: '1px solid rgba(239,68,68,0.15)',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
           }}>
-            <span style={{ fontSize: '20px', lineHeight: 1 }}>あ</span>
-            <span style={{ fontSize: '16px', fontWeight: 700, color: '#f87171', letterSpacing: '-0.01em' }}>
+            <span style={{ fontSize: '20px', lineHeight: 1, opacity: 0.7 }}>あ</span>
+            <span style={{ fontSize: '16px', fontWeight: 700, color: 'rgba(230,237,243,0.85)', letterSpacing: '-0.01em' }}>
               翻訳
             </span>
             <span style={{
-              fontSize: '11px', fontWeight: 600, color: '#f87171',
-              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+              fontSize: '11px', fontWeight: 600, color: 'rgba(230,237,243,0.5)',
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '999px', padding: '2px 8px',
             }}>
               {filteredJapanese.length}
@@ -248,7 +248,7 @@ export function DictionaryView({
               .slice()
               .sort((a, b) => a.term.localeCompare(b.term))
               .map(entry => (
-                <EntryCard key={entry.id} entry={entry} color="#f87171" onDelete={onDelete} sort={sort} />
+                <EntryCard key={entry.id} entry={entry} color="rgba(230,237,243,0.6)" onDelete={onDelete} sort={sort} />
               ))}
           </div>
         </div>
