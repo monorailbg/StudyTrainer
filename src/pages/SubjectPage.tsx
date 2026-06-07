@@ -119,7 +119,7 @@ function SidebarItem({
     >
       <span style={{ flexShrink: 0, color: active ? '#E6EDF3' : '#8B949E' }}>{icon}</span>
       <span className="flex-1 min-w-0">
-        <span className="block text-[13px] font-medium leading-tight truncate">{label}</span>
+        <span className="block text-[13px] font-medium leading-tight truncate" style={{ fontFamily: "'Sora',sans-serif" }}>{label}</span>
         {sublabel && <span className="block text-[11px] mt-0.5 leading-tight" style={{ color: active ? '#8B949E' : '#484F58' }}>{sublabel}</span>}
       </span>
       {dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor || '#3D7EFF', boxShadow: `0 0 5px ${dotColor || '#3D7EFF'}` }} />}
@@ -1267,7 +1267,7 @@ export default function SubjectPage() {
                 background: 'none', border: 'none', cursor: 'pointer', padding: '0 10px', marginBottom: '4px',
               }}
             >
-              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58' }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', fontFamily: "'Sora',sans-serif" }}>
                 {ts('Files')} ({levelFiles.length})
               </span>
               <span style={{ fontSize: '10px', color: '#484F58' }}>{filesExpanded ? '▾' : '▸'}</span>
@@ -1368,7 +1368,7 @@ export default function SubjectPage() {
                       );
                     })}
                     {unfiledFiles.length > 0 && (<>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', padding: '6px 10px 4px' }}>{ts('Unfiled')}</div>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', padding: '6px 10px 4px', fontFamily: "'Sora',sans-serif" }}>{ts('Unfiled')}</div>
                       {unfiledFiles.map(f => sidebarFileItem(f, true))}
                     </>)}
                   </>);
@@ -1379,7 +1379,7 @@ export default function SubjectPage() {
 
           {/* Generated content section */}
           <div style={{ marginTop: '8px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px', fontFamily: "'Sora',sans-serif" }}>
               {ts('Content')}
             </div>
 
