@@ -53,6 +53,14 @@ const HIGHLIGHT_COLORS = [
   { id: 'pink',   label: 'Pink',   value: 'rgba(255,100,150,0.28)' },
 ] as const;
 
+const UNDERLINE_COLORS = [
+  { id: 'sky',     value: '#38BDF8' },
+  { id: 'violet',  value: '#A78BFA' },
+  { id: 'rose',    value: '#FB7185' },
+  { id: 'amber',   value: '#FCD34D' },
+  { id: 'emerald', value: '#34D399' },
+] as const;
+
 // ── buildSegments: merges bold markers + annotations into renderable segments ──
 
 type Segment = {
@@ -142,7 +150,13 @@ function AnnotatedRichText({ rawText, accent, annotations }: {
               opacity: 1,
             };
           } else {
-            annStyle = { textDecoration: 'underline', textDecorationColor: accent, textUnderlineOffset: '3px' };
+            annStyle = {
+              textDecoration: 'underline',
+              textDecorationColor: ann.color ?? accent,
+              textDecorationThickness: '2px',
+              textUnderlineOffset: '4px',
+              color: 'inherit',
+            };
           }
         }
         if (seg.isBold) {
@@ -157,7 +171,7 @@ function AnnotatedRichText({ rawText, accent, annotations }: {
         }
         if (ann) {
           return (
-            <mark key={i} data-ann-id={ann.id} style={{ background: 'transparent', ...annStyle }}>
+            <mark key={i} data-ann-id={ann.id} style={{ background: 'transparent', color: 'inherit', ...annStyle }}>
               {seg.text}
             </mark>
           );
@@ -177,7 +191,7 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
   accent: string;
   existingId?: string;
   onHighlight: (color: string) => void;
-  onUnderline: () => void;
+  onUnderline: (color: string) => void;
   onRemove?: () => void;
   onDismiss: () => void;
 }) {
@@ -251,17 +265,23 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
         />
       ))}
       <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
-      <button
-        onClick={onUnderline}
-        title={ts('Underline')}
-        style={{
-          width: '26px', height: '26px', borderRadius: '7px',
-          background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
-          cursor: 'pointer', color: accent, fontSize: '13px', fontWeight: 700,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          textDecoration: 'underline', textUnderlineOffset: '3px',
-        }}
-      >U</button>
+      {UNDERLINE_COLORS.map(c => (
+        <button
+          key={c.id}
+          onClick={() => onUnderline(c.value)}
+          title={ts('Underline')}
+          style={{
+            width: '22px', height: '22px', borderRadius: '5px',
+            background: 'transparent', border: 'none',
+            cursor: 'pointer', color: c.value,
+            fontSize: '13px', fontWeight: 800, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            textDecoration: 'underline', textDecorationColor: c.value,
+            textDecorationThickness: '2px', textUnderlineOffset: '3px',
+            flexShrink: 0,
+          }}
+        >U</button>
+      ))}
       {existingId && onRemove && (
         <>
           <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
@@ -808,7 +828,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
           accent={color}
           existingId={toolbar.existingId}
           onHighlight={(c) => applyAnnotation('highlight', c)}
-          onUnderline={() => applyAnnotation('underline')}
+          onUnderline={(c) => applyAnnotation('underline', c)}
           onRemove={toolbar.existingId ? () => { removeAnnotation(toolbar.existingId!); setToolbar(null); } : undefined}
           onDismiss={() => setToolbar(null)}
         />
