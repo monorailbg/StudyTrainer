@@ -108,7 +108,8 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
         .arcDashGap(0.55)
         .arcDashAnimateTime(2400)
         .arcStroke(0.7)
-        .arcAltitude(0.3)
+        .arcAltitude(null)
+        .arcAltitudeAutoScale(0.4)
         // HTML subject pins
         .htmlElementsData(pinSubjects)
         .htmlLat((d: any) => d.lat)
