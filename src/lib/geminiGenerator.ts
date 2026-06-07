@@ -409,14 +409,29 @@ export async function generateDefinition(term: string, subjectTitle: string): Pr
 
 Define the term or concept: "${term}"
 
-Return EXACTLY 1–2 bullet points (•). Each bullet is one concise sentence. Cover:
-• what the term means in the context of ${subjectTitle}
-• (optional second bullet) a key mechanism, formula, or real-world example only if it genuinely adds clarity
+Return EXACTLY 1 bullet point (•): one sentence of max 20 words giving the core meaning in the context of ${subjectTitle}.
 
 Rules:
-- Start each line with •
+- Start with •
 - No headings, no JSON, no markdown bold, no extra text before or after
-- If one bullet fully captures the term, use only one`;
+- Maximum 20 words`;
+
+  return callGeminiAuto([{ text: prompt }]);
+}
+
+export async function generateJapaneseDefinition(term: string, subjectTitle: string): Promise<string> {
+  const prompt = `あなたは「${subjectTitle}」というグローバルビジネス学部の学術辞典です。
+
+次の用語を日本語で説明してください：「${term}」
+
+以下の形式で正確に2行を返してください：
+• 翻訳：[日本語訳または読み方]
+• 説明：[${subjectTitle}の文脈における意味を1文で、最大30字]
+
+ルール：
+- 各行は•で始めること
+- 見出し・JSON・太字・前後の余分なテキストは不要
+- すべて日本語で記述すること`;
 
   return callGeminiAuto([{ text: prompt }]);
 }

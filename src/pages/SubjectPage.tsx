@@ -32,7 +32,7 @@ import type {
   GeneratedNote,
   GeneratedQuizQuestion,
 } from '../lib/generator';
-import { generateDefinition } from '../lib/geminiGenerator';
+import { generateDefinition, generateJapaneseDefinition } from '../lib/geminiGenerator';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
@@ -962,6 +962,34 @@ export default function SubjectPage() {
     }
   };
 
+  const addToJapaneseDictionary = async (term: string, sourceNoteTitle?: string, sourceNoteId?: string) => {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    const pendingId = Math.random().toString(36).slice(2);
+    setDictPending(p => [...p, { id: pendingId, term: trimmed }]);
+    toast('info', `翻訳中 "${trimmed}"…`);
+    try {
+      const definition = await generateJapaneseDefinition(trimmed, subject?.title ?? '');
+      const entry: DictionaryEntry = {
+        id: `dict-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        subjectId: id!,
+        term: trimmed,
+        definition,
+        folder: '翻訳',
+        sourceNoteTitle,
+        sourceNoteId,
+        createdAt: Date.now(),
+      };
+      await saveDictionaryEntry(entry);
+      setDictEntries(prev => [...prev, entry].sort((a, b) => a.term.localeCompare(b.term)));
+      toast('success', `"${trimmed}" を翻訳しました`);
+    } catch (err) {
+      toast('error', `翻訳に失敗しました "${trimmed}"`, String(err).slice(0, 80));
+    } finally {
+      setDictPending(p => p.filter(x => x.id !== pendingId));
+    }
+  };
+
   // ── Generation ─────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
@@ -1813,6 +1841,7 @@ export default function SubjectPage() {
                     scrollElRef={mainRef}
                     onGoToFlashcards={savedFlashcardSets.length > 0 ? () => { setView('flashcards'); setActiveSetId(null); } : undefined}
                     onAddToDictionary={(term, srcTitle, srcId) => addToDictionary(term, srcTitle, srcId)}
+                    onAddToJapaneseDictionary={(term, srcTitle, srcId) => addToJapaneseDictionary(term, srcTitle, srcId)}
                     fullFocus={fullFocus}
                     onToggleFullFocus={() => setFullFocus(v => !v)}
                   />

@@ -45,12 +45,22 @@ export function DictionaryView({
   const [sort, setSort] = useState<SortMode>('az');
   const [search, setSearch] = useState('');
 
+  const englishEntries = useMemo(() => entries.filter(e => !e.folder), [entries]);
+  const japaneseEntries = useMemo(() => entries.filter(e => e.folder === '翻訳'), [entries]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return entries.filter(e =>
+    return englishEntries.filter(e =>
       !q || e.term.toLowerCase().includes(q) || e.definition.toLowerCase().includes(q)
     );
-  }, [entries, search]);
+  }, [englishEntries, search]);
+
+  const filteredJapanese = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return japaneseEntries.filter(e =>
+      !q || e.term.toLowerCase().includes(q) || e.definition.toLowerCase().includes(q)
+    );
+  }, [japaneseEntries, search]);
 
   const grouped = useMemo<{ label: string; items: DictionaryEntry[] }[]>(() => {
     if (sort === 'az') {
@@ -101,7 +111,7 @@ export function DictionaryView({
         </div>
 
         {/* Sort toggle */}
-        {entries.length > 0 && (
+        {englishEntries.length > 0 && (
           <div style={{
             display: 'flex', gap: '2px', padding: '3px',
             background: '#161B22', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)',
@@ -190,10 +200,9 @@ export function DictionaryView({
         </div>
       )}
 
-      {/* Grouped entries */}
+      {/* Grouped English entries */}
       {grouped.map(({ label, items }) => (
         <div key={label} style={{ marginBottom: '28px' }}>
-          {/* Group label */}
           <div style={{
             fontSize: sort === 'az' ? '22px' : '11px',
             fontWeight: sort === 'az' ? 700 : 600,
@@ -206,8 +215,6 @@ export function DictionaryView({
           }}>
             {label}
           </div>
-
-          {/* Entry cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {items.map(entry => (
               <EntryCard key={entry.id} entry={entry} color={color} onDelete={onDelete} sort={sort} />
@@ -215,6 +222,37 @@ export function DictionaryView({
           </div>
         </div>
       ))}
+
+      {/* 翻訳 section */}
+      {filteredJapanese.length > 0 && (
+        <div style={{ marginTop: grouped.length > 0 ? '40px' : 0 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            marginBottom: '16px', paddingBottom: '10px',
+            borderBottom: '1px solid rgba(239,68,68,0.15)',
+          }}>
+            <span style={{ fontSize: '20px', lineHeight: 1 }}>あ</span>
+            <span style={{ fontSize: '16px', fontWeight: 700, color: '#f87171', letterSpacing: '-0.01em' }}>
+              翻訳
+            </span>
+            <span style={{
+              fontSize: '11px', fontWeight: 600, color: '#f87171',
+              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+              borderRadius: '999px', padding: '2px 8px',
+            }}>
+              {filteredJapanese.length}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {filteredJapanese
+              .slice()
+              .sort((a, b) => a.term.localeCompare(b.term))
+              .map(entry => (
+                <EntryCard key={entry.id} entry={entry} color="#f87171" onDelete={onDelete} sort={sort} />
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

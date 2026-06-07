@@ -184,12 +184,13 @@ function AnnotatedRichText({ rawText, accent, annotations }: {
 
 interface SelRect { left: number; top: number; bottom: number; width: number }
 
-function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddToDictionary, onRemove, onDismiss }: {
+function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddToDictionary, onAddToJapaneseDictionary, onRemove, onDismiss }: {
   rect: SelRect;
   existingId?: string;
   onHighlight: (color: string) => void;
   onUnderline: (color: string) => void;
   onAddToDictionary: () => void;
+  onAddToJapaneseDictionary: () => void;
   onRemove?: () => void;
   onDismiss: () => void;
 }) {
@@ -300,6 +301,20 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
           <path d="M10.5 10.5v3M9 12h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
         </svg>
         {ts('Define')}
+      </button>
+      <button
+        onClick={onAddToJapaneseDictionary}
+        title="翻訳 (Japanese definition)"
+        style={{
+          height: '28px', padding: '0 9px', borderRadius: '7px',
+          background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.28)',
+          cursor: 'pointer', color: '#f87171', fontSize: '11px', fontWeight: 700,
+          display: 'flex', alignItems: 'center', gap: '5px',
+          flexShrink: 0, whiteSpace: 'nowrap',
+        }}
+      >
+        <span style={{ fontSize: '12px', lineHeight: 1 }}>あ</span>
+        翻訳
       </button>
       {existingId && onRemove && (
         <>
@@ -627,7 +642,7 @@ function useSmoothScroll(ref: React.RefObject<HTMLElement | null>) {
 
 // ── NotesViewer ───────────────────────────────────────────────────────────────
 
-export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrollElRef, onRead, onGoToFlashcards, onAddToDictionary, fullFocus, onToggleFullFocus }: {
+export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrollElRef, onRead, onGoToFlashcards, onAddToDictionary, onAddToJapaneseDictionary, fullFocus, onToggleFullFocus }: {
   notes: GeneratedNote;
   color?: string;
   noteId?: string;
@@ -636,6 +651,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
   onRead?: () => void;
   onGoToFlashcards?: () => void;
   onAddToDictionary?: (term: string, noteTitle?: string, noteId?: string) => void;
+  onAddToJapaneseDictionary?: (term: string, noteTitle?: string, noteId?: string) => void;
   fullFocus?: boolean;
   onToggleFullFocus?: () => void;
 }) {
@@ -853,6 +869,11 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
             const term = toolbar.selectedText;
             setToolbar(null);
             onAddToDictionary?.(term, noteTitle, noteId);
+          }}
+          onAddToJapaneseDictionary={() => {
+            const term = toolbar.selectedText;
+            setToolbar(null);
+            onAddToJapaneseDictionary?.(term, noteTitle, noteId);
           }}
           onRemove={toolbar.existingId ? () => { removeAnnotation(toolbar.existingId!); setToolbar(null); } : undefined}
           onDismiss={() => setToolbar(null)}

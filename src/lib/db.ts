@@ -389,6 +389,7 @@ export interface DictionaryEntry {
   subjectId:        string;
   term:             string;
   definition:       string;
+  folder?:          string;   // e.g. '翻訳' for Japanese entries
   sourceNoteTitle?: string;
   sourceNoteId?:    string;
   createdAt:        number;
