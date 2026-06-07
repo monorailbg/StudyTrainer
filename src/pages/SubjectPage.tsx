@@ -15,6 +15,7 @@ import {
   saveFlashcardSet, getFlashcardSets, deleteFlashcardSet, type StoredFlashcardSet,
   saveFolder, getFolders, deleteFolder, type Folder, type FolderKind,
   getQuizResults, type QuizResult,
+  saveDictionaryEntry, getDictionaryEntries, deleteDictionaryEntry, type DictionaryEntry,
 } from '../lib/db';
 import {
   isFirebaseConfigured, isSupabaseConfigured,
@@ -31,9 +32,11 @@ import type {
   GeneratedNote,
   GeneratedQuizQuestion,
 } from '../lib/generator';
+import { generateDefinition } from '../lib/geminiGenerator';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
+import { DictionaryView } from '../components/DictionaryView';
 
 // ── Error helper ───────────────────────────────────────────────────────────────
 
@@ -71,7 +74,7 @@ type GenStatus = 'idle' | 'generating' | 'done' | 'error';
 interface GenState { status: GenStatus; type?: GenerationType; error?: string; }
 interface GenProgress { current: number; total: number; }
 
-type View = 'dashboard' | 'upload' | 'flashcards' | 'notes' | 'quiz';
+type View = 'dashboard' | 'upload' | 'flashcards' | 'notes' | 'quiz' | 'dictionary';
 
 const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 
@@ -85,6 +88,7 @@ const IconNote  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="n
 const IconQuiz  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.3"/><path d="M6.5 7c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0 1.25-1.25 1.75-2.5 2.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="9" cy="13" r=".9" fill="currentColor"/></svg>);
 const IconPlus  = () => (<svg viewBox="0 0 18 18" width="14" height="14" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>);
 const IconSparkle = () => (<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 1v4M8 11v4M1 8h4M11 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M3.22 3.22l2.83 2.83M9.95 9.95l2.83 2.83M3.22 12.78l2.83-2.83M9.95 6.05l2.83-2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>);
+const IconDict  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M2 2.5A1.5 1.5 0 013.5 1h11A1.5 1.5 0 0116 2.5v13a1.5 1.5 0 01-1.5 1.5H3.5A1.5 1.5 0 012 15.5v-13z" stroke="currentColor" strokeWidth="1.3"/><path d="M5 5.5h8M5 8.5h8M5 11.5h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>);
 
 const Spinner = ({ color }: { color: string }) => (
   <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ animation: 'spin 0.8s linear infinite' }}>
@@ -582,6 +586,8 @@ export default function SubjectPage() {
   const [draggedItem, setDraggedItem] = useState<{ kind: FolderKind; id: string } | null>(null);
   const [showGenPanel, setShowGenPanel] = useState(false);
   const [genLanguage, setGenLanguage] = useState<'english' | 'japanese' | 'both'>('english');
+  const [dictEntries, setDictEntries] = useState<DictionaryEntry[]>([]);
+  const [dictPending, setDictPending] = useState<{ id: string; term: string }[]>([]);
 
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
@@ -663,6 +669,10 @@ export default function SubjectPage() {
       } catch (err) {
         console.error('Failed to load persisted subject data:', err);
       }
+      // Dictionary entries are always local-only (not shared via cloud)
+      getDictionaryEntries(id!).then(entries => {
+        setDictEntries(entries.sort((a, b) => a.term.localeCompare(b.term)));
+      }).catch(() => {});
     }
 
     loadPersisted();
@@ -922,6 +932,34 @@ export default function SubjectPage() {
       moveItemToFolder(kind, draggedItem.id, folderId);
     }
     setDraggedItem(null);
+  };
+
+  // ── Dictionary ─────────────────────────────────────────────────────────────
+  const addToDictionary = async (term: string, sourceNoteTitle?: string, sourceNoteId?: string) => {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    const pendingId = Math.random().toString(36).slice(2);
+    setDictPending(p => [...p, { id: pendingId, term: trimmed }]);
+    toast(`Adding "${trimmed}" to dictionary…`);
+    try {
+      const definition = await generateDefinition(trimmed, subject?.title ?? '');
+      const entry: DictionaryEntry = {
+        id: `dict-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        subjectId: id!,
+        term: trimmed,
+        definition,
+        sourceNoteTitle,
+        sourceNoteId,
+        createdAt: Date.now(),
+      };
+      await saveDictionaryEntry(entry);
+      setDictEntries(prev => [...prev, entry].sort((a, b) => a.term.localeCompare(b.term)));
+      toast(`"${trimmed}" added to dictionary`);
+    } catch (err) {
+      toast(`Failed to define "${trimmed}": ${String(err).slice(0, 80)}`);
+    } finally {
+      setDictPending(p => p.filter(x => x.id !== pendingId));
+    }
   };
 
   // ── Generation ─────────────────────────────────────────────────────────────
@@ -1282,6 +1320,15 @@ export default function SubjectPage() {
               dot={savedNotes.length > 0}
               dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(null); setView('notes'); setFullFocus(false); }}
+            />
+            <SidebarItem
+              icon={<IconDict />}
+              label={ts('Dictionary')}
+              sublabel={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : ts('None yet')}
+              active={view === 'dictionary'}
+              dot={dictEntries.length > 0}
+              dotColor={subject.color}
+              onClick={() => { setActiveSidebarFileId(null); setView('dictionary'); setFullFocus(false); }}
             />
             <SidebarItem
               icon={<IconQuiz />}
@@ -1765,8 +1812,10 @@ export default function SubjectPage() {
                     notes={activeNote.note}
                     color={subject.color}
                     noteId={activeNote.id}
+                    noteTitle={activeNote.name}
                     scrollElRef={mainRef}
                     onGoToFlashcards={savedFlashcardSets.length > 0 ? () => { setView('flashcards'); setActiveSetId(null); } : undefined}
+                    onAddToDictionary={(term, srcTitle, srcId) => addToDictionary(term, srcTitle, srcId)}
                     fullFocus={fullFocus}
                     onToggleFullFocus={() => setFullFocus(v => !v)}
                   />
@@ -1861,6 +1910,19 @@ export default function SubjectPage() {
               />
             );
           })()}
+
+          {/* Dictionary view */}
+          {view === 'dictionary' && (
+            <DictionaryView
+              entries={dictEntries}
+              pendingTerms={dictPending}
+              color={subject.color}
+              onDelete={async (entryId) => {
+                await deleteDictionaryEntry(entryId).catch(() => {});
+                setDictEntries(prev => prev.filter(e => e.id !== entryId));
+              }}
+            />
+          )}
 
           {/* Quiz view — either the active quiz or the "previous quizzes" folder */}
           {view === 'quiz' && (() => {

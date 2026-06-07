@@ -7,7 +7,7 @@
 import type { GeneratedFlashcard, GeneratedNote, GeneratedQuizQuestion } from './generator';
 
 const DB_NAME = 'StudyTrainerDB';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 let _db: Promise<IDBDatabase> | null = null;
 
@@ -44,6 +44,10 @@ function openDB(): Promise<IDBDatabase> {
         const store = db.createObjectStore('quizResults', { keyPath: 'id' });
         store.createIndex('bySubject', 'subjectId', { unique: false });
         store.createIndex('byQuiz', 'quizId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('dictionaryEntries')) {
+        const store = db.createObjectStore('dictionaryEntries', { keyPath: 'id' });
+        store.createIndex('bySubject', 'subjectId', { unique: false });
       }
     };
     req.onsuccess  = () => resolve(req.result);
@@ -375,5 +379,47 @@ export async function getAllQuizResults(): Promise<QuizResult[]> {
     const req = tx.objectStore('quizResults').getAll();
     req.onsuccess = () => resolve((req.result ?? []).sort((a, b) => b.completedAt - a.completedAt));
     req.onerror   = () => reject(req.error);
+  });
+}
+
+// ── Dictionary entries ────────────────────────────────────────────────────────
+
+export interface DictionaryEntry {
+  id:               string;
+  subjectId:        string;
+  term:             string;
+  definition:       string;
+  sourceNoteTitle?: string;
+  sourceNoteId?:    string;
+  createdAt:        number;
+}
+
+export async function saveDictionaryEntry(entry: DictionaryEntry): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('dictionaryEntries', 'readwrite');
+    tx.objectStore('dictionaryEntries').put(entry);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+export async function getDictionaryEntries(subjectId: string): Promise<DictionaryEntry[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('dictionaryEntries', 'readonly');
+    const req = tx.objectStore('dictionaryEntries').index('bySubject').getAll(subjectId);
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function deleteDictionaryEntry(id: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('dictionaryEntries', 'readwrite');
+    tx.objectStore('dictionaryEntries').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
   });
 }

@@ -401,3 +401,20 @@ export async function generateFromTopic(
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, topic);
 }
+
+// ── Dictionary definition generator ───────────────────────────────────────────
+
+export async function generateDefinition(term: string, subjectTitle: string): Promise<string> {
+  const prompt = `You are an academic dictionary for the subject "${subjectTitle}" in a Global Business Studies programme.
+
+Define the term or concept: "${term}"
+
+Write a clear, precise definition of 2–4 sentences aimed at a university student. Include:
+- what the term means in the context of ${subjectTitle}
+- any key relationships or mechanisms (cause/effect, formula, framework)
+- one concrete real-world example if it adds clarity
+
+Return ONLY the definition text. No headings, no bullet points, no JSON, no markdown.`;
+
+  return callGeminiAuto([{ text: prompt }]);
+}

@@ -186,12 +186,13 @@ function AnnotatedRichText({ rawText, accent, annotations }: {
 
 interface SelRect { left: number; top: number; bottom: number; width: number }
 
-function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline, onRemove, onDismiss }: {
+function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline, onAddToDictionary, onRemove, onDismiss }: {
   rect: SelRect;
   accent: string;
   existingId?: string;
   onHighlight: (color: string) => void;
   onUnderline: (color: string) => void;
+  onAddToDictionary: () => void;
   onRemove?: () => void;
   onDismiss: () => void;
 }) {
@@ -282,6 +283,25 @@ function AnnotationToolbar({ rect, accent, existingId, onHighlight, onUnderline,
           }}
         >U</button>
       ))}
+      <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
+      <button
+        onClick={onAddToDictionary}
+        title={ts('Add to dictionary')}
+        style={{
+          width: '28px', height: '28px', borderRadius: '7px',
+          background: 'rgba(61,126,255,0.12)', border: '1px solid rgba(61,126,255,0.25)',
+          cursor: 'pointer', color: '#3D7EFF', fontSize: '13px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none">
+          <path d="M2 2.5A1.5 1.5 0 013.5 1h9A1.5 1.5 0 0114 2.5v10a1.5 1.5 0 01-1.5 1.5H3.5A1.5 1.5 0 012 12.5v-10z" stroke="currentColor" strokeWidth="1.3"/>
+          <path d="M5 5h6M5 7.5h6M5 10h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          <circle cx="13" cy="13" r="2.8" fill="#0D1117" stroke="currentColor" strokeWidth="1.2"/>
+          <path d="M13 11.8v2.4M11.8 13h2.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+        </svg>
+      </button>
       {existingId && onRemove && (
         <>
           <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
@@ -608,13 +628,15 @@ function useSmoothScroll(ref: React.RefObject<HTMLElement | null>) {
 
 // ── NotesViewer ───────────────────────────────────────────────────────────────
 
-export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onRead, onGoToFlashcards, fullFocus, onToggleFullFocus }: {
+export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrollElRef, onRead, onGoToFlashcards, onAddToDictionary, fullFocus, onToggleFullFocus }: {
   notes: GeneratedNote;
   color?: string;
   noteId?: string;
+  noteTitle?: string;
   scrollElRef?: React.RefObject<HTMLElement | null>;
   onRead?: () => void;
   onGoToFlashcards?: () => void;
+  onAddToDictionary?: (term: string, noteTitle?: string, noteId?: string) => void;
   fullFocus?: boolean;
   onToggleFullFocus?: () => void;
 }) {
@@ -829,6 +851,11 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, scrollElRef, onR
           existingId={toolbar.existingId}
           onHighlight={(c) => applyAnnotation('highlight', c)}
           onUnderline={(c) => applyAnnotation('underline', c)}
+          onAddToDictionary={() => {
+            const term = toolbar.selectedText;
+            setToolbar(null);
+            onAddToDictionary?.(term, noteTitle, noteId);
+          }}
           onRemove={toolbar.existingId ? () => { removeAnnotation(toolbar.existingId!); setToolbar(null); } : undefined}
           onDismiss={() => setToolbar(null)}
         />
