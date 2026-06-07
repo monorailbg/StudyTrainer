@@ -309,9 +309,6 @@ export default function Home() {
     return map;
   }, [notesList, sets, notesRead, srsCards]);
 
-  const dueEntries = Object.entries(statsBySubject).filter(([, m]) => m.cardsDue > 0);
-  const totalDue = dueEntries.reduce((a, [, m]) => a + m.cardsDue, 0);
-
   const totalCards = flashcardsData.length;
   const totalNotes = notesData.length;
   const avgScore = quizResults.length > 0
@@ -493,29 +490,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Global due-for-review line */}
-        {totalDue > 0 && (
-          <Link
-            to="/flashcards"
-            className="no-underline flex items-center gap-2.5 anim-fadein"
-            style={{
-              marginTop: '-24px', marginBottom: '28px', padding: '10px 14px', borderRadius: '12px',
-              background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.22)', width: 'fit-content',
-              transition: 'border-color 0.2s ease, background 0.2s ease',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,81,73,0.5)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,81,73,0.22)'; }}
-          >
-            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#F85149', boxShadow: '0 0 8px #F85149', flexShrink: 0 }} />
-            <span style={{ fontSize: '13px', color: '#E6EDF3' }}>
-              {ts('You have {cards} due for review across {subjects}.', {
-                cards: `${totalDue} card${totalDue !== 1 ? 's' : ''}`,
-                subjects: ts('{n} subjects', { n: dueEntries.length }),
-              })}
-            </span>
-            <span style={{ fontSize: '12px', color: '#F97979', fontWeight: 600 }}>{ts('Review')} →</span>
-          </Link>
-        )}
 
         {/* Upcoming Exams */}
         {examDates.length > 0 && (() => {
