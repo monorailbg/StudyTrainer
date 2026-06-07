@@ -364,7 +364,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   folders: Folder[];
   items: T[];
   draggedId: string | null;
-  cols?: 1 | 2 | 3;
+  cols?: 1 | 2 | 3 | 5;
   headerExtra?: React.ReactNode;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
@@ -381,7 +381,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   // Per-zone enter-count counters fix the "dragLeave fires on child-enter" bug.
   const enterCounts = useRef<Map<string, number>>(new Map());
   const isDragging = draggedId != null;
-  const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : cols === 3 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+  const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2' : cols === 3 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
 
   const toggleFolder = (folderId: string) => setCollapsedFolders(prev => {
     const next = new Set(prev);
@@ -588,6 +588,7 @@ export default function SubjectPage() {
   const [genLanguage, setGenLanguage] = useState<'english' | 'japanese' | 'both'>('english');
   const [dictEntries, setDictEntries] = useState<DictionaryEntry[]>([]);
   const [dictPending, setDictPending] = useState<{ id: string; term: string }[]>([]);
+  const [collapsedSidebarFolderIds, setCollapsedSidebarFolderIds] = useState<Set<string>>(new Set());
 
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
@@ -1187,20 +1188,23 @@ export default function SubjectPage() {
 
         {/* Left sidebar — hidden on mobile */}
         <aside className="subject-sidebar hidden md:flex flex-col" style={{
-          width: sidebarOpen ? '320px' : '0',
+          width: sidebarOpen ? '400px' : '0',
           flexShrink: 0,
           borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
           background: '#0D1117',
-          padding: sidebarOpen ? '20px 16px' : '0',
-          gap: '3px',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          transition: 'width 0.25s ease, padding 0.25s ease',
+          overflow: 'hidden',
+          transition: 'width 0.25s ease',
         }}>
-          {/* Sidebar header with collapse button */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 4px', flexShrink: 0 }}>
-            <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
-              {subject.title.slice(0, 18)}
+          {/* Sidebar header — sticky */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: sidebarOpen ? '20px 20px 12px' : '0',
+            flexShrink: 0,
+            borderBottom: '1px solid #21262D',
+            background: '#0D1117',
+          }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px' }}>
+              {subject.title.slice(0, 28)}
             </span>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -1210,6 +1214,9 @@ export default function SubjectPage() {
               ◄
             </button>
           </div>
+
+          {/* Scrollable sidebar content */}
+          <div style={{ overflowY: 'auto', flex: 1, padding: sidebarOpen ? '12px 16px 20px' : '0', display: 'flex', flexDirection: 'column', gap: '3px' }}>
 
           {/* Overview / dashboard */}
           <div style={{ marginBottom: '8px' }}>
@@ -1292,17 +1299,33 @@ export default function SubjectPage() {
                     </>);
                   }
 
-                  const sidebarFolderHeader = (folder: typeof fileFolders[0], count: number, onClick: () => void) => (
-                    <button
-                      key={folder.id + '-hdr'}
-                      onClick={onClick}
-                      style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left' }}
-                    >
-                      <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
-                      {count > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{count}</span>}
-                    </button>
-                  );
+                  const sidebarFolderHeader = (folder: typeof fileFolders[0], count: number, onClick: () => void) => {
+                    const isCollapsed = collapsedSidebarFolderIds.has(folder.id);
+                    return (
+                      <div key={folder.id + '-hdr'} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                        <button
+                          onClick={onClick}
+                          style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '3px 4px 3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}
+                        >
+                          <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                          {count > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{count}</span>}
+                        </button>
+                        <button
+                          onClick={() => setCollapsedSidebarFolderIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id);
+                            return next;
+                          })}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px 3px 4px', color: '#484F58', flexShrink: 0, lineHeight: 0 }}
+                        >
+                          <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                            <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  };
 
                   const unfiledFiles = sorted.filter(f => !fileFolders.some(fo => fo.id === f.folderId));
                   return (<>
@@ -1311,7 +1334,7 @@ export default function SubjectPage() {
                       return (
                         <div key={folder.id}>
                           {sidebarFolderHeader(folder, folderFiles.length, () => { setActiveSidebarFileId(null); setView('upload'); setFullFocus(false); })}
-                          {folderFiles.map(f => sidebarFileItem(f, true))}
+                          {!collapsedSidebarFolderIds.has(folder.id) && folderFiles.map(f => sidebarFileItem(f, true))}
                         </div>
                       );
                     })}
@@ -1395,14 +1418,22 @@ export default function SubjectPage() {
                 return (<>
                   {cardFolders.map(folder => {
                     const items = savedFlashcardSets.filter(s => s.folderId === folder.id);
+                    const isCollapsed = collapsedSidebarFolderIds.has(folder.id);
                     return (
                       <div key={folder.id}>
-                        <button onClick={() => { setActiveSidebarFileId(null); setActiveSetId(null); setView('flashcards'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left' }}>
-                          <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
-                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
-                          {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
-                        </button>
-                        {items.map(s => setItem(s, true))}
+                        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                          <button onClick={() => { setActiveSidebarFileId(null); setActiveSetId(null); setView('flashcards'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '3px 4px 3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}>
+                            <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                            {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
+                          </button>
+                          <button onClick={() => setCollapsedSidebarFolderIds(prev => { const next = new Set(prev); if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id); return next; })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px 3px 4px', color: '#484F58', flexShrink: 0, lineHeight: 0 }}>
+                            <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                              <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                        {!isCollapsed && items.map(s => setItem(s, true))}
                       </div>
                     );
                   })}
@@ -1441,14 +1472,22 @@ export default function SubjectPage() {
                 return (<>
                   {noteFolders.map(folder => {
                     const items = savedNotes.filter(n => n.folderId === folder.id);
+                    const isCollapsed = collapsedSidebarFolderIds.has(folder.id);
                     return (
                       <div key={folder.id}>
-                        <button onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(null); setView('notes'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left' }}>
-                          <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
-                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
-                          {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
-                        </button>
-                        {items.map(n => noteItem(n, true))}
+                        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                          <button onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(null); setView('notes'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '3px 4px 3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}>
+                            <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                            {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
+                          </button>
+                          <button onClick={() => setCollapsedSidebarFolderIds(prev => { const next = new Set(prev); if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id); return next; })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px 3px 4px', color: '#484F58', flexShrink: 0, lineHeight: 0 }}>
+                            <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                              <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                        {!isCollapsed && items.map(n => noteItem(n, true))}
                       </div>
                     );
                   })}
@@ -1487,14 +1526,22 @@ export default function SubjectPage() {
                 return (<>
                   {quizFolders.map(folder => {
                     const items = savedQuizzes.filter(q => q.folderId === folder.id);
+                    const isCollapsed = collapsedSidebarFolderIds.has(folder.id);
                     return (
                       <div key={folder.id}>
-                        <button onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setView('quiz'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left' }}>
-                          <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
-                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
-                          {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
-                        </button>
-                        {items.map(q => quizItem(q, true))}
+                        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                          <button onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setView('quiz'); setFullFocus(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '3px 4px 3px 10px', borderRadius: '8px', color: '#8B949E', fontSize: '10px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}>
+                            <span style={{ color: subject.color, flexShrink: 0 }}><IconFolder /></span>
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                            {items.length > 0 && <span style={{ color: '#484F58', flexShrink: 0 }}>{items.length}</span>}
+                          </button>
+                          <button onClick={() => setCollapsedSidebarFolderIds(prev => { const next = new Set(prev); if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id); return next; })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 10px 3px 4px', color: '#484F58', flexShrink: 0, lineHeight: 0 }}>
+                            <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                              <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                        {!isCollapsed && items.map(q => quizItem(q, true))}
                       </div>
                     );
                   })}
@@ -1507,6 +1554,7 @@ export default function SubjectPage() {
             </div>
           )}
 
+          </div>{/* end scrollable content */}
         </aside>
 
         {/* Main content area */}
@@ -1654,7 +1702,7 @@ export default function SubjectPage() {
               {levelFiles.length > 0 && (
                 <FolderBoard<UploadedFile>
                   kind="file" label={t('uploaded_files')} color={subject.color}
-                  folders={folders} items={levelFiles} cols={3}
+                  folders={folders} items={levelFiles} cols={5}
                   draggedId={draggedItem?.kind === 'file' ? draggedItem.id : null}
                   onDragStart={fid => setDraggedItem({ kind: 'file', id: fid })}
                   onDragEnd={() => setDraggedItem(null)}
@@ -1682,43 +1730,43 @@ export default function SubjectPage() {
                       <div
                         onClick={() => toggleFileSelection(file.id)}
                         style={{
-                          display: 'flex', flexDirection: 'column', gap: '10px',
+                          display: 'flex', flexDirection: 'column', gap: '6px',
                           background: isFileSelected ? subject.color + '08' : '#161B22',
                           border: `1px solid ${isFileSelected ? subject.color + '40' : '#30363D'}`,
-                          borderRadius: '16px', padding: '14px',
+                          borderRadius: '12px', padding: '10px',
                           cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative',
                         }}
                       >
                         {/* Checkbox */}
                         <div style={{
-                          position: 'absolute', top: '12px', left: '12px',
-                          width: '18px', height: '18px', borderRadius: '5px',
+                          position: 'absolute', top: '8px', left: '8px',
+                          width: '14px', height: '14px', borderRadius: '4px',
                           background: isFileSelected ? subject.color : 'transparent',
-                          border: `2px solid ${isFileSelected ? subject.color : '#484F58'}`,
+                          border: `1.5px solid ${isFileSelected ? subject.color : '#484F58'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.2s ease', zIndex: 1,
                         }}>
                           {isFileSelected && (
-                            <svg viewBox="0 0 12 12" width="9" height="9" fill="none">
-                              <path d="M2 6l2.5 2.5L10 3.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                            <svg viewBox="0 0 10 10" width="8" height="8" fill="none">
+                              <path d="M1.5 5l2 2.5L8.5 2" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                           )}
                         </div>
 
                         {/* Preview */}
                         {isPDF ? (
-                          <div style={{ width: '100%', height: '80px', borderRadius: '10px', background: iconColor + '14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg viewBox="0 0 20 20" width="36" height="36" fill="none">
+                          <div style={{ width: '100%', height: '40px', borderRadius: '7px', background: iconColor + '14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
                               <path d="M5 2h8l4 4v12H5V2z" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>
                               <path d="M13 2v4h4" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>
                               <path d="M7 10h6M7 13h4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round"/>
                             </svg>
                           </div>
                         ) : (
-                          <img src={file.url} alt="" style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '10px' }} />
+                          <img src={file.url} alt="" style={{ width: '100%', height: '40px', objectFit: 'cover', borderRadius: '7px' }} />
                         )}
 
-                        {/* Name + metadata */}
+                        {/* Name */}
                         <div onClick={e => renaming?.id === file.id && e.stopPropagation()}>
                           {renaming?.id === file.id ? (
                             <input
@@ -1727,20 +1775,18 @@ export default function SubjectPage() {
                               onChange={e => setRenaming({ ...renaming, value: e.target.value })}
                               onBlur={() => commitRename('file')}
                               onKeyDown={e => { if (e.key === 'Enter') commitRename('file'); if (e.key === 'Escape') setRenaming(null); }}
-                              style={{ width: '100%', background: '#0D1117', border: `1px solid ${subject.color}55`, borderRadius: '6px', color: '#E6EDF3', fontSize: '12px', fontWeight: 500, padding: '2px 6px', outline: 'none' }}
+                              onClick={e => e.stopPropagation()}
+                              style={{ width: '100%', background: '#0D1117', border: `1px solid ${subject.color}55`, borderRadius: '4px', color: '#E6EDF3', fontSize: '10px', padding: '1px 4px', outline: 'none' }}
                             />
                           ) : (
-                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '10px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {file.name}
                             </div>
                           )}
-                          <div style={{ fontSize: '10px', color: '#8B949E', marginTop: '3px' }}>
-                            {(file.size / 1024 / 1024).toFixed(2)} MB · {isPDF ? 'PDF' : ts('Image')}{activeLevel && ` · ${activeLevel}`}
-                          </div>
                         </div>
 
                         {/* Actions */}
-                        <div style={{ display: 'flex', gap: '6px', marginTop: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
                           <button
                             onClick={e => {
                               e.stopPropagation();
@@ -1760,24 +1806,18 @@ export default function SubjectPage() {
                               }
                             }}
                             title={ts('Download file')}
-                            style={{ flex: 1, height: '28px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: 'transparent', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.35)' }}
-                          >
-                            ↓ {ts('Download')}
-                          </button>
+                            style={{ flex: 1, height: '22px', borderRadius: '6px', fontSize: '10px', fontWeight: 600, cursor: 'pointer', background: 'transparent', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }}
+                          >↓</button>
                           <button
                             onClick={e => { e.stopPropagation(); startRename(file.id, file.name, 'file'); }}
                             title={ts('Rename file')}
-                            style={{ width: '28px', height: '28px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', background: 'transparent', color: '#8B949E', border: '1px solid #30363D' }}
-                          >
-                            ✎
-                          </button>
+                            style={{ width: '22px', height: '22px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', background: 'transparent', color: '#8B949E', border: '1px solid #30363D' }}
+                          >✎</button>
                           <button
                             onClick={e => { e.stopPropagation(); removeFile(file.id); }}
                             title={ts('Remove file')}
-                            style={{ width: '28px', height: '28px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', background: 'transparent', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}
-                          >
-                            ✕
-                          </button>
+                            style={{ width: '22px', height: '22px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer', background: 'transparent', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}
+                          >✕</button>
                         </div>
                       </div>
                     );
