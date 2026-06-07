@@ -1639,6 +1639,43 @@ export default function SubjectPage() {
                           <img src={file.url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
                         )}
                         <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            const href = file.storageUrl || file.url;
+                            if (!href) return;
+                            if (file.rawFile) {
+                              const a = document.createElement('a');
+                              a.href = URL.createObjectURL(file.rawFile);
+                              a.download = file.name;
+                              a.click();
+                            } else {
+                              fetch(href)
+                                .then(r => r.blob())
+                                .then(blob => {
+                                  const a = document.createElement('a');
+                                  a.href = URL.createObjectURL(blob);
+                                  a.download = file.name;
+                                  a.click();
+                                  URL.revokeObjectURL(a.href);
+                                })
+                                .catch(() => window.open(href, '_blank'));
+                            }
+                          }}
+                          title={ts('Download file')}
+                          style={{
+                            height: '30px', padding: '0 10px', borderRadius: '999px',
+                            fontSize: '12px', cursor: 'pointer',
+                            background: 'transparent', color: '#8B949E',
+                            border: '1px solid #30363D', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+                            <path d="M7 2v7M4 6.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M2 11h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                          </svg>
+                        </button>
+                        <button
                           onClick={e => { e.stopPropagation(); startRename(file.id, file.name, 'file'); }}
                           title={ts('Rename file')}
                           style={{
