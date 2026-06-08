@@ -1,8 +1,30 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GeneratedFlashcard } from '../lib/generator';
-import { useSRS } from '../store/useSRS';
+import { useSRS, subjectSrsStats } from '../store/useSRS';
 import { useLang } from '../context/LanguageContext';
-import type { Rating } from '../lib/srs';
+import type { Rating, CardState } from '../lib/srs';
+
+// ── SRS state colours & chip ───────────────────────────────────────────────
+const STATE_COLOR: Record<CardState, string> = {
+  NEW:        '#56D364',
+  LEARNING:   '#D29922',
+  GRADUATED:  '#8B5CF6',
+};
+
+function StatChip({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '5px',
+      padding: '3px 9px', borderRadius: '999px',
+      background: color + '16', border: `1px solid ${color}30`,
+      fontSize: '10px', fontWeight: 700, color,
+      letterSpacing: '0.03em', whiteSpace: 'nowrap',
+    }}>
+      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+      <span style={{ opacity: 0.85 }}>{label}</span>
+    </div>
+  );
+}
 
 // ── Vocabulary card helpers ────────────────────────────────────────────────
 
@@ -108,8 +130,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   const [done, setDone] = useState(false);
   const card = cards[index];
   const progress = ((index + 1) / cards.length) * 100;
-  const srsMode = !!subjectId;
-  const rate = useSRS(s => s.rate);
+  const srsMode   = !!subjectId;
+  const rate      = useSRS(s => s.rate);
+  const srsCards  = useSRS(s => s.cards);
   // Report the session (count of cards rated) exactly once — on completion or
   // when the viewer unmounts mid-way.
   const reviewedRef = useRef(0);
@@ -209,6 +232,40 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           }}
         />
       </div>
+
+      {/* SRS session stats bar — only in SRS mode */}
+      {srsMode && (() => {
+        const cardIds = cards.map(c => c.id);
+        const stats   = subjectSrsStats(srsCards, cardIds);
+        const reviewsLeft = cards.length - reviewed;
+        const currentState = srsCards[card.id]?.state;
+        return (
+          <div style={{ width: cardW, marginBottom: '10px' }}>
+            {/* Chip row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <StatChip label="left" count={reviewsLeft} color={color} />
+              {stats.due     > 0 && <StatChip label="due"       count={stats.due}      color="#D29922" />}
+              {stats.unseen  > 0 && <StatChip label="new"       count={stats.unseen}   color="#56D364" />}
+              {stats.learning > 0 && <StatChip label="learning" count={stats.learning} color="#60a5fa" />}
+              {stats.graduated > 0 && <StatChip label="grad"   count={stats.graduated} color="#8B5CF6" />}
+              {/* Current card's SRS state badge */}
+              {currentState && (
+                <div style={{ marginLeft: 'auto' }}>
+                  <span style={{
+                    fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em',
+                    textTransform: 'uppercase', padding: '3px 8px', borderRadius: '999px',
+                    background: STATE_COLOR[currentState] + '18',
+                    color: STATE_COLOR[currentState],
+                    border: `1px solid ${STATE_COLOR[currentState]}33`,
+                  }}>
+                    {currentState}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Counter + topic */}
       <div className="flashcard-meta flex items-center justify-between mb-4" style={{ width: cardW }}>

@@ -1,20 +1,32 @@
-// Lightweight spaced-repetition scheduling (SM-2 variant).
-// One record per flashcard id, updated each time the user rates a card.
+/**
+ * Spaced Repetition System — SM-2 variant
+ *
+ * "DB SCHEMA" (one record per flashcard):
+ *   state            TEXT     DEFAULT 'NEW'   -- 'NEW' | 'LEARNING' | 'GRADUATED'
+ *   ease_factor      REAL     DEFAULT 2.5     -- SM-2 E-Factor, floor 1.30, cap 4.0
+ *   repetition_count INTEGER  DEFAULT 0       -- consecutive successful (Hard+) reviews
+ *   interval         INTEGER  DEFAULT 1       -- next interval in days
+ *   next_review_date BIGINT                   -- epoch ms; due when <= NOW()
+ *   last_reviewed_at BIGINT                   -- epoch ms
+ *
+ * This module is fully decoupled from any database. Pass the card's
+ * current metrics → get back updated metrics ready to save anywhere.
+ */
 
-export type Rating = 'again' | 'hard' | 'good' | 'easy';
+export type Rating    = 'again' | 'hard' | 'good' | 'easy';
+export type CardState = 'NEW' | 'LEARNING' | 'GRADUATED';
 
 export interface SRSCard {
-  subjectId:      string;
-  easeFactor:     number;  // SM-2 ease, starts at 2.5, floored at 1.3
-  repetitions:    number;  // consecutive successful (>= Hard) reviews
-  interval:       number;  // current interval in days
-  nextReviewDate: number;  // epoch ms — when the card is next due
-  lastReviewedAt: number;  // epoch ms
+  subjectId:       string;
+  state:           CardState; // lifecycle stage
+  easeFactor:      number;    // E-Factor, default 2.5, min 1.30, max 4.0
+  repetitionCount: number;    // consecutive successful reviews (Hard or better)
+  interval:        number;    // scheduled interval in days
+  nextReviewDate:  number;    // epoch ms
+  lastReviewedAt:  number;    // epoch ms
 }
 
 const DAY = 86_400_000;
-
-const QUALITY: Record<Rating, number> = { again: 1, hard: 3, good: 4, easy: 5 };
 
 export function startOfToday(now = Date.now()): number {
   const d = new Date(now);
@@ -24,44 +36,124 @@ export function startOfToday(now = Date.now()): number {
 
 type Scheduled = Omit<SRSCard, 'subjectId'>;
 
-// Apply one rating to a card's prior state (or a fresh card) and return the
-// next schedule. "Again" resets progress and keeps the card due today.
-export function schedule(prev: Partial<SRSCard> | undefined, rating: Rating, now = Date.now()): Scheduled {
-  const q = QUALITY[rating];
-  let ease = prev?.easeFactor ?? 2.5;
-  let reps = prev?.repetitions ?? 0;
-  let interval = prev?.interval ?? 0;
+/**
+ * schedule() — pure, stateless scheduling engine.
+ *
+ * Pass in the card's prior metrics (undefined = brand-new card) and the
+ * user's rating. Returns the complete new metrics object — no DB connection
+ * needed, works with any per-subject database.
+ *
+ * Rating rules per spec:
+ *  again (1): rep → 0,   EF -= 0.20  (floor 1.30), interval = 1 day,       state → LEARNING
+ *  hard  (2): rep++,     EF -= 0.15  (floor 1.30), interval = round(ivl × 1.2)
+ *  good  (3): rep++,     EF unchanged,              interval = round(ivl × EF)
+ *  easy  (4): rep++,     EF += 0.15  (cap  4.00),  interval = round(ivl × EF × 1.3), state → GRADUATED
+ *
+ * State transitions:
+ *  Any score on NEW   → at least LEARNING (Easy jumps directly to GRADUATED)
+ *  Easy               → GRADUATED (always)
+ *  Again              → LEARNING  (demotes GRADUATED back to LEARNING)
+ */
+export function schedule(
+  prev:   Partial<SRSCard> | undefined,
+  rating: Rating,
+  now = Date.now(),
+): Scheduled {
+  let ef    = prev?.easeFactor      ?? 2.5;
+  let rep   = prev?.repetitionCount ?? 0;
+  let ivl   = prev?.interval        ?? 1;   // first review defaults to 1 day
+  let state: CardState = prev?.state ?? 'NEW';
 
-  ease = ease + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
-  if (ease < 1.3) ease = 1.3;
+  switch (rating) {
+    case 'again':
+      // Lapse: reset progress, penalise EF, schedule for tomorrow
+      rep   = 0;
+      ef    = Math.max(1.30, ef - 0.20);
+      ivl   = 1;
+      state = 'LEARNING';
+      break;
 
-  if (q < 3) {
-    return { easeFactor: ease, repetitions: 0, interval: 0, nextReviewDate: now, lastReviewedAt: now };
+    case 'hard':
+      // Slow progress: minor EF penalty, interval grows only 1.2×
+      rep  += 1;
+      ef    = Math.max(1.30, ef - 0.15);
+      ivl   = Math.max(1, Math.round(ivl * 1.2));
+      if (state === 'NEW') state = 'LEARNING';
+      break;
+
+    case 'good':
+      // Normal: EF unchanged, standard SM-2 interval growth
+      rep  += 1;
+      // ef stays the same
+      ivl   = Math.max(1, Math.round(ivl * ef));
+      if (state === 'NEW') state = 'LEARNING';
+      break;
+
+    case 'easy':
+      // Bonus: EF reward + super-multiplier for well-known cards
+      rep  += 1;
+      ef    = Math.min(4.0, ef + 0.15);      // cap avoids runaway intervals
+      ivl   = Math.max(1, Math.round(ivl * ef * 1.3));
+      state = 'GRADUATED';
+      break;
   }
 
-  reps += 1;
-  if (reps === 1) interval = 1;
-  else if (reps === 2) interval = 6;
-  else interval = Math.round(interval * ease);
-  if (rating === 'easy') interval = Math.round(interval * 1.3);
-  if (interval < 1) interval = 1;
-
   return {
-    easeFactor: ease,
-    repetitions: reps,
-    interval,
-    nextReviewDate: startOfToday(now) + interval * DAY,
-    lastReviewedAt: now,
+    state,
+    easeFactor:      ef,
+    repetitionCount: rep,
+    interval:        ivl,
+    nextReviewDate:  startOfToday(now) + ivl * DAY,
+    lastReviewedAt:  now,
   };
 }
 
-// A card is "known" once it's well-spaced and answered well a few times.
-export function isKnown(c: { easeFactor: number; repetitions: number }): boolean {
-  return c.easeFactor > 2.0 && c.repetitions >= 2;
+// ── Predicates ────────────────────────────────────────────────────────────────
+
+/** A card is "known" once it has graduated or is well-spaced with a good EF. */
+export function isKnown(c: Pick<SRSCard, 'state' | 'easeFactor' | 'repetitionCount'>): boolean {
+  return c.state === 'GRADUATED' || (c.easeFactor > 2.0 && c.repetitionCount >= 2);
 }
 
-// Due if its next review date has arrived (or it's never been scheduled — but
-// unseen cards have no record, so the caller decides how to treat those).
-export function isDue(c: { nextReviewDate: number }, now = Date.now()): boolean {
+/** Due when next_review_date <= now — the core SRS queue condition. */
+export function isDue(c: Pick<SRSCard, 'nextReviewDate'>, now = Date.now()): boolean {
   return c.nextReviewDate <= now;
+}
+
+// ── Queue query ───────────────────────────────────────────────────────────────
+
+/**
+ * getStudyQueue — client-side equivalent of:
+ *
+ *   SELECT * FROM cards
+ *   WHERE subject_id = $subjectId
+ *     AND next_review_date <= CURRENT_TIMESTAMP
+ *   ORDER BY next_review_date ASC;
+ *
+ * Returns due cards (most-overdue first) then unseen (NEW, no record yet).
+ * Fully decoupled — pass in any card list and the SRS records map.
+ *
+ * @param cards      Full card list for this set/subject
+ * @param srsRecords The SRS store record map (cardId → SRSCard)
+ * @param now        Current timestamp (override for testing)
+ */
+export function getStudyQueue<C extends { id: string }>(
+  cards:      C[],
+  srsRecords: Record<string, SRSCard>,
+  now = Date.now(),
+): { due: C[]; unseen: C[]; queue: C[] } {
+  // Due cards: have a record and nextReviewDate <= now, sorted chronologically
+  const due = cards
+    .filter(c => {
+      const r = srsRecords[c.id];
+      return r != null && isDue(r, now);
+    })
+    .sort((a, b) =>
+      (srsRecords[a.id]?.nextReviewDate ?? 0) - (srsRecords[b.id]?.nextReviewDate ?? 0),
+    );
+
+  // Unseen: no SRS record yet (brand-new cards, never reviewed)
+  const unseen = cards.filter(c => srsRecords[c.id] == null);
+
+  return { due, unseen, queue: [...due, ...unseen] };
 }

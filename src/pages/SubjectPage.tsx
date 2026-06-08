@@ -38,6 +38,8 @@ import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
 import { DictionaryView } from '../components/DictionaryView';
+import { useSRS, subjectSrsStats } from '../store/useSRS';
+import { getStudyQueue } from '../lib/srs';
 
 // ── Error helper ───────────────────────────────────────────────────────────────
 
@@ -728,6 +730,7 @@ export default function SubjectPage() {
   const [dictEntries, setDictEntries] = useState<DictionaryEntry[]>([]);
   const [dictPending, setDictPending] = useState<{ id: string; term: string }[]>([]);
   const [expandedSidebarFolderIds, setExpandedSidebarFolderIds] = useState<Set<string>>(new Set());
+  const srsCards = useSRS(s => s.cards);
 
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
@@ -1909,6 +1912,10 @@ export default function SubjectPage() {
             const activeSet = activeSetId ? savedFlashcardSets.find(s => s.id === activeSetId) : undefined;
 
             if (activeSet) {
+              // Sort due cards first, then unseen — most-overdue reviews surface first.
+              const { due: dueCards, unseen: newCards, queue } = getStudyQueue(activeSet.cards, srsCards);
+              const sessionCards = queue.length > 0 ? queue : activeSet.cards;
+              const toReview = dueCards.length + newCards.length;
               return (
                 <div>
                   <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
@@ -1921,11 +1928,16 @@ export default function SubjectPage() {
                     </button>
                     <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
                       {activeSet.name} · {activeSet.cards.length} {t('cards')}
+                      {toReview > 0 && (
+                        <span style={{ marginLeft: '6px', color: subject.color, fontWeight: 700 }}>
+                          · {toReview} {ts('to review')}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <FlashcardViewer
                     key={activeSet.id}
-                    cards={activeSet.cards}
+                    cards={sessionCards}
                     color={subject.color}
                     subjectId={subject.id}
                     onSessionEnd={(n) => recordActivity({ type: 'flashcards', subjectId: subject.id, subjectName: subject.title, detail: `Reviewed ${n} card${n !== 1 ? 's' : ''} in ${subject.title}` })}
@@ -1954,6 +1966,8 @@ export default function SubjectPage() {
                 sortAccessors={{ name: s => s.name, date: s => s.createdAt }}
                 renderItem={(set) => {
                   const isRenaming = renaming?.id === set.id;
+                  const setStats   = subjectSrsStats(srsCards, set.cards.map(c => c.id));
+                  const toReview   = setStats.due + setStats.unseen;
                   return (
                     <div
                       onClick={() => { if (!isRenaming) { setActiveSetId(set.id); setSidebarOpen(false); } }}
@@ -1987,8 +2001,27 @@ export default function SubjectPage() {
                             {set.name}
                           </div>
                         )}
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
-                          {ts('{n} cards', { n: set.cards.length })} · {new Date(set.createdAt).toLocaleDateString()}
+                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span>{ts('{n} cards', { n: set.cards.length })}</span>
+                          {toReview > 0 && (
+                            <span style={{
+                              padding: '1px 7px', borderRadius: '999px', fontWeight: 700,
+                              background: subject.color + '18', color: subject.color,
+                              border: `1px solid ${subject.color}33`, fontSize: '10px',
+                            }}>
+                              {toReview} {ts('to review')}
+                            </span>
+                          )}
+                          {setStats.graduated > 0 && toReview === 0 && (
+                            <span style={{
+                              padding: '1px 7px', borderRadius: '999px', fontWeight: 700,
+                              background: '#8B5CF614', color: '#8B5CF6',
+                              border: '1px solid #8B5CF633', fontSize: '10px',
+                            }}>
+                              ✓ {setStats.graduated} graduated
+                            </span>
+                          )}
+                          <span style={{ color: '#484F58' }}>{new Date(set.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <button
