@@ -16,6 +16,9 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
+        // Overwrite the Origin header so Express's CORS allowlist matches
+        // regardless of the public Codespace subdomain in the browser URL.
+        headers: { origin: 'http://localhost:5173' },
       },
     },
   },
