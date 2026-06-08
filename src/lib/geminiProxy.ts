@@ -350,8 +350,20 @@ export async function generateFromFile(
   if (file.type === 'application/pdf') {
     const { extractTextFromFile } = await import('./pdfExtractor');
     const extracted = await extractTextFromFile(file);
-    if (!extracted.trim()) throw new Error('Could not extract text from this PDF. Try a different file.');
-    parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
+    if (extracted.trim()) {
+      // Text-based PDF: send as plain text to avoid Vercel's 4.5 MB body limit.
+      parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
+    } else {
+      // Scanned PDF (image-based): fall back to base64. Warn if it's large.
+      if (file.size > 3 * 1024 * 1024) {
+        throw new Error(
+          'This PDF appears to be a scanned document (image-based) and is too large to process. ' +
+          'Please use a text-based PDF, or a file under 3 MB.',
+        );
+      }
+      const base64 = await fileToBase64(file);
+      parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
+    }
   } else {
     const base64 = await fileToBase64(file);
     parts = [
