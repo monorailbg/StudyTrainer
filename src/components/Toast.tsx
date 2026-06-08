@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLang } from '../context/LanguageContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -95,11 +96,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="toast-wrap" aria-live="polite">
-        {items.map(item => (
-          <ToastRow key={item.id} item={item} onDismiss={dismiss} />
-        ))}
-      </div>
+      {createPortal(
+        <div className="toast-wrap" aria-live="polite">
+          {items.map(item => (
+            <ToastRow key={item.id} item={item} onDismiss={dismiss} />
+          ))}
+        </div>,
+        document.body
+      )}
     </ToastContext.Provider>
   );
 }
