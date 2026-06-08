@@ -40,7 +40,6 @@ import { QuizViewer } from '../components/QuizViewer';
 import { DictionaryView } from '../components/DictionaryView';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
 import { getStudyQueue } from '../lib/srs';
-import { useBookmarks } from '../store/useBookmarks';
 
 // ── Error helper ───────────────────────────────────────────────────────────────
 
@@ -365,7 +364,7 @@ const IconFolderPlus = () => (<svg viewBox="0 0 18 18" width="14" height="14" fi
 
 function FolderBoard<T extends { id: string; folderId?: string | null }>({
   kind, label, color, folders, items, draggedId, cols = 2, headerExtra,
-  onDragStart, onDragEnd, onDropToFolder, onCreateFolder, onDeleteFolder, onRenameFolder, renderItem, onReorder,
+  onDragStart, onDragEnd, onDropToFolder, onCreateFolder, onDeleteFolder, renderItem, onReorder,
   sortAccessors,
 }: {
   kind: FolderKind;
@@ -381,7 +380,6 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   onDropToFolder: (folderId: string | null) => void;
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (folderId: string) => void;
-  onRenameFolder?: (folderId: string, name: string) => void;
   renderItem: (item: T) => React.ReactNode;
   onReorder?: (reordered: T[]) => void;
   sortAccessors?: { name: (item: T) => string; date?: (item: T) => number };
@@ -390,8 +388,6 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [hoverFolder, setHoverFolder] = useState<string | null>(null);
-  const [renamingFolderId,   setRenamingFolderId]   = useState<string | null>(null);
-  const [renamingFolderName, setRenamingFolderName] = useState('');
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   // Per-zone enter-count counters fix the "dragLeave fires on child-enter" bug.
   const enterCounts = useRef<Map<string, number>>(new Map());
@@ -639,48 +635,17 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
           <div key={folder.id} style={{ marginBottom: '18px' }}>
             {zone(folder.id, <>
               <div className="flex items-center gap-2 mb-2.5 px-1">
-                {renamingFolderId === folder.id ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
-                    <span style={{ color, flexShrink: 0 }}><IconFolder /></span>
-                    <input
-                      autoFocus
-                      value={renamingFolderName}
-                      onChange={e => setRenamingFolderName(e.target.value)}
-                      onBlur={() => {
-                        const n = renamingFolderName.trim();
-                        if (n && n !== folder.name) onRenameFolder?.(folder.id, n);
-                        setRenamingFolderId(null);
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          const n = renamingFolderName.trim();
-                          if (n && n !== folder.name) onRenameFolder?.(folder.id, n);
-                          setRenamingFolderId(null);
-                        }
-                        if (e.key === 'Escape') setRenamingFolderId(null);
-                      }}
-                      style={{ flex: 1, background: '#0D1117', border: `1px solid ${color}55`, borderRadius: '6px', color: '#E6EDF3', fontSize: '13px', fontWeight: 600, padding: '1px 6px', outline: 'none', minWidth: 0 }}
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => toggleFolder(folder.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flex: 1, minWidth: 0 }}
-                  >
-                    <span style={{ color }}><IconFolder /></span>
-                    <span
-                      onDoubleClick={e => { e.stopPropagation(); setRenamingFolderId(folder.id); setRenamingFolderName(folder.name); }}
-                      title={ts('Double-click to rename')}
-                      style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', flex: 1, textAlign: 'left', cursor: 'text' }}
-                    >
-                      {folder.name}
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#8B949E' }}>{folderItems.length}</span>
-                    <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: '#484F58' }}>
-                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                )}
+                <button
+                  onClick={() => toggleFolder(folder.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flex: 1, minWidth: 0 }}
+                >
+                  <span style={{ color }}><IconFolder /></span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', flex: 1, textAlign: 'left' }}>{folder.name}</span>
+                  <span style={{ fontSize: '11px', color: '#8B949E' }}>{folderItems.length}</span>
+                  <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: '#484F58' }}>
+                    <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
                 <button
                   onClick={() => onDeleteFolder(folder.id)}
                   aria-label={ts('Delete folder')}
@@ -757,8 +722,7 @@ export default function SubjectPage() {
   const [savedNotes, setSavedNotes] = useState<StoredNote[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [savedFlashcardSets, setSavedFlashcardSets] = useState<StoredFlashcardSet[]>([]);
-  const [activeSetId,  setActiveSetId]  = useState<string | null>(null);
-  const [bookmarkMode, setBookmarkMode] = useState(false);
+  const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [draggedItem, setDraggedItem] = useState<{ kind: FolderKind; id: string } | null>(null);
   const [showGenPanel, setShowGenPanel] = useState(false);
@@ -766,8 +730,7 @@ export default function SubjectPage() {
   const [dictEntries, setDictEntries] = useState<DictionaryEntry[]>([]);
   const [dictPending, setDictPending] = useState<{ id: string; term: string }[]>([]);
   const [expandedSidebarFolderIds, setExpandedSidebarFolderIds] = useState<Set<string>>(new Set());
-  const srsCards      = useSRS(s => s.cards);
-  const bookmarkedIds = useBookmarks(s => s.bookmarks[id ?? ''] ?? []);
+  const srsCards = useSRS(s => s.cards);
 
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
@@ -790,7 +753,6 @@ export default function SubjectPage() {
     setActiveNoteId(null);
     setSavedFlashcardSets([]);
     setActiveSetId(null);
-    setBookmarkMode(false);
     setFolders([]);
     setView('dashboard');
     setGenState({ status: 'idle' });
@@ -1084,15 +1046,6 @@ export default function SubjectPage() {
     else deleteFolder(folderId).catch(() => {});
   };
 
-  const renameFolder = (folderId: string, name: string) => {
-    setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name } : f));
-    const folder = folders.find(f => f.id === folderId);
-    if (!folder) return;
-    const updated = { ...folder, name };
-    if (isFirebaseConfigured) saveCloudFolder(updated).catch(() => {});
-    else saveFolder(updated).catch(() => {});
-  };
-
   const persistFileFolder = (file: UploadedFile, folderId: string | null) => {
     if (isFirebaseConfigured) {
       saveCloudFile({
@@ -1214,28 +1167,6 @@ export default function SubjectPage() {
   };
 
   // ── Generation ─────────────────────────────────────────────────────────────
-  const cancelGenRef = useRef(false);
-
-  // Guard: all hooks above — safe to conditionally return now
-  if (!subject) {
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: '60vh', padding: '32px', textAlign: 'center', gap: '16px',
-      }}>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>
-          Subject not found
-        </div>
-        <div style={{ fontSize: '13px', color: '#8B949E', maxWidth: '400px' }}>
-          {id ? `The subject "${id}" could not be found. It may have been deleted or the ID may be incorrect.` : 'No subject ID provided.'}
-        </div>
-        <Link to="/" style={{ padding: '8px 20px', borderRadius: '999px', background: '#3D7EFF18', color: '#3D7EFF', border: '1px solid #3D7EFF40', cursor: 'pointer', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-          Go to dashboard
-        </Link>
-      </div>
-    );
-  }
-
   const handleGenerate = async () => {
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
     if (selectedFiles.length === 0) return;
@@ -1243,20 +1174,12 @@ export default function SubjectPage() {
       toast('info', 'PDF still compressing', 'Please wait a moment and try again.');
       return;
     }
-    cancelGenRef.current = false;
     try {
       setGenState({ status: 'generating', type: selectedType });
       setGenProgress({ current: 0, total: selectedFiles.length });
 
       const results: unknown[] = [];
       for (let i = 0; i < selectedFiles.length; i++) {
-        if (cancelGenRef.current) {
-          cancelGenRef.current = false;
-          setGenState({ status: 'idle' });
-          setGenProgress(null);
-          toast('info', ts('Generation cancelled'), undefined);
-          return;
-        }
         setGenProgress({ current: i + 1, total: selectedFiles.length });
         let fileForGen = selectedFiles[i].rawFile;
         if (!fileForGen) {
@@ -1852,7 +1775,6 @@ export default function SubjectPage() {
                   onDropToFolder={fid => handleItemDrop('file', fid)}
                   onCreateFolder={name => createFolder('file', name)}
                   onDeleteFolder={removeFolder}
-                  onRenameFolder={renameFolder}
                   onReorder={reordered => setFiles(prev => {
                     const ids = new Set(reordered.map(f => f.id));
                     return [...prev.filter(f => !ids.has(f.id)), ...reordered];
@@ -1985,43 +1907,14 @@ export default function SubjectPage() {
             </>
           )}
 
-          {/* Flashcards view — bookmarks viewer, active set, or folder of saved sets */}
+          {/* Flashcards view — either an active set or the folder of saved sets */}
           {view === 'flashcards' && (() => {
-            // ── Bookmarks viewer ─────────────────────────────────────────────
-            if (bookmarkMode) {
-              const allCards = savedFlashcardSets.flatMap(s => s.cards ?? []);
-              const bmCards  = allCards.filter(c => bookmarkedIds.includes(c.id));
-              return (
-                <div>
-                  <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
-                    <button
-                      onClick={() => { setBookmarkMode(false); setSidebarOpen(true); }}
-                      className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
-                      style={{ color: '#8B949E' }}
-                    >
-                      ← {ts('All flashcards')}
-                    </button>
-                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#D29922' }}>
-                      📌 {ts('Bookmarks')} · {bmCards.length} {t('cards')}
-                    </div>
-                  </div>
-                  <FlashcardViewer
-                    key="__bookmarks__"
-                    cards={bmCards}
-                    color="#D29922"
-                    subjectId={subject.id}
-                    onBack={() => setBookmarkMode(false)}
-                  />
-                </div>
-              );
-            }
-
             const activeSet = activeSetId ? savedFlashcardSets.find(s => s.id === activeSetId) : undefined;
 
             if (activeSet) {
               // Sort due cards first, then unseen — most-overdue reviews surface first.
-              const { due: dueCards, unseen: newCards, queue } = getStudyQueue(activeSet.cards ?? [], srsCards);
-              const sessionCards = queue.length > 0 ? queue : (activeSet.cards ?? []);
+              const { due: dueCards, unseen: newCards, queue } = getStudyQueue(activeSet.cards, srsCards);
+              const sessionCards = queue.length > 0 ? queue : activeSet.cards;
               const toReview = dueCards.length + newCards.length;
               return (
                 <div>
@@ -2034,7 +1927,7 @@ export default function SubjectPage() {
                       ← {ts('All flashcards')}
                     </button>
                     <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
-                      {activeSet.name} · {(activeSet.cards ?? []).length} {t('cards')}
+                      {activeSet.name} · {activeSet.cards.length} {t('cards')}
                       {toReview > 0 && (
                         <span style={{ marginLeft: '6px', color: subject.color, fontWeight: 700 }}>
                           · {toReview} {ts('to review')}
@@ -2059,98 +1952,7 @@ export default function SubjectPage() {
               return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
             }
 
-            // ── Dashboard ──────────────────────────────────────────────────
-            const allCardIds = savedFlashcardSets.flatMap(s => (s.cards ?? []).map(c => c.id));
-            const allStats   = subjectSrsStats(srsCards, allCardIds);
-            const totalCards = allCardIds.length;
-            const learnedPct = totalCards > 0 ? Math.round((allStats.graduated / totalCards) * 100) : 0;
-
-            const dashItems = [
-              { label: ts('Vocabulary Learned'), value: allStats.graduated, color: '#8B5CF6', pct: learnedPct },
-              { label: ts('Studying'),           value: allStats.learning,  color: '#D29922', pct: totalCards > 0 ? Math.round((allStats.learning / totalCards) * 100) : 0 },
-              { label: ts('Left to Study'),      value: allStats.unseen,    color: subject.color, pct: totalCards > 0 ? Math.round((allStats.unseen / totalCards) * 100) : 0 },
-              { label: ts('Needs Revision'),     value: allStats.due,       color: '#F85149', pct: totalCards > 0 ? Math.round((allStats.due / totalCards) * 100) : 0 },
-            ];
-
             return (
-              <div>
-                {/* Stat tiles + progress bar */}
-                <div style={{ marginBottom: '28px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8B949E', marginBottom: '12px' }}>
-                    {ts('Overview')}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(150px, 100%), 1fr))', gap: '10px', marginBottom: '12px' }}>
-                    {dashItems.map(item => (
-                      <div key={item.label} style={{ background: item.color + '0D', border: `1px solid ${item.color}20`, borderRadius: '14px', padding: '14px 16px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>{item.label}</div>
-                        <div style={{ fontSize: '26px', fontWeight: 700, color: item.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1, marginBottom: '8px' }}>{item.value}</div>
-                        <div style={{ height: '3px', background: '#21262D', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ width: `${item.pct}%`, height: '100%', background: item.color, borderRadius: '2px', transition: 'width 0.6s cubic-bezier(0,0,0.2,1)' }} />
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#484F58', marginTop: '4px' }}>{item.pct}%</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Stacked progress bar */}
-                  <div style={{ background: '#161B22', border: '1px solid #21262D', borderRadius: '12px', padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#8B949E', marginBottom: '8px' }}>
-                      <span>{ts('{n} total cards', { n: totalCards })}</span>
-                      <span style={{ color: '#8B5CF6', fontWeight: 600 }}>{learnedPct}% {ts('learned')}</span>
-                    </div>
-                    <div style={{ height: '6px', background: '#0D1117', borderRadius: '3px', overflow: 'hidden', display: 'flex', gap: '1px' }}>
-                      {([
-                        { val: allStats.graduated, color: '#8B5CF6' },
-                        { val: allStats.learning,  color: '#D29922' },
-                        { val: allStats.due,        color: '#F85149' },
-                        { val: allStats.unseen,    color: subject.color + '60' },
-                      ] as { val: number; color: string }[]).map((seg, i) => (
-                        totalCards > 0 && seg.val > 0 ? (
-                          <div key={i} style={{ width: `${(seg.val / totalCards) * 100}%`, height: '100%', background: seg.color, borderRadius: '2px', transition: 'width 0.6s ease' }} />
-                        ) : null
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: '14px', marginTop: '8px', flexWrap: 'wrap' }}>
-                      {([
-                        { label: ts('Learned'),  color: '#8B5CF6', val: allStats.graduated },
-                        { label: ts('Studying'), color: '#D29922', val: allStats.learning },
-                        { label: ts('Due'),      color: '#F85149', val: allStats.due },
-                        { label: ts('New'),      color: subject.color, val: allStats.unseen },
-                      ] as { label: string; color: string; val: number }[]).map(leg => (
-                        <div key={leg.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: leg.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: '10px', color: '#8B949E' }}>{leg.label}</span>
-                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#C9D1D9', fontFamily: 'monospace' }}>{leg.val}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bookmarks entry */}
-                  {bookmarkedIds.length > 0 && (
-                    <button
-                      onClick={() => { setBookmarkMode(true); setSidebarOpen(false); }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-                        background: '#161B22', border: '1px solid #D2992230',
-                        borderRadius: '14px', padding: '14px 16px', cursor: 'pointer',
-                        marginTop: '10px', transition: 'border-color 0.15s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = '#D2992260')}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = '#D2992230')}
-                    >
-                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#D2992218', color: '#D29922', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg viewBox="0 0 14 16" width="16" height="18" fill="currentColor"><path d="M2 2a1 1 0 011-1h8a1 1 0 011 1v12l-5-3-5 3V2z" /></svg>
-                      </div>
-                      <div style={{ flex: 1, textAlign: 'left' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{ts('Bookmarks')}</div>
-                        <div style={{ fontSize: '11px', color: '#D29922', marginTop: '2px' }}>{ts('{n} cards saved', { n: bookmarkedIds.length })}</div>
-                      </div>
-                      <svg viewBox="0 0 6 10" width="6" height="10" fill="none"><path d="M1 1l4 4-4 4" stroke="#484F58" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </button>
-                  )}
-                </div>
-
               <FolderBoard<StoredFlashcardSet>
                 kind="card" label={ts('Flashcard sets')} color={subject.color}
                 folders={folders} items={savedFlashcardSets}
@@ -2160,12 +1962,11 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('card', fid)}
                 onCreateFolder={name => createFolder('card', name)}
                 onDeleteFolder={removeFolder}
-                onRenameFolder={renameFolder}
                 onReorder={reordered => setSavedFlashcardSets(reordered)}
                 sortAccessors={{ name: s => s.name, date: s => s.createdAt }}
                 renderItem={(set) => {
                   const isRenaming = renaming?.id === set.id;
-                  const setStats   = subjectSrsStats(srsCards, (set.cards ?? []).map(c => c.id));
+                  const setStats   = subjectSrsStats(srsCards, set.cards.map(c => c.id));
                   const toReview   = setStats.due + setStats.unseen;
                   return (
                     <div
@@ -2255,7 +2056,6 @@ export default function SubjectPage() {
                   );
                 }}
               />
-            </div>
             );
           })()}
 
@@ -2308,7 +2108,6 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('note', fid)}
                 onCreateFolder={name => createFolder('note', name)}
                 onDeleteFolder={removeFolder}
-                onRenameFolder={renameFolder}
                 onReorder={reordered => setSavedNotes(reordered)}
                 sortAccessors={{ name: n => n.name, date: n => n.createdAt }}
                 renderItem={(n) => {
@@ -2452,7 +2251,6 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('quiz', fid)}
                 onCreateFolder={name => createFolder('quiz', name)}
                 onDeleteFolder={removeFolder}
-                onRenameFolder={renameFolder}
                 onReorder={reordered => setSavedQuizzes(reordered)}
                 sortAccessors={{ name: q => q.name, date: q => q.createdAt }}
                 renderItem={(quiz) => {
@@ -2780,20 +2578,9 @@ export default function SubjectPage() {
                 }
               </button>
 
-              {isGenerating && (
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  {genProgress && genProgress.total > 1 ? (
-                    <span className="text-[11px]" style={{ color: '#8B949E' }}>
-                      File {genProgress.current} of {genProgress.total}…
-                    </span>
-                  ) : <span />}
-                  <button
-                    onClick={() => { cancelGenRef.current = true; }}
-                    className="text-[11px] font-semibold cursor-pointer"
-                    style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '999px', color: '#8B949E', padding: '3px 10px', flexShrink: 0 }}
-                  >
-                    {ts('Cancel')}
-                  </button>
+              {isGenerating && genProgress && genProgress.total > 1 && (
+                <div className="mt-2 text-center text-[11px]" style={{ color: '#8B949E' }}>
+                  File {genProgress.current} of {genProgress.total}…
                 </div>
               )}
 
