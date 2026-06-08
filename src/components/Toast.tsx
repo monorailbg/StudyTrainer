@@ -54,27 +54,26 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
   }, [item.id, item.message, onDismiss]);
 
   return (
-    <div className={`toast${item.leaving ? ' leaving' : ''}`} role="status">
+    <div className={`toast${item.leaving ? ' leaving' : ''}`} role="status" style={{ position: 'relative' }}>
       <span className="toast-accent" style={{ background: color }} />
       <span style={{ color, flexShrink: 0, marginTop: '1px' }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, color: '#E6EDF3' }}>{item.title}</div>
+        <div style={{ fontWeight: 600, color: '#E6EDF3', paddingRight: '20px' }}>{item.title}</div>
         {item.message && (
           <div style={{ fontSize: '12px', color: '#8B949E', marginTop: '2px', lineHeight: 1.45 }}>{item.message}</div>
         )}
-        <button
-          onClick={() => onDismiss(item.id)}
-          aria-label={ts('Dismiss')}
-          style={{
-            marginTop: '8px', background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
-            cursor: 'pointer', color: '#8B949E', padding: '3px 8px',
-            lineHeight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <svg viewBox="0 0 14 14" width="11" height="11" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-        </button>
       </div>
+      <button
+        onClick={() => onDismiss(item.id)}
+        aria-label={ts('Dismiss')}
+        style={{
+          position: 'absolute', top: '10px', right: '12px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: '#484F58', padding: '2px', lineHeight: 0,
+        }}
+      >
+        <svg viewBox="0 0 14 14" width="13" height="13" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+      </button>
     </div>
   );
 }
