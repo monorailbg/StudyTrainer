@@ -7,8 +7,9 @@ import {
 
 interface SRSStore {
   cards: Record<string, SRSCard>;
-  rate:  (cardId: string, subjectId: string, rating: Rating) => void;
-  reset: () => void;
+  rate:       (cardId: string, subjectId: string, rating: Rating) => void;
+  resetCards: (cardIds: string[]) => void;
+  reset:      () => void;
 }
 
 export const useSRS = create<SRSStore>()(
@@ -19,6 +20,12 @@ export const useSRS = create<SRSStore>()(
         set((s) => {
           const next = schedule(s.cards[cardId], rating);
           return { cards: { ...s.cards, [cardId]: { ...next, subjectId } } };
+        }),
+      resetCards: (cardIds) =>
+        set((s) => {
+          const next = { ...s.cards };
+          for (const id of cardIds) delete next[id];
+          return { cards: next };
         }),
       reset: () => set({ cards: {} }),
     }),

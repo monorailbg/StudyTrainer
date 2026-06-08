@@ -120,8 +120,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
 }) {
   const { ts } = useLang();
   const srsMode  = !!subjectId;
-  const rate     = useSRS(s => s.rate);
-  const srsCards = useSRS(s => s.cards);
+  const rate       = useSRS(s => s.rate);
+  const resetCards = useSRS(s => s.resetCards);
+  const srsCards   = useSRS(s => s.cards);
 
   // SRS mode: Anki-like mutable queue (front = current card)
   const [queue, setQueue] = useState<GeneratedFlashcard[]>(() => [...cards]);
@@ -130,8 +131,10 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   // Non-SRS mode: simple index navigation
   const [index, setIndex] = useState(0);
 
-  const [flipped,  setFlipped]  = useState(false);
-  const [reviewed, setReviewed] = useState(0); // cards completed (rated Hard / Good / Easy)
+  const [flipped,       setFlipped]      = useState(false);
+  const [reviewed,      setReviewed]     = useState(0);
+  const [showSettings,  setShowSettings] = useState(false);
+  const [confirmReset,  setConfirmReset] = useState(false);
 
   const reviewedRef  = useRef(0);
   const reportedRef  = useRef(false);
@@ -346,16 +349,117 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         );
       })()}
 
-      {/* Counter + topic */}
+      {/* Counter + topic + settings */}
       <div className="flashcard-meta flex items-center justify-between mb-4" style={{ width: cardW }}>
         <span className="mono text-xs" style={{ color: '#8B949E' }}>
           {srsMode
             ? `${queue.length} remaining`
             : `${index + 1} / ${cards.length}`}
         </span>
-        <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: color + '10', color, border: `1px solid ${color}20` }}>
-          {card.topic}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: color + '10', color, border: `1px solid ${color}20` }}>
+            {card.topic}
+          </span>
+
+          {/* Settings button — SRS mode only */}
+          {srsMode && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => { setShowSettings(v => !v); setConfirmReset(false); }}
+                aria-label={ts('Settings')}
+                style={{
+                  width: '28px', height: '28px', borderRadius: '8px', cursor: 'pointer',
+                  background: showSettings ? '#21262D' : 'transparent',
+                  border: `1px solid ${showSettings ? '#30363D' : 'transparent'}`,
+                  color: '#484F58', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#8B949E'; (e.currentTarget as HTMLElement).style.borderColor = '#30363D'; }}
+                onMouseLeave={e => { if (!showSettings) { (e.currentTarget as HTMLElement).style.color = '#484F58'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; } }}
+              >
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                  <path d="M8 10a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M13.3 6.6l-.7-1.7-1.4.3-1-1-.3-1.4-1.7-.7-.9 1.1H8.7l-.9-1.1-1.7.7-.3 1.4-1 1-1.4-.3-.7 1.7 1.1.9v1.4l-1.1.9.7 1.7 1.4-.3 1 1 .3 1.4 1.7.7.9-1.1h1.4l.9 1.1 1.7-.7.3-1.4 1-1 1.4.3.7-1.7-1.1-.9v-1.4l1.1-.9z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {showSettings && (
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 49 }}
+                    onClick={() => { setShowSettings(false); setConfirmReset(false); }}
+                  />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+                    background: '#161B22', border: '1px solid #30363D', borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)', padding: '6px', minWidth: '200px',
+                  }}>
+                    {!confirmReset ? (
+                      <>
+                        <div style={{ padding: '6px 10px 8px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58' }}>
+                          {ts('SRS Settings')}
+                        </div>
+                        <button
+                          onClick={() => setConfirmReset(true)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                            padding: '9px 12px', borderRadius: '8px', cursor: 'pointer',
+                            background: 'transparent', color: '#f87171',
+                            border: 'none', fontSize: '12px', fontWeight: 600, textAlign: 'left',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,113,113,0.08)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <svg viewBox="0 0 16 16" width="13" height="13" fill="none">
+                            <path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          {ts('Reset SRS progress')}
+                        </button>
+                      </>
+                    ) : (
+                      <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ fontSize: '12px', color: '#C9D1D9', lineHeight: 1.5 }}>
+                          {ts('This clears all SRS data for {n} cards. Cannot be undone.', { n: cards.length })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => {
+                              resetCards(cards.map(c => c.id));
+                              setQueue([...cards]);
+                              setReviewed(0);
+                              reviewedRef.current = 0;
+                              reportedRef.current = false;
+                              totalRef.current = cards.length;
+                              setShowSettings(false);
+                              setConfirmReset(false);
+                            }}
+                            style={{
+                              flex: 1, padding: '7px 0', borderRadius: '8px', cursor: 'pointer',
+                              background: 'rgba(248,113,113,0.15)', color: '#f87171',
+                              border: '1px solid rgba(248,113,113,0.35)', fontSize: '12px', fontWeight: 700,
+                            }}
+                          >
+                            {ts('Reset')}
+                          </button>
+                          <button
+                            onClick={() => setConfirmReset(false)}
+                            style={{
+                              flex: 1, padding: '7px 0', borderRadius: '8px', cursor: 'pointer',
+                              background: 'transparent', color: '#8B949E',
+                              border: '1px solid #30363D', fontSize: '12px', fontWeight: 600,
+                            }}
+                          >
+                            {ts('Cancel')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Flip card */}
