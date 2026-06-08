@@ -269,10 +269,10 @@ app.post('/api/init-upload', async (req, res) => {
 // ── 8. Route: POST /api/upload-chunk ──────────────────────────────────────
 
 app.post('/api/upload-chunk', async (req, res) => {
-  const { uploadUrl, chunkBase64, offset, isLast } = req.body ?? {};
+  const { uploadUrl, chunkBase64, offset, totalSize, isLast } = req.body ?? {};
 
-  if (!uploadUrl || chunkBase64 === undefined || offset === undefined) {
-    return res.status(400).json({ error: '"uploadUrl", "chunkBase64", and "offset" are required.' });
+  if (!uploadUrl || chunkBase64 === undefined || offset === undefined || !totalSize) {
+    return res.status(400).json({ error: '"uploadUrl", "chunkBase64", "offset", and "totalSize" are required.' });
   }
 
   let chunk;
@@ -282,31 +282,36 @@ app.post('/api/upload-chunk', async (req, res) => {
     return res.status(400).json({ error: 'Invalid base64 in "chunkBase64".' });
   }
 
+  const end = offset + chunk.length - 1;
+
   try {
     const uploadRes = await fetch(uploadUrl, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
-        'Content-Length': String(chunk.length),
-        'X-Goog-Upload-Offset': String(offset),
-        'X-Goog-Upload-Command': isLast ? 'upload, finalize' : 'upload',
+        'Content-Range': `bytes ${offset}-${end}/${totalSize}`,
       },
       body: chunk,
     });
 
-    if (!uploadRes.ok && uploadRes.status !== 308) {
-      const errData = await uploadRes.json().catch(() => ({}));
-      const msg = errData.error?.message ?? `HTTP ${uploadRes.status}`;
-      return res.status(500).json({ error: `Gemini chunk upload failed: ${msg}` });
+    // Non-final chunk: Gemini returns 308 Resume Incomplete on success.
+    if (!isLast) {
+      if (uploadRes.status === 308) return res.json({ ok: true });
+      const errText = await uploadRes.text().catch(() => '');
+      console.error('[proxy] upload-chunk non-final error:', uploadRes.status, errText.slice(0, 500));
+      return res.status(500).json({ error: `Gemini chunk upload failed: HTTP ${uploadRes.status}` });
     }
 
-    if (isLast) {
-      const data = await uploadRes.json();
+    // Final chunk: Gemini returns 200 or 201 with the file object.
+    if (uploadRes.ok) {
+      const data = await uploadRes.json().catch(() => ({}));
       const fileUri = data.file?.uri;
       if (!fileUri) return res.status(500).json({ error: 'No file URI after finalize.' });
       return res.json({ fileUri });
     }
 
-    return res.json({ ok: true });
+    const errText = await uploadRes.text().catch(() => '');
+    console.error('[proxy] upload-chunk final error:', uploadRes.status, errText.slice(0, 500));
+    return res.status(500).json({ error: `Gemini chunk upload failed: HTTP ${uploadRes.status}` });
   } catch (err) {
     console.error('[proxy] upload-chunk error:', err);
     return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

@@ -381,7 +381,7 @@ async function uploadViaFilesAPI(file: File): Promise<FileDataPart> {
     const chunkRes = await fetch('/api/upload-chunk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uploadUrl, chunkBase64, offset: start, isLast }),
+      body: JSON.stringify({ uploadUrl, chunkBase64, offset: start, totalSize: file.size, isLast }),
     });
 
     if (!chunkRes.ok) {
