@@ -40,8 +40,8 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
 
       {/* Meaning */}
       <div style={{
-        fontFamily: "'Shippori Antique B1', 'Sora', serif",
-        fontWeight: 400,
+        fontFamily: "'LXGW WenKai Mono TC', monospace",
+        fontWeight: 700,
         fontSize: 'clamp(18px, 4vw, 24px)',
         color: '#E6EDF3',
         textAlign: 'center',
@@ -72,7 +72,8 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
       {/* Translation of example */}
       {vocab.translation && (
         <div style={{
-          fontFamily: "'Shippori Antique B1', serif",
+          fontFamily: "'LXGW WenKai Mono TC', monospace",
+          fontWeight: 300,
           fontSize: '12px',
           color: '#8B949E',
           textAlign: 'center',
@@ -247,8 +248,8 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             </div>
             {isVocabCard ? (
               <div style={{
-                fontFamily: "'Ma Shan Zheng', 'LXGW WenKai Mono TC', serif",
-                fontWeight: 400,
+                fontFamily: "'LXGW WenKai Mono TC', monospace",
+                fontWeight: 700,
                 fontSize: 'clamp(40px, 12vw, 72px)',
                 color: '#E6EDF3',
                 textAlign: 'center',
