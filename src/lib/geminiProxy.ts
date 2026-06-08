@@ -16,6 +16,7 @@ import type {
   GeneratedQuizQuestion,
   GenerationType,
 } from './generator';
+import { extractTextFromFile } from './pdfExtractor';
 
 // ── Proxy endpoint URL ─────────────────────────────────────────────────────
 
@@ -413,7 +414,6 @@ export async function generateFromFile(
   let parts: Part[];
 
   if (file.type === 'application/pdf') {
-    const { extractTextFromFile } = await import('./pdfExtractor');
     const extracted = await extractTextFromFile(file);
     if (extracted.trim()) {
       // Text-based PDF: embed extracted text directly — no size limit issue.
