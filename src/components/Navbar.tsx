@@ -200,35 +200,8 @@ export default function Navbar() {
           {/* Spacer on desktop */}
           <div className="hidden md:block" style={{ flex: 1 }} />
 
-          {/* Desktop lang + settings + generate */}
+          {/* Desktop lang + settings */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            <Link
-              to="/generate"
-              className="navbar-generate-link"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '7px 14px', borderRadius: '10px',
-                background: 'rgba(61,126,255,0.12)',
-                border: '1px solid rgba(61,126,255,0.25)',
-                color: '#93B8FF', textDecoration: 'none',
-                fontSize: '12px', fontWeight: 600,
-                transition: 'background 0.15s ease, border-color 0.15s ease',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(61,126,255,0.18)';
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(61,126,255,0.4)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(61,126,255,0.12)';
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(61,126,255,0.25)';
-              }}
-            >
-              <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
-                <path d="M7 1v4M7 9v4M1 7h4M9 7h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                <path d="M3 3l2.5 2.5M8.5 8.5L11 11M11 3L8.5 5.5M3 11l2.5-2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-              </svg>
-              {ts('Generate')}
-            </Link>
             <LangToggle />
           </div>
 
@@ -260,7 +233,7 @@ export default function Navbar() {
           overflowY: 'auto',
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            {[...navItems, { to: '/generate', labelKey: 'nav_generate' as const }].map(({ to, labelKey }) => {
+            {navItems.map(({ to, labelKey }) => {
               const active = pathname === to || (to !== '/' && pathname.startsWith(to));
               return (
                 <Link
