@@ -68,7 +68,7 @@ export async function renderPdfPagesAsJpeg(
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas context unavailable.');
 
-    await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport }).promise;
+    await page.render({ canvasContext: ctx, viewport, canvas } as Parameters<typeof page.render>[0]).promise;
 
     const base64 = await new Promise<string>((resolve, reject) => {
       canvas.toBlob(
