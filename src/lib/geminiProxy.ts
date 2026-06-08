@@ -416,19 +416,23 @@ export async function generateFromFile(
   if (file.type === 'application/pdf') {
     const extracted = await extractTextFromFile(file);
     if (extracted.trim()) {
-      // Text-based PDF: embed extracted text directly — no size limit issue.
+      // Text-based PDF: embed extracted text — no upload or size limit needed.
       parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
-    } else {
-      // Scanned/image-based PDF: upload via Files API (supports up to 2 GB).
+    } else if (file.size > LARGE_FILE_THRESHOLD) {
+      // Large scanned PDF: must use Files API (too big for inline base64 on Vercel).
       const filePart = await uploadViaFilesAPI(file);
       parts = [filePart, { text: prompt }];
+    } else {
+      // Small scanned PDF: inline base64 — simpler and more reliable than Files API.
+      const base64 = await fileToBase64(file);
+      parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
     }
   } else if (file.size > LARGE_FILE_THRESHOLD) {
     // Large image: upload via Files API to avoid Vercel's 4.5 MB body limit.
     const filePart = await uploadViaFilesAPI(file);
     parts = [filePart, { text: prompt }];
   } else {
-    // Small image: inline base64 is fine.
+    // Small image: inline base64.
     const base64 = await fileToBase64(file);
     parts = [
       { inline_data: { mime_type: file.type, data: base64 } },

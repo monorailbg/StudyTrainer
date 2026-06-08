@@ -45,8 +45,8 @@ function friendlyError(raw?: string): string {
   if (raw.includes('401') || raw.includes('API_KEY_INVALID')) return 'Invalid or expired API key. Check the server configuration.';
   if (raw.includes('RESOURCE_EXHAUSTED')) return 'Quota exhausted — try again tomorrow.';
   if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
-  if (raw.includes('400')) return 'File too large or unsupported format.';
-  return `Generation failed: ${raw.slice(0, 140)}`;
+  if (raw.includes('unsupported') || raw.includes('Unsupported') || raw.includes('INVALID_ARGUMENT')) return 'File format not supported. Try a PDF or image file.';
+  return `Generation failed: ${raw.replace(/^Error:\s*/i, '').slice(0, 140)}`;
 }
 
 function timeAgo(ts: number): string {
@@ -707,36 +707,23 @@ export default function SubjectPage() {
     }));
     setFiles(prev => [...prev, ...mapped]);
     setSelectedFileIds(prev => [...prev, ...mapped.map(m => m.id)]);
+    // Always save locally first — generation works from IndexedDB regardless of cloud state.
+    for (const file of mapped) {
+      await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
+    }
+    toast('success', ts('{n} files added', { n: mapped.length }), undefined);
+
+    // Best-effort cloud sync — run after the success toast, never blocks or errors the user.
     if (isFirebaseConfigured && isSupabaseConfigured) {
-      let uploaded = 0;
-      let failed = 0;
-      let lastError = '';
       for (const file of mapped) {
         try {
           const storageUrl = await uploadFileToStorage(id!, file.id, file.rawFile!);
           await saveCloudFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, storageUrl, createdAt: Date.now() });
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, storageUrl } : f));
-          uploaded++;
         } catch (err) {
-          console.error('Cloud upload failed:', err);
-          lastError = err instanceof Error ? err.message : String(err);
-          failed++;
-          // Always save locally as fallback so generation still works after
-          // a page refresh even when cloud storage is unavailable.
-          await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
+          console.warn('[CloudSync] Supabase upload failed for', file.name, '—', err instanceof Error ? err.message : err);
         }
       }
-      if (failed > 0) {
-        toast('error', ts('{n} files not shared', { n: failed }), lastError || ts('Cloud upload failed. Saved locally only.'));
-      }
-      if (uploaded > 0) {
-        toast('success', ts('{n} files added', { n: uploaded }), ts('Uploaded to the shared library.'));
-      }
-    } else {
-      for (const file of mapped) {
-        await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
-      }
-      toast('success', ts('{n} files added', { n: mapped.length }), undefined);
     }
   }, [activeLevel, id, toast, ts]);
 
