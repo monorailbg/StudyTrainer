@@ -52,7 +52,7 @@ export const useSRS = create<SRSStore>()(
           }
           return { cards: migrated };
         }
-        return stored as { cards: Record<string, SRSCard> };
+        return stored as unknown as { cards: Record<string, SRSCard> };
       },
     },
   ),
