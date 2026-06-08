@@ -769,6 +769,26 @@ export default function SubjectPage() {
   const srsCards      = useSRS(s => s.cards);
   const bookmarkedIds = useBookmarks(s => s.bookmarks[id ?? ''] ?? []);
 
+  // Guard: if subject not found, show error
+  if (!subject) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        minHeight: '60vh', padding: '32px', textAlign: 'center', gap: '16px',
+      }}>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>
+          Subject not found
+        </div>
+        <div style={{ fontSize: '13px', color: '#8B949E', maxWidth: '400px' }}>
+          {id ? `The subject "${id}" could not be found. It may have been deleted or the ID may be incorrect.` : 'No subject ID provided.'}
+        </div>
+        <Link to="/" style={{ padding: '8px 20px', borderRadius: '999px', background: '#3D7EFF18', color: '#3D7EFF', border: '1px solid #3D7EFF40', cursor: 'pointer', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+          Go to dashboard
+        </Link>
+      </div>
+    );
+  }
+
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
   filesRef.current = files;
