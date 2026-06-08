@@ -2014,7 +2014,7 @@ export default function SubjectPage() {
                       ← {ts('All flashcards')}
                     </button>
                     <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
-                      {activeSet.name} · {activeSet.cards.length} {t('cards')}
+                      {activeSet.name} · {(activeSet.cards ?? []).length} {t('cards')}
                       {toReview > 0 && (
                         <span style={{ marginLeft: '6px', color: subject.color, fontWeight: 700 }}>
                           · {toReview} {ts('to review')}
