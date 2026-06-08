@@ -16,7 +16,7 @@ import type {
   GeneratedQuizQuestion,
   GenerationType,
 } from './generator';
-import { extractTextFromFile } from './pdfExtractor';
+import { extractTextFromFile, renderPdfPagesAsJpeg } from './pdfExtractor';
 
 // ── Proxy endpoint URL ─────────────────────────────────────────────────────
 
@@ -354,65 +354,9 @@ Return ONLY valid JSON — no markdown, no preamble:
 }`,
 };
 
-// ── Files API chunked upload (large / scanned files) ───────────────────────
+// ── Size thresholds ────────────────────────────────────────────────────────
 
 const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024; // 3 MB
-
-// Each binary chunk is exactly 10 × 256 KB — required multiple for Gemini.
-// As base64 this becomes ~3.3 MB, comfortably under Vercel's 4.5 MB body cap.
-const CHUNK_SIZE = 2_621_440; // 2.5 MB
-
-function readBlobAsBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = () => resolve((reader.result as string).split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-/**
- * Uploads a file to Gemini's Files API in 2.5 MB chunks through our proxy.
- *
- * Protocol: Google's X-Goog-Upload-* (not standard HTTP Content-Range).
- * - Non-final chunks: POST + X-Goog-Upload-Command: upload  → 200
- * - Final chunk:      POST + X-Goog-Upload-Command: upload, finalize → 200 + file URI
- */
-async function uploadViaFilesAPI(file: File): Promise<FileDataPart> {
-  const initRes = await fetch('/api/init-upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mimeType: file.type, displayName: file.name, size: file.size }),
-  });
-  if (!initRes.ok) {
-    const err = await initRes.json().catch(() => ({ error: initRes.statusText })) as { error: string };
-    throw new Error(`File upload init failed: ${err.error}`);
-  }
-  const { uploadUrl } = await initRes.json() as { uploadUrl: string };
-
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-  for (let i = 0; i < totalChunks; i++) {
-    const start  = i * CHUNK_SIZE;
-    const isLast = i === totalChunks - 1;
-    const chunkBase64 = await readBlobAsBase64(file.slice(start, Math.min(start + CHUNK_SIZE, file.size)));
-
-    const chunkRes = await fetch('/api/upload-chunk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uploadUrl, chunkBase64, offset: start, isLast }),
-    });
-
-    if (!chunkRes.ok) {
-      const err = await chunkRes.json().catch(() => ({ error: `Chunk ${i + 1}/${totalChunks} failed` })) as { error: string };
-      throw new Error(err.error);
-    }
-    if (isLast) {
-      const { fileUri } = await chunkRes.json() as { fileUri: string };
-      return { file_data: { mime_type: file.type, file_uri: fileUri } };
-    }
-  }
-  throw new Error('File upload did not complete.');
-}
 
 // ── Large-image compression ─────────────────────────────────────────────────
 
@@ -490,9 +434,19 @@ export async function generateFromFile(
       // Text-based PDF: embed extracted text — works for any file size.
       parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
     } else if (file.size > LARGE_FILE_THRESHOLD) {
-      // Large scanned PDF: upload via Files API (chunked through our proxy).
-      const filePart = await uploadViaFilesAPI(file);
-      parts = [filePart, { text: prompt }];
+      // Large scanned PDF: render pages as JPEG images client-side and send
+      // as inline_data parts. Bypasses the Files API entirely.
+      const pages = await renderPdfPagesAsJpeg(file, 15, 0.65);
+      const pageImages: InlineDataPart[] = [];
+      let totalB64 = 0;
+      const B64_CAP = 3_500_000; // cap at ~3.5 MB base64 to stay under Vercel's 4.5 MB body limit
+      for (const p of pages) {
+        if (totalB64 + p.base64.length > B64_CAP) break;
+        pageImages.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } });
+        totalB64 += p.base64.length;
+      }
+      if (pageImages.length === 0) throw new Error('Could not render any pages from this PDF.');
+      parts = [...pageImages, { text: prompt }];
     } else {
       // Small scanned PDF: inline base64.
       const base64 = await fileToBase64(file);
