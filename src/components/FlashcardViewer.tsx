@@ -29,7 +29,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
       {vocab.reading && (
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', 'JetBrains Mono', monospace",
-          fontSize: '14px',
+          fontSize: '17px',
           color: '#8B949E',
           letterSpacing: '0.06em',
           textAlign: 'center',
@@ -42,7 +42,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
       <div style={{
         fontFamily: "'LXGW WenKai Mono TC', monospace",
         fontWeight: 700,
-        fontSize: 'clamp(18px, 4vw, 24px)',
+        fontSize: 'clamp(26px, 5vw, 40px)',
         color: '#E6EDF3',
         textAlign: 'center',
         lineHeight: 1.4,
@@ -59,7 +59,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
       {vocab.example && (
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', serif",
-          fontSize: '14px',
+          fontSize: '16px',
           color: '#C9D1D9',
           textAlign: 'center',
           lineHeight: 1.8,
@@ -74,7 +74,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', monospace",
           fontWeight: 300,
-          fontSize: '12px',
+          fontSize: '14px',
           color: '#8B949E',
           textAlign: 'center',
           lineHeight: 1.6,
@@ -190,7 +190,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
     );
   }
 
-  const cardW = 'min(560px, 90vw)';
+  const cardW = 'min(740px, 96vw)';
   const vocab = parseVocab(card.back);
   const isVocabCard = vocab !== null;
 
@@ -223,7 +223,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
       {/* Flip card */}
       <div
         className="flashcard-card flip-card cursor-pointer mb-5"
-        style={{ width: cardW, minHeight: '160px' }}
+        style={{ width: cardW, minHeight: '320px' }}
         onClick={flip}
         role="button"
         tabIndex={0}
@@ -235,7 +235,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <div
             className="flip-card-front flex flex-col items-center justify-center gap-4"
             style={{
-              padding: 'clamp(16px, 4vw, 28px) clamp(16px, 5vw, 32px)',
+              padding: 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
               borderRadius: '12px',
               background: '#161B22',
               border: `1px solid ${isVocabCard ? color + '35' : color + '25'}`,
@@ -259,7 +259,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 {card.front}
               </div>
             ) : (
-              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: '17px', color: '#E6EDF3', lineHeight: 1.45 }}>
+              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: '#E6EDF3', lineHeight: 1.45 }}>
                 {card.front}
               </div>
             )}
@@ -273,7 +273,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <div
             className="flip-card-back flex flex-col items-center justify-center gap-4"
             style={{
-              padding: isVocabCard ? 'clamp(20px, 4vw, 32px)' : '28px 32px',
+              padding: isVocabCard ? 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)' : 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
               borderRadius: '12px',
               background: isVocabCard
                 ? `linear-gradient(135deg, ${color}14 0%, #161B22 100%)`
@@ -289,7 +289,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             {isVocabCard && vocab ? (
               <VocabBack vocab={vocab} color={color} />
             ) : (
-              <div className="text-center" style={{ fontSize: '16px', color: '#E6EDF3', lineHeight: 1.65 }}>
+              <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: '#E6EDF3', lineHeight: 1.65 }}>
                 {card.back}
               </div>
             )}

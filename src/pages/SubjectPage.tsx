@@ -362,7 +362,7 @@ const IconFolderPlus = () => (<svg viewBox="0 0 18 18" width="14" height="14" fi
 
 function FolderBoard<T extends { id: string; folderId?: string | null }>({
   kind, label, color, folders, items, draggedId, cols = 2, headerExtra,
-  onDragStart, onDragEnd, onDropToFolder, onCreateFolder, onDeleteFolder, renderItem,
+  onDragStart, onDragEnd, onDropToFolder, onCreateFolder, onDeleteFolder, renderItem, onReorder,
 }: {
   kind: FolderKind;
   label: string;
@@ -378,6 +378,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (folderId: string) => void;
   renderItem: (item: T) => React.ReactNode;
+  onReorder?: (reordered: T[]) => void;
 }) {
   const { ts } = useLang();
   const [creating, setCreating] = useState(false);
@@ -386,6 +387,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   // Per-zone enter-count counters fix the "dragLeave fires on child-enter" bug.
   const enterCounts = useRef<Map<string, number>>(new Map());
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
   const isDragging = draggedId != null;
   const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2' : cols === 3 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
 
@@ -434,30 +437,88 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
     );
   };
 
-  // Wrap each draggable item: sets dataTransfer so the browser treats it as a
-  // valid drag, and clears all enter-counts + hover on drag-end.
-  const draggableItem = (it: T) => (
-    <div
-      key={it.id}
-      draggable
-      onDragStart={e => {
-        e.dataTransfer.setData('text/plain', it.id);
-        e.dataTransfer.effectAllowed = 'move';
-        // Defer so the drag ghost is captured before React re-renders the item.
-        requestAnimationFrame(() => onDragStart(it.id));
-      }}
-      onDragEnd={() => {
-        enterCounts.current.clear();
-        setHoverFolder(null);
-        onDragEnd();
-      }}
-      style={{ opacity: draggedId === it.id ? 0.35 : 1, cursor: 'grab', transition: 'opacity 0.15s', userSelect: 'none', WebkitUserSelect: 'none' }}
-    >
-      <div style={{ pointerEvents: isDragging ? 'none' : 'auto' }}>
-        {renderItem(it)}
+  // Wrap each draggable item. Handles two modes:
+  // - Drop on item in same folder → reorder (calls onReorder)
+  // - Drop on item in different folder → move to that folder (calls onDropToFolder)
+  // Zone-level drops (folder headers, empty areas) still handled by zone().
+  const draggableItem = (it: T) => {
+    const isDropTarget = dragOverItemId === it.id && draggedId !== null && draggedId !== it.id;
+    return (
+      <div
+        key={it.id}
+        draggable
+        onDragStart={e => {
+          e.dataTransfer.setData('text/plain', it.id);
+          e.dataTransfer.effectAllowed = 'move';
+          requestAnimationFrame(() => onDragStart(it.id));
+        }}
+        onDragEnd={() => {
+          enterCounts.current.clear();
+          setHoverFolder(null);
+          setDragOverItemId(null);
+          onDragEnd();
+        }}
+        onDragEnter={e => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (draggedId && draggedId !== it.id) setDragOverItemId(it.id);
+        }}
+        onDragOver={e => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'move';
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setDropPosition(e.clientY < rect.top + rect.height / 2 ? 'before' : 'after');
+        }}
+        onDragLeave={e => {
+          e.stopPropagation();
+          if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+            setDragOverItemId(null);
+          }
+        }}
+        onDrop={e => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!draggedId || draggedId === it.id) { setDragOverItemId(null); return; }
+          const dragSrc = items.find(x => x.id === draggedId);
+          if (!dragSrc) { setDragOverItemId(null); return; }
+          const kFolders = folders.filter(f => f.kind === kind);
+          const srcFolder = dragSrc.folderId && kFolders.some(f => f.id === dragSrc.folderId) ? dragSrc.folderId : null;
+          const tgtFolder = it.folderId && kFolders.some(f => f.id === it.folderId) ? it.folderId : null;
+          enterCounts.current.clear();
+          setHoverFolder(null);
+          if (srcFolder !== tgtFolder) {
+            onDropToFolder(tgtFolder);
+          } else if (onReorder) {
+            const without = items.filter(x => x.id !== draggedId);
+            const tgtIdx = without.findIndex(x => x.id === it.id);
+            const insertIdx = dropPosition === 'after' ? tgtIdx + 1 : tgtIdx;
+            onReorder([...without.slice(0, insertIdx), dragSrc, ...without.slice(insertIdx)]);
+            onDragEnd();
+          }
+          setDragOverItemId(null);
+        }}
+        style={{
+          position: 'relative',
+          opacity: draggedId === it.id ? 0.35 : 1,
+          cursor: 'grab',
+          transition: 'opacity 0.15s',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+        }}
+      >
+        {isDropTarget && dropPosition === 'before' && (
+          <div style={{ position: 'absolute', top: -1, left: 0, right: 0, height: '2px', background: color, borderRadius: '1px', zIndex: 10, pointerEvents: 'none' }} />
+        )}
+        <div style={{ pointerEvents: isDragging ? 'none' : 'auto' }}>
+          {renderItem(it)}
+        </div>
+        {isDropTarget && dropPosition === 'after' && (
+          <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: '2px', background: color, borderRadius: '1px', zIndex: 10, pointerEvents: 'none' }} />
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div>
@@ -1641,6 +1702,10 @@ export default function SubjectPage() {
                   onDropToFolder={fid => handleItemDrop('file', fid)}
                   onCreateFolder={name => createFolder('file', name)}
                   onDeleteFolder={removeFolder}
+                  onReorder={reordered => setFiles(prev => {
+                    const ids = new Set(reordered.map(f => f.id));
+                    return [...prev.filter(f => !ids.has(f.id)), ...reordered];
+                  })}
                   headerExtra={
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedFileIds(levelFiles.map(f => f.id))}
@@ -1814,6 +1879,7 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('card', fid)}
                 onCreateFolder={name => createFolder('card', name)}
                 onDeleteFolder={removeFolder}
+                onReorder={reordered => setSavedFlashcardSets(reordered)}
                 renderItem={(set) => {
                   const isRenaming = renaming?.id === set.id;
                   return (
@@ -1937,6 +2003,7 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('note', fid)}
                 onCreateFolder={name => createFolder('note', name)}
                 onDeleteFolder={removeFolder}
+                onReorder={reordered => setSavedNotes(reordered)}
                 renderItem={(n) => {
                   const isRenaming = renaming?.id === n.id;
                   return (
@@ -2078,6 +2145,7 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('quiz', fid)}
                 onCreateFolder={name => createFolder('quiz', name)}
                 onDeleteFolder={removeFolder}
+                onReorder={reordered => setSavedQuizzes(reordered)}
                 renderItem={(quiz) => {
                   const isRenaming = renaming?.id === quiz.id;
                   return (
