@@ -204,17 +204,23 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
   // + portaled to <body>, so coordinates map directly with no scroll math and
   // no interference from transformed/filtered ancestors (e.g. dim mode).
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const tw = el.offsetWidth;
-    const th = el.offsetHeight;
-    const m = 8;
-    let left = rect.left + rect.width / 2 - tw / 2;
-    left = Math.max(m, Math.min(left, window.innerWidth - tw - m));
-    let top = rect.top - th - 10;
-    let below = false;
-    if (top < m) { top = rect.bottom + 10; below = true; }
-    setPos({ left, top, below });
+    const measure = () => {
+      const el = ref.current;
+      if (!el) return;
+      const tw = el.offsetWidth;
+      const th = el.offsetHeight;
+      // On Safari the element may not have layout dimensions on the first paint;
+      // retry once in the next frame.
+      if (!tw && !th) { requestAnimationFrame(measure); return; }
+      const m = 8;
+      let left = rect.left + rect.width / 2 - tw / 2;
+      left = Math.max(m, Math.min(left, window.innerWidth - tw - m));
+      let top = rect.top - th - 10;
+      let below = false;
+      if (top < m) { top = rect.bottom + 10; below = true; }
+      setPos({ left, top, below });
+    };
+    measure();
   }, [rect]);
 
   // Dismiss on outside click or any scroll (selection coords would go stale).
@@ -774,9 +780,11 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
     return () => window.removeEventListener('keydown', handler);
   }, [activeSection, notes.sections.length]);
 
-  // Annotation: detect text selection and show toolbar
+  // Annotation: detect text selection and show toolbar.
+  // Uses rAF (not setTimeout) so the selection is finalized before we read it —
+  // Safari on Mac sets window.getSelection() asynchronously relative to mouseup.
   const handleSelectionEnd = useCallback(() => {
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       // Ignore selections made inside form fields (search bar, AskAI textarea…)
       const activeTag = document.activeElement?.tagName;
       if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
@@ -798,13 +806,22 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
       }
       if (sectionIndex === -1) return;
 
-      const r = sel.getRangeAt(0).getBoundingClientRect();
+      const range = sel.getRangeAt(0);
+      // Safari returns an all-zero rect from getBoundingClientRect() on a range;
+      // fall back to getClientRects() and take the last (visually rightmost) rect.
+      let r = range.getBoundingClientRect();
+      if (!r.width && !r.height) {
+        const rects = range.getClientRects();
+        if (rects.length) r = rects[rects.length - 1];
+      }
+      if (!r.width && !r.height) return;
+
       setToolbar({
         rect: { left: r.left, top: r.top, bottom: r.bottom, width: r.width },
         sectionIndex,
         selectedText: text,
       });
-    }, 10);
+    });
   }, []);
 
   // Annotation: click on existing annotation mark to show remove toolbar
