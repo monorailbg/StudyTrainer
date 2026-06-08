@@ -340,17 +340,27 @@ export async function generateFromFile(
   subjectTitle: string,
   options: GenerateOptions = {},
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
-  const base64 = await fileToBase64(file);
   const prompt =
     type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) :
     type === 'notes'      ? notesFilePrompt(subjectTitle, options) :
                             quizFilePrompt(subjectTitle, options);
 
-  const text = await callProxy([
-    { inline_data: { mime_type: file.type, data: base64 } },
-    { text: prompt },
-  ]);
+  let parts: Part[];
 
+  if (file.type === 'application/pdf') {
+    const { extractTextFromFile } = await import('./pdfExtractor');
+    const extracted = await extractTextFromFile(file);
+    if (!extracted.trim()) throw new Error('Could not extract text from this PDF. Try a different file.');
+    parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
+  } else {
+    const base64 = await fileToBase64(file);
+    parts = [
+      { inline_data: { mime_type: file.type, data: base64 } },
+      { text: prompt },
+    ];
+  }
+
+  const text = await callProxy(parts);
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
 }
