@@ -84,7 +84,7 @@ async function callProxy(
     throw new Error(`Rate limit reached. Please wait ${wait} seconds and try again.`);
   }
   if (response.status === 401) {
-    throw new Error('Invalid or expired API key. Check the server .env file.');
+    throw new Error('Invalid or expired Gemini API key. Update GEMINI_API_KEY in Vercel → Project Settings → Environment Variables, then redeploy.');
   }
   if (response.status === 400) {
     throw new Error(`Bad request: ${err.error}`);
