@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLang } from '../context/LanguageContext';
 
-const PROXY_URL = import.meta.env.DEV
-  ? 'http://localhost:5000/api/generate'
-  : '/api/generate';
+const PROXY_URL = '/api/generate';
 
 interface Message {
   role: 'user' | 'ai';

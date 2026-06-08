@@ -28,8 +28,9 @@ import type {
 const GENERATE_ENDPOINT: string = (() => {
   const override = (import.meta.env.VITE_PROXY_URL as string | undefined)?.replace(/\/$/, '');
   if (override) return `${override}/api/generate`;
-  if (import.meta.env.DEV) return 'http://localhost:5000/api/generate';
-  return '/api/generate'; // same-origin Vercel function in production
+  // In both dev (Vite proxy → localhost:5000) and production (Vercel function),
+  // /api/generate is same-origin so no CORS is needed and Codespaces work correctly.
+  return '/api/generate';
 })();
 
 // ── Types that mirror the REST wire format ──────────────────────────────────
