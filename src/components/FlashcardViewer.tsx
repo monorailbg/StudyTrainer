@@ -25,13 +25,13 @@ function parseVocab(back: string): VocabData | null {
 function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%' }}>
-      {/* Reading / pronunciation */}
+      {/* Reading / pinyin */}
       {vocab.reading && (
         <div style={{
-          fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-          fontSize: '13px',
+          fontFamily: "'LXGW WenKai Mono TC', 'JetBrains Mono', monospace",
+          fontSize: '14px',
           color: '#8B949E',
-          letterSpacing: '0.04em',
+          letterSpacing: '0.06em',
           textAlign: 'center',
         }}>
           {vocab.reading}
@@ -40,12 +40,12 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
 
       {/* Meaning */}
       <div style={{
-        fontFamily: "'Sora', sans-serif",
-        fontWeight: 700,
+        fontFamily: "'Shippori Antique B1', 'Sora', serif",
+        fontWeight: 400,
         fontSize: 'clamp(18px, 4vw, 24px)',
         color: '#E6EDF3',
         textAlign: 'center',
-        lineHeight: 1.3,
+        lineHeight: 1.4,
       }}>
         {vocab.meaning}
       </div>
@@ -55,14 +55,15 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         <div style={{ width: '36px', height: '1px', background: color + '40', margin: '2px 0' }} />
       )}
 
-      {/* Example sentence */}
+      {/* Example sentence — Chinese/source language */}
       {vocab.example && (
         <div style={{
-          fontSize: '13px',
+          fontFamily: "'LXGW WenKai Mono TC', serif",
+          fontSize: '14px',
           color: '#C9D1D9',
           textAlign: 'center',
-          lineHeight: 1.7,
-          maxWidth: '100%',
+          lineHeight: 1.8,
+          letterSpacing: '0.02em',
         }}>
           {vocab.example}
         </div>
@@ -71,11 +72,11 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
       {/* Translation of example */}
       {vocab.translation && (
         <div style={{
+          fontFamily: "'Shippori Antique B1', serif",
           fontSize: '12px',
           color: '#8B949E',
           textAlign: 'center',
-          fontStyle: 'italic',
-          lineHeight: 1.5,
+          lineHeight: 1.6,
         }}>
           {vocab.translation}
         </div>
@@ -246,13 +247,13 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             </div>
             {isVocabCard ? (
               <div style={{
-                fontFamily: "'Noto Sans SC', 'Noto Sans JP', 'Sora', sans-serif",
-                fontWeight: 700,
-                fontSize: 'clamp(32px, 10vw, 56px)',
+                fontFamily: "'Ma Shan Zheng', 'LXGW WenKai Mono TC', serif",
+                fontWeight: 400,
+                fontSize: 'clamp(40px, 12vw, 72px)',
                 color: '#E6EDF3',
                 textAlign: 'center',
-                lineHeight: 1.15,
-                letterSpacing: '0.04em',
+                lineHeight: 1.1,
+                letterSpacing: '0.06em',
               }}>
                 {card.front}
               </div>
