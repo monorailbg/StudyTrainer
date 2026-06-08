@@ -1969,7 +1969,7 @@ export default function SubjectPage() {
           {view === 'flashcards' && (() => {
             // ── Bookmarks viewer ─────────────────────────────────────────────
             if (bookmarkMode) {
-              const allCards = savedFlashcardSets.flatMap(s => s.cards);
+              const allCards = savedFlashcardSets.flatMap(s => s.cards ?? []);
               const bmCards  = allCards.filter(c => bookmarkedIds.includes(c.id));
               return (
                 <div>
@@ -2000,8 +2000,8 @@ export default function SubjectPage() {
 
             if (activeSet) {
               // Sort due cards first, then unseen — most-overdue reviews surface first.
-              const { due: dueCards, unseen: newCards, queue } = getStudyQueue(activeSet.cards, srsCards);
-              const sessionCards = queue.length > 0 ? queue : activeSet.cards;
+              const { due: dueCards, unseen: newCards, queue } = getStudyQueue(activeSet.cards ?? [], srsCards);
+              const sessionCards = queue.length > 0 ? queue : (activeSet.cards ?? []);
               const toReview = dueCards.length + newCards.length;
               return (
                 <div>
@@ -2040,7 +2040,7 @@ export default function SubjectPage() {
             }
 
             // ── Dashboard ──────────────────────────────────────────────────
-            const allCardIds = savedFlashcardSets.flatMap(s => s.cards.map(c => c.id));
+            const allCardIds = savedFlashcardSets.flatMap(s => (s.cards ?? []).map(c => c.id));
             const allStats   = subjectSrsStats(srsCards, allCardIds);
             const totalCards = allCardIds.length;
             const learnedPct = totalCards > 0 ? Math.round((allStats.graduated / totalCards) * 100) : 0;
@@ -2145,7 +2145,7 @@ export default function SubjectPage() {
                 sortAccessors={{ name: s => s.name, date: s => s.createdAt }}
                 renderItem={(set) => {
                   const isRenaming = renaming?.id === set.id;
-                  const setStats   = subjectSrsStats(srsCards, set.cards.map(c => c.id));
+                  const setStats   = subjectSrsStats(srsCards, (set.cards ?? []).map(c => c.id));
                   const toReview   = setStats.due + setStats.unseen;
                   return (
                     <div
