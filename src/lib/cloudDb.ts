@@ -95,11 +95,33 @@ async function getBySubject<T>(col: string, subjectId: string): Promise<T[]> {
 export async function uploadFileToStorage(subjectId: string, fileId: string, file: File): Promise<string> {
   if (!isSupabaseConfigured || !supabase) throw new Error('Supabase Storage is not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
   const path = `files/${subjectId}/${fileId}`;
-  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
-    contentType: file.type,
-    upsert: true,
-  });
-  if (error) throw error;
+  let error: unknown;
+  try {
+    const result = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
+      contentType: file.type,
+      upsert: true,
+    });
+    error = result.error;
+  } catch (fetchErr) {
+    // fetch() threw — Supabase is unreachable. Log full details for debugging.
+    console.error('[Supabase] upload fetch failed:', fetchErr);
+    const url = (import.meta.env.VITE_SUPABASE_URL as string) || '(not set)';
+    throw new Error(
+      `Cannot reach Supabase (${url.slice(0, 40)}). ` +
+      'Check: 1) Supabase project is not paused, 2) VITE_SUPABASE_URL is correct in Vercel env vars, 3) bucket "studytrainer" exists.',
+    );
+  }
+  if (error) {
+    console.error('[Supabase] upload error:', error);
+    const msg = (error as { message?: string }).message ?? String(error);
+    if (msg.includes('row-level security') || msg.includes('Unauthorized') || msg.includes('403')) {
+      throw new Error('Supabase RLS policy missing. Run the policy SQL in Supabase → SQL Editor.');
+    }
+    if (msg.includes('not found') || msg.includes('404') || msg.includes('Bucket')) {
+      throw new Error(`Supabase bucket "${STORAGE_BUCKET}" not found. Create it in Supabase → Storage.`);
+    }
+    throw new Error(msg);
+  }
   const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
