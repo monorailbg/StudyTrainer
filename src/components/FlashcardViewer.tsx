@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GeneratedFlashcard } from '../lib/generator';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
+import { useBookmarks } from '../store/useBookmarks';
 import { useLang } from '../context/LanguageContext';
 import type { Rating, CardState } from '../lib/srs';
 
@@ -123,6 +124,8 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   const rate       = useSRS(s => s.rate);
   const resetCards = useSRS(s => s.resetCards);
   const srsCards   = useSRS(s => s.cards);
+  const bookmarkedIds  = useBookmarks(s => s.bookmarks[subjectId ?? ''] ?? []);
+  const toggleBookmark = useBookmarks(s => s.toggle);
 
   // SRS mode: Anki-like mutable queue (front = current card)
   const [queue, setQueue] = useState<GeneratedFlashcard[]>(() => [...cards]);
@@ -349,7 +352,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         );
       })()}
 
-      {/* Counter + topic + settings */}
+      {/* Counter + topic + bookmark + settings */}
       <div className="flashcard-meta flex items-center justify-between mb-4" style={{ width: cardW }}>
         <span className="mono text-xs" style={{ color: '#8B949E' }}>
           {srsMode
@@ -360,6 +363,33 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: color + '10', color, border: `1px solid ${color}20` }}>
             {card.topic}
           </span>
+
+          {/* Bookmark button */}
+          {subjectId && (
+            <button
+              onClick={() => toggleBookmark(subjectId, card.id)}
+              aria-label={bookmarkedIds.includes(card.id) ? ts('Remove bookmark') : ts('Bookmark card')}
+              style={{
+                width: '28px', height: '28px', borderRadius: '8px', cursor: 'pointer',
+                background: bookmarkedIds.includes(card.id) ? '#D2992218' : 'transparent',
+                border: `1px solid ${bookmarkedIds.includes(card.id) ? '#D2992240' : 'transparent'}`,
+                color: bookmarkedIds.includes(card.id) ? '#D29922' : '#484F58',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#D2992240'; (e.currentTarget as HTMLElement).style.color = '#D29922'; }}
+              onMouseLeave={e => {
+                if (!bookmarkedIds.includes(card.id)) {
+                  (e.currentTarget as HTMLElement).style.borderColor = 'transparent';
+                  (e.currentTarget as HTMLElement).style.color = '#484F58';
+                }
+              }}
+            >
+              <svg viewBox="0 0 14 16" width="12" height="14" fill={bookmarkedIds.includes(card.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4">
+                <path d="M2 2a1 1 0 011-1h8a1 1 0 011 1v12l-5-3-5 3V2z" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
 
           {/* Settings button — SRS mode only */}
           {srsMode && (

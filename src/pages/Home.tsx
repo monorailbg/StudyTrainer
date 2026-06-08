@@ -162,23 +162,10 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
     ? quizData.filter(q => q.topic === subject.quizTopic).length : 0;
 
   const hasProgress = stats && (stats.notesTotal > 0 || stats.cardsTotal > 0);
-  const due = stats?.cardsDue ?? 0;
   const barDelay = index * 60;
 
   return (
     <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms`, position: 'relative' }}>
-      {/* Due-for-review badge — overlaps the top-right corner */}
-      {due > 0 && (
-        <span style={{
-          position: 'absolute', top: '-7px', right: '-6px', zIndex: 3,
-          padding: '2px 9px', borderRadius: '999px',
-          background: 'linear-gradient(135deg, #F85149, #d2391f)', color: '#fff',
-          fontSize: '10px', fontWeight: 700, letterSpacing: '0.02em',
-          boxShadow: '0 4px 12px rgba(248,81,73,0.45)', whiteSpace: 'nowrap',
-        }}>
-          {ts('{n} due', { n: due })}
-        </span>
-      )}
       <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}>
         <div className="p-5 flex flex-col h-full gap-3">
           {/* Icon + color accent */}
