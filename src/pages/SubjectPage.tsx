@@ -752,7 +752,10 @@ export default function SubjectPage() {
       return prev.filter(x => x.id !== fileId);
     });
     setSelectedFileIds(prev => prev.filter(fid => fid !== fileId));
-    if (isFirebaseConfigured) deleteCloudFile(id!, fileId).catch(() => {}); else deleteFile(fileId).catch(() => {});
+    // Always wipe the local IndexedDB copy so it doesn't reappear on next load
+    // via the local-only merge path, even when cloud sync is active.
+    deleteFile(fileId).catch(() => {});
+    if (isFirebaseConfigured) deleteCloudFile(id!, fileId).catch(() => {});
   };
 
   const toggleFileSelection = (fileId: string) => {
