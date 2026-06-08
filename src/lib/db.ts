@@ -424,3 +424,13 @@ export async function deleteDictionaryEntry(id: string): Promise<void> {
     tx.onerror    = () => reject(tx.error);
   });
 }
+
+export async function getAllDictionaryEntries(): Promise<DictionaryEntry[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('dictionaryEntries', 'readonly');
+    const req = tx.objectStore('dictionaryEntries').getAll();
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}

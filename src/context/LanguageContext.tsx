@@ -19,6 +19,7 @@ const T = {
     nav_flashcards: 'Flashcards',
     nav_notes: 'Notes',
     nav_quiz: 'Quiz',
+    nav_dictionary: 'Dictionary',
     nav_generate: 'Generate',
     tagline: 'Study Platform',
     // Dashboard
@@ -93,6 +94,7 @@ const T = {
     nav_flashcards: 'フラッシュカード',
     nav_notes: 'ノート',
     nav_quiz: 'クイズ',
+    nav_dictionary: '辞書',
     nav_generate: '生成',
     tagline: '学習プラットフォーム',
     dash_title: '学習ダッシュボード',

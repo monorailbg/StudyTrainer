@@ -1475,6 +1475,13 @@ export default function SubjectPage() {
                       secondary={savedQuizzes.length > 0 ? `${ts('in {n} quizzes', { n: savedQuizzes.length })} · ${ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) })}` : ts('Generate a quiz from files')}
                       onClick={() => { setActiveQuizId(null); setView('quiz'); }}
                     />
+                    <OverviewTile
+                      index={4} icon={<IconDict />} label={ts('Dictionary')} color="#8B5CF6"
+                      active={dictEntries.length > 0}
+                      primary={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : ts('None yet')}
+                      secondary={dictEntries.length > 0 ? ts('updated {time}', { time: timeAgo(dictEntries[dictEntries.length - 1].createdAt) }) : ts('Select a word or phrase in any note, then tap the dictionary button to add it here with an AI-generated definition.')}
+                      onClick={() => setView('dictionary')}
+                    />
                   </div>
                 );
               })()}
