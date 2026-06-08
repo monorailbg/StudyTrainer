@@ -12,10 +12,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
-  const { uploadUrl, chunkBase64, offset, totalSize, isLast } = req.body ?? {};
+  const { uploadUrl, chunkBase64, offset, isLast } = req.body ?? {};
 
-  if (!uploadUrl || chunkBase64 === undefined || offset === undefined || !totalSize) {
-    return res.status(400).json({ error: '"uploadUrl", "chunkBase64", "offset", and "totalSize" are required.' });
+  if (!uploadUrl || chunkBase64 === undefined || offset === undefined) {
+    return res.status(400).json({ error: '"uploadUrl", "chunkBase64", and "offset" are required.' });
   }
 
   let chunk;
@@ -25,40 +25,37 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid base64 in "chunkBase64".' });
   }
 
-  const end = offset + chunk.length - 1;
-
   try {
+    // Gemini Files API — Google's X-Goog-Upload-* (Goog) protocol.
+    // Non-final: X-Goog-Upload-Command: upload  → HTTP 200, X-Goog-Upload-Status: active
+    // Final:     X-Goog-Upload-Command: upload, finalize → HTTP 200 + file object in body
+    // Content-Type must be set; Content-Length is set automatically by Node.js fetch.
     const uploadRes = await fetch(uploadUrl, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
-        // Standard HTTP resumable upload protocol (RFC 9110 / Google standard).
-        // 308 Resume Incomplete = non-final chunk accepted.
-        // 200/201 = final chunk accepted, file ready.
-        'Content-Range': `bytes ${offset}-${end}/${totalSize}`,
+        'Content-Type': 'application/octet-stream',
+        'X-Goog-Upload-Offset': String(offset),
+        'X-Goog-Upload-Command': isLast ? 'upload, finalize' : 'upload',
       },
       body: chunk,
     });
 
-    // Non-final chunk: Gemini returns 308 Resume Incomplete on success.
     if (!isLast) {
-      if (uploadRes.status === 308) return res.json({ ok: true });
+      if (uploadRes.ok) return res.json({ ok: true });
       const errText = await uploadRes.text().catch(() => '');
-      console.error('[upload-chunk] Non-final chunk error:', uploadRes.status, errText.slice(0, 500));
+      console.error('[upload-chunk] non-final error:', uploadRes.status, errText.slice(0, 500));
       return res.status(500).json({ error: `Gemini chunk upload failed: HTTP ${uploadRes.status}` });
     }
 
-    // Final chunk: Gemini returns 200 or 201 with the file object.
     if (uploadRes.ok) {
       const data = await uploadRes.json().catch(() => ({}));
       const fileUri = data.file?.uri;
-      if (!fileUri) {
-        return res.status(500).json({ error: 'Gemini did not return a file URI after finalize.' });
-      }
+      if (!fileUri) return res.status(500).json({ error: 'Gemini did not return a file URI after finalize.' });
       return res.json({ fileUri });
     }
 
     const errText = await uploadRes.text().catch(() => '');
-    console.error('[upload-chunk] Final chunk error:', uploadRes.status, errText.slice(0, 500));
+    console.error('[upload-chunk] final error:', uploadRes.status, errText.slice(0, 500));
     return res.status(500).json({ error: `Gemini chunk upload failed: HTTP ${uploadRes.status}` });
   } catch (err) {
     console.error('[upload-chunk] Error:', err);

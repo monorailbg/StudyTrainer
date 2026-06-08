@@ -100,8 +100,15 @@ async function callProxy(
 
 function parseJSON(raw: string): unknown {
   let text = raw.trim();
-  const fence = text.match(/^```(?:json)?\n?([\s\S]*?)\n?```$/);
-  if (fence) text = fence[1].trim();
+  // Strip code fence anywhere in the response (Gemini sometimes adds prose before/after)
+  const fence = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (fence) {
+    text = fence[1].trim();
+  } else {
+    // No fence: skip any preamble and start from first { or [
+    const start = text.search(/[{[]/);
+    if (start > 0) text = text.slice(start);
+  }
   return JSON.parse(text);
 }
 
@@ -120,27 +127,40 @@ function processResult(
   fallbackTopic: string,
 ): GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[] {
   if (type === 'flashcards') {
-    const cards = parsed['flashcards'] as Array<{ front: string; back: string; topic: string }>;
-    return cards.map((fc, i) => ({
+    const raw = parsed['flashcards'];
+    if (!Array.isArray(raw) || raw.length === 0) {
+      throw new Error(
+        `Gemini returned an unexpected format for flashcards. ` +
+        `Got keys: ${Object.keys(parsed).join(', ') || '(none)'}`,
+      );
+    }
+    return (raw as Array<{ front?: string; back?: string; topic?: string }>).map((fc, i) => ({
       id: `gem-${Date.now()}-${i}`,
-      front: fc.front,
-      back: fc.back,
+      front: String(fc.front ?? ''),
+      back:  String(fc.back  ?? ''),
       topic: fc.topic ?? fallbackTopic,
     }));
   }
+
   if (type === 'notes') return parsed as unknown as GeneratedNote;
 
-  const questions = parsed['questions'] as Array<{
+  const raw = parsed['questions'];
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new Error(
+      `Gemini returned an unexpected format for quiz questions. ` +
+      `Got keys: ${Object.keys(parsed).join(', ') || '(none)'}`,
+    );
+  }
+  return (raw as Array<{
     question: string;
     options: [string, string, string, string];
     correct: number;
     explanation: string;
-  }>;
-  return questions.map((q, i) => ({
+  }>).map((q, i) => ({
     id: `gem-${Date.now()}-${i}`,
     question: q.question,
-    options: q.options,
-    correct: Number(q.correct) as 0 | 1 | 2 | 3,
+    options:  q.options,
+    correct:  Number(q.correct) as 0 | 1 | 2 | 3,
     explanation: q.explanation,
   }));
 }
@@ -334,10 +354,69 @@ Return ONLY valid JSON — no markdown, no preamble:
 }`,
 };
 
-// ── Large-image compression ─────────────────────────────────────────────────
+// ── Files API chunked upload (large / scanned files) ───────────────────────
 
 const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024; // 3 MB
-const COMPRESS_TARGET     = 2.5 * 1024 * 1024; // 2.5 MB binary (→ ~3.3 MB base64)
+
+// Each binary chunk is exactly 10 × 256 KB — required multiple for Gemini.
+// As base64 this becomes ~3.3 MB, comfortably under Vercel's 4.5 MB body cap.
+const CHUNK_SIZE = 2_621_440; // 2.5 MB
+
+function readBlobAsBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Uploads a file to Gemini's Files API in 2.5 MB chunks through our proxy.
+ *
+ * Protocol: Google's X-Goog-Upload-* (not standard HTTP Content-Range).
+ * - Non-final chunks: POST + X-Goog-Upload-Command: upload  → 200
+ * - Final chunk:      POST + X-Goog-Upload-Command: upload, finalize → 200 + file URI
+ */
+async function uploadViaFilesAPI(file: File): Promise<FileDataPart> {
+  const initRes = await fetch('/api/init-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mimeType: file.type, displayName: file.name, size: file.size }),
+  });
+  if (!initRes.ok) {
+    const err = await initRes.json().catch(() => ({ error: initRes.statusText })) as { error: string };
+    throw new Error(`File upload init failed: ${err.error}`);
+  }
+  const { uploadUrl } = await initRes.json() as { uploadUrl: string };
+
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  for (let i = 0; i < totalChunks; i++) {
+    const start  = i * CHUNK_SIZE;
+    const isLast = i === totalChunks - 1;
+    const chunkBase64 = await readBlobAsBase64(file.slice(start, Math.min(start + CHUNK_SIZE, file.size)));
+
+    const chunkRes = await fetch('/api/upload-chunk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadUrl, chunkBase64, offset: start, isLast }),
+    });
+
+    if (!chunkRes.ok) {
+      const err = await chunkRes.json().catch(() => ({ error: `Chunk ${i + 1}/${totalChunks} failed` })) as { error: string };
+      throw new Error(err.error);
+    }
+    if (isLast) {
+      const { fileUri } = await chunkRes.json() as { fileUri: string };
+      return { file_data: { mime_type: file.type, file_uri: fileUri } };
+    }
+  }
+  throw new Error('File upload did not complete.');
+}
+
+// ── Large-image compression ─────────────────────────────────────────────────
+
+const COMPRESS_TARGET = 2.5 * 1024 * 1024; // 2.5 MB binary (→ ~3.3 MB base64)
 
 /**
  * Compresses any image file to ≤ 2.5 MB binary using Canvas + JPEG encoding.
@@ -411,13 +490,9 @@ export async function generateFromFile(
       // Text-based PDF: embed extracted text — works for any file size.
       parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
     } else if (file.size > LARGE_FILE_THRESHOLD) {
-      // Large scanned PDF: Gemini's Files API requires the full file in one
-      // server-side request, but our Vercel proxy caps incoming bodies at
-      // 4.5 MB — so large scanned PDFs cannot be processed this way.
-      throw new Error(
-        'This PDF appears to be scanned (no selectable text) and is too large to process. ' +
-        'Try a text-based PDF of any size, or a scanned PDF under 3 MB.',
-      );
+      // Large scanned PDF: upload via Files API (chunked through our proxy).
+      const filePart = await uploadViaFilesAPI(file);
+      parts = [filePart, { text: prompt }];
     } else {
       // Small scanned PDF: inline base64.
       const base64 = await fileToBase64(file);
