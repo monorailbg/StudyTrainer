@@ -2344,7 +2344,7 @@ export default function SubjectPage() {
 
       {/* ── Floating Generate button + popover ──────────────────────────────── */}
       {levelFiles.length > 0 && (
-        <div style={{ position: 'fixed', right: '24px', bottom: '24px', zIndex: 200, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
+        <div className="hidden md:flex" style={{ position: 'fixed', right: '24px', bottom: '24px', zIndex: 200, flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
           {showGenPanel && (
             <div
               style={{
