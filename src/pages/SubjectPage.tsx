@@ -6,6 +6,7 @@ import { useStore } from '../store/useStore';
 import { useActivity } from '../store/useActivity';
 import { useToast } from '../components/Toast';
 import { generateFromFile } from '../lib/geminiProxy';
+import { extractTextFromFile, renderPdfPagesAsJpeg } from '../lib/pdfExtractor';
 
 import { useExamDates } from '../store/useExamDates';
 import {
@@ -66,8 +67,14 @@ function timeAgo(ts: number): string {
 interface UploadedFile {
   id: string; name: string; type: string; size: number;
   url: string; rawFile: File | null; level: string; storageUrl?: string;
-  folderId?: string | null;
+  folderId?: string | null; compressing?: boolean;
 }
+
+// Treat pre-compressed pages blobs the same as PDF for display purposes.
+const isPdfType = (t: string) =>
+  t === 'application/pdf' || t === 'application/x-studytrainer-pages';
+
+const PDF_COMPRESS_THRESHOLD = 3 * 1024 * 1024; // 3 MB
 
 type GenStatus = 'idle' | 'generating' | 'done' | 'error';
 interface GenState { status: GenStatus; type?: GenerationType; error?: string; }
@@ -568,7 +575,7 @@ export default function SubjectPage() {
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [quizCount, setQuizCount] = useState(10);
   const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [cardCount, setCardCount] = useState(12);
+  const [cardCount, setCardCount] = useState(0); // 0 = undecided; multiples of 5 up to 50
   const [focusTopic, setFocusTopic] = useState('');
   const [notesDetail, setNotesDetail] = useState<'concise' | 'standard' | 'comprehensive'>('standard');
   const [notesIncludes, setNotesIncludes] = useState<string[]>([]);
@@ -700,28 +707,60 @@ export default function SubjectPage() {
       toast('error', ts('{n} files skipped', { n: rejected }), ts('Only PDF and image files are supported.'));
     }
     if (valid.length === 0) return;
-    const mapped: UploadedFile[] = valid.map(f => ({
+
+    // Add all files to state immediately; mark large PDFs as compressing.
+    const entries: UploadedFile[] = valid.map(f => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       name: f.name, type: f.type, size: f.size,
       url: URL.createObjectURL(f), rawFile: f, level: activeLevel,
+      compressing: f.type === 'application/pdf' && f.size > PDF_COMPRESS_THRESHOLD,
     }));
-    setFiles(prev => [...prev, ...mapped]);
-    setSelectedFileIds(prev => [...prev, ...mapped.map(m => m.id)]);
-    // Always save locally first — generation works from IndexedDB regardless of cloud state.
-    for (const file of mapped) {
-      await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
-    }
-    toast('success', ts('{n} files added', { n: mapped.length }), undefined);
+    setFiles(prev => [...prev, ...entries]);
+    setSelectedFileIds(prev => [...prev, ...entries.map(e => e.id)]);
+    toast('success', ts('{n} files added', { n: entries.length }), undefined);
 
-    // Best-effort cloud sync — run after the success toast, never blocks or errors the user.
-    if (isFirebaseConfigured && isSupabaseConfigured) {
-      for (const file of mapped) {
+    // Process each file: compress large scanned PDFs to pre-rendered JPEG pages.
+    const finalFiles: Array<{ entry: UploadedFile; file: File; type: string }> = [];
+
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const rawFile = valid[i];
+      let fileToStore: File = rawFile;
+      let typeToStore = rawFile.type;
+
+      if (rawFile.type === 'application/pdf' && rawFile.size > PDF_COMPRESS_THRESHOLD) {
         try {
-          const storageUrl = await uploadFileToStorage(id!, file.id, file.rawFile!);
-          await saveCloudFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, storageUrl, createdAt: Date.now() });
-          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, storageUrl } : f));
+          const text = await extractTextFromFile(rawFile);
+          if (!text.trim()) {
+            // Scanned PDF: render pages as compressed JPEG images and store as custom format.
+            const pages = await renderPdfPagesAsJpeg(rawFile, 15, 0.65);
+            const blob = new File([JSON.stringify(pages)], rawFile.name, { type: 'application/x-studytrainer-pages' });
+            fileToStore = blob;
+            typeToStore = 'application/x-studytrainer-pages';
+          }
+        } catch (compressErr) {
+          console.warn('[compress] PDF compression failed, keeping original:', compressErr);
+        }
+      }
+
+      setFiles(prev => prev.map(f =>
+        f.id === entry.id
+          ? { ...f, rawFile: fileToStore, type: typeToStore, size: fileToStore.size, compressing: false }
+          : f,
+      ));
+      await saveFile({ id: entry.id, subjectId: id!, name: rawFile.name, type: typeToStore, size: fileToStore.size, level: activeLevel, blob: fileToStore }).catch(() => {});
+      finalFiles.push({ entry, file: fileToStore, type: typeToStore });
+    }
+
+    // Best-effort cloud sync — never blocks or errors the user.
+    if (isFirebaseConfigured && isSupabaseConfigured) {
+      for (const { entry, file, type } of finalFiles) {
+        try {
+          const storageUrl = await uploadFileToStorage(id!, entry.id, file);
+          await saveCloudFile({ id: entry.id, subjectId: id!, name: entry.name, type, size: file.size, level: activeLevel, storageUrl, createdAt: Date.now() });
+          setFiles(prev => prev.map(f => f.id === entry.id ? { ...f, storageUrl } : f));
         } catch (err) {
-          console.warn('[CloudSync] Supabase upload failed for', file.name, '—', err instanceof Error ? err.message : err);
+          console.warn('[CloudSync] Supabase upload failed for', entry.name, '—', err instanceof Error ? err.message : err);
         }
       }
     }
@@ -996,6 +1035,10 @@ export default function SubjectPage() {
   const handleGenerate = async () => {
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
     if (selectedFiles.length === 0) return;
+    if (selectedFiles.some(f => f.compressing)) {
+      toast('info', 'PDF still compressing', 'Please wait a moment and try again.');
+      return;
+    }
     try {
       setGenState({ status: 'generating', type: selectedType });
       setGenProgress({ current: 0, total: selectedFiles.length });
@@ -1022,7 +1065,7 @@ export default function SubjectPage() {
           }
         }
         const result = await generateFromFile(fileForGen, selectedType, subject!.title, {
-          cardCount,
+          cardCount: cardCount === 0 ? undefined : cardCount,
           questionCount: quizCount,
           difficulty: quizDifficulty,
           focusTopic: focusTopic.trim() || undefined,
@@ -1310,7 +1353,7 @@ export default function SubjectPage() {
                         <SidebarItem
                           icon={<IconFile />}
                           label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
-                          sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${file.type === 'application/pdf' ? 'PDF' : ts('Image')}`}
+                          sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${isPdfType(file.type) ? 'PDF' : ts('Image')}`}
                           active={isSidebarActive}
                           dot={isSidebarActive}
                           dotColor={subject.color}
@@ -1452,7 +1495,7 @@ export default function SubjectPage() {
 
               {(() => {
                 const totalMB = levelFiles.reduce((a, f) => a + f.size, 0) / 1024 / 1024;
-                const pdfCount = levelFiles.filter(f => f.type === 'application/pdf').length;
+                const pdfCount = levelFiles.filter(f => isPdfType(f.type)).length;
                 const imgCount = levelFiles.length - pdfCount;
                 const fileParts = [pdfCount > 0 ? ts('{n} PDFs', { n: pdfCount }) : '', imgCount > 0 ? ts('{n} images', { n: imgCount }) : ''].filter(Boolean).join(' · ');
                 const totalCards = savedFlashcardSets.reduce((a, s) => a + s.cards.length, 0);
@@ -1610,18 +1653,20 @@ export default function SubjectPage() {
                     </div>
                   }
                   renderItem={(file) => {
-                    const isPDF = file.type === 'application/pdf';
+                    const isPDF = isPdfType(file.type);
                     const iconColor = isPDF ? '#f87171' : '#60a5fa';
                     const isFileSelected = selectedFileIds.includes(file.id);
+                    const isCompressing = file.compressing === true;
                     return (
                       <div
-                        onClick={() => toggleFileSelection(file.id)}
+                        onClick={() => !isCompressing && toggleFileSelection(file.id)}
                         style={{
                           display: 'flex', flexDirection: 'column', gap: '6px',
                           background: isFileSelected ? subject.color + '08' : '#161B22',
                           border: `1px solid ${isFileSelected ? subject.color + '40' : '#30363D'}`,
                           borderRadius: '12px', padding: '10px',
-                          cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative',
+                          cursor: isCompressing ? 'default' : 'pointer', transition: 'all 0.2s ease', position: 'relative',
+                          opacity: isCompressing ? 0.7 : 1,
                         }}
                       >
                         {/* Checkbox */}
@@ -1642,12 +1687,19 @@ export default function SubjectPage() {
 
                         {/* Preview */}
                         {isPDF ? (
-                          <div style={{ width: '100%', height: '40px', borderRadius: '7px', background: iconColor + '14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
-                              <path d="M5 2h8l4 4v12H5V2z" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>
-                              <path d="M13 2v4h4" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>
-                              <path d="M7 10h6M7 13h4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round"/>
-                            </svg>
+                          <div style={{ width: '100%', height: '40px', borderRadius: '7px', background: iconColor + '14', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '3px' }}>
+                            {isCompressing ? (
+                              <>
+                                <Spinner color={iconColor} />
+                                <span style={{ fontSize: '8px', color: iconColor, fontWeight: 600 }}>Compressing</span>
+                              </>
+                            ) : (
+                              <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
+                                <path d="M5 2h8l4 4v12H5V2z" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>
+                                <path d="M13 2v4h4" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>
+                                <path d="M7 10h6M7 13h4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round"/>
+                              </svg>
+                            )}
                           </div>
                         ) : (
                           <img src={file.url} alt="" draggable={false} style={{ width: '100%', height: '40px', objectFit: 'cover', borderRadius: '7px' }} />
@@ -2183,15 +2235,27 @@ export default function SubjectPage() {
               {selectedType === 'flashcards' && (
                 <div className="mb-3 flex flex-col gap-2.5">
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Cards per file</div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {[6, 12, 20, 30].map(n => (
-                        <button key={n} onClick={() => setCardCount(n)}
-                          className="h-8 w-10 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{ borderRadius: '999px', background: cardCount === n ? subject.color + '20' : 'transparent', color: cardCount === n ? subject.color : '#8B949E', borderColor: cardCount === n ? subject.color + '50' : '#30363D' }}>
-                          {n}
-                        </button>
-                      ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '10px', color: '#8B949E', fontWeight: 600 }}>Cards per file</div>
+                      <div style={{
+                        fontSize: '14px', fontWeight: 700, fontFamily: "'Sora', sans-serif",
+                        color: cardCount === 0 ? '#484F58' : subject.color,
+                        transition: 'color 0.15s ease',
+                      }}>
+                        {cardCount === 0 ? 'Undecided' : cardCount}
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min={0} max={10} step={1}
+                      value={cardCount / 5}
+                      onChange={e => setCardCount(Number(e.target.value) * 5)}
+                      style={{ width: '100%', accentColor: subject.color, cursor: 'pointer', display: 'block' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: '#484F58', userSelect: 'none' }}>
+                      <span>Any</span>
+                      <span>25</span>
+                      <span>50</span>
                     </div>
                   </div>
                   <div>
@@ -2303,7 +2367,7 @@ export default function SubjectPage() {
               >
                 {isGenerating
                   ? <><Spinner color={subject.color} /> Generating…</>
-                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? `${cardCount} Cards` : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
+                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? (cardCount === 0 ? 'Cards' : `${cardCount} Cards`) : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
                 }
               </button>
 

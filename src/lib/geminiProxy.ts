@@ -428,7 +428,20 @@ export async function generateFromFile(
 
   let parts: Part[];
 
-  if (file.type === 'application/pdf') {
+  if (file.type === 'application/x-studytrainer-pages') {
+    // Pre-compressed format: JSON array of JPEG page images, created at upload time.
+    const pages = JSON.parse(await file.text()) as Array<{ base64: string; mimeType: 'image/jpeg' }>;
+    const pageImages: InlineDataPart[] = [];
+    let totalB64 = 0;
+    const B64_CAP = 3_500_000;
+    for (const p of pages) {
+      if (totalB64 + p.base64.length > B64_CAP) break;
+      pageImages.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } });
+      totalB64 += p.base64.length;
+    }
+    if (pageImages.length === 0) throw new Error('Could not read pre-compressed PDF pages.');
+    parts = [...pageImages, { text: prompt }];
+  } else if (file.type === 'application/pdf') {
     const extracted = await extractTextFromFile(file);
     if (extracted.trim()) {
       // Text-based PDF: embed extracted text — works for any file size.
