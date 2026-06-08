@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
@@ -116,11 +117,14 @@ export function useResolvedSubjects() {
 
   const isCore = (s: SubjectDef) => coreOverrides[s.id] ?? DEFAULT_CORE_IDS.has(s.id);
 
-  const allSubjects = [...ALL_SUBJECTS, ...customSubjects]
-    .filter(s => !deletedIds.includes(s.id))
-    .map(s => (edits[s.id] ? { ...s, ...edits[s.id] } : s));
-  const coreSubjects = allSubjects.filter(isCore);
-  const extendedSubjects = allSubjects.filter(s => !isCore(s));
+  const { allSubjects, coreSubjects, extendedSubjects } = useMemo(() => {
+    const all = [...ALL_SUBJECTS, ...customSubjects]
+      .filter(s => !deletedIds.includes(s.id))
+      .map(s => (edits[s.id] ? { ...s, ...edits[s.id] } : s));
+    const core = all.filter(isCore);
+    const extended = all.filter(s => !isCore(s));
+    return { allSubjects: all, coreSubjects: core, extendedSubjects: extended };
+  }, [customSubjects, deletedIds, coreOverrides, edits]);
 
   return { allSubjects, coreSubjects, extendedSubjects, isCore };
 }
