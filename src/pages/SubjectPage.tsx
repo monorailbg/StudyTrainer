@@ -632,13 +632,23 @@ export default function SubjectPage() {
           if (cloudQuizzes.length > 0) setSavedQuizzes(cloudQuizzes);
           if (cloudNotes.length > 0) setSavedNotes(cloudNotes);
           if (cloudSets.length > 0) setSavedFlashcardSets(cloudSets);
-          if (cloudFiles.length > 0) {
-            const mapped: UploadedFile[] = cloudFiles.map(cf => ({
-              id: cf.id, name: cf.name, type: cf.type, size: cf.size,
-              url: cf.storageUrl, rawFile: null, level: cf.level, storageUrl: cf.storageUrl,
-              folderId: cf.folderId ?? null,
-            }));
-            setFiles(mapped);
+          // Also load locally-saved files (fallback blobs from failed cloud uploads).
+          const localFiles = await getFiles(id!).catch(() => []);
+          const localById = new Map(localFiles.map(f => [f.id, f]));
+
+          if (cloudFiles.length > 0 || localFiles.length > 0) {
+            // Merge: cloud records take priority; attach local blob when available.
+            const cloudMapped: UploadedFile[] = cloudFiles.map(cf => {
+              const local = localById.get(cf.id);
+              const rawFile = local?.blob ? new File([local.blob], cf.name, { type: cf.type }) : null;
+              return { id: cf.id, name: cf.name, type: cf.type, size: cf.size, url: cf.storageUrl, rawFile, level: cf.level, storageUrl: cf.storageUrl, folderId: cf.folderId ?? null };
+            });
+            // Include local-only files not present in the cloud list.
+            const cloudIds = new Set(cloudFiles.map(cf => cf.id));
+            const localOnlyMapped: UploadedFile[] = localFiles
+              .filter(f => !cloudIds.has(f.id))
+              .map(sf => ({ id: sf.id, name: sf.name, type: sf.type, size: sf.size, url: URL.createObjectURL(sf.blob), rawFile: new File([sf.blob], sf.name, { type: sf.type }), level: sf.level, folderId: sf.folderId ?? null }));
+            setFiles([...cloudMapped, ...localOnlyMapped]);
           }
         } else {
           const [storedFiles, storedQuizzes, storedNotes, storedSets, storedFolders, storedHistory] = await Promise.all([
@@ -711,6 +721,9 @@ export default function SubjectPage() {
           console.error('Cloud upload failed:', err);
           lastError = err instanceof Error ? err.message : String(err);
           failed++;
+          // Always save locally as fallback so generation still works after
+          // a page refresh even when cloud storage is unavailable.
+          await saveFile({ id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size, level: file.level, blob: file.rawFile! }).catch(() => {});
         }
       }
       if (failed > 0) {
@@ -1002,10 +1015,21 @@ export default function SubjectPage() {
         setGenProgress({ current: i + 1, total: selectedFiles.length });
         let fileForGen = selectedFiles[i].rawFile;
         if (!fileForGen) {
-          const url = selectedFiles[i].storageUrl;
-          if (!url) throw new Error(`No file data for ${selectedFiles[i].name}`);
-          const blob = await fetch(url).then(r => r.blob());
-          fileForGen = new File([blob], selectedFiles[i].name, { type: selectedFiles[i].type });
+          // Try local IndexedDB first (covers failed cloud uploads with local fallback).
+          const local = await import('../lib/db').then(m => m.getFiles(id!)).catch(() => []);
+          const localMatch = local.find(f => f.id === selectedFiles[i].id);
+          if (localMatch?.blob) {
+            fileForGen = new File([localMatch.blob], selectedFiles[i].name, { type: selectedFiles[i].type });
+          } else {
+            const url = selectedFiles[i].storageUrl;
+            if (!url) throw new Error(`File "${selectedFiles[i].name}" is no longer available. Please re-upload it.`);
+            try {
+              const blob = await fetch(url).then(r => r.blob());
+              fileForGen = new File([blob], selectedFiles[i].name, { type: selectedFiles[i].type });
+            } catch {
+              throw new Error(`Could not download "${selectedFiles[i].name}" from cloud storage. Please re-upload the file.`);
+            }
+          }
         }
         const result = await generateFromFile(fileForGen, selectedType, subject!.title, {
           cardCount,
