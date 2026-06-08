@@ -1,25 +1,11 @@
 /**
  * api/generate.js — Vercel Serverless Function
  *
- * Vercel automatically exposes this file as POST /api/generate.
- * The GEMINI_API_KEY env var is set once in the Vercel dashboard and
- * never reaches the browser.
- *
- * No CORS config needed: the frontend and this function share the same
- * origin (*.vercel.app), so the browser never blocks the request.
+ * Uses the Gemini REST API directly (no SDK) to avoid bundling issues.
+ * GEMINI_API_KEY must be set in Vercel → Project Settings → Environment Variables.
  */
 
-import { GoogleGenAI } from '@google/genai';
-
-// ── Gemini client ──────────────────────────────────────────────────────────
-
-// Resolved lazily inside the handler so a missing key returns a proper
-// 500 JSON response instead of crashing the module at cold-start (502).
-function getAI() {
-  const key = process.env.GEMINI_API_KEY?.trim();
-  if (!key) throw new Error('GEMINI_API_KEY is not set. Add it in Vercel → Project Settings → Environment Variables.');
-  return new GoogleGenAI({ apiKey: key });
-}
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const MODELS = [
   'gemini-2.5-flash',
@@ -29,16 +15,10 @@ const MODELS = [
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/**
- * Converts the frontend's snake_case REST format to the SDK's camelCase.
- * { inline_data: { mime_type, data } } → { inlineData: { mimeType, data } }
- */
-function normaliseParts(parts) {
-  return parts.map(part =>
-    part.inline_data
-      ? { inlineData: { mimeType: part.inline_data.mime_type, data: part.inline_data.data } }
-      : part,
-  );
+function getApiKey() {
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key) throw new Error('GEMINI_API_KEY is not set. Add it in Vercel → Project Settings → Environment Variables.');
+  return key;
 }
 
 function isPerMinuteLimit(msg) {
@@ -51,18 +31,38 @@ function retryDelayMs(msg) {
   return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 65_000;
 }
 
-async function callModel(ai, model, contents, config, maxAttempts = 2) {
+// ── Core REST call ──────────────────────────────────────────────────────────
+
+async function callModel(apiKey, model, contents, genConfig, maxAttempts = 2) {
+  const url = `${GEMINI_BASE}/${model}:generateContent`;
   let lastError;
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await ai.models.generateContent({
-        model,
-        contents,
-        ...(config && { config }),
+      const body = { contents };
+      if (genConfig && Object.keys(genConfig).length) body.generationConfig = genConfig;
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify(body),
       });
-      const text = response.text;
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.error?.message ?? res.statusText ?? String(res.status);
+        const errStatus = errData.error?.status ?? '';
+        throw new Error(`${res.status} ${errStatus}: ${errMsg}`);
+      }
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) throw new Error('Empty response from Gemini.');
       return text;
+
     } catch (err) {
       lastError = err;
       const msg = String(err);
@@ -76,11 +76,11 @@ async function callModel(ai, model, contents, config, maxAttempts = 2) {
   throw lastError;
 }
 
-async function callGeminiWithFallback(ai, contents, config) {
+async function callGeminiWithFallback(apiKey, contents, genConfig) {
   let lastError;
   for (const model of MODELS) {
     try {
-      return await callModel(ai, model, contents, config);
+      return await callModel(apiKey, model, contents, genConfig);
     } catch (err) {
       lastError = err;
       const msg = String(err);
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
-  const { parts, temperature, systemInstruction } = req.body ?? {};
+  const { parts, temperature } = req.body ?? {};
 
   if (!Array.isArray(parts) || parts.length === 0) {
     return res.status(400).json({ error: 'Request body must include a non-empty "parts" array.' });
@@ -111,28 +111,20 @@ export default async function handler(req, res) {
     }
   }
 
-  const contents = [{ role: 'user', parts: normaliseParts(parts) }];
-
-  const config = {};
-  if (typeof temperature === 'number') config.temperature = temperature;
-  if (typeof systemInstruction === 'string' && systemInstruction.trim()) {
-    config.systemInstruction = systemInstruction.trim();
-  }
-
-  let ai;
+  let apiKey;
   try {
-    ai = getAI();
+    apiKey = getApiKey();
   } catch (err) {
     console.error('[generate] Config error:', err);
-    return res.status(500).json({ error: String(err instanceof Error ? err.message : err) });
+    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 
+  // The Gemini REST API accepts snake_case (inline_data, mime_type) directly.
+  const contents = [{ role: 'user', parts }];
+  const genConfig = typeof temperature === 'number' ? { temperature } : undefined;
+
   try {
-    const text = await callGeminiWithFallback(
-      ai,
-      contents,
-      Object.keys(config).length ? config : undefined,
-    );
+    const text = await callGeminiWithFallback(apiKey, contents, genConfig);
     return res.json({ text });
   } catch (err) {
     console.error('[generate] Gemini error:', err);
@@ -147,6 +139,6 @@ export default async function handler(req, res) {
     if (msg.includes('400')) {
       return res.status(400).json({ error: 'Gemini rejected the request. Check your prompt or file type.' });
     }
-    return res.status(500).json({ error: 'Generation failed. Please try again.' });
+    return res.status(500).json({ error: msg.slice(0, 200) || 'Generation failed. Please try again.' });
   }
 }

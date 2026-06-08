@@ -90,8 +90,8 @@ async function callProxy(
     throw new Error(`Bad request: ${err.error}`);
   }
 
-  // 500 or unexpected status.
-  throw new Error(err.error ?? 'Generation failed. Please try again.');
+  // 500 or unexpected status — use || so empty strings fall through to the default.
+  throw new Error(err.error || `Generation failed (HTTP ${response.status}). Please try again.`);
 }
 
 // ── Shared helpers (identical to geminiGenerator.ts) ───────────────────────
