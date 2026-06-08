@@ -337,15 +337,25 @@ Return ONLY valid JSON — no markdown, no preamble:
 
 const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024; // 3 MB
 
+// 2.5 MB = exactly 10 × 256 KB — required multiple for non-final Gemini chunks.
+const CHUNK_SIZE = 2621440;
+
+function readBlobAsBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 /**
- * Uploads a file to the Gemini Files API via a two-step approach:
- *  1. Server (api/init-upload) starts a resumable session → returns upload URL
- *  2. Browser uploads directly to that URL (bypasses Vercel's 4.5 MB limit)
- *
- * Returns the file URI to use in a file_data generation part.
+ * Uploads a file to Gemini Files API in 2.5 MB chunks through our proxy.
+ * Each JSON body is ~3.3 MB (base64 overhead), safely under Vercel's 4.5 MB
+ * limit. The API key never touches the browser.
  */
 async function uploadViaFilesAPI(file: File): Promise<FileDataPart> {
-  // Step 1: get upload URL from our proxy (tiny JSON request).
+  // Step 1: start resumable upload session — server returns a short-lived URL.
   const initRes = await fetch('/api/init-upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -357,24 +367,34 @@ async function uploadViaFilesAPI(file: File): Promise<FileDataPart> {
   }
   const { uploadUrl } = await initRes.json() as { uploadUrl: string };
 
-  // Step 2: upload file bytes directly from browser to Gemini.
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'X-Goog-Upload-Offset': '0',
-      'X-Goog-Upload-Command': 'upload, finalize',
-    },
-    body: file,
-  });
-  if (!uploadRes.ok) {
-    throw new Error(`File upload to Gemini failed (HTTP ${uploadRes.status}).`);
+  // Step 2: send chunks through /api/upload-chunk (avoids CORS + body-size limits).
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start  = i * CHUNK_SIZE;
+    const end    = Math.min(start + CHUNK_SIZE, file.size);
+    const isLast = i === totalChunks - 1;
+
+    const chunkBase64 = await readBlobAsBase64(file.slice(start, end));
+
+    const chunkRes = await fetch('/api/upload-chunk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadUrl, chunkBase64, offset: start, isLast }),
+    });
+
+    if (!chunkRes.ok) {
+      const err = await chunkRes.json().catch(() => ({ error: `Chunk ${i + 1}/${totalChunks} failed` })) as { error: string };
+      throw new Error(err.error);
+    }
+
+    if (isLast) {
+      const data = await chunkRes.json() as { fileUri: string };
+      return { file_data: { mime_type: file.type, file_uri: data.fileUri } };
+    }
   }
 
-  const data = await uploadRes.json() as { file?: { uri: string } };
-  const fileUri = data.file?.uri;
-  if (!fileUri) throw new Error('Gemini did not return a file URI after upload.');
-
-  return { file_data: { mime_type: file.type, file_uri: fileUri } };
+  throw new Error('File upload did not complete — no chunks were finalised.');
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────

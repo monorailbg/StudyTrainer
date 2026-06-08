@@ -266,7 +266,54 @@ app.post('/api/init-upload', async (req, res) => {
   }
 });
 
-// ── 8. Route: POST /api/generate ───────────────────────────────────────────
+// ── 8. Route: POST /api/upload-chunk ──────────────────────────────────────
+
+app.post('/api/upload-chunk', async (req, res) => {
+  const { uploadUrl, chunkBase64, offset, isLast } = req.body ?? {};
+
+  if (!uploadUrl || chunkBase64 === undefined || offset === undefined) {
+    return res.status(400).json({ error: '"uploadUrl", "chunkBase64", and "offset" are required.' });
+  }
+
+  let chunk;
+  try {
+    chunk = Buffer.from(chunkBase64, 'base64');
+  } catch {
+    return res.status(400).json({ error: 'Invalid base64 in "chunkBase64".' });
+  }
+
+  try {
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Length': String(chunk.length),
+        'X-Goog-Upload-Offset': String(offset),
+        'X-Goog-Upload-Command': isLast ? 'upload, finalize' : 'upload',
+      },
+      body: chunk,
+    });
+
+    if (!uploadRes.ok && uploadRes.status !== 308) {
+      const errData = await uploadRes.json().catch(() => ({}));
+      const msg = errData.error?.message ?? `HTTP ${uploadRes.status}`;
+      return res.status(500).json({ error: `Gemini chunk upload failed: ${msg}` });
+    }
+
+    if (isLast) {
+      const data = await uploadRes.json();
+      const fileUri = data.file?.uri;
+      if (!fileUri) return res.status(500).json({ error: 'No file URI after finalize.' });
+      return res.json({ fileUri });
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[proxy] upload-chunk error:', err);
+    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ── 9. Route: POST /api/generate ───────────────────────────────────────────
 
 app.post('/api/generate', generateLimiter, async (req, res) => {
   // ── a. Validate the request body ─────────────────────────────────────────
