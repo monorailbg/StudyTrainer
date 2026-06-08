@@ -5,9 +5,9 @@
  * file that calls generateFromFile / generateFromTopic / generateDefinition
  * and delete the API key banner — the key lives on the server now.
  *
- * Development:  proxy runs at http://localhost:5000  (node server/server.js)
- * Production:   set VITE_PROXY_URL=https://your-proxy.example.com in .env
- *               and the URL is baked into the bundle at build time.
+ * Development:  local Express proxy at http://localhost:5000  (cd server && npm run dev)
+ * Production:   Vercel serverless function at /api/generate (same origin, no CORS needed)
+ *               Override with VITE_PROXY_URL if deploying the Express server elsewhere.
  */
 
 import type {
@@ -17,18 +17,20 @@ import type {
   GenerationType,
 } from './generator';
 
-// ── Proxy base URL ──────────────────────────────────────────────────────────
+// ── Proxy endpoint URL ─────────────────────────────────────────────────────
 
 /**
- * In development, VITE_PROXY_URL is not set, so we fall back to localhost.
- * In a production build, set VITE_PROXY_URL to your deployed proxy's origin
- * (e.g. https://studytrainer-proxy.fly.dev) in the Vite project's .env file.
+ * URL resolution priority:
+ *  1. VITE_PROXY_URL env var  — explicit override (e.g. separate Railway server)
+ *  2. Development (import.meta.env.DEV) — local Express proxy on port 5000
+ *  3. Production default      — /api/generate on the same Vercel origin (no CORS)
  */
-const PROXY_BASE =
-  (import.meta.env.VITE_PROXY_URL as string | undefined)?.replace(/\/$/, '') ??
-  'http://localhost:5000';
-
-const GENERATE_ENDPOINT = `${PROXY_BASE}/api/generate`;
+const GENERATE_ENDPOINT: string = (() => {
+  const override = (import.meta.env.VITE_PROXY_URL as string | undefined)?.replace(/\/$/, '');
+  if (override) return `${override}/api/generate`;
+  if (import.meta.env.DEV) return 'http://localhost:5000/api/generate';
+  return '/api/generate'; // same-origin Vercel function in production
+})();
 
 // ── Types that mirror the REST wire format ──────────────────────────────────
 
@@ -60,8 +62,7 @@ async function callProxy(
   } catch {
     // Network-level failure (server down, CORS, no internet).
     throw new Error(
-      'Could not reach the proxy server. Make sure it is running on ' +
-      PROXY_BASE,
+      'Could not reach the proxy server. In development, run: cd server && npm run dev',
     );
   }
 
