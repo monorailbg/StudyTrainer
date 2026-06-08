@@ -1,8 +1,7 @@
 {
   "functions": {
-    "api/generate.js": {
-      "maxDuration": 30
-    }
+    "api/generate.js": { "maxDuration": 30 },
+    "api/init-upload.js": { "maxDuration": 15 }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

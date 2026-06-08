@@ -37,7 +37,8 @@ const GENERATE_ENDPOINT: string = (() => {
 
 type TextPart        = { text: string };
 type InlineDataPart  = { inline_data: { mime_type: string; data: string } };
-type Part            = TextPart | InlineDataPart;
+type FileDataPart    = { file_data: { mime_type: string; file_uri: string } };
+type Part            = TextPart | InlineDataPart | FileDataPart;
 
 // ── Core fetch wrapper ──────────────────────────────────────────────────────
 
@@ -332,6 +333,50 @@ Return ONLY valid JSON — no markdown, no preamble:
 }`,
 };
 
+// ── Files API upload (for large / scanned files) ───────────────────────────
+
+const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024; // 3 MB
+
+/**
+ * Uploads a file to the Gemini Files API via a two-step approach:
+ *  1. Server (api/init-upload) starts a resumable session → returns upload URL
+ *  2. Browser uploads directly to that URL (bypasses Vercel's 4.5 MB limit)
+ *
+ * Returns the file URI to use in a file_data generation part.
+ */
+async function uploadViaFilesAPI(file: File): Promise<FileDataPart> {
+  // Step 1: get upload URL from our proxy (tiny JSON request).
+  const initRes = await fetch('/api/init-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mimeType: file.type, displayName: file.name, size: file.size }),
+  });
+  if (!initRes.ok) {
+    const err = await initRes.json().catch(() => ({ error: initRes.statusText })) as { error: string };
+    throw new Error(`File upload init failed: ${err.error}`);
+  }
+  const { uploadUrl } = await initRes.json() as { uploadUrl: string };
+
+  // Step 2: upload file bytes directly from browser to Gemini.
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'X-Goog-Upload-Offset': '0',
+      'X-Goog-Upload-Command': 'upload, finalize',
+    },
+    body: file,
+  });
+  if (!uploadRes.ok) {
+    throw new Error(`File upload to Gemini failed (HTTP ${uploadRes.status}).`);
+  }
+
+  const data = await uploadRes.json() as { file?: { uri: string } };
+  const fileUri = data.file?.uri;
+  if (!fileUri) throw new Error('Gemini did not return a file URI after upload.');
+
+  return { file_data: { mime_type: file.type, file_uri: fileUri } };
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export async function generateFromFile(
@@ -351,20 +396,19 @@ export async function generateFromFile(
     const { extractTextFromFile } = await import('./pdfExtractor');
     const extracted = await extractTextFromFile(file);
     if (extracted.trim()) {
-      // Text-based PDF: send as plain text to avoid Vercel's 4.5 MB body limit.
+      // Text-based PDF: embed extracted text directly — no size limit issue.
       parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
     } else {
-      // Scanned PDF (image-based): fall back to base64. Warn if it's large.
-      if (file.size > 3 * 1024 * 1024) {
-        throw new Error(
-          'This PDF appears to be a scanned document (image-based) and is too large to process. ' +
-          'Please use a text-based PDF, or a file under 3 MB.',
-        );
-      }
-      const base64 = await fileToBase64(file);
-      parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
+      // Scanned/image-based PDF: upload via Files API (supports up to 2 GB).
+      const filePart = await uploadViaFilesAPI(file);
+      parts = [filePart, { text: prompt }];
     }
+  } else if (file.size > LARGE_FILE_THRESHOLD) {
+    // Large image: upload via Files API to avoid Vercel's 4.5 MB body limit.
+    const filePart = await uploadViaFilesAPI(file);
+    parts = [filePart, { text: prompt }];
   } else {
+    // Small image: inline base64 is fine.
     const base64 = await fileToBase64(file);
     parts = [
       { inline_data: { mime_type: file.type, data: base64 } },

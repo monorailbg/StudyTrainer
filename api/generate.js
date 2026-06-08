@@ -106,8 +106,8 @@ export default async function handler(req, res) {
   }
 
   for (const part of parts) {
-    if (!part.text && !part.inline_data) {
-      return res.status(400).json({ error: 'Each part must have either "text" or "inline_data".' });
+    if (!part.text && !part.inline_data && !part.file_data) {
+      return res.status(400).json({ error: 'Each part must have "text", "inline_data", or "file_data".' });
     }
   }
 

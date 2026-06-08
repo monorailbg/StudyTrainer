@@ -107,14 +107,12 @@ const generateLimiter = rateLimit({
 function normaliseParts(parts) {
   return parts.map(part => {
     if (part.inline_data) {
-      return {
-        inlineData: {
-          mimeType: part.inline_data.mime_type,
-          data: part.inline_data.data,
-        },
-      };
+      return { inlineData: { mimeType: part.inline_data.mime_type, data: part.inline_data.data } };
     }
-    return part; // { text: '...' } is the same in both formats
+    if (part.file_data) {
+      return { fileData: { mimeType: part.file_data.mime_type, fileUri: part.file_data.file_uri } };
+    }
+    return part; // { text: '...' } is identical in both formats
   });
 }
 
@@ -220,7 +218,55 @@ async function callGeminiWithFallback(sdkContents, config) {
   throw lastError ?? new Error('All Gemini models exhausted.');
 }
 
-// ── 7. Route: POST /api/generate ───────────────────────────────────────────
+// ── 7. Route: POST /api/init-upload ───────────────────────────────────────
+
+/**
+ * Starts a Gemini Files API resumable upload session.
+ * Returns a short-lived upload URL the client uses to send file bytes
+ * directly to Gemini — the API key never reaches the browser.
+ */
+app.post('/api/init-upload', async (req, res) => {
+  const { mimeType, displayName, size } = req.body ?? {};
+  if (!mimeType || !size) {
+    return res.status(400).json({ error: '"mimeType" and "size" are required.' });
+  }
+
+  try {
+    const initRes = await fetch(
+      'https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=resumable',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': String(size),
+          'X-Goog-Upload-Header-Content-Type': mimeType,
+          'x-goog-api-key': GEMINI_API_KEY,
+        },
+        body: JSON.stringify({ file: { displayName: displayName ?? 'file' } }),
+      },
+    );
+
+    if (!initRes.ok) {
+      const errData = await initRes.json().catch(() => ({}));
+      const msg = errData.error?.message ?? `HTTP ${initRes.status}`;
+      return res.status(500).json({ error: `Gemini init-upload failed: ${msg}` });
+    }
+
+    const uploadUrl = initRes.headers.get('x-goog-upload-url');
+    if (!uploadUrl) {
+      return res.status(500).json({ error: 'Gemini did not return an upload URL.' });
+    }
+
+    return res.json({ uploadUrl });
+  } catch (err) {
+    console.error('[proxy] init-upload error:', err);
+    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ── 8. Route: POST /api/generate ───────────────────────────────────────────
 
 app.post('/api/generate', generateLimiter, async (req, res) => {
   // ── a. Validate the request body ─────────────────────────────────────────
@@ -232,11 +278,10 @@ app.post('/api/generate', generateLimiter, async (req, res) => {
     });
   }
 
-  // Verify every part is either { text } or { inline_data: { mime_type, data } }.
   for (const part of parts) {
-    if (!part.text && !part.inline_data) {
+    if (!part.text && !part.inline_data && !part.file_data) {
       return res.status(400).json({
-        error: 'Each part must have either a "text" or "inline_data" field.',
+        error: 'Each part must have "text", "inline_data", or "file_data".',
       });
     }
   }
@@ -278,19 +323,19 @@ app.post('/api/generate', generateLimiter, async (req, res) => {
   }
 });
 
-// ── 8. Health-check route ──────────────────────────────────────────────────
+// ── 9. Health-check route ──────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ── 9. 404 catch-all ───────────────────────────────────────────────────────
+// ── 10. 404 catch-all ──────────────────────────────────────────────────────
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found.' });
 });
 
-// ── 10. Start ──────────────────────────────────────────────────────────────
+// ── 11. Start ──────────────────────────────────────────────────────────────
 
 app.listen(PORT, () => {
   console.log(`[proxy] Gemini proxy running on http://localhost:${PORT}`);
