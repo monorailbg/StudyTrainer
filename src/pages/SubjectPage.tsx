@@ -589,7 +589,7 @@ export default function SubjectPage() {
   const [genLanguage, setGenLanguage] = useState<'english' | 'japanese' | 'both'>('english');
   const [dictEntries, setDictEntries] = useState<DictionaryEntry[]>([]);
   const [dictPending, setDictPending] = useState<{ id: string; term: string }[]>([]);
-  const [collapsedSidebarFolderIds, setCollapsedSidebarFolderIds] = useState<Set<string>>(new Set());
+  const [expandedSidebarFolderIds, setExpandedSidebarFolderIds] = useState<Set<string>>(new Set());
 
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
@@ -1329,7 +1329,7 @@ export default function SubjectPage() {
                   }
 
                   const sidebarFolderHeader = (folder: typeof fileFolders[0], count: number, onClick: () => void) => {
-                    const isCollapsed = collapsedSidebarFolderIds.has(folder.id);
+                    const isCollapsed = !expandedSidebarFolderIds.has(folder.id);
                     return (
                       <div key={folder.id + '-hdr'} style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: '2px' }}>
                         <button
@@ -1341,7 +1341,7 @@ export default function SubjectPage() {
                           {count > 0 && <span style={{ color: '#8B949E', flexShrink: 0, fontSize: '12px' }}>{count}</span>}
                         </button>
                         <button
-                          onClick={() => setCollapsedSidebarFolderIds(prev => {
+                          onClick={() => setExpandedSidebarFolderIds(prev => {
                             const next = new Set(prev);
                             if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id);
                             return next;
@@ -1363,7 +1363,7 @@ export default function SubjectPage() {
                       return (
                         <div key={folder.id}>
                           {sidebarFolderHeader(folder, folderFiles.length, () => { setActiveSidebarFileId(null); setView('upload'); setFullFocus(false); })}
-                          {!collapsedSidebarFolderIds.has(folder.id) && folderFiles.map(f => sidebarFileItem(f, true))}
+                          {expandedSidebarFolderIds.has(folder.id) && folderFiles.map(f => sidebarFileItem(f, true))}
                         </div>
                       );
                     })}
