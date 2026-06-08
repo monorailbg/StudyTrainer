@@ -45,6 +45,7 @@ export const ja: Record<string, string> = {
     'Supabase が設定されていません — アップロードしたファイルは共有されません。',
   'Local-only mode': 'ローカルのみモード',
   'Dismiss': '閉じる',
+  'Hide': '非表示',
   // ── Home / dashboard ──────────────────────────────────────────────────────
   'Cards': 'カード',
   'Explore': '見る',

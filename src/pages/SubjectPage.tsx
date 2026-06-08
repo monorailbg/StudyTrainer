@@ -954,7 +954,7 @@ export default function SubjectPage() {
       };
       await saveDictionaryEntry(entry);
       setDictEntries(prev => [...prev, entry].sort((a, b) => a.term.localeCompare(b.term)));
-      toast('success', `"${trimmed}" added to dictionary`);
+      toast('success', `"${trimmed}" added to dictionary`, definition.replace(/^[•\-*]\s*/gm, '').trim());
     } catch (err) {
       toast('error', `Failed to define "${trimmed}"`, String(err).slice(0, 80));
     } finally {
@@ -982,7 +982,7 @@ export default function SubjectPage() {
       };
       await saveDictionaryEntry(entry);
       setDictEntries(prev => [...prev, entry].sort((a, b) => a.term.localeCompare(b.term)));
-      toast('success', `"${trimmed}" を翻訳しました`);
+      toast('success', `"${trimmed}" を翻訳しました`, definition.replace(/^[•\-*]\s*/gm, '').trim());
     } catch (err) {
       toast('error', `翻訳に失敗しました "${trimmed}"`, String(err).slice(0, 80));
     } finally {
