@@ -334,52 +334,60 @@ Return ONLY valid JSON — no markdown, no preamble:
 }`,
 };
 
-// ── Files API upload (for large files) ─────────────────────────────────────
+// ── Large-image compression ─────────────────────────────────────────────────
 
 const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024; // 3 MB
+const COMPRESS_TARGET     = 2.5 * 1024 * 1024; // 2.5 MB binary (→ ~3.3 MB base64)
 
 /**
- * Uploads a file to Gemini's Files API.
- *
- * Our server starts an authenticated upload session (/api/init-upload) and
- * returns a session-specific URL. The browser then sends the entire file
- * directly to that URL — the data never passes through our Vercel function,
- * so Vercel's 4.5 MB body limit does not apply. The API key is never exposed
- * to the browser (it was used only in the session-start step on the server).
+ * Compresses any image file to ≤ 2.5 MB binary using Canvas + JPEG encoding.
+ * Scales dimensions down to 2048px on the longest side first, then reduces
+ * JPEG quality in steps until the blob is small enough.
  */
-async function uploadViaFilesAPI(file: File): Promise<FileDataPart> {
-  // Step 1: start upload session server-side (keeps API key off the browser).
-  const initRes = await fetch('/api/init-upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mimeType: file.type, displayName: file.name, size: file.size }),
+async function compressImageToFit(file: File): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+
+      const MAX_DIM = 2048;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+        width  = Math.round(width  * ratio);
+        height = Math.round(height * ratio);
+      }
+      canvas.width  = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas not available.')); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let quality = 0.85;
+      const attempt = () => {
+        canvas.toBlob((blob) => {
+          if (!blob) { reject(new Error('Image compression failed.')); return; }
+          if (blob.size <= COMPRESS_TARGET || quality <= 0.1) {
+            const reader = new FileReader();
+            reader.onload  = () => resolve({ base64: (reader.result as string).split(',')[1], mimeType: 'image/jpeg' });
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          } else {
+            quality = Math.max(0.1, quality - 0.15);
+            attempt();
+          }
+        }, 'image/jpeg', quality);
+      };
+      attempt();
+    };
+
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Could not load image.')); };
+    img.src = objectUrl;
   });
-  if (!initRes.ok) {
-    const err = await initRes.json().catch(() => ({ error: initRes.statusText })) as { error: string };
-    throw new Error(`File upload init failed: ${err.error}`);
-  }
-  const { uploadUrl } = await initRes.json() as { uploadUrl: string };
-
-  // Step 2: browser → Gemini directly (single-shot, no Vercel hop for the file data).
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'X-Goog-Upload-Offset': '0',
-      'X-Goog-Upload-Command': 'upload, finalize',
-    },
-    body: file,
-  });
-
-  if (!uploadRes.ok) {
-    const errText = await uploadRes.text().catch(() => '');
-    throw new Error(`File upload failed: HTTP ${uploadRes.status}${errText ? ' — ' + errText.slice(0, 200) : ''}`);
-  }
-
-  const data = await uploadRes.json() as { file?: { uri: string } };
-  const fileUri = data.file?.uri;
-  if (!fileUri) throw new Error('Gemini did not return a file URI after upload.');
-
-  return { file_data: { mime_type: file.type, file_uri: fileUri } };
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -400,28 +408,36 @@ export async function generateFromFile(
   if (file.type === 'application/pdf') {
     const extracted = await extractTextFromFile(file);
     if (extracted.trim()) {
-      // Text-based PDF: embed extracted text — no upload or size limit needed.
+      // Text-based PDF: embed extracted text — works for any file size.
       parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
     } else if (file.size > LARGE_FILE_THRESHOLD) {
-      // Large scanned PDF: must use Files API (too big for inline base64 on Vercel).
-      const filePart = await uploadViaFilesAPI(file);
-      parts = [filePart, { text: prompt }];
+      // Large scanned PDF: Gemini's Files API requires the full file in one
+      // server-side request, but our Vercel proxy caps incoming bodies at
+      // 4.5 MB — so large scanned PDFs cannot be processed this way.
+      throw new Error(
+        'This PDF appears to be scanned (no selectable text) and is too large to process. ' +
+        'Try a text-based PDF of any size, or a scanned PDF under 3 MB.',
+      );
     } else {
-      // Small scanned PDF: inline base64 — simpler and more reliable than Files API.
+      // Small scanned PDF: inline base64.
       const base64 = await fileToBase64(file);
       parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
     }
-  } else if (file.size > LARGE_FILE_THRESHOLD) {
-    // Large image: upload via Files API to avoid Vercel's 4.5 MB body limit.
-    const filePart = await uploadViaFilesAPI(file);
-    parts = [filePart, { text: prompt }];
+  } else if (file.type.startsWith('image/')) {
+    if (file.size > LARGE_FILE_THRESHOLD) {
+      // Large image: compress client-side to fit Vercel's 4.5 MB body limit.
+      const { base64, mimeType } = await compressImageToFit(file);
+      parts = [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }];
+    } else {
+      const base64 = await fileToBase64(file);
+      parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
+    }
   } else {
-    // Small image: inline base64.
+    if (file.size > LARGE_FILE_THRESHOLD) {
+      throw new Error('File too large. Use a text-based PDF (any size) or an image file.');
+    }
     const base64 = await fileToBase64(file);
-    parts = [
-      { inline_data: { mime_type: file.type, data: base64 } },
-      { text: prompt },
-    ];
+    parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
   }
 
   const text = await callProxy(parts);
