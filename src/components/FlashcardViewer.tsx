@@ -4,6 +4,86 @@ import { useSRS } from '../store/useSRS';
 import { useLang } from '../context/LanguageContext';
 import type { Rating } from '../lib/srs';
 
+// ── Vocabulary card helpers ────────────────────────────────────────────────
+
+interface VocabData {
+  reading:     string;
+  meaning:     string;
+  example:     string;
+  translation: string;
+}
+
+function parseVocab(back: string): VocabData | null {
+  if (!back.startsWith('__vocab__')) return null;
+  try {
+    return JSON.parse(back.slice('__vocab__'.length)) as VocabData;
+  } catch {
+    return null;
+  }
+}
+
+function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%' }}>
+      {/* Reading / pronunciation */}
+      {vocab.reading && (
+        <div style={{
+          fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+          fontSize: '13px',
+          color: '#8B949E',
+          letterSpacing: '0.04em',
+          textAlign: 'center',
+        }}>
+          {vocab.reading}
+        </div>
+      )}
+
+      {/* Meaning */}
+      <div style={{
+        fontFamily: "'Sora', sans-serif",
+        fontWeight: 700,
+        fontSize: 'clamp(18px, 4vw, 24px)',
+        color: '#E6EDF3',
+        textAlign: 'center',
+        lineHeight: 1.3,
+      }}>
+        {vocab.meaning}
+      </div>
+
+      {/* Divider */}
+      {(vocab.example || vocab.translation) && (
+        <div style={{ width: '36px', height: '1px', background: color + '40', margin: '2px 0' }} />
+      )}
+
+      {/* Example sentence */}
+      {vocab.example && (
+        <div style={{
+          fontSize: '13px',
+          color: '#C9D1D9',
+          textAlign: 'center',
+          lineHeight: 1.7,
+          maxWidth: '100%',
+        }}>
+          {vocab.example}
+        </div>
+      )}
+
+      {/* Translation of example */}
+      {vocab.translation && (
+        <div style={{
+          fontSize: '12px',
+          color: '#8B949E',
+          textAlign: 'center',
+          fontStyle: 'italic',
+          lineHeight: 1.5,
+        }}>
+          {vocab.translation}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const RATINGS: { key: Rating; label: string; hint: string; color: string }[] = [
   { key: 'again', label: 'Again', hint: '1', color: '#F85149' },
   { key: 'hard',  label: 'Hard',  hint: '2', color: '#fb923c' },
@@ -109,6 +189,8 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   }
 
   const cardW = 'min(560px, 90vw)';
+  const vocab = parseVocab(card.back);
+  const isVocabCard = vocab !== null;
 
   return (
     <>
@@ -154,17 +236,31 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               padding: 'clamp(16px, 4vw, 28px) clamp(16px, 5vw, 32px)',
               borderRadius: '12px',
               background: '#161B22',
-              border: `1px solid ${color}25`,
+              border: `1px solid ${isVocabCard ? color + '35' : color + '25'}`,
               boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',
               transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
             }}
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#8B949E' }}>
-              {ts('Question')}
+              {isVocabCard ? ts('Word') : ts('Question')}
             </div>
-            <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: '17px', color: '#E6EDF3', lineHeight: 1.45 }}>
-              {card.front}
-            </div>
+            {isVocabCard ? (
+              <div style={{
+                fontFamily: "'Noto Sans SC', 'Noto Sans JP', 'Sora', sans-serif",
+                fontWeight: 700,
+                fontSize: 'clamp(32px, 10vw, 56px)',
+                color: '#E6EDF3',
+                textAlign: 'center',
+                lineHeight: 1.15,
+                letterSpacing: '0.04em',
+              }}>
+                {card.front}
+              </div>
+            ) : (
+              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: '17px', color: '#E6EDF3', lineHeight: 1.45 }}>
+                {card.front}
+              </div>
+            )}
             <div className="hidden md:flex text-xs mt-1 items-center gap-1.5" style={{ color: '#484F58' }}>
               <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>Space</kbd>
               {ts('to reveal')}
@@ -175,20 +271,26 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <div
             className="flip-card-back flex flex-col items-center justify-center gap-4"
             style={{
-              padding: '28px 32px',
+              padding: isVocabCard ? 'clamp(20px, 4vw, 32px)' : '28px 32px',
               borderRadius: '12px',
-              background: 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
+              background: isVocabCard
+                ? `linear-gradient(135deg, ${color}14 0%, #161B22 100%)`
+                : 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
               border: `1px solid ${color}40`,
               boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.4)',
               transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
             }}
           >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#3D7EFF' }}>
-              {ts('Answer')}
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: isVocabCard ? color : '#3D7EFF' }}>
+              {isVocabCard ? ts('Meaning') : ts('Answer')}
             </div>
-            <div className="text-center" style={{ fontSize: '16px', color: '#E6EDF3', lineHeight: 1.65 }}>
-              {card.back}
-            </div>
+            {isVocabCard && vocab ? (
+              <VocabBack vocab={vocab} color={color} />
+            ) : (
+              <div className="text-center" style={{ fontSize: '16px', color: '#E6EDF3', lineHeight: 1.65 }}>
+                {card.back}
+              </div>
+            )}
           </div>
         </div>
       </div>

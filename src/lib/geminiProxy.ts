@@ -134,12 +134,26 @@ function processResult(
         `Got keys: ${Object.keys(parsed).join(', ') || '(none)'}`,
       );
     }
-    return (raw as Array<{ front?: string; back?: string; topic?: string }>).map((fc, i) => ({
-      id: `gem-${Date.now()}-${i}`,
-      front: String(fc.front ?? ''),
-      back:  String(fc.back  ?? ''),
-      topic: fc.topic ?? fallbackTopic,
-    }));
+    return (raw as Array<Record<string, unknown>>).map((fc, i) => {
+      // Vocabulary cards carry reading / example / translation fields.
+      // Encode them as a prefixed JSON string so the viewer can detect and
+      // render them differently without a schema change.
+      const isVocab = 'reading' in fc || 'example' in fc;
+      const back = isVocab
+        ? '__vocab__' + JSON.stringify({
+            reading:     String(fc['reading']     ?? ''),
+            meaning:     String(fc['meaning']     ?? fc['back'] ?? ''),
+            example:     String(fc['example']     ?? ''),
+            translation: String(fc['translation'] ?? ''),
+          })
+        : String(fc['back'] ?? '');
+      return {
+        id: `gem-${Date.now()}-${i}`,
+        front: String(fc['front'] ?? ''),
+        back,
+        topic: String(fc['topic'] ?? fallbackTopic),
+      };
+    });
   }
 
   if (type === 'notes') return parsed as unknown as GeneratedNote;
@@ -176,6 +190,7 @@ export interface GenerateOptions {
   customPrompt?:   string;
   language?:       'english' | 'japanese' | 'both';
   difficulty?:     'easy' | 'medium' | 'hard';
+  flashcardMode?:  'standard' | 'vocabulary';
 }
 
 function languageInstruction(language?: 'english' | 'japanese' | 'both'): string {
@@ -187,7 +202,42 @@ function languageInstruction(language?: 'english' | 'japanese' | 'both'): string
 
 // ── Prompt builders (identical to geminiGenerator.ts) ──────────────────────
 
+function flashcardVocabPrompt(subject: string, opts: GenerateOptions): string {
+  const count  = opts.cardCount ?? 15;
+  const focus  = opts.focusTopic?.trim();
+  const custom = opts.customPrompt?.trim();
+  const meaningLang = (!opts.language || opts.language === 'english') ? 'English' : 'Japanese';
+  return `You are an expert vocabulary flashcard creator for students studying ${subject}.
+
+Analyse the provided content and extract exactly ${count} key vocabulary items from it.
+${focus ? `Focus on vocabulary related to: "${focus}".` : ''}
+${custom ? `Additional instructions: ${custom}` : ''}
+
+For each vocabulary item provide:
+- "front": the word or expression in its native script only (characters/script — no reading, no translation)
+- "reading": pronunciation guide appropriate to the language (pinyin for Chinese, romaji for Japanese, IPA or romanisation for others)
+- "meaning": concise ${meaningLang} translation or meaning
+- "example": a short, natural example sentence in the source language that uses this word in context
+- "translation": ${meaningLang} translation of that example sentence
+- "topic": grammatical category or subject area (e.g. "Noun", "Verb", "Business", "Greetings")
+
+Return ONLY valid JSON — no markdown, no commentary:
+{
+  "flashcards": [
+    {
+      "front": "経済",
+      "reading": "けいざい (keizai)",
+      "meaning": "${meaningLang === 'Japanese' ? '経済、経済学' : 'economy, economics'}",
+      "example": "日本の経済は急速に発展してきた。",
+      "translation": "${meaningLang === 'Japanese' ? '日本の経済は急速に発展してきた。' : "Japan's economy has developed rapidly."}",
+      "topic": "Noun"
+    }
+  ]
+}`;
+}
+
 function flashcardFilePrompt(subject: string, opts: GenerateOptions): string {
+  if (opts.flashcardMode === 'vocabulary') return flashcardVocabPrompt(subject, opts);
   const count  = opts.cardCount ?? 12;
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();

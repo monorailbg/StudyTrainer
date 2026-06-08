@@ -576,6 +576,7 @@ export default function SubjectPage() {
   const [quizCount, setQuizCount] = useState(10);
   const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [cardCount, setCardCount] = useState(0); // 0 = undecided; multiples of 5 up to 50
+  const [flashcardMode, setFlashcardMode] = useState<'standard' | 'vocabulary'>('standard');
   const [focusTopic, setFocusTopic] = useState('');
   const [notesDetail, setNotesDetail] = useState<'concise' | 'standard' | 'comprehensive'>('standard');
   const [notesIncludes, setNotesIncludes] = useState<string[]>([]);
@@ -1073,6 +1074,7 @@ export default function SubjectPage() {
           notesIncludes,
           customPrompt: customPrompt.trim() || undefined,
           language: genLanguage,
+          flashcardMode: selectedType === 'flashcards' ? flashcardMode : undefined,
         });
         results.push(result);
       }
@@ -2234,9 +2236,39 @@ export default function SubjectPage() {
               {/* Flashcard options */}
               {selectedType === 'flashcards' && (
                 <div className="mb-3 flex flex-col gap-2.5">
+                  {/* Mode: standard vs vocabulary */}
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
+                    <div className="flex gap-1.5">
+                      {([
+                        { key: 'standard',   label: 'Study' },
+                        { key: 'vocabulary', label: 'Vocabulary' },
+                      ] as const).map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => setFlashcardMode(key)}
+                          className="h-8 flex-1 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                          style={{
+                            borderRadius: '999px',
+                            background:  flashcardMode === key ? subject.color + '20' : 'transparent',
+                            color:       flashcardMode === key ? subject.color         : '#8B949E',
+                            borderColor: flashcardMode === key ? subject.color + '50'  : '#30363D',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {flashcardMode === 'vocabulary' && (
+                      <div style={{ fontSize: '10px', color: '#484F58', marginTop: '5px', lineHeight: 1.5 }}>
+                        Front: word in source language. Back: reading, meaning, example sentence + translation.
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '10px', color: '#8B949E', fontWeight: 600 }}>Cards per file</div>
+                      <div style={{ fontSize: '10px', color: '#8B949E', fontWeight: 600 }}>{flashcardMode === 'vocabulary' ? 'Words per file' : 'Cards per file'}</div>
                       <div style={{
                         fontSize: '14px', fontWeight: 700, fontFamily: "'Sora', sans-serif",
                         color: cardCount === 0 ? '#484F58' : subject.color,
