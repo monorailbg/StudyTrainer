@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLang, type Lang } from '../context/LanguageContext';
-import { SettingsPanel } from './SettingsPanel';
 
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
@@ -203,7 +202,6 @@ export default function Navbar() {
 
           {/* Desktop lang + settings + generate */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            <SettingsPanel />
             <Link
               to="/generate"
               className="navbar-generate-link"

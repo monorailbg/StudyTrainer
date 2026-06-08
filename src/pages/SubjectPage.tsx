@@ -5,7 +5,7 @@ import { useResolvedSubjects } from '../store/useSubjects';
 import { useStore } from '../store/useStore';
 import { useActivity } from '../store/useActivity';
 import { useToast } from '../components/Toast';
-import { generateFromFile } from '../lib/geminiGenerator';
+import { generateFromFile } from '../lib/geminiProxy';
 
 import { useExamDates } from '../store/useExamDates';
 import {
@@ -32,7 +32,7 @@ import type {
   GeneratedNote,
   GeneratedQuizQuestion,
 } from '../lib/generator';
-import { generateDefinition, generateJapaneseDefinition } from '../lib/geminiGenerator';
+import { generateDefinition, generateJapaneseDefinition } from '../lib/geminiProxy';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
@@ -42,9 +42,8 @@ import { DictionaryView } from '../components/DictionaryView';
 
 function friendlyError(raw?: string): string {
   if (!raw) return 'Generation failed.';
-  if (raw.includes('not set')) return 'Gemini API key not configured. Enter your key in the banner above.';
-  if (raw.includes('401') || raw.includes('API_KEY_INVALID')) return 'Invalid or expired API key.';
-  if (raw.includes('RESOURCE_EXHAUSTED')) return 'Quota exhausted — check your Gemini API plan.';
+  if (raw.includes('401') || raw.includes('API_KEY_INVALID')) return 'Invalid or expired API key. Check the server configuration.';
+  if (raw.includes('RESOURCE_EXHAUSTED')) return 'Quota exhausted — try again tomorrow.';
   if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
   if (raw.includes('400')) return 'File too large or unsupported format.';
   return `Generation failed: ${raw.slice(0, 140)}`;

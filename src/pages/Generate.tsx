@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLang } from '../context/LanguageContext';
 import { useResolvedSubjects } from '../store/useSubjects';
-import { generateFromTopic } from '../lib/geminiGenerator';
+import { generateFromTopic } from '../lib/geminiProxy';
 import type {
   GenerationType,
   GeneratedFlashcard,
@@ -14,22 +14,16 @@ import { QuizViewer } from '../components/QuizViewer';
 
 function friendlyError(raw: string): string {
   if (!raw) return 'Generation failed.';
-  if (raw.includes('VITE_GEMINI_API_KEY') || raw.includes('not set'))
-    return 'Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.';
-  if (raw.includes('403') || raw.includes('API_KEY_INVALID') || raw.toLowerCase().includes('api key'))
-    return 'Invalid API key. Check VITE_GEMINI_API_KEY in your .env file.';
+  if (raw.includes('401') || raw.includes('API_KEY_INVALID'))
+    return 'Invalid or expired API key. Check the server configuration.';
   if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('limit: 0')) {
     const isPerMinute = raw.toLowerCase().includes('per minute') || raw.toLowerCase().includes('rpm');
-    if (isPerMinute)
-      return 'Per-minute rate limit hit (15 req/min on free tier). Wait 2 minutes and try again.';
-    return 'Quota exhausted on all available models. Your API key\'s daily limit is reached or the key has been compromised. Go to aistudio.google.com, revoke this key, generate a new one, and paste it in the banner above.';
+    if (isPerMinute) return 'Per-minute rate limit hit. Wait 2 minutes and try again.';
+    return 'Daily quota exhausted on all models. Try again tomorrow.';
   }
-  if (raw.toLowerCase().includes('quota'))
-    return 'Quota limit reached. Revoke your key at aistudio.google.com, generate a new one, and paste it in the banner above.';
-  if (raw.includes('429'))
-    return 'Rate limit hit. Wait 60 seconds and try again.';
-  if (raw.includes('400'))
-    return 'Bad request — topic too long or unsupported content.';
+  if (raw.toLowerCase().includes('quota')) return 'Quota limit reached. Try again tomorrow.';
+  if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
+  if (raw.includes('400')) return 'Bad request — topic too long or unsupported content.';
   return `Generation failed: ${raw.slice(0, 160)}`;
 }
 

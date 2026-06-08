@@ -28,14 +28,6 @@ export const ja: Record<string, string> = {
   'Open menu': 'メニューを開く',
   'Close menu': 'メニューを閉じる',
 
-  // ── API key banner ────────────────────────────────────────────────────────
-  'Gemini API key configured': 'Gemini APIキー設定済み',
-  'Gemini API key required': 'Gemini APIキーが必要です',
-  'Paste your API key (starts with AQ.)': 'APIキーを貼り付け（AQ. で始まります）',
-  'Get a free key →': '無料キーを取得 →',
-  'Save': '保存',
-  'Remove': '削除',
-
   // ── Cloud status / dim / toast ────────────────────────────────────────────
   'Firebase (notes/flashcards/quizzes) and Supabase (file storage) are not configured.':
     'Firebase（ノート／フラッシュカード／クイズ）と Supabase（ファイルストレージ）が設定されていません。',

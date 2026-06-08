@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { getStoredApiKey } from '../lib/geminiGenerator';
 import { useLang } from '../context/LanguageContext';
+
+const PROXY_URL = import.meta.env.DEV
+  ? 'http://localhost:5000/api/generate'
+  : '/api/generate';
 
 interface Message {
   role: 'user' | 'ai';
@@ -26,20 +29,18 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
     setMessages(prev => [...prev, { role: 'user', text: question }]);
     setLoading(true);
     try {
-      const key = getStoredApiKey();
-      if (!key) throw new Error('No API key configured.');
       const prompt = `You are a helpful study assistant. Context:\n${context}\n\nQuestion: ${question}\n\nAnswer clearly and concisely.`;
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+      const res = await fetch(PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 600 },
-        }),
+        body: JSON.stringify({ parts: [{ text: prompt }] }),
       });
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No response.';
-      setMessages(prev => [...prev, { role: 'ai', text }]);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+        throw new Error(err.error ?? 'Request failed');
+      }
+      const data = await res.json() as { text: string };
+      setMessages(prev => [...prev, { role: 'ai', text: data.text ?? 'No response.' }]);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'ai', text: `Error: ${err instanceof Error ? err.message : String(err)}` }]);
     } finally {
