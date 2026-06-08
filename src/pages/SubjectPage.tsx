@@ -363,6 +363,7 @@ const IconFolderPlus = () => (<svg viewBox="0 0 18 18" width="14" height="14" fi
 function FolderBoard<T extends { id: string; folderId?: string | null }>({
   kind, label, color, folders, items, draggedId, cols = 2, headerExtra,
   onDragStart, onDragEnd, onDropToFolder, onCreateFolder, onDeleteFolder, renderItem, onReorder,
+  sortAccessors,
 }: {
   kind: FolderKind;
   label: string;
@@ -379,6 +380,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   onDeleteFolder: (folderId: string) => void;
   renderItem: (item: T) => React.ReactNode;
   onReorder?: (reordered: T[]) => void;
+  sortAccessors?: { name: (item: T) => string; date?: (item: T) => number };
 }) {
   const { ts } = useLang();
   const [creating, setCreating] = useState(false);
@@ -389,6 +391,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const enterCounts = useRef<Map<string, number>>(new Map());
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
+  const [sortKey, setSortKey] = useState<'none' | 'latest' | 'oldest' | 'az' | 'za'>('none');
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const isDragging = draggedId != null;
   const gridClass = cols === 1 ? 'grid grid-cols-1 gap-2' : cols === 5 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2' : cols === 3 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
 
@@ -405,7 +409,18 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   };
 
   const kindFolders = folders.filter(f => f.kind === kind);
-  const unfiled = items.filter(it => !it.folderId || !kindFolders.some(f => f.id === it.folderId));
+
+  const sortedItems: T[] = (() => {
+    if (sortKey === 'none' || !sortAccessors) return items;
+    const arr = [...items];
+    if (sortKey === 'latest' && sortAccessors.date) return arr.sort((a, b) => sortAccessors.date!(b) - sortAccessors.date!(a));
+    if (sortKey === 'oldest' && sortAccessors.date) return arr.sort((a, b) => sortAccessors.date!(a) - sortAccessors.date!(b));
+    if (sortKey === 'az') return arr.sort((a, b) => sortAccessors.name(a).localeCompare(sortAccessors.name(b)));
+    if (sortKey === 'za') return arr.sort((a, b) => sortAccessors.name(b).localeCompare(sortAccessors.name(a)));
+    return arr;
+  })();
+
+  const unfiled = sortedItems.filter(it => !it.folderId || !kindFolders.some(f => f.id === it.folderId));
 
   const zone = (folderId: string | null, children: React.ReactNode) => {
     const key = folderId ?? '__unfiled__';
@@ -489,8 +504,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
           setHoverFolder(null);
           if (srcFolder !== tgtFolder) {
             onDropToFolder(tgtFolder);
-          } else if (onReorder) {
-            const without = items.filter(x => x.id !== draggedId);
+          } else if (onReorder && sortKey === 'none') {
+            const without = sortedItems.filter(x => x.id !== draggedId);
             const tgtIdx = without.findIndex(x => x.id === it.id);
             const insertIdx = dropPosition === 'after' ? tgtIdx + 1 : tgtIdx;
             onReorder([...without.slice(0, insertIdx), dragSrc, ...without.slice(insertIdx)]);
@@ -527,6 +542,61 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
           {label} ({items.length}){kindFolders.length > 0 && ` · ${ts('{n} folders', { n: kindFolders.length })}`}
         </div>
         <div className="flex items-center gap-3 ml-auto">
+        {/* Sort dropdown */}
+        {sortAccessors && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowSortMenu(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                background: sortKey !== 'none' ? color + '14' : 'transparent',
+                color: sortKey !== 'none' ? color : '#8B949E',
+                border: `1px solid ${sortKey !== 'none' ? color + '33' : '#30363D'}`,
+                borderRadius: '999px', fontSize: '11px', fontWeight: 600, padding: '5px 10px',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >
+              <svg viewBox="0 0 14 14" width="11" height="11" fill="none">
+                <path d="M2 3h10M4 7h6M6 11h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+              {sortKey === 'none' ? ts('Sort') : sortKey === 'latest' ? ts('Latest') : sortKey === 'oldest' ? ts('Oldest') : sortKey === 'az' ? 'A → Z' : 'Z → A'}
+            </button>
+            {showSortMenu && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setShowSortMenu(false)} />
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                  background: '#161B22', border: '1px solid #30363D', borderRadius: '12px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)', padding: '4px', zIndex: 50,
+                  minWidth: '136px',
+                }}>
+                  {([
+                    { key: 'none',   label: ts('Default order') },
+                    { key: 'latest', label: ts('Latest first') },
+                    { key: 'oldest', label: ts('Oldest first') },
+                    { key: 'az',     label: 'A → Z' },
+                    { key: 'za',     label: 'Z → A' },
+                  ] as const).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => { setSortKey(key); setShowSortMenu(false); }}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        padding: '8px 12px', borderRadius: '8px',
+                        background: sortKey === key ? color + '14' : 'transparent',
+                        color: sortKey === key ? color : '#C9D1D9',
+                        border: 'none', cursor: 'pointer',
+                        fontSize: '12px', fontWeight: sortKey === key ? 600 : 400,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         {headerExtra}
         {creating ? (
           <input
@@ -557,7 +627,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
 
       {/* Folder sections */}
       {kindFolders.map(folder => {
-        const folderItems = items.filter(it => it.folderId === folder.id);
+        const folderItems = sortedItems.filter(it => it.folderId === folder.id);
         const isCollapsed = collapsedFolders.has(folder.id);
         return (
           <div key={folder.id} style={{ marginBottom: '18px' }}>
@@ -1706,6 +1776,7 @@ export default function SubjectPage() {
                     const ids = new Set(reordered.map(f => f.id));
                     return [...prev.filter(f => !ids.has(f.id)), ...reordered];
                   })}
+                  sortAccessors={{ name: f => f.name, date: f => parseInt(f.id.split('-')[0]) || 0 }}
                   headerExtra={
                     <div className="flex gap-2">
                       <button onClick={() => setSelectedFileIds(levelFiles.map(f => f.id))}
@@ -1880,6 +1951,7 @@ export default function SubjectPage() {
                 onCreateFolder={name => createFolder('card', name)}
                 onDeleteFolder={removeFolder}
                 onReorder={reordered => setSavedFlashcardSets(reordered)}
+                sortAccessors={{ name: s => s.name, date: s => s.createdAt }}
                 renderItem={(set) => {
                   const isRenaming = renaming?.id === set.id;
                   return (
@@ -2004,6 +2076,7 @@ export default function SubjectPage() {
                 onCreateFolder={name => createFolder('note', name)}
                 onDeleteFolder={removeFolder}
                 onReorder={reordered => setSavedNotes(reordered)}
+                sortAccessors={{ name: n => n.name, date: n => n.createdAt }}
                 renderItem={(n) => {
                   const isRenaming = renaming?.id === n.id;
                   return (
@@ -2146,6 +2219,7 @@ export default function SubjectPage() {
                 onCreateFolder={name => createFolder('quiz', name)}
                 onDeleteFolder={removeFolder}
                 onReorder={reordered => setSavedQuizzes(reordered)}
+                sortAccessors={{ name: q => q.name, date: q => q.createdAt }}
                 renderItem={(quiz) => {
                   const isRenaming = renaming?.id === quiz.id;
                   return (
