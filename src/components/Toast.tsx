@@ -48,7 +48,8 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
   const { color, icon } = KIND[item.kind];
   const { ts } = useLang();
   useEffect(() => {
-    const t = setTimeout(() => onDismiss(item.id), item.message ? 12000 : 4200);
+    if (item.message) return;
+    const t = setTimeout(() => onDismiss(item.id), 4200);
     return () => clearTimeout(t);
   }, [item.id, item.message, onDismiss]);
 
@@ -67,11 +68,11 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
           style={{
             marginTop: '8px', background: 'rgba(255,255,255,0.06)',
             border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
-            cursor: 'pointer', color: '#8B949E', padding: '3px 10px',
-            fontSize: '11px', fontWeight: 600, lineHeight: 1.4,
+            cursor: 'pointer', color: '#8B949E', padding: '3px 8px',
+            lineHeight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          {ts('Hide')}
+          <svg viewBox="0 0 14 14" width="11" height="11" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
         </button>
       </div>
     </div>
