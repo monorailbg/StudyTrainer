@@ -13,15 +13,13 @@ import { GoogleGenAI } from '@google/genai';
 
 // ── Gemini client ──────────────────────────────────────────────────────────
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
-
-// Throwing here aborts the cold start and surfaces a clear error in Vercel
-// logs rather than a confusing 500 inside the handler.
-if (!GEMINI_API_KEY) {
-  throw new Error('[generate] GEMINI_API_KEY is not set in environment variables.');
+// Resolved lazily inside the handler so a missing key returns a proper
+// 500 JSON response instead of crashing the module at cold-start (502).
+function getAI() {
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key) throw new Error('GEMINI_API_KEY is not set. Add it in Vercel → Project Settings → Environment Variables.');
+  return new GoogleGenAI({ apiKey: key });
 }
-
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const MODELS = [
   'gemini-2.5-flash',
@@ -53,7 +51,7 @@ function retryDelayMs(msg) {
   return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 65_000;
 }
 
-async function callModel(model, contents, config, maxAttempts = 2) {
+async function callModel(ai, model, contents, config, maxAttempts = 2) {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -78,11 +76,11 @@ async function callModel(model, contents, config, maxAttempts = 2) {
   throw lastError;
 }
 
-async function callGeminiWithFallback(contents, config) {
+async function callGeminiWithFallback(ai, contents, config) {
   let lastError;
   for (const model of MODELS) {
     try {
-      return await callModel(model, contents, config);
+      return await callModel(ai, model, contents, config);
     } catch (err) {
       lastError = err;
       const msg = String(err);
@@ -121,8 +119,17 @@ export default async function handler(req, res) {
     config.systemInstruction = systemInstruction.trim();
   }
 
+  let ai;
+  try {
+    ai = getAI();
+  } catch (err) {
+    console.error('[generate] Config error:', err);
+    return res.status(500).json({ error: String(err instanceof Error ? err.message : err) });
+  }
+
   try {
     const text = await callGeminiWithFallback(
+      ai,
       contents,
       Object.keys(config).length ? config : undefined,
     );
