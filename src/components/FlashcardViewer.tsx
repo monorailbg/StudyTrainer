@@ -47,7 +47,6 @@ function parseVocab(back: string): VocabData | null {
 function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%' }}>
-      {/* Reading / pinyin */}
       {vocab.reading && (
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', 'JetBrains Mono', monospace",
@@ -60,7 +59,6 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         </div>
       )}
 
-      {/* Meaning */}
       <div style={{
         fontFamily: "'LXGW WenKai Mono TC', monospace",
         fontWeight: 700,
@@ -72,12 +70,10 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         {vocab.meaning}
       </div>
 
-      {/* Divider */}
       {(vocab.example || vocab.translation) && (
         <div style={{ width: '36px', height: '1px', background: color + '40', margin: '2px 0' }} />
       )}
 
-      {/* Example sentence — Chinese/source language */}
       {vocab.example && (
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', serif",
@@ -91,7 +87,6 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         </div>
       )}
 
-      {/* Translation of example */}
       {vocab.translation && (
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', monospace",
@@ -124,40 +119,77 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   onBack?: () => void;
 }) {
   const { ts } = useLang();
+  const srsMode  = !!subjectId;
+  const rate     = useSRS(s => s.rate);
+  const srsCards = useSRS(s => s.cards);
+
+  // SRS mode: Anki-like mutable queue (front = current card)
+  const [queue, setQueue] = useState<GeneratedFlashcard[]>(() => [...cards]);
+  const totalRef = useRef(cards.length); // original count (never changes after mount)
+
+  // Non-SRS mode: simple index navigation
   const [index, setIndex] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const [reviewed, setReviewed] = useState(0);
-  const [done, setDone] = useState(false);
-  const card = cards[index];
-  const progress = ((index + 1) / cards.length) * 100;
-  const srsMode   = !!subjectId;
-  const rate      = useSRS(s => s.rate);
-  const srsCards  = useSRS(s => s.cards);
-  // Report the session (count of cards rated) exactly once — on completion or
-  // when the viewer unmounts mid-way.
-  const reviewedRef = useRef(0);
-  const reportedRef = useRef(false);
+
+  const [flipped,  setFlipped]  = useState(false);
+  const [reviewed, setReviewed] = useState(0); // cards completed (rated Hard / Good / Easy)
+
+  const reviewedRef  = useRef(0);
+  const reportedRef  = useRef(false);
+
   const report = useCallback(() => {
     if (reportedRef.current || reviewedRef.current === 0) return;
     reportedRef.current = true;
     onSessionEnd?.(reviewedRef.current);
   }, [onSessionEnd]);
-  useEffect(() => report, [report]);
 
+  // Report on unmount
+  useEffect(() => () => { report(); }, [report]);
+
+  // Derived current card — never access before empty-state guard below
+  const card = srsMode ? queue[0] : cards[index];
+
+  // SRS session done = queue drained AND at least one card completed
+  const done = srsMode && queue.length === 0 && reviewed > 0;
+
+  // Report as soon as session completes
+  useEffect(() => {
+    if (done) report();
+  }, [done, report]);
+
+  const flip = () => setFlipped(f => !f);
   const prev = () => { setIndex(i => Math.max(0, i - 1)); setFlipped(false); };
   const next = () => { setIndex(i => Math.min(cards.length - 1, i + 1)); setFlipped(false); };
-  const flip = () => setFlipped(f => !f);
 
   const handleRate = useCallback((rating: Rating) => {
-    if (subjectId) rate(card.id, subjectId, rating);
-    const n = reviewed + 1;
-    setReviewed(n);
-    reviewedRef.current = n;
-    if (index >= cards.length - 1) { setDone(true); report(); }
-    else next();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subjectId, rate, card, reviewed, index, cards.length, report]);
+    if (!card) return;
 
+    // Always persist the rating immediately (updates SRS schedule even on Again)
+    if (subjectId) rate(card.id, subjectId, rating);
+
+    setFlipped(false);
+
+    if (rating === 'again') {
+      // Anki behavior: re-insert after the next few cards so the user gets
+      // a short break before seeing it again.
+      setQueue(q => {
+        const [first, ...rest] = q;
+        const insertAt = Math.min(3, rest.length);
+        return [
+          ...rest.slice(0, insertAt),
+          first,
+          ...rest.slice(insertAt),
+        ];
+      });
+    } else {
+      // Hard / Good / Easy: card is finished for this session
+      const n = reviewedRef.current + 1;
+      reviewedRef.current = n;
+      setReviewed(n);
+      setQueue(q => q.slice(1));
+    }
+  }, [card, subjectId, rate]);
+
+  // Keyboard shortcuts
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -168,23 +200,66 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
       }
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
       if (!srsMode && e.key === 'ArrowRight') next();
-      if (!srsMode && e.key === 'ArrowLeft') prev();
+      if (!srsMode && e.key === 'ArrowLeft')  prev();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  if (srsMode && done) {
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (cards.length === 0) {
     return (
-      <>
       <div className="anim-fadein" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: '14px', textAlign: 'center' }}>
         <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: color + '1A', border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
+            <path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>{ts('Session complete')}</div>
-        <div style={{ fontSize: '13px', color: '#8B949E' }}>{ts('You reviewed {n} card{s}. Schedule updated.', { n: reviewed, s: reviewed !== 1 ? 's' : '' })}</div>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>
+          {srsMode ? ts('All caught up!') : ts('No cards in this set')}
+        </div>
+        <div style={{ fontSize: '13px', color: '#8B949E' }}>
+          {srsMode
+            ? ts("No cards are due for review right now. Come back later!")
+            : ts("This set has no cards yet.")}
+        </div>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="h-10 px-6 text-sm font-semibold cursor-pointer"
+            style={{ background: 'transparent', color: '#8B949E', border: '1px solid #30363D', borderRadius: '999px' }}
+          >
+            {ts('← Back to list')}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // ── SRS: session complete ──────────────────────────────────────────────────
+  if (srsMode && done) {
+    return (
+      <div className="anim-fadein" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: '14px', textAlign: 'center' }}>
+        <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: color + '1A', border: `1px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
+            <path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>
+          {ts('Session complete')}
+        </div>
+        <div style={{ fontSize: '13px', color: '#8B949E' }}>
+          {ts('You reviewed {n} card{s}. Schedule updated.', { n: reviewed, s: reviewed !== 1 ? 's' : '' })}
+        </div>
         <button
-          onClick={() => { setIndex(0); setFlipped(false); setReviewed(0); setDone(false); reviewedRef.current = 0; reportedRef.current = false; }}
+          onClick={() => {
+            setQueue([...cards]);
+            setFlipped(false);
+            setReviewed(0);
+            reviewedRef.current = 0;
+            reportedRef.current = false;
+            totalRef.current = cards.length;
+          }}
           className="h-10 px-6 text-sm font-semibold cursor-pointer"
           style={{ marginTop: '6px', background: color + '18', color, border: `1px solid ${color}45`, borderRadius: '999px' }}
         >
@@ -209,18 +284,25 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           </button>
         )}
       </div>
-      </>
     );
   }
 
-  const cardW = 'min(740px, 96vw)';
-  const vocab = parseVocab(card.back);
+  // Safety guard — should not be reachable after the empty-state check above
+  if (!card) return null;
+
+  const cardW      = 'min(740px, 96vw)';
+  const vocab      = parseVocab(card.back);
   const isVocabCard = vocab !== null;
+
+  // Progress: in SRS mode, fraction of initial cards completed
+  const progress = srsMode
+    ? (reviewed / Math.max(1, totalRef.current)) * 100
+    : ((index + 1) / cards.length) * 100;
 
   return (
     <>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '70vh', justifyContent: 'center', paddingTop: '12px', paddingBottom: '24px' }}>
-      {/* Progress bar — full width */}
+      {/* Progress bar */}
       <div className="flashcard-progress-bar-track h-px mb-5 overflow-hidden" style={{ width: '100%', background: '#30363D', borderRadius: '1px' }}>
         <div
           className="h-full"
@@ -233,22 +315,19 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         />
       </div>
 
-      {/* SRS session stats bar — only in SRS mode */}
+      {/* SRS stats bar */}
       {srsMode && (() => {
         const cardIds = cards.map(c => c.id);
         const stats   = subjectSrsStats(srsCards, cardIds);
-        const reviewsLeft = cards.length - reviewed;
         const currentState = srsCards[card.id]?.state;
         return (
           <div style={{ width: cardW, marginBottom: '10px' }}>
-            {/* Chip row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <StatChip label="left" count={reviewsLeft} color={color} />
-              {stats.due     > 0 && <StatChip label="due"       count={stats.due}      color="#D29922" />}
-              {stats.unseen  > 0 && <StatChip label="new"       count={stats.unseen}   color="#56D364" />}
-              {stats.learning > 0 && <StatChip label="learning" count={stats.learning} color="#60a5fa" />}
-              {stats.graduated > 0 && <StatChip label="grad"   count={stats.graduated} color="#8B5CF6" />}
-              {/* Current card's SRS state badge */}
+              <StatChip label="left"     count={queue.length}    color={color} />
+              {stats.due      > 0 && <StatChip label="due"      count={stats.due}       color="#D29922" />}
+              {stats.unseen   > 0 && <StatChip label="new"      count={stats.unseen}    color="#56D364" />}
+              {stats.learning > 0 && <StatChip label="learning" count={stats.learning}  color="#60a5fa" />}
+              {stats.graduated > 0 && <StatChip label="grad"   count={stats.graduated}  color="#8B5CF6" />}
               {currentState && (
                 <div style={{ marginLeft: 'auto' }}>
                   <span style={{
@@ -270,7 +349,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
       {/* Counter + topic */}
       <div className="flashcard-meta flex items-center justify-between mb-4" style={{ width: cardW }}>
         <span className="mono text-xs" style={{ color: '#8B949E' }}>
-          {index + 1} / {cards.length}
+          {srsMode
+            ? `${queue.length} remaining`
+            : `${index + 1} / ${cards.length}`}
         </span>
         <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: color + '10', color, border: `1px solid ${color}20` }}>
           {card.topic}
@@ -297,7 +378,6 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               background: '#161B22',
               border: `1px solid ${isVocabCard ? color + '35' : color + '25'}`,
               boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',
-              transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
             }}
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#8B949E' }}>
@@ -330,14 +410,13 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <div
             className="flip-card-back flex flex-col items-center justify-center gap-4"
             style={{
-              padding: isVocabCard ? 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)' : 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
+              padding: 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
               borderRadius: '12px',
               background: isVocabCard
                 ? `linear-gradient(135deg, ${color}14 0%, #161B22 100%)`
                 : 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
               border: `1px solid ${color}40`,
               boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.4)',
-              transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
             }}
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: isVocabCard ? color : '#3D7EFF' }}>
@@ -354,7 +433,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         </div>
       </div>
 
-      {/* Controls — constrained to card width */}
+      {/* Controls */}
       <div className="flashcard-controls" style={{ width: cardW }}>
         {srsMode ? (
           flipped ? (
@@ -376,7 +455,10 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 ))}
               </div>
               <div className="hidden md:block text-center mt-3 text-xs" style={{ color: '#484F58' }}>
-                {ts('How well did you recall this?')} <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>–<kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
+                {ts('How well did you recall this?')}{' '}
+                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>
+                –
+                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
               </div>
             </div>
           ) : (
@@ -388,7 +470,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               >
                 {ts('Show answer')}
               </button>
-              <span className="text-xs" style={{ color: '#484F58' }}>{ts('{n} reviewed this session', { n: reviewed })}</span>
+              <span className="text-xs" style={{ color: '#484F58' }}>
+                {ts('{n} reviewed this session', { n: reviewed })}
+              </span>
             </div>
           )
         ) : (
@@ -423,7 +507,6 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               </button>
             </div>
 
-            {/* Keyboard hint */}
             <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
               <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>←</kbd>
               {' '}/{' '}
