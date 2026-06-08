@@ -597,40 +597,6 @@ export default function Home() {
           );
         })()}
 
-        {/* Study modes — three pill links */}
-        <div className="flex gap-3 mb-10 flex-wrap">
-          {[
-            { to: '/flashcards', label: t('nav_flashcards'), color: '#3D7EFF', stat: ts('{n} cards', { n: totalCards }) },
-            { to: '/notes',      label: t('nav_notes'),      color: '#2EA043', stat: ts('{n} notes', { n: totalNotes }) },
-            { to: '/quiz',       label: t('nav_quiz'),       color: '#D29922', stat: ts('{n} questions', { n: quizData.length }) },
-            { to: '/generate',   label: t('nav_generate'),   color: '#a78bfa', stat: ts('AI powered') },
-          ].map(({ to, label, color, stat }) => (
-            <Link
-              key={to}
-              to={to}
-              className="no-underline flex items-center gap-2.5 px-4 h-10 text-sm font-semibold transition-all duration-400"
-              style={{
-                borderRadius: '999px',
-                background: color + '18',
-                color,
-                border: `1px solid ${color}35`,
-                transition: 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)';
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 20px ${color}33`;
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.transform = '';
-                (e.currentTarget as HTMLElement).style.boxShadow = '';
-              }}
-            >
-              {label}
-              <span style={{ fontWeight: 400, fontSize: '11px', color: color + 'CC', opacity: 0.8 }}>{stat}</span>
-            </Link>
-          ))}
-        </div>
-
         {/* Core subjects */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-5">
