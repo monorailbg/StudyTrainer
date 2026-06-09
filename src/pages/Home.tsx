@@ -514,7 +514,7 @@ export default function Home() {
                         ['--d' as string]: `${i * 50}ms`,
                         display: 'flex', alignItems: 'center', gap: '11px',
                         padding: '11px 16px', borderRadius: '14px',
-                        background: '#161B22', border: `1px solid ${color}30`,
+                        background: 'var(--bg-surface)', border: `1px solid ${color}30`,
                         transition: 'transform 0.2s ease, border-color 0.2s ease',
                       }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '60'; }}
@@ -557,7 +557,7 @@ export default function Home() {
                         position: 'relative',
                         display: 'flex', alignItems: 'center', gap: '11px',
                         padding: '11px 30px 11px 12px', borderRadius: '14px',
-                        background: '#161B22', border: '1px solid #21262D',
+                        background: 'var(--bg-surface)', border: '1px solid #21262D',
                         transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
                       }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = s.color + '45'; }}
