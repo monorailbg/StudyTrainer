@@ -12,8 +12,7 @@ interface FlashcardStats {
   graduated: number;
 }
 
-const StatCard = ({ icon, label, value, color, subtext, bgGradient }: {
-  icon: string;
+const StatCard = ({ label, value, color, subtext, bgGradient }: {
   label: string;
   value: string | number;
   color: string;
@@ -38,7 +37,6 @@ const StatCard = ({ icon, label, value, color, subtext, bgGradient }: {
       borderRadius: '50%', background: color + '04', pointerEvents: 'none',
     }} />
     <div style={{ position: 'relative', zIndex: 1 }}>
-      <div style={{ fontSize: '24px', marginBottom: '8px' }}>{icon}</div>
       <div style={{ fontSize: '11px', color: '#8B949E', marginBottom: '6px', fontWeight: 500, letterSpacing: '0.5px' }}>
         {label}
       </div>
@@ -68,20 +66,18 @@ export function FlashcardProgressDashboard({ stats, color }: {
   return (
     <div style={{ marginBottom: '36px' }}>
       <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#484F58', marginBottom: '18px' }}>
-        ✨ {ts('Your Progress')}
+        {ts('Your Progress')}
       </div>
 
       {/* Main stats grid with distinct colors */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: '14px', marginBottom: '24px' }}>
         <StatCard
-          icon="📚"
           label={ts('Total Cards')}
           value={stats.total}
           color="#6E9FD4"
           bgGradient="linear-gradient(135deg, #6E9FD412 0%, #6E9FD408 100%)"
         />
         <StatCard
-          icon="🔥"
           label={ts('Due Today')}
           value={stats.due}
           color="#FF6B6B"
@@ -89,14 +85,12 @@ export function FlashcardProgressDashboard({ stats, color }: {
           bgGradient="linear-gradient(135deg, #FF6B6B12 0%, #FF6B6B08 100%)"
         />
         <StatCard
-          icon="⭐"
           label={ts('Mastered')}
           value={stats.graduated}
           color="#56D364"
           bgGradient="linear-gradient(135deg, #56D36412 0%, #56D36408 100%)"
         />
         <StatCard
-          icon="🎯"
           label={ts('In Progress')}
           value={stats.learning}
           color="#D29922"
@@ -118,7 +112,7 @@ export function FlashcardProgressDashboard({ stats, color }: {
             {ts('Mastery Progress')}
           </span>
           <span style={{ fontSize: '12px', fontWeight: 700, color, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '18px' }}>📈</span> {progressPct}%
+            {progressPct}%
           </span>
         </div>
         <div style={{
@@ -142,7 +136,7 @@ export function FlashcardProgressDashboard({ stats, color }: {
           borderRadius: '12px', border: '1.5px solid #6E9FD430', textAlign: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}>
-          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>📖 {ts('New')}</div>
+          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('New')}</div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#6E9FD4' }}>{stats.newCount}</div>
         </div>
         <div style={{
@@ -150,7 +144,7 @@ export function FlashcardProgressDashboard({ stats, color }: {
           borderRadius: '12px', border: '1.5px solid #D2992230', textAlign: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}>
-          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>🔄 {ts('Learning')}</div>
+          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('Learning')}</div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#D29922' }}>{stats.learning}</div>
         </div>
         <div style={{
@@ -158,7 +152,7 @@ export function FlashcardProgressDashboard({ stats, color }: {
           borderRadius: '12px', border: '1.5px solid #8B5CF630', textAlign: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}>
-          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>👁️ {ts('Unseen')}</div>
+          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('Unseen')}</div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#8B5CF6' }}>{stats.unseen}</div>
         </div>
       </div>
@@ -190,13 +184,12 @@ export function QuizProgressDashboard({ stats, color }: {
   return (
     <div style={{ marginBottom: '36px' }}>
       <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#484F58', marginBottom: '18px' }}>
-        🎓 {ts('Quiz Performance')}
+        {ts('Quiz Performance')}
       </div>
 
       {/* Main stats grid with distinct colors */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: '14px', marginBottom: '24px' }}>
         <StatCard
-          icon="📋"
           label={ts('Saved Quizzes')}
           value={stats.totalSavedQuizzes}
           color="#7D5BA6"
@@ -204,14 +197,12 @@ export function QuizProgressDashboard({ stats, color }: {
           bgGradient="linear-gradient(135deg, #7D5BA612 0%, #7D5BA608 100%)"
         />
         <StatCard
-          icon="⚡"
           label={ts('Attempts')}
           value={stats.totalAttempts}
           color="#FF8C42"
           bgGradient="linear-gradient(135deg, #FF8C4212 0%, #FF8C4208 100%)"
         />
         <StatCard
-          icon="📊"
           label={ts('Average Score')}
           value={hasHistory ? `${stats.averagePercent}%` : '—'}
           color="#56D364"
@@ -219,7 +210,6 @@ export function QuizProgressDashboard({ stats, color }: {
           bgGradient="linear-gradient(135deg, #56D36412 0%, #56D36408 100%)"
         />
         <StatCard
-          icon="🏆"
           label={ts('Best Score')}
           value={hasHistory ? `${stats.bestScore}%` : '—'}
           color="#FFD700"
@@ -241,7 +231,7 @@ export function QuizProgressDashboard({ stats, color }: {
             {ts('Accuracy')}
           </span>
           <span style={{ fontSize: '12px', fontWeight: 700, color: hasHistory ? color : '#484F58', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '18px' }}>🎯</span> {hasHistory ? `${accuracy}%` : ts('No attempts yet')}
+            {hasHistory ? `${accuracy}%` : ts('No attempts yet')}
           </span>
         </div>
         <div style={{
@@ -266,7 +256,7 @@ export function QuizProgressDashboard({ stats, color }: {
             borderRadius: '12px', border: '1.5px solid #56D36430', textAlign: 'center',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           }}>
-            <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>✅ {ts('Correct')}</div>
+            <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('Correct')}</div>
             <div style={{ fontSize: '24px', fontWeight: 700, color: '#56D364' }}>{stats.totalCorrect}</div>
           </div>
           <div style={{
@@ -274,7 +264,7 @@ export function QuizProgressDashboard({ stats, color }: {
             borderRadius: '12px', border: '1.5px solid #FF6B6B30', textAlign: 'center',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           }}>
-            <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>📝 {ts('Answered')}</div>
+            <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('Answered')}</div>
             <div style={{ fontSize: '24px', fontWeight: 700, color: '#FF6B6B' }}>{stats.totalQuestions}</div>
           </div>
         </div>
