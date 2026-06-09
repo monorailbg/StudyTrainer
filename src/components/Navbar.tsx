@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLang, type Lang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,46 @@ const UKFlag = () => {
   </svg>
   );
 };
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const { ts } = useLang();
+  return (
+    <button
+      onClick={toggleTheme}
+      title={theme === 'dark' ? ts('Switch to light mode') : ts('Switch to dark mode')}
+      aria-label={theme === 'dark' ? ts('Switch to light mode') : ts('Switch to dark mode')}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '32px', height: '32px',
+        padding: '0',
+        borderRadius: '7px',
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        color: '#6B7280',
+        cursor: 'pointer',
+        fontSize: '16px',
+        transition: 'all 0.15s ease',
+      }}
+      onMouseEnter={e => {
+        const btn = e.currentTarget as HTMLElement;
+        btn.style.background = 'rgba(61,126,255,0.1)';
+        btn.style.borderColor = 'rgba(61,126,255,0.3)';
+        btn.style.color = '#93B8FF';
+      }}
+      onMouseLeave={e => {
+        const btn = e.currentTarget as HTMLElement;
+        btn.style.background = 'rgba(255,255,255,0.05)';
+        btn.style.borderColor = 'rgba(255,255,255,0.08)';
+        btn.style.color = '#6B7280';
+      }}
+    >
+      {theme === 'dark' ? '☀️' : '🌙'}
+    </button>
+  );
+}
 
 // ── Language toggle ────────────────────────────────────────────────────────────
 
@@ -106,6 +147,7 @@ const navItems = [
 export default function Navbar() {
   const { pathname } = useLocation();
   const { t, ts } = useLang();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -202,6 +244,37 @@ export default function Navbar() {
 
           {/* Desktop lang + settings */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+            <button
+              onClick={() => navigate('/generate')}
+              title={ts('Generate content')}
+              aria-label={ts('Generate content')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '7px',
+                background: 'rgba(61,126,255,0.1)',
+                border: '1px solid rgba(61,126,255,0.3)',
+                color: '#93B8FF',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 600,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => {
+                const btn = e.currentTarget as HTMLElement;
+                btn.style.background = 'rgba(61,126,255,0.15)';
+                btn.style.borderColor = 'rgba(61,126,255,0.5)';
+              }}
+              onMouseLeave={e => {
+                const btn = e.currentTarget as HTMLElement;
+                btn.style.background = 'rgba(61,126,255,0.1)';
+                btn.style.borderColor = 'rgba(61,126,255,0.3)';
+              }}
+            >
+              <span style={{ fontSize: '14px' }}>✨</span>
+              {ts('Generate')}
+            </button>
+            <ThemeToggle />
             <LangToggle />
           </div>
 
@@ -260,10 +333,20 @@ export default function Navbar() {
             })}
           </div>
           <div style={{ marginTop: 'auto', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '10px' }}>
-              {ts('Language')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '10px' }}>
+                  {ts('Theme')}
+                </div>
+                <ThemeToggle />
+              </div>
+              <div>
+                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '10px' }}>
+                  {ts('Language')}
+                </div>
+                <LangToggle />
+              </div>
             </div>
-            <LangToggle />
           </div>
         </div>
       )}
