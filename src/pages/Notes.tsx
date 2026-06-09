@@ -196,7 +196,7 @@ export default function Notes() {
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={rootClasses} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
+    <div className={rootClasses} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: 'var(--bg-page)' }}>
 
       {/* Sidebar */}
       <aside className="notes-sidebar hidden md:flex flex-col" style={{

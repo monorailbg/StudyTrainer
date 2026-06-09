@@ -66,7 +66,16 @@ function ThemeToggle() {
         btn.style.color = '#6B7280';
       }}
     >
-      {theme === 'dark' ? '☀️' : '🌙'}
+      {theme === 'dark' ? (
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+          <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.4"/>
+          <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+      ) : (
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+          <path d="M13.5 10A6 6 0 016 2.5a6 6 0 100 11 6 6 0 007.5-3.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+        </svg>
+      )}
     </button>
   );
 }
@@ -154,7 +163,7 @@ export default function Navbar() {
     <>
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50, height: '72px',
-        background: '#080B10',
+        background: 'var(--bg-nav)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
       }}>
@@ -271,7 +280,9 @@ export default function Navbar() {
                 btn.style.borderColor = 'rgba(61,126,255,0.3)';
               }}
             >
-              <span style={{ fontSize: '14px' }}>✨</span>
+              <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+                <path d="M7 1v3M7 10v3M1 7h3M10 7h3M2.93 2.93l2.12 2.12M8.95 8.95l2.12 2.12M2.93 11.07l2.12-2.12M8.95 5.05l2.12-2.12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
               {ts('Generate')}
             </button>
             <ThemeToggle />

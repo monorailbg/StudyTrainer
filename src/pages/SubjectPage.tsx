@@ -1485,7 +1485,7 @@ export default function SubjectPage() {
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="subject-breadcrumb-strip flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
         borderBottom: '1px solid #21262D',
-        background: '#0D1117',
+        background: 'var(--bg-page)',
       }}>
         <Link to="/" className="flex-shrink-0 transition-colors" style={{ color: '#8B949E', textDecoration: 'none', fontSize: '12px', fontWeight: 500 }}
           onMouseEnter={e => (e.currentTarget.style.color = '#E6EDF3')}
@@ -1530,7 +1530,7 @@ export default function SubjectPage() {
       </div>
 
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}
-      <div className="subject-mobile-tabs md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: '#0D1117' }}>
+      <div className="subject-mobile-tabs md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: 'var(--bg-page)' }}>
         {([
           { id: 'dashboard',  label: ts('Overview'), dot: false },
           { id: 'upload',     label: ts('Files'),    dot: false },
@@ -1572,7 +1572,7 @@ export default function SubjectPage() {
             style={{
               position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
               zIndex: 30, width: '20px', height: '48px', borderRadius: '0 8px 8px 0',
-              background: '#161B22', border: '1px solid #30363D', borderLeft: 'none',
+              background: 'var(--bg-surface)', border: '1px solid #30363D', borderLeft: 'none',
               color: '#8B949E', cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
               fontSize: '9px',
             }}
@@ -1586,7 +1586,7 @@ export default function SubjectPage() {
           width: sidebarOpen ? '360px' : '0',
           flexShrink: 0,
           borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
-          background: '#0D1117',
+          background: 'var(--bg-page)',
           overflow: 'hidden',
           transition: 'width 0.25s ease',
         }}>
@@ -1596,7 +1596,7 @@ export default function SubjectPage() {
             padding: sidebarOpen ? '20px 20px 12px' : '0',
             flexShrink: 0,
             borderBottom: '1px solid #21262D',
-            background: '#0D1117',
+            background: 'var(--bg-page)',
           }}>
             <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
               {subject.title.slice(0, 22)}
@@ -1791,7 +1791,7 @@ export default function SubjectPage() {
         </aside>
 
         {/* Main content area */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: '#0D1117' }}>
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: 'var(--bg-page)' }}>
 
           {/* Dashboard view */}
           {view === 'dashboard' && (

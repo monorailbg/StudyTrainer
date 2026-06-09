@@ -20,6 +20,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('app-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    document.body.classList.toggle('theme-light', theme === 'light');
+  }, [theme]);
+
   const setTheme = (newTheme: Theme) => setThemeState(newTheme);
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 

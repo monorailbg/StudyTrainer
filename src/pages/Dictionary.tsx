@@ -62,12 +62,12 @@ export default function Dictionary() {
   const accentColor = activeSubject?.color ?? '#3D7EFF';
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 72px)', background: 'var(--bg-page)', overflow: 'hidden' }}>
 
       {/* Left sidebar */}
       <aside style={{
         width: '220px', flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)',
-        background: '#0D1117', display: 'flex', flexDirection: 'column',
+        background: 'var(--bg-page)', display: 'flex', flexDirection: 'column',
         overflowY: 'auto', padding: '20px 12px',
       }}>
         <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 4px', marginBottom: '8px', fontFamily: "'Sora',sans-serif" }}>

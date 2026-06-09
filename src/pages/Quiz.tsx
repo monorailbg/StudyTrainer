@@ -121,7 +121,7 @@ export default function Quiz() {
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 72px)', background: 'var(--bg-page)' }}>
 
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{

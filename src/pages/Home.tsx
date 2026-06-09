@@ -346,7 +346,7 @@ export default function Home() {
     quizScores.length > 0;
 
   return (
-    <div style={{ background: '#0D1117' }}>
+    <div style={{ background: 'var(--bg-page)' }}>
 
       {/* ── GLOBE HERO ─────────────────────────────────────────────────────── */}
       <section

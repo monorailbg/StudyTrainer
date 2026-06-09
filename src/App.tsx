@@ -32,15 +32,10 @@ function AnimatedRoutes() {
 }
 
 function AppContent() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  useTheme();
 
   return (
-    <div style={{
-      background: isDark ? '#0D1117' : '#F5F1E8',
-      color: isDark ? '#E6EDF3' : '#2C2416',
-      transition: 'background-color 0.3s ease, color 0.3s ease',
-    }}>
+    <div style={{ transition: 'background-color 0.3s ease, color 0.3s ease' }}>
       <Navbar />
       <AnimatedRoutes />
       <CloudStatusBadge />

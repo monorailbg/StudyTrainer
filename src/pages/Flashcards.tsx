@@ -145,7 +145,7 @@ export default function Flashcards() {
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={rootClasses} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: '#0D1117' }}>
+    <div className={rootClasses} style={{ display: 'flex', height: 'calc(100vh - 72px)', background: 'var(--bg-page)' }}>
 
       {/* Sidebar */}
       <aside className="flashcards-sidebar hidden md:flex flex-col" style={{
