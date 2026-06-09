@@ -122,7 +122,7 @@ function SidebarItem({
       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all duration-200 cursor-pointer border-none"
       style={{
         borderRadius: '14px',
-        background: active ? 'rgba(255,255,255,0.07)' : 'transparent',
+        background: active ? 'var(--bg-elevated)' : 'transparent',
         color: active ? 'var(--text-1)' : 'var(--text-2)',
       }}
     >
@@ -167,27 +167,27 @@ function QuizHistoryPanel({ history, onRedo }: {
   return (
     <div style={{ marginTop: '32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
           {ts('Past Results')}
         </span>
-        <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
+        <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
       </div>
 
       {/* Summary */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '10px', background: '#161B22', border: '1px solid #21262D' }}>
-          <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('Average')}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '10px', background: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{ts('Average')}</span>
           <span style={{ fontSize: '13px', fontWeight: 700, color: scoreColor(avgPct) }}>{avgPct}%</span>
-          <div style={{ width: '60px', height: '4px', background: '#21262D', borderRadius: '999px', overflow: 'hidden' }}>
+          <div style={{ width: '60px', height: '4px', background: 'var(--border-light)', borderRadius: '999px', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${avgPct}%`, background: scoreColor(avgPct), borderRadius: '999px' }} />
           </div>
-          <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} attempts', { n: history.length })}</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} attempts', { n: history.length })}</span>
         </div>
         {bestResult && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: '#161B22', border: '1px solid #21262D' }}>
-            <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('Best')}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{ts('Best')}</span>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#56D364' }}>{bestResult.scorePercent}%</span>
-            <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('on {date}', { date: relDate(bestResult.completedAt) })}</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('on {date}', { date: relDate(bestResult.completedAt) })}</span>
           </div>
         )}
       </div>
@@ -198,13 +198,13 @@ function QuizHistoryPanel({ history, onRedo }: {
           const shown = showAll ? results : results.slice(0, 5);
           return (
             <div key={title}>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#8B949E', marginBottom: '8px' }}>{title}</div>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '8px' }}>{title}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {shown.map(r => (
                   <div key={r.id} style={{
                     display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
                     padding: '10px 14px', borderRadius: '10px',
-                    background: '#161B22', border: '1px solid #21262D',
+                    background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
                   }}>
                     <span style={{
                       padding: '3px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
@@ -215,9 +215,9 @@ function QuizHistoryPanel({ history, onRedo }: {
                     }}>
                       {r.scorePercent}%
                     </span>
-                    <span style={{ fontSize: '11px', color: '#8B949E' }}>{r.correctAnswers} / {r.totalQuestions}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{relDate(r.completedAt)}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{fmtTime(r.timeTakenSeconds)}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>{r.correctAnswers} / {r.totalQuestions}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{relDate(r.completedAt)}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{fmtTime(r.timeTakenSeconds)}</span>
                     <div style={{ flex: 1 }} />
                     {r.incorrectAnswers > 0 && (
                       <button
@@ -238,7 +238,7 @@ function QuizHistoryPanel({ history, onRedo }: {
               </div>
               {results.length > 5 && (
                 <button onClick={() => setShowAll(s => !s)} style={{
-                  marginTop: '6px', fontSize: '11px', color: '#484F58', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+                  marginTop: '6px', fontSize: '11px', color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
                 }}>
                   {showAll ? ts('Show less') : ts('+ {n} more', { n: results.length - 5 })}
                 </button>
@@ -269,7 +269,7 @@ function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }
         </svg>
       </div>
       <div className="text-sm font-semibold mb-2" style={{ color: 'var(--text-1)' }}>{ts('No content yet')}</div>
-      <div className="text-xs mb-5 text-center max-w-xs" style={{ color: '#8B949E' }}>
+      <div className="text-xs mb-5 text-center max-w-xs" style={{ color: 'var(--text-2)' }}>
         {ts('Upload a file and use AI to generate flashcards, notes, or a quiz.')}
       </div>
       <button
@@ -331,7 +331,7 @@ function SubjectBanner({
 
   return (
     <div style={{
-      background: `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, #0D1117 100%)`,
+      background: `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, var(--bg-page) 100%)`,
       border: `1.5px solid ${subject.color}28`,
       borderRadius: '24px',
       padding: '32px 36px',
@@ -372,7 +372,7 @@ function SubjectBanner({
                 {subject.title}
               </div>
             </div>
-            <div style={{ fontSize: 13, color: '#8B949E', paddingLeft: 20 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-2)', paddingLeft: 20 }}>
               {subject.description}
             </div>
           </div>
@@ -390,12 +390,12 @@ function SubjectBanner({
                 <span style={{ fontSize: 13, fontWeight: 700, color: subject.color }}>
                   {ts('{n} days left', { n: daysLeft })}
                 </span>
-                <span style={{ fontSize: 10, color: '#8B949E' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
                   {examDate.date.replace(/-/g, '/')}
                 </span>
                 <button
                   onClick={onExamDateClear}
-                  style={{ background: 'none', border: 'none', color: '#484F58', cursor: 'pointer', fontSize: 13, padding: '0 0 0 4px', lineHeight: 1 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, padding: '0 0 0 4px', lineHeight: 1 }}
                 >
                   ×
                 </button>
@@ -406,8 +406,8 @@ function SubjectBanner({
                 placeholder={ts('Set exam date')}
                 maxLength={10}
                 style={{
-                  background: 'transparent', border: '1px solid #30363D', borderRadius: 8,
-                  color: '#8B949E', padding: '7px 12px', fontSize: 12, outline: 'none',
+                  background: 'transparent', border: '1px solid var(--border-base)', borderRadius: 8,
+                  color: 'var(--text-2)', padding: '7px 12px', fontSize: 12, outline: 'none',
                   fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '136px',
                 }}
                 onChange={e => {
@@ -426,12 +426,12 @@ function SubjectBanner({
           {pills.length > 0 ? pills.map(p => (
             <span key={p.label} style={{
               padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-              color: '#8B949E', background: '#161B22', border: '1px solid #30363D',
+              color: 'var(--text-2)', background: 'var(--bg-surface)', border: '1px solid var(--border-base)',
             }}>
               {p.label}
             </span>
           )) : (
-            <span style={{ fontSize: 12, color: '#484F58' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
               {ts('No content yet — upload files to begin')}
             </span>
           )}
@@ -477,7 +477,7 @@ function SectionCard({
         const el = e.currentTarget as HTMLElement;
         el.style.transform = '';
         el.style.boxShadow = '';
-        el.style.borderColor = inactive ? '#21262D' : color + '30';
+        el.style.borderColor = inactive ? 'var(--border-light)' : color + '30';
       }}
     >
       {/* Decorative glow */}
@@ -502,22 +502,22 @@ function SectionCard({
       {/* Bottom content */}
       <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{
-          fontSize: 38, fontWeight: 800, color: inactive ? '#30363D' : 'var(--accent-primary)',
+          fontSize: 38, fontWeight: 800, color: inactive ? 'var(--text-3)' : 'var(--accent-primary)',
           fontFamily: "'Sora',sans-serif", lineHeight: 1, marginBottom: 4,
           textShadow: inactive ? 'none' : `0 0 25px ${color}35`,
         }}>
           {stat}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: inactive ? '#484F58' : 'var(--text-1)', marginBottom: 3 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: inactive ? 'var(--text-2)' : 'var(--text-1)', marginBottom: 3 }}>
           {label}
         </div>
         {subtext && (
-          <div style={{ fontSize: 11, color: inactive ? '#30363D' : color + 'BB', fontWeight: 500 }}>
+          <div style={{ fontSize: 11, color: inactive ? 'var(--text-3)' : color + 'BB', fontWeight: 500 }}>
             {subtext}
           </div>
         )}
         {secondary && (
-          <div style={{ fontSize: 10, color: '#484F58', marginTop: 4 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
             {secondary}
           </div>
         )}
@@ -714,7 +714,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   return (
     <div>
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+        <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: 'var(--text-2)' }}>
           {label} ({items.length}){kindFolders.length > 0 && ` · ${ts('{n} folders', { n: kindFolders.length })}`}
         </div>
         <div className="flex items-center gap-3 ml-auto">
@@ -726,8 +726,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
               style={{
                 display: 'flex', alignItems: 'center', gap: '5px',
                 background: sortKey !== 'none' ? color + '14' : 'transparent',
-                color: sortKey !== 'none' ? color : '#8B949E',
-                border: `1px solid ${sortKey !== 'none' ? color + '33' : '#30363D'}`,
+                color: sortKey !== 'none' ? color : 'var(--text-2)',
+                border: `1px solid ${sortKey !== 'none' ? color + '33' : 'var(--border-base)'}`,
                 borderRadius: '999px', fontSize: '11px', fontWeight: 600, padding: '5px 10px',
                 cursor: 'pointer', transition: 'all 0.15s',
               }}
@@ -742,7 +742,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                 <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setShowSortMenu(false)} />
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                  background: '#161B22', border: '1px solid #30363D', borderRadius: '12px',
+                  background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderRadius: '12px',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.4)', padding: '4px', zIndex: 50,
                   minWidth: '136px',
                 }}>
@@ -760,7 +760,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                         display: 'block', width: '100%', textAlign: 'left',
                         padding: '8px 12px', borderRadius: '8px',
                         background: sortKey === key ? color + '14' : 'transparent',
-                        color: sortKey === key ? color : '#C9D1D9',
+                        color: sortKey === key ? color : 'var(--text-1)',
                         border: 'none', cursor: 'pointer',
                         fontSize: '12px', fontWeight: sortKey === key ? 600 : 400,
                       }}
@@ -781,7 +781,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
             onBlur={submit}
             onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setNewName(''); setCreating(false); } }}
             placeholder={ts('Folder name…')}
-            style={{ background: '#0D1117', border: `1px solid ${color}55`, borderRadius: '999px', color: '#E6EDF3', fontSize: '11px', padding: '5px 12px', outline: 'none', width: '160px' }}
+            style={{ background: 'var(--bg-page)', border: `1px solid ${color}55`, borderRadius: '999px', color: 'var(--text-1)', fontSize: '11px', padding: '5px 12px', outline: 'none', width: '160px' }}
           />
         ) : (
           <button
@@ -814,9 +814,9 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flex: 1, minWidth: 0 }}
                 >
                   <span style={{ color }}><IconFolder /></span>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', flex: 1, textAlign: 'left' }}>{folder.name}</span>
-                  <span style={{ fontSize: '11px', color: '#8B949E' }}>{folderItems.length}</span>
-                  <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: '#484F58' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', flex: 1, textAlign: 'left' }}>{folder.name}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>{folderItems.length}</span>
+                  <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: 'var(--text-3)' }}>
                     <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -824,15 +824,15 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                   onClick={() => onDeleteFolder(folder.id)}
                   aria-label={ts('Delete folder')}
                   className="cursor-pointer"
-                  style={{ background: 'transparent', border: 'none', color: '#484F58', padding: '2px', lineHeight: 0, flexShrink: 0 }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', padding: '2px', lineHeight: 0, flexShrink: 0 }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
                 >
                   <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               </div>
               {!isCollapsed && (folderItems.length === 0 ? (
-                <div className="px-1 pb-1 text-[11px]" style={{ color: '#484F58' }}>{ts('Empty — drag items here.')}</div>
+                <div className="px-1 pb-1 text-[11px]" style={{ color: 'var(--text-3)' }}>{ts('Empty — drag items here.')}</div>
               ) : (
                 <div className={gridClass}>
                   {folderItems.map(it => draggableItem(it))}
@@ -847,8 +847,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
       {zone(null, <>
         {kindFolders.length > 0 && (
           <div className="flex items-center gap-2 mb-2.5 px-1">
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#8B949E' }}>{ts('Unfiled')}</span>
-            <span style={{ fontSize: '11px', color: '#484F58' }}>{unfiled.length}</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-2)' }}>{ts('Unfiled')}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{unfiled.length}</span>
           </div>
         )}
         <div className={gridClass}>
@@ -1469,7 +1469,7 @@ export default function SubjectPage() {
   if (!subject) {
     return (
       <div className="text-center py-20 px-6">
-        <div className="text-2xl mb-3" style={{ fontFamily: "'Sora',sans-serif", color: '#E6EDF3' }}>{ts('Subject not found')}</div>
+        <div className="text-2xl mb-3" style={{ fontFamily: "'Sora',sans-serif", color: 'var(--text-1)' }}>{ts('Subject not found')}</div>
         <Link to="/" className="text-sm no-underline" style={{ color: '#3D7EFF' }}>{t('back')}</Link>
       </div>
     );
@@ -1484,24 +1484,24 @@ export default function SubjectPage() {
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="subject-breadcrumb-strip flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
-        borderBottom: '1px solid #21262D',
+        borderBottom: '1px solid var(--border-light)',
         background: 'var(--bg-page)',
       }}>
-        <Link to="/" className="flex-shrink-0 transition-colors" style={{ color: '#8B949E', textDecoration: 'none', fontSize: '12px', fontWeight: 500 }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#E6EDF3')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#8B949E')}>
+        <Link to="/" className="flex-shrink-0 transition-colors" style={{ color: 'var(--text-2)', textDecoration: 'none', fontSize: '12px', fontWeight: 500 }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-1)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-2)')}>
           {t('nav_dashboard')}
         </Link>
-        <span className="flex-shrink-0" style={{ color: '#484F58', fontSize: '11px' }}>›</span>
+        <span className="flex-shrink-0" style={{ color: 'var(--text-3)', fontSize: '11px' }}>›</span>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: subject.color, boxShadow: `0 0 8px ${subject.color}`, flexShrink: 0 }} />
         <div className="flex-1 min-w-0 flex items-baseline gap-2.5">
-          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: '#E6EDF3' }}>
+          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: 'var(--text-1)' }}>
             {subject.title}
           </span>
           {view !== 'dashboard' && (
             <>
-              <span className="flex-shrink-0 hidden sm:inline" style={{ color: '#484F58', fontSize: '11px' }}>›</span>
-              <span className="hidden sm:inline" style={{ fontSize: '12px', fontWeight: 500, color: '#8B949E', textTransform: 'capitalize' }}>
+              <span className="flex-shrink-0 hidden sm:inline" style={{ color: 'var(--text-3)', fontSize: '11px' }}>›</span>
+              <span className="hidden sm:inline" style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-2)', textTransform: 'capitalize' }}>
                 {view === 'upload' ? ts('Files') : view}
               </span>
             </>
@@ -1518,8 +1518,8 @@ export default function SubjectPage() {
                 style={{
                   borderRadius: '999px',
                   background: activeLevel === level ? subject.color + '20' : 'transparent',
-                  color:      activeLevel === level ? subject.color          : '#8B949E',
-                  borderColor: activeLevel === level ? subject.color + '45'  : '#30363D',
+                  color:      activeLevel === level ? subject.color          : 'var(--text-2)',
+                  borderColor: activeLevel === level ? subject.color + '45'  : 'var(--border-base)',
                 }}
               >
                 {level}
@@ -1530,7 +1530,7 @@ export default function SubjectPage() {
       </div>
 
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}
-      <div className="subject-mobile-tabs md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: 'var(--bg-page)' }}>
+      <div className="subject-mobile-tabs md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--bg-page)' }}>
         {([
           { id: 'dashboard',  label: ts('Overview'), dot: false },
           { id: 'upload',     label: ts('Files'),    dot: false },
@@ -1550,7 +1550,7 @@ export default function SubjectPage() {
             style={{
               borderRadius: '999px',
               background:  view === id ? subject.color + '20' : 'transparent',
-              color:       view === id ? subject.color : '#8B949E',
+              color:       view === id ? subject.color : 'var(--text-2)',
               borderColor: view === id ? subject.color + '45' : 'transparent',
             }}
           >
@@ -1572,8 +1572,8 @@ export default function SubjectPage() {
             style={{
               position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
               zIndex: 30, width: '20px', height: '48px', borderRadius: '0 8px 8px 0',
-              background: 'var(--bg-surface)', border: '1px solid #30363D', borderLeft: 'none',
-              color: '#8B949E', cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderLeft: 'none',
+              color: 'var(--text-2)', cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
               fontSize: '9px',
             }}
           >
@@ -1585,7 +1585,7 @@ export default function SubjectPage() {
         <aside className="subject-sidebar hidden md:flex flex-col" style={{
           width: sidebarOpen ? '360px' : '0',
           flexShrink: 0,
-          borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
+          borderRight: sidebarOpen ? '1px solid var(--border-light)' : 'none',
           background: 'var(--bg-page)',
           overflow: 'hidden',
           transition: 'width 0.25s ease',
@@ -1595,16 +1595,16 @@ export default function SubjectPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: sidebarOpen ? '20px 20px 12px' : '0',
             flexShrink: 0,
-            borderBottom: '1px solid #21262D',
+            borderBottom: '1px solid var(--border-light)',
             background: 'var(--bg-page)',
           }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
               {subject.title.slice(0, 22)}
             </span>
             <button
               onClick={() => setSidebarOpen(false)}
               title={ts('Collapse sidebar')}
-              style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '6px', color: '#484F58', cursor: 'pointer', fontSize: '9px', padding: '3px 6px', flexShrink: 0 }}
+              style={{ background: 'transparent', border: '1px solid var(--border-base)', borderRadius: '6px', color: 'var(--text-3)', cursor: 'pointer', fontSize: '9px', padding: '3px 6px', flexShrink: 0 }}
             >
               ◄
             </button>
@@ -1633,10 +1633,10 @@ export default function SubjectPage() {
                 background: 'none', border: 'none', cursor: 'pointer', padding: '0 10px', marginBottom: '4px',
               }}
             >
-              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', fontFamily: "'Sora',sans-serif" }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', fontFamily: "'Sora',sans-serif" }}>
                 {ts('Files')} ({levelFiles.length})
               </span>
-              <span style={{ fontSize: '10px', color: '#484F58' }}>{filesExpanded ? '▾' : '▸'}</span>
+              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{filesExpanded ? '▾' : '▸'}</span>
             </button>
 
             {filesExpanded && (
@@ -1681,9 +1681,9 @@ export default function SubjectPage() {
                       {sorted.length > 3 && (
                         <button
                           onClick={() => setSidebarFilesExpanded(v => !v)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: '8px', color: '#484F58', fontSize: '10px', fontWeight: 600, transition: 'color 0.15s' }}
-                          onMouseEnter={e => (e.currentTarget.style.color = '#8B949E')}
-                          onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: '8px', color: 'var(--text-3)', fontSize: '10px', fontWeight: 600, transition: 'color 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-2)')}
+                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
                         >
                           <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ flexShrink: 0, transform: sidebarFilesExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
                             <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -1700,11 +1700,11 @@ export default function SubjectPage() {
                       <div key={folder.id + '-hdr'} style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: '2px' }}>
                         <button
                           onClick={onClick}
-                          style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '7px 4px 7px 10px', borderRadius: '10px', color: '#C9D1D9', fontSize: '13px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '7px 4px 7px 10px', borderRadius: '10px', color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}
                         >
                           <span style={{ color: subject.color, flexShrink: 0, transform: 'scale(1.2)', transformOrigin: 'center' }}><IconFolder /></span>
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
-                          {count > 0 && <span style={{ color: '#8B949E', flexShrink: 0, fontSize: '12px' }}>{count}</span>}
+                          {count > 0 && <span style={{ color: 'var(--text-2)', flexShrink: 0, fontSize: '12px' }}>{count}</span>}
                         </button>
                         <button
                           onClick={() => setExpandedSidebarFolderIds(prev => {
@@ -1712,7 +1712,7 @@ export default function SubjectPage() {
                             if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id);
                             return next;
                           })}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 10px 7px 4px', color: '#8B949E', flexShrink: 0, lineHeight: 0 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 10px 7px 4px', color: 'var(--text-2)', flexShrink: 0, lineHeight: 0 }}
                         >
                           <svg viewBox="0 0 10 6" width="11" height="11" fill="none" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
                             <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -1734,7 +1734,7 @@ export default function SubjectPage() {
                       );
                     })}
                     {unfiledFiles.length > 0 && (<>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', padding: '6px 10px 4px', fontFamily: "'Sora',sans-serif" }}>{ts('Unfiled')}</div>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-2)', padding: '6px 10px 4px', fontFamily: "'Sora',sans-serif" }}>{ts('Unfiled')}</div>
                       {unfiledFiles.map(f => sidebarFileItem(f, true))}
                     </>)}
                   </>);
@@ -1745,7 +1745,7 @@ export default function SubjectPage() {
 
           {/* Generated content section */}
           <div style={{ marginTop: '8px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px', fontFamily: "'Sora',sans-serif" }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '4px', fontFamily: "'Sora',sans-serif" }}>
               {ts('Content')}
             </div>
 
@@ -1883,9 +1883,9 @@ export default function SubjectPage() {
                 onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
                 className="text-center cursor-pointer outline-none transition-all duration-300 p-8 sm:p-14"
                 style={{
-                  border: `2px dashed ${isDragging ? subject.color : '#30363D'}`,
+                  border: `2px dashed ${isDragging ? subject.color : 'var(--border-base)'}`,
                   borderRadius: '24px',
-                  background: isDragging ? subject.color + '08' : '#161B22',
+                  background: isDragging ? subject.color + '08' : 'var(--bg-surface)',
                   marginBottom: '20px',
                   transform: isDragging ? 'scale(1.01)' : 'scale(1)',
                 }}
@@ -1906,17 +1906,17 @@ export default function SubjectPage() {
                   </svg>
                 </div>
 
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: '16px', color: isDragging ? subject.color : '#E6EDF3', marginBottom: '6px' }}>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: '16px', color: isDragging ? subject.color : 'var(--text-1)', marginBottom: '6px' }}>
                   {isDragging ? t('drop_active') : t('upload_title')}
                 </div>
-                <div style={{ fontSize: '13px', color: '#8B949E', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '16px' }}>
                   {t('upload_desc')}
                 </div>
                 <span style={{
                   display: 'inline-flex', alignItems: 'center',
-                  background: '#1F2937', border: '1px solid #30363D',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
                   borderRadius: '999px', padding: '3px 10px',
-                  fontSize: '11px', color: '#8B949E',
+                  fontSize: '11px', color: 'var(--text-2)',
                 }}>
                   {t('file_types')}
                 </span>
@@ -1944,9 +1944,9 @@ export default function SubjectPage() {
                         style={{ fontSize: '10px', fontWeight: 600, color: subject.color, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         {ts('Select all')}
                       </button>
-                      <span style={{ color: '#30363D', fontSize: '10px' }}>·</span>
+                      <span style={{ color: 'var(--text-3)', fontSize: '10px' }}>·</span>
                       <button onClick={() => setSelectedFileIds([])}
-                        style={{ fontSize: '10px', fontWeight: 600, color: '#8B949E', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         {ts('None')}
                       </button>
                     </div>
@@ -1961,8 +1961,8 @@ export default function SubjectPage() {
                         onClick={() => !isCompressing && toggleFileSelection(file.id)}
                         style={{
                           display: 'flex', flexDirection: 'column', gap: '6px',
-                          background: isFileSelected ? subject.color + '08' : '#161B22',
-                          border: `1px solid ${isFileSelected ? subject.color + '40' : '#30363D'}`,
+                          background: isFileSelected ? subject.color + '08' : 'var(--bg-surface)',
+                          border: `1px solid ${isFileSelected ? subject.color + '40' : 'var(--border-base)'}`,
                           borderRadius: '12px', padding: '10px',
                           cursor: isCompressing ? 'default' : 'pointer', transition: 'all 0.2s ease', position: 'relative',
                           opacity: isCompressing ? 0.7 : 1,
@@ -1973,7 +1973,7 @@ export default function SubjectPage() {
                           position: 'absolute', top: '8px', left: '8px',
                           width: '14px', height: '14px', borderRadius: '4px',
                           background: isFileSelected ? subject.color : 'transparent',
-                          border: `1.5px solid ${isFileSelected ? subject.color : '#484F58'}`,
+                          border: `1.5px solid ${isFileSelected ? subject.color : 'var(--text-3)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.2s ease', zIndex: 1,
                         }}>
@@ -2014,10 +2014,10 @@ export default function SubjectPage() {
                               onBlur={() => commitRename('file')}
                               onKeyDown={e => { if (e.key === 'Enter') commitRename('file'); if (e.key === 'Escape') setRenaming(null); }}
                               onClick={e => e.stopPropagation()}
-                              style={{ width: '100%', background: '#0D1117', border: `1px solid ${subject.color}55`, borderRadius: '4px', color: '#E6EDF3', fontSize: '10px', padding: '1px 4px', outline: 'none' }}
+                              style={{ width: '100%', background: 'var(--bg-page)', border: `1px solid ${subject.color}55`, borderRadius: '4px', color: 'var(--text-1)', fontSize: '10px', padding: '1px 4px', outline: 'none' }}
                             />
                           ) : (
-                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {file.name}
                             </div>
                           )}
@@ -2049,7 +2049,7 @@ export default function SubjectPage() {
                           <button
                             onClick={e => { e.stopPropagation(); startRename(file.id, file.name, 'file'); }}
                             title={ts('Rename file')}
-                            style={{ width: '22px', height: '22px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', background: 'transparent', color: '#8B949E', border: '1px solid #30363D' }}
+                            style={{ width: '22px', height: '22px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--border-base)' }}
                           >✎</button>
                           <button
                             onClick={e => { e.stopPropagation(); removeFile(file.id); }}
@@ -2080,11 +2080,11 @@ export default function SubjectPage() {
                     <button
                       onClick={() => { setActiveSetId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
-                      style={{ color: '#8B949E' }}
+                      style={{ color: 'var(--text-2)' }}
                     >
                       ← {ts('All flashcards')}
                     </button>
-                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: 'var(--text-2)' }}>
                       {activeSet.name} · {activeSet.cards.length} {t('cards')}
                       {toReview > 0 && (
                         <span style={{ marginLeft: '6px', color: subject.color, fontWeight: 700 }}>
@@ -2156,18 +2156,18 @@ export default function SubjectPage() {
                             onBlur={() => commitRename('set')}
                             onKeyDown={e => { if (e.key === 'Enter') commitRename('set'); if (e.key === 'Escape') setRenaming(null); }}
                             style={{
-                              width: '100%', background: '#0D1117',
+                              width: '100%', background: 'var(--bg-page)',
                               border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              color: 'var(--text-1)', fontSize: '13px', fontWeight: 600,
                               padding: '2px 6px', outline: 'none',
                             }}
                           />
                         ) : (
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {set.name}
                           </div>
                         )}
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span>{ts('{n} cards', { n: set.cards.length })}</span>
                           {toReview > 0 && (
                             <span style={{
@@ -2187,7 +2187,7 @@ export default function SubjectPage() {
                               ✓ {setStats.graduated} graduated
                             </span>
                           )}
-                          <span style={{ color: '#484F58' }}>{new Date(set.createdAt).toLocaleDateString()}</span>
+                          <span style={{ color: 'var(--text-3)' }}>{new Date(set.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <button
@@ -2197,8 +2197,8 @@ export default function SubjectPage() {
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
                           background: isRenaming ? subject.color + '20' : 'transparent',
-                          color: isRenaming ? subject.color : '#484F58',
-                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          color: isRenaming ? subject.color : 'var(--text-3)',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : 'var(--border-base)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.15s ease',
                         }}
@@ -2237,11 +2237,11 @@ export default function SubjectPage() {
                     <button
                       onClick={() => { setActiveNoteId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
-                      style={{ color: '#8B949E' }}
+                      style={{ color: 'var(--text-2)' }}
                     >
                       ← {ts('All notes')}
                     </button>
-                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: 'var(--text-2)' }}>
                       {activeNote.name} · {ts('{n} sections', { n: activeNote.note.sections.length })}
                     </div>
                   </div>
@@ -2301,18 +2301,18 @@ export default function SubjectPage() {
                             onBlur={() => commitRename('note')}
                             onKeyDown={e => { if (e.key === 'Enter') commitRename('note'); if (e.key === 'Escape') setRenaming(null); }}
                             style={{
-                              width: '100%', background: '#0D1117',
+                              width: '100%', background: 'var(--bg-page)',
                               border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              color: 'var(--text-1)', fontSize: '13px', fontWeight: 600,
                               padding: '2px 6px', outline: 'none',
                             }}
                           />
                         ) : (
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {n.name}
                           </div>
                         )}
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px' }}>
                           {ts('{n} sections', { n: n.note.sections.length })} · {new Date(n.createdAt).toLocaleDateString()}
                         </div>
                       </div>
@@ -2323,8 +2323,8 @@ export default function SubjectPage() {
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
                           background: isRenaming ? subject.color + '20' : 'transparent',
-                          color: isRenaming ? subject.color : '#484F58',
-                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          color: isRenaming ? subject.color : 'var(--text-3)',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : 'var(--border-base)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.15s ease',
                         }}
@@ -2375,11 +2375,11 @@ export default function SubjectPage() {
                     <button
                       onClick={() => { setActiveQuizId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
-                      style={{ color: '#8B949E' }}
+                      style={{ color: 'var(--text-2)' }}
                     >
                       ← {ts('All quizzes')}
                     </button>
-                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: 'var(--text-2)' }}>
                       {activeQuiz.name} · {activeQuiz.questions.length} {t('questions')}
                     </div>
                   </div>
@@ -2461,18 +2461,18 @@ export default function SubjectPage() {
                             onBlur={() => commitRename('quiz')}
                             onKeyDown={e => { if (e.key === 'Enter') commitRename('quiz'); if (e.key === 'Escape') setRenaming(null); }}
                             style={{
-                              width: '100%', background: '#0D1117',
+                              width: '100%', background: 'var(--bg-page)',
                               border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              color: 'var(--text-1)', fontSize: '13px', fontWeight: 600,
                               padding: '2px 6px', outline: 'none',
                             }}
                           />
                         ) : (
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {quiz.name}
                           </div>
                         )}
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px' }}>
                           {ts('{n} questions', { n: quiz.questions.length })} · {new Date(quiz.createdAt).toLocaleDateString()}
                         </div>
                       </div>
@@ -2483,8 +2483,8 @@ export default function SubjectPage() {
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
                           background: isRenaming ? subject.color + '20' : 'transparent',
-                          color: isRenaming ? subject.color : '#484F58',
-                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          color: isRenaming ? subject.color : 'var(--text-3)',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : 'var(--border-base)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.15s ease',
                         }}
@@ -2533,14 +2533,14 @@ export default function SubjectPage() {
             <div
               style={{
                 width: 'min(92vw, 340px)', maxHeight: '70vh', overflowY: 'auto',
-                background: '#161B22', border: '1px solid #30363D', borderRadius: '20px',
+                background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderRadius: '20px',
                 boxShadow: '0 18px 50px rgba(0,0,0,0.55)', padding: '16px',
               }}
               className="anim-rise"
             >
               <div className="flex items-center justify-between mb-3">
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3' }}>{ts('Generate')}</div>
-                <div style={{ fontSize: '10px', color: selectedLevelFileIds.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: 'var(--text-1)' }}>{ts('Generate')}</div>
+                <div style={{ fontSize: '10px', color: selectedLevelFileIds.length > 0 ? subject.color : 'var(--text-3)', fontWeight: 600 }}>
                   {ts('{n}/{total} selected', { n: selectedLevelFileIds.length, total: levelFiles.length })}
                 </div>
               </div>
@@ -2561,8 +2561,8 @@ export default function SubjectPage() {
                     style={{
                       borderRadius: '999px',
                       background:   selectedType === type ? subject.color + '20' : 'transparent',
-                      color:        selectedType === type ? subject.color          : '#8B949E',
-                      borderColor:  selectedType === type ? subject.color + '50'   : '#30363D',
+                      color:        selectedType === type ? subject.color          : 'var(--text-2)',
+                      borderColor:  selectedType === type ? subject.color + '50'   : 'var(--border-base)',
                     }}
                   >
                     {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
@@ -2572,7 +2572,7 @@ export default function SubjectPage() {
 
               {/* Language selector */}
               <div className="mb-3">
-                <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Language</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Language</div>
                 <div className="flex gap-1.5">
                   {(['english', 'japanese', 'both'] as const).map(lang => (
                     <button
@@ -2582,8 +2582,8 @@ export default function SubjectPage() {
                       style={{
                         borderRadius: '999px',
                         background:  genLanguage === lang ? subject.color + '20' : 'transparent',
-                        color:       genLanguage === lang ? subject.color         : '#8B949E',
-                        borderColor: genLanguage === lang ? subject.color + '50'  : '#30363D',
+                        color:       genLanguage === lang ? subject.color         : 'var(--text-2)',
+                        borderColor: genLanguage === lang ? subject.color + '50'  : 'var(--border-base)',
                       }}
                     >
                       {lang === 'english' ? 'EN' : lang === 'japanese' ? 'JA' : 'EN + JA'}
@@ -2597,7 +2597,7 @@ export default function SubjectPage() {
                 <div className="mb-3 flex flex-col gap-2.5">
                   {/* Mode: standard vs vocabulary */}
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
                     <div className="flex gap-1.5">
                       {([
                         { key: 'standard',   label: 'Study' },
@@ -2610,8 +2610,8 @@ export default function SubjectPage() {
                           style={{
                             borderRadius: '999px',
                             background:  flashcardMode === key ? subject.color + '20' : 'transparent',
-                            color:       flashcardMode === key ? subject.color         : '#8B949E',
-                            borderColor: flashcardMode === key ? subject.color + '50'  : '#30363D',
+                            color:       flashcardMode === key ? subject.color         : 'var(--text-2)',
+                            borderColor: flashcardMode === key ? subject.color + '50'  : 'var(--border-base)',
                           }}
                         >
                           {label}
@@ -2619,7 +2619,7 @@ export default function SubjectPage() {
                       ))}
                     </div>
                     {flashcardMode === 'vocabulary' && (
-                      <div style={{ fontSize: '10px', color: '#484F58', marginTop: '5px', lineHeight: 1.5 }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-3)', marginTop: '5px', lineHeight: 1.5 }}>
                         Front: word in source language. Back: reading, meaning, example sentence + translation.
                       </div>
                     )}
@@ -2627,10 +2627,10 @@ export default function SubjectPage() {
 
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '10px', color: '#8B949E', fontWeight: 600 }}>{flashcardMode === 'vocabulary' ? 'Words per file' : 'Cards per file'}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-2)', fontWeight: 600 }}>{flashcardMode === 'vocabulary' ? 'Words per file' : 'Cards per file'}</div>
                       <div style={{
                         fontSize: '14px', fontWeight: 700, fontFamily: "'Sora', sans-serif",
-                        color: cardCount === 0 ? '#484F58' : subject.color,
+                        color: cardCount === 0 ? 'var(--text-3)' : subject.color,
                         transition: 'color 0.15s ease',
                       }}>
                         {cardCount === 0 ? 'Undecided' : cardCount}
@@ -2643,16 +2643,16 @@ export default function SubjectPage() {
                       onChange={e => setCardCount(Number(e.target.value) * 5)}
                       style={{ width: '100%', accentColor: subject.color, cursor: 'pointer', display: 'block' }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: '#484F58', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: 'var(--text-3)', userSelect: 'none' }}>
                       <span>Any</span>
                       <span>25</span>
                       <span>50</span>
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
                     <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Supply & demand"
-                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', boxSizing: 'border-box' }} />
+                      style={{ width: '100%', background: 'var(--bg-page)', border: '1px solid var(--border-base)', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: 'var(--text-1)', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 </div>
               )}
@@ -2661,25 +2661,25 @@ export default function SubjectPage() {
               {selectedType === 'notes' && (
                 <div className="mb-3 flex flex-col gap-2.5">
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
                     <div className="flex gap-1.5">
                       {(['concise', 'standard', 'comprehensive'] as const).map(d => (
                         <button key={d} onClick={() => setNotesDetail(d)}
                           className="h-8 px-2.5 text-[10px] border cursor-pointer transition-all duration-200 font-semibold capitalize"
-                          style={{ borderRadius: '999px', background: notesDetail === d ? subject.color + '20' : 'transparent', color: notesDetail === d ? subject.color : '#8B949E', borderColor: notesDetail === d ? subject.color + '50' : '#30363D' }}>
+                          style={{ borderRadius: '999px', background: notesDetail === d ? subject.color + '20' : 'transparent', color: notesDetail === d ? subject.color : 'var(--text-2)', borderColor: notesDetail === d ? subject.color + '50' : 'var(--border-base)' }}>
                           {d === 'comprehensive' ? 'Deep' : d.charAt(0).toUpperCase() + d.slice(1)}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Include</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Include</div>
                     <div className="flex flex-col gap-1.5">
                       {(['formulas', 'diagrams', 'mindmap'] as const).map(item => (
                         <label key={item} className="flex items-center gap-2 cursor-pointer">
                           <input type="checkbox" checked={notesIncludes.includes(item)} onChange={() => toggleInclude(item)}
                             style={{ accentColor: subject.color, width: '13px', height: '13px', cursor: 'pointer' }} />
-                          <span style={{ fontSize: '11px', color: notesIncludes.includes(item) ? '#C9D1D9' : '#8B949E' }}>
+                          <span style={{ fontSize: '11px', color: notesIncludes.includes(item) ? 'var(--text-1)' : 'var(--text-2)' }}>
                             {item === 'formulas' ? '∑ Formulas' : item === 'diagrams' ? '→ Diagrams' : '⊞ Mind-map style'}
                           </span>
                         </label>
@@ -2693,19 +2693,19 @@ export default function SubjectPage() {
               {selectedType === 'quiz' && (
                 <div className="mb-3 flex flex-col gap-2.5">
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
                     <div className="flex gap-1.5 flex-wrap">
                       {[5, 10, 15, 20].map(n => (
                         <button key={n} onClick={() => setQuizCount(n)}
                           className="h-8 w-10 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{ borderRadius: '999px', background: quizCount === n ? subject.color + '20' : 'transparent', color: quizCount === n ? subject.color : '#8B949E', borderColor: quizCount === n ? subject.color + '50' : '#30363D' }}>
+                          style={{ borderRadius: '999px', background: quizCount === n ? subject.color + '20' : 'transparent', color: quizCount === n ? subject.color : 'var(--text-2)', borderColor: quizCount === n ? subject.color + '50' : 'var(--border-base)' }}>
                           {n}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
                     <div className="flex gap-1.5">
                       {([
                         { key: 'easy', label: 'Easy', tint: '#48C78E' },
@@ -2716,7 +2716,7 @@ export default function SubjectPage() {
                         return (
                           <button key={d.key} onClick={() => setQuizDifficulty(d.key)}
                             className="h-8 flex-1 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
-                            style={{ borderRadius: '999px', background: active ? d.tint + '20' : 'transparent', color: active ? d.tint : '#8B949E', borderColor: active ? d.tint + '60' : '#30363D' }}>
+                            style={{ borderRadius: '999px', background: active ? d.tint + '20' : 'transparent', color: active ? d.tint : 'var(--text-2)', borderColor: active ? d.tint + '60' : 'var(--border-base)' }}>
                             {d.label}
                           </button>
                         );
@@ -2724,9 +2724,9 @@ export default function SubjectPage() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
                     <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy"
-                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', boxSizing: 'border-box' }} />
+                      style={{ width: '100%', background: 'var(--bg-page)', border: '1px solid var(--border-base)', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: 'var(--text-1)', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 </div>
               )}
@@ -2734,14 +2734,14 @@ export default function SubjectPage() {
               {/* Custom prompt */}
               <div className="mb-3">
                 <button onClick={() => setShowAdvanced(v => !v)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '10px', fontWeight: 600, color: showAdvanced ? subject.color : '#484F58', display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '10px', fontWeight: 600, color: showAdvanced ? subject.color : 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
                   <span style={{ fontSize: '11px' }}>✦</span> Custom instructions {showAdvanced ? '▴' : '▾'}
                 </button>
                 {showAdvanced && (
                   <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
                     placeholder={`E.g. "Focus on exam definitions", "Use simple language"`}
                     rows={3}
-                    style={{ marginTop: '7px', width: '100%', background: '#0D1117', border: `1px solid ${subject.color}30`, borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
+                    style={{ marginTop: '7px', width: '100%', background: 'var(--bg-page)', border: `1px solid ${subject.color}30`, borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: 'var(--text-1)', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
                 )}
               </div>
 
@@ -2751,9 +2751,9 @@ export default function SubjectPage() {
                 className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-300"
                 style={{
                   borderRadius: '999px',
-                  background:   isGenerating ? '#1F2937' : subject.color + '18',
-                  color:        isGenerating ? '#8B949E' : subject.color,
-                  borderColor:  isGenerating ? '#30363D' : subject.color + '45',
+                  background:   isGenerating ? 'var(--bg-elevated)' : subject.color + '18',
+                  color:        isGenerating ? 'var(--text-2)' : subject.color,
+                  borderColor:  isGenerating ? 'var(--border-base)' : subject.color + '45',
                 }}
               >
                 {isGenerating
@@ -2763,7 +2763,7 @@ export default function SubjectPage() {
               </button>
 
               {isGenerating && genProgress && genProgress.total > 1 && (
-                <div className="mt-2 text-center text-[11px]" style={{ color: '#8B949E' }}>
+                <div className="mt-2 text-center text-[11px]" style={{ color: 'var(--text-2)' }}>
                   File {genProgress.current} of {genProgress.total}…
                 </div>
               )}

@@ -63,7 +63,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         fontFamily: "'LXGW WenKai Mono TC', monospace",
         fontWeight: 700,
         fontSize: 'clamp(26px, 5vw, 40px)',
-        color: 'var(--text-1)',
+        color: '#E6EDF3',
         textAlign: 'center',
         lineHeight: 1.4,
       }}>
@@ -78,7 +78,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', serif",
           fontSize: '16px',
-          color: 'var(--text-2)',
+          color: '#8B949E',
           textAlign: 'center',
           lineHeight: 1.8,
           letterSpacing: '0.02em',
@@ -221,7 +221,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: 'var(--text-1)' }}>
           {srsMode ? ts('All caught up!') : ts('No cards in this set')}
         </div>
-        <div style={{ fontSize: '13px', color: '#8B949E' }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-2)' }}>
           {srsMode
             ? ts("No cards are due for review right now. Come back later!")
             : ts("This set has no cards yet.")}
@@ -230,7 +230,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <button
             onClick={onBack}
             className="h-10 px-6 text-sm font-semibold cursor-pointer"
-            style={{ background: 'transparent', color: '#8B949E', border: '1px solid #30363D', borderRadius: '999px' }}
+            style={{ background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--border-base)', borderRadius: '999px' }}
           >
             {ts('← Back to list')}
           </button>
@@ -251,7 +251,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: 'var(--text-1)' }}>
           {ts('Session complete')}
         </div>
-        <div style={{ fontSize: '13px', color: '#8B949E' }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-2)' }}>
           {ts('You reviewed {n} card{s}. Schedule updated.', { n: reviewed, s: reviewed !== 1 ? 's' : '' })}
         </div>
         <button
@@ -272,7 +272,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <button
             onClick={onBack}
             className="h-10 px-6 text-sm font-semibold cursor-pointer"
-            style={{ background: 'transparent', color: '#8B949E', border: '1px solid #30363D', borderRadius: '999px' }}
+            style={{ background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--border-base)', borderRadius: '999px' }}
           >
             {ts('← Back to list')}
           </button>
@@ -306,7 +306,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
     <>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '70vh', justifyContent: 'center', paddingTop: '12px', paddingBottom: '24px' }}>
       {/* Progress bar */}
-      <div className="flashcard-progress-bar-track h-px mb-5 overflow-hidden" style={{ width: '100%', background: '#30363D', borderRadius: '1px' }}>
+      <div className="flashcard-progress-bar-track h-px mb-5 overflow-hidden" style={{ width: '100%', background: 'var(--border-base)', borderRadius: '1px' }}>
         <div
           className="h-full"
           style={{
@@ -351,7 +351,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
 
       {/* Counter + topic + settings */}
       <div className="flashcard-meta flex items-center justify-between mb-4" style={{ width: cardW }}>
-        <span className="mono text-xs" style={{ color: '#8B949E' }}>
+        <span className="mono text-xs" style={{ color: 'var(--text-2)' }}>
           {srsMode
             ? `${queue.length} remaining`
             : `${index + 1} / ${cards.length}`}
@@ -369,13 +369,13 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 aria-label={ts('Settings')}
                 style={{
                   width: '28px', height: '28px', borderRadius: '8px', cursor: 'pointer',
-                  background: showSettings ? '#21262D' : 'transparent',
-                  border: `1px solid ${showSettings ? '#30363D' : 'transparent'}`,
-                  color: '#484F58', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: showSettings ? 'var(--bg-elevated)' : 'transparent',
+                  border: `1px solid ${showSettings ? 'var(--border-base)' : 'transparent'}`,
+                  color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.15s',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#8B949E'; (e.currentTarget as HTMLElement).style.borderColor = '#30363D'; }}
-                onMouseLeave={e => { if (!showSettings) { (e.currentTarget as HTMLElement).style.color = '#484F58'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; } }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-2)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; }}
+                onMouseLeave={e => { if (!showSettings) { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; } }}
               >
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
                   <path d="M8 10a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" strokeWidth="1.3"/>
@@ -391,12 +391,12 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                   />
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
-                    background: '#161B22', border: '1px solid #30363D', borderRadius: '12px',
+                    background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderRadius: '12px',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.5)', padding: '6px', minWidth: '200px',
                   }}>
                     {!confirmReset ? (
                       <>
-                        <div style={{ padding: '6px 10px 8px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58' }}>
+                        <div style={{ padding: '6px 10px 8px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
                           {ts('SRS Settings')}
                         </div>
                         <button
@@ -418,7 +418,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                       </>
                     ) : (
                       <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <div style={{ fontSize: '12px', color: '#C9D1D9', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-1)', lineHeight: 1.5 }}>
                           {ts('This clears all SRS data for {n} cards. Cannot be undone.', { n: cards.length })}
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
@@ -445,8 +445,8 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                             onClick={() => setConfirmReset(false)}
                             style={{
                               flex: 1, padding: '7px 0', borderRadius: '8px', cursor: 'pointer',
-                              background: 'transparent', color: '#8B949E',
-                              border: '1px solid #30363D', fontSize: '12px', fontWeight: 600,
+                              background: 'transparent', color: 'var(--text-2)',
+                              border: '1px solid var(--border-base)', fontSize: '12px', fontWeight: 600,
                             }}
                           >
                             {ts('Cancel')}
@@ -492,7 +492,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 fontFamily: "'LXGW WenKai Mono TC', monospace",
                 fontWeight: 700,
                 fontSize: 'clamp(40px, 12vw, 72px)',
-                color: 'var(--text-1)',
+                color: '#E6EDF3',
                 textAlign: 'center',
                 lineHeight: 1.1,
                 letterSpacing: '0.06em',
@@ -500,7 +500,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 {card.front}
               </div>
             ) : (
-              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: 'var(--text-1)', lineHeight: 1.45 }}>
+              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: '#E6EDF3', lineHeight: 1.45 }}>
                 {card.front}
               </div>
             )}
@@ -529,7 +529,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             {isVocabCard && vocab ? (
               <VocabBack vocab={vocab} color={color} />
             ) : (
-              <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: 'var(--text-1)', lineHeight: 1.65 }}>
+              <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: '#E6EDF3', lineHeight: 1.65 }}>
                 {card.back}
               </div>
             )}
@@ -558,11 +558,11 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                   </button>
                 ))}
               </div>
-              <div className="hidden md:block text-center mt-3 text-xs" style={{ color: '#484F58' }}>
+              <div className="hidden md:block text-center mt-3 text-xs" style={{ color: 'var(--text-3)' }}>
                 {ts('How well did you recall this?')}{' '}
-                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>1</kbd>
+                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)' }}>1</kbd>
                 –
-                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>4</kbd>
+                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)' }}>4</kbd>
               </div>
             </div>
           ) : (
@@ -574,7 +574,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               >
                 {ts('Show answer')}
               </button>
-              <span className="text-xs" style={{ color: '#484F58' }}>
+              <span className="text-xs" style={{ color: 'var(--text-3)' }}>
                 {ts('{n} reviewed this session', { n: reviewed })}
               </span>
             </div>
@@ -586,7 +586,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 onClick={prev}
                 disabled={index === 0}
                 className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-                style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
+                style={{ background: 'var(--bg-surface)', color: 'var(--text-2)', border: '1px solid var(--border-base)', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
                 aria-label={ts('Previous card')}
               >
                 {ts('← Prev')}
@@ -604,17 +604,17 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 onClick={next}
                 disabled={index === cards.length - 1}
                 className="h-10 px-5 text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-                style={{ background: '#161B22', color: '#8B949E', border: '1px solid #30363D', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
+                style={{ background: 'var(--bg-surface)', color: 'var(--text-2)', border: '1px solid var(--border-base)', borderRadius: '9999px', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 3px rgba(0,0,0,0.3)' }}
                 aria-label={ts('Next card')}
               >
                 {ts('Next →')}
               </button>
             </div>
 
-            <div className="text-center mt-3 text-xs" style={{ color: '#484F58' }}>
-              <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>←</kbd>
+            <div className="text-center mt-3 text-xs" style={{ color: 'var(--text-3)' }}>
+              <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)' }}>←</kbd>
               {' '}/{' '}
-              <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>→</kbd>
+              <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)' }}>→</kbd>
               {' '}{ts('navigate')}
             </div>
           </>
