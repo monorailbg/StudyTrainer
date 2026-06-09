@@ -63,7 +63,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         fontFamily: "'LXGW WenKai Mono TC', monospace",
         fontWeight: 700,
         fontSize: 'clamp(26px, 5vw, 40px)',
-        color: '#E6EDF3',
+        color: 'var(--text-1)',
         textAlign: 'center',
         lineHeight: 1.4,
       }}>
@@ -78,7 +78,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', serif",
           fontSize: '16px',
-          color: '#C9D1D9',
+          color: 'var(--text-2)',
           textAlign: 'center',
           lineHeight: 1.8,
           letterSpacing: '0.02em',
@@ -218,7 +218,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             <path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: 'var(--text-1)' }}>
           {srsMode ? ts('All caught up!') : ts('No cards in this set')}
         </div>
         <div style={{ fontSize: '13px', color: '#8B949E' }}>

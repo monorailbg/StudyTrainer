@@ -183,13 +183,13 @@ export default function Navbar() {
             <div>
               <div style={{
                 fontFamily: "'Sora', sans-serif", fontWeight: 800,
-                fontSize: '17px', color: '#E6EDF3', letterSpacing: '-0.03em', lineHeight: 1,
+                fontSize: '17px', color: 'var(--accent-primary)', letterSpacing: '-0.03em', lineHeight: 1,
               }}>
                 GBS
               </div>
               <div style={{
                 fontFamily: "'Inter', sans-serif", fontSize: '8.5px', fontWeight: 500,
-                color: '#3D7EFF', letterSpacing: '0.22em', textTransform: 'uppercase',
+                color: 'var(--accent-primary)', letterSpacing: '0.22em', textTransform: 'uppercase',
                 lineHeight: 1, marginTop: '4px',
               }}>
                 {ts('Study Trainer')}

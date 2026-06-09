@@ -95,18 +95,22 @@
   --text-1: #E6EDF3;
   --text-2: #8B949E;
   --text-3: #484F58;
+  --accent-primary: #3D7EFF;
+  --accent-orange: #FF8C42;
 }
 
 body.theme-light {
-  --bg-page:     #F5F1E8;
+  --bg-page:     #F9F6F0;
   --bg-nav:      #EDE8DC;
   --bg-surface:  #EDE8DC;
   --bg-elevated: #E3DDD2;
   --border-light: #D0C8B8;
   --border-base:  #C0B8A8;
-  --text-1: #2C2416;
+  --text-1: #3D3428;
   --text-2: #6B5D4E;
   --text-3: #9B8B78;
+  --accent-primary: #8B6F47;
+  --accent-orange: #D97706;
 }
 
 /* ── Reset ───────────────────────────────────────────────────────── */

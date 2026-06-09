@@ -368,7 +368,7 @@ function SubjectBanner({
                 boxShadow: `0 0 14px ${subject.color}`,
                 flexShrink: 0,
               }} />
-              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, color: '#E6EDF3' }}>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, color: 'var(--text-1)' }}>
                 {subject.title}
               </div>
             </div>
@@ -454,8 +454,8 @@ function SectionCard({
     <div
       onClick={onClick}
       style={{
-        background: `linear-gradient(135deg, ${inactive ? '#161B22' : color + '10'} 0%, #161B22 100%)`,
-        border: `1.5px solid ${inactive ? '#21262D' : color + '30'}`,
+        background: `linear-gradient(135deg, ${inactive ? 'var(--bg-surface)' : color + '10'} 0%, 'var(--bg-surface)' 100%)`,
+        border: `1.5px solid ${inactive ? 'var(--border-base)' : color + '30'}`,
         borderRadius: 20,
         padding: 22,
         minHeight: 170,
@@ -502,13 +502,13 @@ function SectionCard({
       {/* Bottom content */}
       <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{
-          fontSize: 38, fontWeight: 800, color: inactive ? '#30363D' : color,
+          fontSize: 38, fontWeight: 800, color: inactive ? '#30363D' : 'var(--accent-primary)',
           fontFamily: "'Sora',sans-serif", lineHeight: 1, marginBottom: 4,
           textShadow: inactive ? 'none' : `0 0 25px ${color}35`,
         }}>
           {stat}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: inactive ? '#484F58' : '#E6EDF3', marginBottom: 3 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: inactive ? '#484F58' : 'var(--text-1)', marginBottom: 3 }}>
           {label}
         </div>
         {subtext && (

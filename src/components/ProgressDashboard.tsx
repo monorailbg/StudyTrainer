@@ -37,7 +37,7 @@ const StatCard = ({ label, value, color, subtext, bgGradient }: {
       borderRadius: '50%', background: color + '04', pointerEvents: 'none',
     }} />
     <div style={{ position: 'relative', zIndex: 1 }}>
-      <div style={{ fontSize: '11px', color: '#8B949E', marginBottom: '6px', fontWeight: 500, letterSpacing: '0.5px' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-2)', marginBottom: '6px', fontWeight: 500, letterSpacing: '0.5px' }}>
         {label}
       </div>
     </div>
@@ -108,7 +108,7 @@ export function FlashcardProgressDashboard({ stats, color }: {
         boxShadow: '0 8px 24px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.05)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1, #E6EDF3)' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>
             {ts('Mastery Progress')}
           </span>
           <span style={{ fontSize: '12px', fontWeight: 700, color, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -116,8 +116,8 @@ export function FlashcardProgressDashboard({ stats, color }: {
           </span>
         </div>
         <div style={{
-          height: '10px', background: 'var(--bg-page, #0D1117)', borderRadius: '999px', overflow: 'hidden',
-          border: `1px solid var(--border-base, #30363D)`,
+          height: '10px', background: 'var(--bg-page)', borderRadius: '999px', overflow: 'hidden',
+          border: `1px solid var(--border-base)`,
           boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
         }}>
           <div style={{
@@ -227,7 +227,7 @@ export function QuizProgressDashboard({ stats, color }: {
         boxShadow: '0 8px 24px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.05)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1, #E6EDF3)' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>
             {ts('Accuracy')}
           </span>
           <span style={{ fontSize: '12px', fontWeight: 700, color: hasHistory ? color : '#484F58', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -235,8 +235,8 @@ export function QuizProgressDashboard({ stats, color }: {
           </span>
         </div>
         <div style={{
-          height: '10px', background: 'var(--bg-page, #0D1117)', borderRadius: '999px', overflow: 'hidden',
-          border: `1px solid var(--border-base, #30363D)`,
+          height: '10px', background: 'var(--bg-page)', borderRadius: '999px', overflow: 'hidden',
+          border: `1px solid var(--border-base)`,
           boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
         }}>
           <div style={{

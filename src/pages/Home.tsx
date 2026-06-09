@@ -137,10 +137,10 @@ function ProgressRow({ label, read, total, color, delay, mounted }: {
   return (
     <div className="flex items-center gap-2">
       <span className="text-[9px] font-semibold uppercase tracking-[0.08em] flex-shrink-0" style={{ color: '#8B949E', width: '34px' }}>{label}</span>
-      <div className="flex-1 overflow-hidden" style={{ height: '4px', background: '#0D1117', borderRadius: '999px' }}>
+      <div className="flex-1 overflow-hidden" style={{ height: '4px', background: 'var(--border-light)', borderRadius: '999px' }}>
         <div style={{
           height: '100%', width: mounted && total > 0 ? `${pct}%` : '0%',
-          background: color, borderRadius: '999px',
+          background: 'var(--accent-primary)', borderRadius: '999px',
           transition: `width 600ms cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
         }} />
       </div>
@@ -192,7 +192,7 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
 
           {/* Text */}
           <div className="flex-1">
-            <div className="text-sm font-semibold leading-snug mb-1" style={{ fontFamily: "'Sora',sans-serif", color: '#E6EDF3' }}>
+            <div className="text-sm font-semibold leading-snug mb-1" style={{ fontFamily: "'Sora',sans-serif", color: 'var(--text-1)' }}>
               {subject.title}
             </div>
             <div className="text-[11px] leading-relaxed" style={{ color: '#8B949E' }}>
@@ -601,7 +601,7 @@ export default function Home() {
         <div className="mb-10">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#8B949E' }}>
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--text-2)' }}>
                 {t('core_subjects')}
               </span>
               <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: '#1F2937', color: '#8B949E', border: '1px solid #30363D' }}>
@@ -612,8 +612,8 @@ export default function Home() {
             <button
               onClick={() => setManaging(true)}
               className="flex items-center gap-1.5 ml-3 h-8 px-3.5 text-xs font-semibold cursor-pointer transition-all duration-300"
-              style={{ borderRadius: '999px', background: '#3D7EFF18', color: '#3D7EFF', border: '1px solid #3D7EFF35' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px #3D7EFF33'; }}
+              style={{ borderRadius: '999px', background: 'var(--accent-primary)18', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)35' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px var(--accent-primary)33'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
             >
               <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>

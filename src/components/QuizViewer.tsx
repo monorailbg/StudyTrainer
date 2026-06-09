@@ -463,7 +463,7 @@ function FocusedMode({
         boxShadow: '0 2px 20px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04) inset',
       }}>
         <div style={{ padding: 'clamp(16px, 4vw, 32px) clamp(14px, 4vw, 36px) clamp(12px, 2vw, 20px)', margin: '0 0 4px' }}>
-          <div style={{ fontSize: '20px', fontWeight: 700, color: 'rgba(255,255,255,0.97)', lineHeight: 1.5, letterSpacing: '0.005em' }}>
+          <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, letterSpacing: '0.005em' }}>
             {q.question}
           </div>
         </div>
@@ -564,7 +564,7 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
             </div>
             <button
               onClick={() => { setAnswers({}); setSubmitted(false); }}
-              style={{ height: '32px', padding: '0 14px', borderRadius: '999px', background: '#1F2937', color: '#E6EDF3', border: '1px solid #30363D', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+              style={{ height: '32px', padding: '0 14px', borderRadius: '999px', background: '#1F2937', color: 'var(--text-1)', border: '1px solid #30363D', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
             >
               {ts('Retry')}
             </button>
@@ -588,7 +588,7 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
               border: '1px solid #21262D',
             }}>
               <div style={{ padding: '18px 20px 14px' }}>
-                <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.97)', lineHeight: 1.55 }}>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.55 }}>
                   <span className="mono" style={{ fontSize: '10px', color: '#484F58', marginRight: '10px', fontWeight: 700 }}>
                     {String(qi + 1).padStart(2, '0')}
                   </span>
@@ -793,7 +793,7 @@ function ResultsScreen({
             <div style={{ fontSize: '1.4rem', fontWeight: 700, color: gradeColor, marginTop: '4px' }}>{counted}% · {grade}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-            <span style={{ fontSize: '11px', color: '#8B949E' }}>{ts('Completed in')} <strong style={{ color: '#E6EDF3' }}>{formatTime(result.timeTakenSeconds)}</strong></span>
+            <span style={{ fontSize: '11px', color: '#8B949E' }}>{ts('Completed in')} <strong style={{ color: 'var(--text-1)' }}>{formatTime(result.timeTakenSeconds)}</strong></span>
             <span style={{ fontSize: '11px', color: '#484F58' }}>{formatDate(result.completedAt)}</span>
           </div>
         </div>
@@ -909,7 +909,7 @@ function ResultsScreen({
                 >
                   <span style={{ fontSize: '12px', marginTop: '1px' }}>{rq.wasCorrect ? '✅' : '❌'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '12px', color: '#E6EDF3', fontWeight: 500, lineHeight: 1.45, marginBottom: '2px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-1)', fontWeight: 500, lineHeight: 1.45, marginBottom: '2px' }}>
                       <span className="mono" style={{ fontSize: '10px', color: '#484F58', marginRight: '6px' }}>
                         {String(i + 1).padStart(2, '0')}
                       </span>
