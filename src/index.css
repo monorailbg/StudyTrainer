@@ -100,12 +100,12 @@
 }
 
 body.theme-light {
-  --bg-page:     #F9F6F0;
-  --bg-nav:      #EDE8DC;
-  --bg-surface:  #EDE8DC;
-  --bg-elevated: #E3DDD2;
-  --border-light: #D0C8B8;
-  --border-base:  #C0B8A8;
+  --bg-page:     #EDE8DC;
+  --bg-nav:      #E8E2D5;
+  --bg-surface:  #E1D9CA;
+  --bg-elevated: #D6CCBA;
+  --border-light: #C9C0AD;
+  --border-base:  #B8AE9C;
   --text-1: #3D3428;
   --text-2: #4A3A2E;
   --text-3: #9B8B78;
