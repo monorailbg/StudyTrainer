@@ -283,73 +283,246 @@ function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }
   );
 }
 
-// ── Overview tile ──────────────────────────────────────────────────────────────
+// ── Subject Banner ─────────────────────────────────────────────────────────────
 
-function OverviewTile({
-  icon, label, color, active, primary, secondary, badges, onClick, index,
+function SubjectBanner({
+  subject, levelFiles, savedNotes, savedFlashcardSets, savedQuizzes, dictEntries,
+  examDate, daysLeft, onExamDateChange, onExamDateClear,
 }: {
-  icon: React.ReactNode; label: string; color: string; active: boolean;
-  primary: string; secondary: string; badges?: string[];
-  onClick: () => void; index: number;
+  subject: import('../data/subjects').SubjectDef;
+  levelFiles: UploadedFile[];
+  savedNotes: import('../lib/db').StoredNote[];
+  savedFlashcardSets: import('../lib/db').StoredFlashcardSet[];
+  savedQuizzes: import('../lib/db').StoredQuiz[];
+  dictEntries: import('../lib/db').DictionaryEntry[];
+  examDate: { subjectId: string; date: string } | undefined;
+  daysLeft: number;
+  onExamDateChange: (iso: string) => void;
+  onExamDateClear: () => void;
+}) {
+  const { ts } = useLang();
+  const totalCards = savedFlashcardSets.reduce((a, s) => a + s.cards.length, 0);
+
+  const pills: { label: string; count: number }[] = [
+    { label: `${levelFiles.length} files`, count: levelFiles.length },
+    { label: `${savedNotes.length} notes`, count: savedNotes.length },
+    { label: `${totalCards} cards`, count: totalCards },
+    { label: `${savedQuizzes.length} quizzes`, count: savedQuizzes.length },
+    { label: `${dictEntries.length} terms`, count: dictEntries.length },
+  ].filter(p => p.count > 0);
+
+  // Dot grid SVG: 8 rows × 12 cols
+  const dotGridSvg = () => {
+    const dots = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 12; c++) {
+        dots.push(<circle key={`${r}-${c}`} cx={c * 18 + 9} cy={r * 18 + 9} r={1.5} fill={subject.color} />);
+      }
+    }
+    return (
+      <svg
+        width={12 * 18} height={8 * 18}
+        style={{ position: 'absolute', top: 0, right: 0, opacity: 0.07, pointerEvents: 'none' }}
+      >
+        {dots}
+      </svg>
+    );
+  };
+
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, #0D1117 100%)`,
+      border: `1.5px solid ${subject.color}28`,
+      borderRadius: '24px',
+      padding: '32px 36px',
+      marginBottom: '32px',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Decorative circles */}
+      <div style={{
+        position: 'absolute', top: -80, right: -80,
+        width: 260, height: 260, borderRadius: '50%',
+        background: `radial-gradient(circle, ${subject.color}18 0%, transparent 65%)`,
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: -60, left: -60,
+        width: 160, height: 160, borderRadius: '50%',
+        background: `radial-gradient(circle, ${subject.color}10 0%, transparent 65%)`,
+        pointerEvents: 'none',
+      }} />
+      {/* Dot grid */}
+      {dotGridSvg()}
+
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* Row 1: title + exam date */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+          {/* LEFT: title */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <div style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: subject.color,
+                boxShadow: `0 0 14px ${subject.color}`,
+                flexShrink: 0,
+              }} />
+              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, color: '#E6EDF3' }}>
+                {subject.title}
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: '#8B949E', paddingLeft: 20 }}>
+              {subject.description}
+            </div>
+          </div>
+
+          {/* RIGHT: exam date */}
+          <div>
+            {examDate ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 16px', borderRadius: 999,
+                background: subject.color + '18',
+                border: `1.5px solid ${subject.color}40`,
+              }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: subject.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: subject.color }}>
+                  {ts('{n} days left', { n: daysLeft })}
+                </span>
+                <span style={{ fontSize: 10, color: '#8B949E' }}>
+                  {examDate.date.replace(/-/g, '/')}
+                </span>
+                <button
+                  onClick={onExamDateClear}
+                  style={{ background: 'none', border: 'none', color: '#484F58', cursor: 'pointer', fontSize: 13, padding: '0 0 0 4px', lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <input
+                type="text"
+                placeholder={ts('Set exam date')}
+                maxLength={10}
+                style={{
+                  background: 'transparent', border: '1px solid #30363D', borderRadius: 8,
+                  color: '#8B949E', padding: '7px 12px', fontSize: 12, outline: 'none',
+                  fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '136px',
+                }}
+                onChange={e => {
+                  const raw = e.target.value;
+                  if (raw === '') return;
+                  const iso = raw.replace(/\//g, '-');
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) onExamDateChange(iso);
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: quick stat pills */}
+        <div style={{ marginTop: 20, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {pills.length > 0 ? pills.map(p => (
+            <span key={p.label} style={{
+              padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+              color: '#8B949E', background: '#161B22', border: '1px solid #30363D',
+            }}>
+              {p.label}
+            </span>
+          )) : (
+            <span style={{ fontSize: 12, color: '#484F58' }}>
+              {ts('No content yet — upload files to begin')}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Section Card ───────────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon, label, color, stat, subtext, secondary, onClick, index, inactive,
+}: {
+  icon: React.ReactNode; label: string; color: string;
+  stat: string | number; subtext?: string; secondary?: string;
+  onClick: () => void; index: number; inactive?: boolean;
 }) {
   return (
-    <button
+    <div
       onClick={onClick}
-      className="anim-rise"
       style={{
-        ['--d' as string]: `${index * 60}ms`,
-        background: '#161B22', border: '1px solid #21262D',
-        borderRadius: '20px', padding: '24px',
-        textAlign: 'left', cursor: 'pointer',
-        transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1), border-color 0.25s ease, box-shadow 0.25s ease',
-        display: 'flex', flexDirection: 'column', gap: '14px', minHeight: '150px',
+        background: `linear-gradient(135deg, ${inactive ? '#161B22' : color + '10'} 0%, #161B22 100%)`,
+        border: `1.5px solid ${inactive ? '#21262D' : color + '30'}`,
+        borderRadius: 20,
+        padding: 22,
+        minHeight: 170,
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: 'pointer',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease, border-color 0.25s ease',
+        ['--idx' as string]: index,
       }}
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLElement;
-        el.style.transform = 'translateY(-3px)';
-        el.style.borderColor = color + '40';
-        el.style.boxShadow = `0 10px 28px rgba(0,0,0,0.4), 0 0 0 1px ${color}22`;
+        el.style.transform = 'translateY(-5px)';
+        el.style.boxShadow = `0 16px 40px ${color}20, 0 0 0 1.5px ${color}40`;
+        el.style.borderColor = color + '55';
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLElement;
         el.style.transform = '';
-        el.style.borderColor = '#21262D';
         el.style.boxShadow = '';
+        el.style.borderColor = inactive ? '#21262D' : color + '30';
       }}
     >
-      <div className="flex items-start justify-between">
-        <div style={{
-          width: '52px', height: '52px', borderRadius: '15px',
-          background: active ? color + '1F' : '#1F2937',
-          color: active ? color : '#484F58',
-          border: `1px solid ${active ? color + '33' : '#30363D'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span style={{ transform: 'scale(1.25)' }}>{icon}</span>
-        </div>
-        {active && <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, marginTop: '6px' }} />}
+      {/* Decorative glow */}
+      <div style={{
+        position: 'absolute', top: '-70%', right: '-30%',
+        width: 200, height: 200, borderRadius: '50%',
+        background: `radial-gradient(circle, ${color}08 0%, transparent 60%)`,
+        pointerEvents: 'none',
+      }} />
+
+      {/* Icon */}
+      <div style={{
+        width: 40, height: 40, borderRadius: 12,
+        background: color + '18', color,
+        border: `1px solid ${color}22`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative', zIndex: 1,
+      }}>
+        {icon}
       </div>
-      <div style={{ marginTop: 'auto' }}>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: '#E6EDF3', marginBottom: '4px' }}>
+
+      {/* Bottom content */}
+      <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
+        <div style={{
+          fontSize: 38, fontWeight: 800, color: inactive ? '#30363D' : color,
+          fontFamily: "'Sora',sans-serif", lineHeight: 1, marginBottom: 4,
+          textShadow: inactive ? 'none' : `0 0 25px ${color}35`,
+        }}>
+          {stat}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: inactive ? '#484F58' : '#E6EDF3', marginBottom: 3 }}>
           {label}
         </div>
-        <div style={{ fontSize: '12px', color: active ? color : '#484F58', fontWeight: 600 }}>
-          {primary}
-        </div>
-        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '3px' }}>
-          {secondary}
-        </div>
-        {badges && badges.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap" style={{ marginTop: '10px' }}>
-            {badges.map((b, i) => (
-              <span key={i} style={{ fontSize: '10px', fontWeight: 600, color: color, background: color + '14', border: `1px solid ${color}28`, borderRadius: '999px', padding: '2px 8px' }}>
-                {b}
-              </span>
-            ))}
+        {subtext && (
+          <div style={{ fontSize: 11, color: inactive ? '#30363D' : color + 'BB', fontWeight: 500 }}>
+            {subtext}
+          </div>
+        )}
+        {secondary && (
+          <div style={{ fontSize: 10, color: '#484F58', marginTop: 4 }}>
+            {secondary}
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1623,13 +1796,20 @@ export default function SubjectPage() {
           {/* Dashboard view */}
           {view === 'dashboard' && (
             <div>
-              <div style={{ marginBottom: '28px' }}>
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '20px', color: '#E6EDF3', marginBottom: '4px' }}>
-                  {subject.title}
-                </div>
-                <div style={{ fontSize: '13px', color: '#8B949E' }}>{subject.description}</div>
-              </div>
+              <SubjectBanner
+                subject={subject}
+                levelFiles={levelFiles}
+                savedNotes={savedNotes}
+                savedFlashcardSets={savedFlashcardSets}
+                savedQuizzes={savedQuizzes}
+                dictEntries={dictEntries}
+                examDate={examDate}
+                daysLeft={examDate ? daysUntil(examDate.date) : 0}
+                onExamDateChange={iso => setExamDate(id!, iso)}
+                onExamDateClear={() => removeExamDate(id!)}
+              />
 
+              {/* Section cards */}
               {(() => {
                 const totalMB = levelFiles.reduce((a, f) => a + f.size, 0) / 1024 / 1024;
                 const pdfCount = levelFiles.filter(f => isPdfType(f.type)).length;
@@ -1638,79 +1818,56 @@ export default function SubjectPage() {
                 const totalCards = savedFlashcardSets.reduce((a, s) => a + s.cards.length, 0);
                 const totalQs = savedQuizzes.reduce((a, q) => a + q.questions.length, 0);
                 const totalSections = savedNotes.reduce((a, n) => a + n.note.sections.length, 0);
+                const avgQuizPct = quizHistory.length > 0 ? Math.round(quizHistory.reduce((a, r) => a + r.scorePercent, 0) / quizHistory.length) : null;
+                const allCardIds = savedFlashcardSets.flatMap(s => s.cards.map(c => c.id));
+                const srsStats = subjectSrsStats(srsCards, allCardIds);
+                const masteryPct = allCardIds.length > 0 ? Math.round((srsStats.graduated / allCardIds.length) * 100) : null;
+
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap: '14px' }}>
-                    <OverviewTile
-                      index={0} icon={<IconFile />} label={ts('Files')} color={subject.color}
-                      active={levelFiles.length > 0}
-                      primary={levelFiles.length > 0 ? ts('{n} uploaded', { n: levelFiles.length }) : ts('No files yet')}
-                      secondary={levelFiles.length > 0 ? `${fileParts} · ${ts('{n} MB total', { n: totalMB.toFixed(1) })}` : ts('Upload PDFs or images to begin')}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(190px, 100%), 1fr))', gap: '14px' }}>
+                    <SectionCard
+                      index={0} icon={<IconFile />} label={ts('Files')} color="#4FA8E8"
+                      stat={levelFiles.length}
+                      subtext={levelFiles.length > 0 ? fileParts : undefined}
+                      secondary={levelFiles.length > 0 ? `${totalMB.toFixed(1)} MB total` : ts('Upload PDFs or images to begin')}
+                      inactive={levelFiles.length === 0}
                       onClick={() => setView('upload')}
                     />
-                    <OverviewTile
-                      index={1} icon={<IconNote />} label={ts('Notes')} color="#2EA043"
-                      active={savedNotes.length > 0}
-                      primary={savedNotes.length > 0 ? ts('{n} notes', { n: savedNotes.length }) : ts('None yet')}
-                      secondary={savedNotes.length > 0 ? `${ts('{n} sections', { n: totalSections })} · ${ts('updated {time}', { time: timeAgo(savedNotes[0].createdAt) })}` : ts('Generate structured notes from files')}
+                    <SectionCard
+                      index={1} icon={<IconNote />} label={ts('Notes')} color="#3FBA74"
+                      stat={savedNotes.length}
+                      subtext={savedNotes.length > 0 ? ts('{n} sections', { n: totalSections }) : undefined}
+                      secondary={savedNotes.length > 0 ? ts('updated {time}', { time: timeAgo(savedNotes[0].createdAt) }) : ts('Generate structured notes from files')}
+                      inactive={savedNotes.length === 0}
                       onClick={() => { setActiveNoteId(null); setView('notes'); }}
                     />
-                    <OverviewTile
-                      index={2} icon={<IconCards />} label={ts('Flashcards')} color="#3D7EFF"
-                      active={savedFlashcardSets.length > 0}
-                      primary={savedFlashcardSets.length > 0 ? ts('{n} cards', { n: totalCards }) : ts('None yet')}
-                      secondary={savedFlashcardSets.length > 0 ? `${ts('in {n} sets', { n: savedFlashcardSets.length })} · ${ts('updated {time}', { time: timeAgo(savedFlashcardSets[0].createdAt) })}` : ts('Generate a deck from files')}
+                    <SectionCard
+                      index={2} icon={<IconCards />} label={ts('Flashcards')} color="#5C8AFF"
+                      stat={totalCards}
+                      subtext={savedFlashcardSets.length > 0 ? ts('in {n} sets', { n: savedFlashcardSets.length }) : undefined}
+                      secondary={masteryPct !== null ? `${masteryPct}% mastered` : savedFlashcardSets.length > 0 ? ts('updated {time}', { time: timeAgo(savedFlashcardSets[0].createdAt) }) : ts('Generate a deck from files')}
+                      inactive={savedFlashcardSets.length === 0}
                       onClick={() => { setActiveSetId(null); setView('flashcards'); }}
                     />
-                    <OverviewTile
-                      index={3} icon={<IconQuiz />} label={ts('Quizzes')} color="#D29922"
-                      active={savedQuizzes.length > 0}
-                      primary={savedQuizzes.length > 0 ? ts('{n} questions', { n: totalQs }) : ts('None yet')}
-                      secondary={savedQuizzes.length > 0 ? `${ts('in {n} quizzes', { n: savedQuizzes.length })} · ${ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) })}` : ts('Generate a quiz from files')}
+                    <SectionCard
+                      index={3} icon={<IconQuiz />} label={ts('Quizzes')} color="#FF8C42"
+                      stat={savedQuizzes.length > 0 ? totalQs : 0}
+                      subtext={savedQuizzes.length > 0 ? ts('{n} quizzes', { n: savedQuizzes.length }) : undefined}
+                      secondary={avgQuizPct !== null ? `avg ${avgQuizPct}%` : savedQuizzes.length > 0 ? ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) }) : ts('Generate a quiz from files')}
+                      inactive={savedQuizzes.length === 0}
                       onClick={() => { setActiveQuizId(null); setView('quiz'); }}
                     />
-                    <OverviewTile
-                      index={4} icon={<IconDict />} label={ts('Dictionary')} color="#8B5CF6"
-                      active={dictEntries.length > 0}
-                      primary={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : ts('None yet')}
-                      secondary={dictEntries.length > 0 ? ts('updated {time}', { time: timeAgo(dictEntries[dictEntries.length - 1].createdAt) }) : ts('Select a word or phrase in any note, then tap the dictionary button to add it here with an AI-generated definition.')}
+                    <SectionCard
+                      index={4} icon={<IconDict />} label={ts('Dictionary')} color="#A78BFA"
+                      stat={dictEntries.length}
+                      subtext={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : undefined}
+                      secondary={dictEntries.length > 0 ? ts('updated {time}', { time: timeAgo(dictEntries[dictEntries.length - 1].createdAt) }) : ts('Select text in notes to define')}
+                      inactive={dictEntries.length === 0}
                       onClick={() => setView('dictionary')}
                     />
                   </div>
                 );
               })()}
-
-              {/* Exam Date */}
-              <div style={{ marginTop: '28px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#8B949E', marginBottom: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{ts('Exam Date')}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <input
-                    type="text"
-                    value={examDate?.date ? examDate.date.replace(/-/g, '/') : ''}
-                    onChange={e => {
-                      const raw = e.target.value;
-                      if (raw === '') { removeExamDate(id!); return; }
-                      const iso = raw.replace(/\//g, '-');
-                      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) setExamDate(id!, iso);
-                    }}
-                    placeholder="YYYY/MM/DD"
-                    maxLength={10}
-                    style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '8px', color: '#E6EDF3', padding: '7px 12px', fontSize: '12px', outline: 'none', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '136px' }}
-                  />
-                  {examDate && (
-                    <>
-                      <span style={{ fontSize: '11px', color: subject.color, fontWeight: 600 }}>
-                        {ts('{n} days left', { n: daysUntil(examDate.date) })}
-                      </span>
-                      <button
-                        onClick={() => removeExamDate(id!)}
-                        style={{ background: 'none', border: 'none', color: '#484F58', cursor: 'pointer', fontSize: '11px' }}
-                      >
-                        ✕
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
