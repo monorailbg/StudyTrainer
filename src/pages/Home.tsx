@@ -120,7 +120,7 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
         {spark && spark.length >= 2 && <Sparkline points={spark} color={color} />}
       </div>
       {progress !== undefined && (
-        <div className="mt-2.5 overflow-hidden" style={{ height: '3px', background: '#30363D', borderRadius: '2px' }}>
+        <div className="mt-2.5 overflow-hidden" style={{ height: '3px', background: 'var(--border-base)', borderRadius: '2px' }}>
           <div style={{ width: `${Math.max(0, Math.min(100, progress))}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
         </div>
       )}
@@ -137,14 +137,14 @@ function ProgressRow({ label, read, total, color, delay, mounted }: {
   return (
     <div className="flex items-center gap-2">
       <span className="text-[9px] font-semibold uppercase tracking-[0.08em] flex-shrink-0" style={{ color: 'var(--text-2)', width: '34px' }}>{label}</span>
-      <div className="flex-1 overflow-hidden" style={{ height: '4px', background: 'var(--border-light)', borderRadius: '999px' }}>
+      <div className="flex-1 overflow-hidden" style={{ height: '4px', background: 'var(--border-base)', borderRadius: '999px' }}>
         <div style={{
           height: '100%', width: mounted && total > 0 ? `${pct}%` : '0%',
           background: 'var(--accent-primary)', borderRadius: '999px',
           transition: `width 600ms cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
         }} />
       </div>
-      <span className="text-[10px] font-semibold flex-shrink-0 mono" style={{ color: total > 0 ? color : '#484F58', minWidth: '40px', textAlign: 'right' }}>
+      <span className="text-[10px] font-semibold flex-shrink-0 mono" style={{ color: total > 0 ? color : 'var(--text-3)', minWidth: '40px', textAlign: 'right' }}>
         {total > 0 ? `${read} / ${total}` : '—'}
       </span>
     </div>
@@ -213,12 +213,12 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
             {isCore && fcCount > 0 ? (
               <div className="flex gap-1.5 flex-wrap">
                 {fcCount > 0 && (
-                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '18', color: subject.color, border: `1px solid ${subject.color}30` }}>
+                  <span className="subject-badge text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '18', color: subject.color, border: `1px solid ${subject.color}30` }}>
                     {fcCount} {t('cards')}
                   </span>
                 )}
                 {qCount > 0 && (
-                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '18', color: subject.color, border: `1px solid ${subject.color}30` }}>
+                  <span className="subject-badge text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '18', color: subject.color, border: `1px solid ${subject.color}30` }}>
                     {qCount} Q
                   </span>
                 )}
@@ -226,13 +226,13 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
             ) : subject.levels ? (
               <div className="flex gap-1 flex-wrap">
                 {subject.levels.map(l => (
-                  <span key={l} className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '15', color: subject.color, border: `1px solid ${subject.color}25` }}>
+                  <span key={l} className="subject-badge text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '15', color: subject.color, border: `1px solid ${subject.color}25` }}>
                     {l}
                   </span>
                 ))}
               </div>
             ) : (
-              <span className="text-[10px] font-semibold" style={{ color: subject.color }}>{ts('Explore')} →</span>
+              <span className="explore-link text-[10px] font-semibold" style={{ color: subject.color }}>{ts('Explore')} →</span>
             )}
           </div>
         </div>

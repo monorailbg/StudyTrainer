@@ -107,7 +107,7 @@ body.theme-light {
   --border-light: #D0C8B8;
   --border-base:  #C0B8A8;
   --text-1: #3D3428;
-  --text-2: #6B5D4E;
+  --text-2: #4A3A2E;
   --text-3: #9B8B78;
   --accent-primary: #8B6F47;
   --accent-orange: #D97706;
@@ -233,16 +233,27 @@ body.theme-light .card-panel {
   background: var(--bg-surface);
   border-color: var(--border-base);
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.6) inset,
-    0 4px 8px rgba(0,0,0,0.06),
-    0 12px 32px rgba(0,0,0,0.04);
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 1px 3px rgba(0,0,0,0.05),
+    0 4px 12px rgba(0,0,0,0.09),
+    0 16px 32px rgba(0,0,0,0.05);
 }
 body.theme-light .card-panel-lift:hover {
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.8) inset,
-    0 8px 20px rgba(0,0,0,0.12),
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 4px 16px rgba(0,0,0,0.13),
+    0 12px 32px rgba(0,0,0,0.09),
     0 0 0 1px rgba(61,126,255,0.25);
   border-color: rgba(61,126,255,0.35);
+}
+
+/* Subject color badges and explore links need darker rendering in light mode
+   so bright/yellow subject hues remain legible on a cream background. */
+body.theme-light .subject-badge {
+  filter: saturate(1.4) brightness(0.68);
+}
+body.theme-light .explore-link {
+  filter: saturate(1.4) brightness(0.72);
 }
 
 /* ── Button elevation ────────────────────────────────────────────── */
