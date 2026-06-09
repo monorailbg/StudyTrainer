@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getAllNotes, type StoredNote } from '../lib/db';
+import { getAllNotes, type StoredNote, type DictionaryEntry, saveDictionaryEntry } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudNotes } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
@@ -7,7 +7,20 @@ import { useStore } from '../store/useStore';
 import { NotesViewer } from '../components/NotesViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
 import { useLang } from '../context/LanguageContext';
+import { useToast } from '../components/Toast';
+import { generateDefinition, generateJapaneseDefinition } from '../lib/geminiProxy';
 import type { SubjectDef } from '../data/subjects';
+
+// ── Error helper ───────────────────────────────────────────────────────────────
+
+function friendlyError(raw?: string): string {
+  if (!raw) return 'Definition failed.';
+  if (raw.includes('401') || raw.includes('API_KEY_INVALID')) return 'Invalid or expired API key. Check the server configuration.';
+  if (raw.includes('RESOURCE_EXHAUSTED')) return 'Quota exhausted — try again tomorrow.';
+  if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
+  if (raw.includes('unsupported') || raw.includes('Unsupported') || raw.includes('INVALID_ARGUMENT')) return 'Failed to process. Try again.';
+  return `Definition failed: ${raw.replace(/^Error:\s*/i, '').slice(0, 140)}`;
+}
 
 // ── Subject sidebar item ──────────────────────────────────────────────────────
 
@@ -93,6 +106,7 @@ function Empty() {
 
 export default function Notes() {
   const { ts } = useLang();
+  const { toast } = useToast();
   const { allSubjects } = useResolvedSubjects();
   const [notes, setNotes] = useState<StoredNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,6 +123,55 @@ export default function Notes() {
       : getAllNotes().then(data => setNotes(data.sort((a, b) => b.createdAt - a.createdAt)));
     p.finally(() => setLoading(false));
   }, []);
+
+  const addToEnglishDictionary = async (term: string, noteTitle?: string, noteId?: string) => {
+    if (!activeNote) return;
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    toast('info', `Adding "${trimmed}" to dictionary…`);
+    try {
+      const subject = allSubjects.find(s => s.id === activeNote.subjectId);
+      const definition = await generateDefinition(trimmed, subject?.title ?? '');
+      const entry: DictionaryEntry = {
+        id: `dict-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        subjectId: activeNote.subjectId,
+        term: trimmed,
+        definition,
+        sourceNoteTitle: noteTitle,
+        sourceNoteId: noteId,
+        createdAt: Date.now(),
+      };
+      await saveDictionaryEntry(entry);
+      toast('success', `"${trimmed}" added to dictionary`, definition.replace(/^[•\-*]\s*/gm, '').trim());
+    } catch (err) {
+      toast('error', `Failed to define "${trimmed}"`, friendlyError(String(err)));
+    }
+  };
+
+  const addToJapaneseDictionary = async (term: string, noteTitle?: string, noteId?: string) => {
+    if (!activeNote) return;
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    toast('info', `翻訳中 "${trimmed}"…`);
+    try {
+      const subject = allSubjects.find(s => s.id === activeNote.subjectId);
+      const definition = await generateJapaneseDefinition(trimmed, subject?.title ?? '');
+      const entry: DictionaryEntry = {
+        id: `dict-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        subjectId: activeNote.subjectId,
+        term: trimmed,
+        definition,
+        folder: '翻訳',
+        sourceNoteTitle: noteTitle,
+        sourceNoteId: noteId,
+        createdAt: Date.now(),
+      };
+      await saveDictionaryEntry(entry);
+      toast('success', `"${trimmed}" を翻訳しました`, definition.replace(/^[•\-*]\s*/gm, '').trim());
+    } catch (err) {
+      toast('error', `翻訳に失敗しました "${trimmed}"`, friendlyError(String(err)));
+    }
+  };
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
   const subjectsWithNotes = allSubjects.filter(s => notes.some(n => n.subjectId === s.id));
@@ -177,6 +240,7 @@ export default function Notes() {
               notes={activeNote.note}
               color={activeColor}
               noteId={activeNote.id}
+              noteTitle={activeNote.name}
               scrollElRef={mainRef}
               onRead={() => {
                 const already = useStore.getState().notesRead.includes(activeNote.id);
@@ -186,6 +250,8 @@ export default function Notes() {
                   record({ type: 'note', subjectId: activeNote.subjectId, subjectName: name, detail: ts('Read "{note}" in {subject}', { note: activeNote.name, subject: name }) });
                 }
               }}
+              onAddToDictionary={addToEnglishDictionary}
+              onAddToJapaneseDictionary={addToJapaneseDictionary}
             />
           </div>
         ) : loading ? (
