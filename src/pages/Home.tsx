@@ -612,8 +612,8 @@ export default function Home() {
             <button
               onClick={() => setManaging(true)}
               className="flex items-center gap-1.5 ml-3 h-8 px-3.5 text-xs font-semibold cursor-pointer transition-all duration-300"
-              style={{ borderRadius: '999px', background: 'var(--accent-primary)18', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)35' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px var(--accent-primary)33'; }}
+              style={{ borderRadius: '999px', background: 'rgba(61, 126, 255, 0.09)', color: 'var(--accent-primary)', border: '1px solid rgba(61, 126, 255, 0.21)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px rgba(61, 126, 255, 0.2)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
             >
               <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
@@ -625,8 +625,8 @@ export default function Home() {
               {coreSubjects.map((s, i) => <SubjectCard key={s.id} subject={s} isCore={true} index={i} stats={statsBySubject[s.id]} />)}
             </div>
           ) : (
-            <div className="text-xs" style={{ color: '#8B949E' }}>
-              {ts('No core subjects. Star one in')} <button onClick={() => setManaging(true)} className="underline cursor-pointer bg-transparent border-none p-0" style={{ color: '#3D7EFF' }}>{ts('Manage')}</button>.
+            <div className="text-xs" style={{ color: 'var(--text-2)' }}>
+              {ts('No core subjects. Star one in')} <button onClick={() => setManaging(true)} className="underline cursor-pointer bg-transparent border-none p-0" style={{ color: 'var(--accent-primary)' }}>{ts('Manage')}</button>.
             </div>
           )}
         </div>

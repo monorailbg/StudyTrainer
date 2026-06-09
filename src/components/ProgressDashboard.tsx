@@ -46,7 +46,7 @@ const StatCard = ({ label, value, color, subtext, bgGradient }: {
         {value}
       </div>
       {subtext && (
-        <div style={{ fontSize: '9px', color: color + 'AA', fontWeight: 500 }}>
+        <div style={{ fontSize: '9px', color: 'var(--text-2)', fontWeight: 500 }}>
           {subtext}
         </div>
       )}
@@ -136,7 +136,7 @@ export function FlashcardProgressDashboard({ stats, color }: {
           borderRadius: '12px', border: '1.5px solid #6E9FD430', textAlign: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}>
-          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('New')}</div>
+          <div style={{ fontSize: '9px', color: 'var(--text-2)', marginBottom: '6px', fontWeight: 500 }}>{ts('New')}</div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#6E9FD4' }}>{stats.newCount}</div>
         </div>
         <div style={{
@@ -144,7 +144,7 @@ export function FlashcardProgressDashboard({ stats, color }: {
           borderRadius: '12px', border: '1.5px solid #D2992230', textAlign: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}>
-          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('Learning')}</div>
+          <div style={{ fontSize: '9px', color: 'var(--text-2)', marginBottom: '6px', fontWeight: 500 }}>{ts('Learning')}</div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#D29922' }}>{stats.learning}</div>
         </div>
         <div style={{
@@ -152,7 +152,7 @@ export function FlashcardProgressDashboard({ stats, color }: {
           borderRadius: '12px', border: '1.5px solid #8B5CF630', textAlign: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}>
-          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('Unseen')}</div>
+          <div style={{ fontSize: '9px', color: 'var(--text-2)', marginBottom: '6px', fontWeight: 500 }}>{ts('Unseen')}</div>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#8B5CF6' }}>{stats.unseen}</div>
         </div>
       </div>
@@ -256,7 +256,7 @@ export function QuizProgressDashboard({ stats, color }: {
             borderRadius: '12px', border: '1.5px solid #56D36430', textAlign: 'center',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           }}>
-            <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('Correct')}</div>
+            <div style={{ fontSize: '9px', color: 'var(--text-2)', marginBottom: '6px', fontWeight: 500 }}>{ts('Correct')}</div>
             <div style={{ fontSize: '24px', fontWeight: 700, color: '#56D364' }}>{stats.totalCorrect}</div>
           </div>
           <div style={{
@@ -264,7 +264,7 @@ export function QuizProgressDashboard({ stats, color }: {
             borderRadius: '12px', border: '1.5px solid #FF6B6B30', textAlign: 'center',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           }}>
-            <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '6px', fontWeight: 500 }}>{ts('Answered')}</div>
+            <div style={{ fontSize: '9px', color: 'var(--text-2)', marginBottom: '6px', fontWeight: 500 }}>{ts('Answered')}</div>
             <div style={{ fontSize: '24px', fontWeight: 700, color: '#FF6B6B' }}>{stats.totalQuestions}</div>
           </div>
         </div>

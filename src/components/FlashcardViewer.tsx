@@ -248,7 +248,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             <path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: 'var(--text-1)' }}>
           {ts('Session complete')}
         </div>
         <div style={{ fontSize: '13px', color: '#8B949E' }}>
@@ -492,7 +492,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 fontFamily: "'LXGW WenKai Mono TC', monospace",
                 fontWeight: 700,
                 fontSize: 'clamp(40px, 12vw, 72px)',
-                color: '#E6EDF3',
+                color: 'var(--text-1)',
                 textAlign: 'center',
                 lineHeight: 1.1,
                 letterSpacing: '0.06em',
@@ -500,7 +500,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 {card.front}
               </div>
             ) : (
-              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: '#E6EDF3', lineHeight: 1.45 }}>
+              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: 'var(--text-1)', lineHeight: 1.45 }}>
                 {card.front}
               </div>
             )}
@@ -529,7 +529,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             {isVocabCard && vocab ? (
               <VocabBack vocab={vocab} color={color} />
             ) : (
-              <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: '#E6EDF3', lineHeight: 1.65 }}>
+              <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: 'var(--text-1)', lineHeight: 1.65 }}>
                 {card.back}
               </div>
             )}

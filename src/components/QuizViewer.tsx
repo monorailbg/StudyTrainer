@@ -151,18 +151,18 @@ function SetupScreen({ total, color, onStart, initialMode }: {
       }}>
         {/* Hero count */}
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '8px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '8px' }}>
             {ts('Ready to study')}
           </div>
           <div className="mono" style={{ fontSize: 'clamp(56px, 12vw, 72px)', fontWeight: 800, lineHeight: 1, color, letterSpacing: '-0.02em' }}>
             {total}
           </div>
-          <div style={{ fontSize: '13px', color: '#8B949E', marginTop: '6px' }}>{ts('questions available')}</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-2)', marginTop: '6px' }}>{ts('questions available')}</div>
         </div>
 
         {/* Mode selector */}
         <div>
-          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>{ts('Mode')}</div>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '12px', textAlign: 'center' }}>{ts('Mode')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', width: '100%' }}>
             {MODES.map(m => (
               <button key={m.id} onClick={() => setMode(m.id)} style={{
@@ -192,7 +192,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
                     {ts(m.title)}
                   </span>
                 </div>
-                <div style={{ fontSize: '11px', color: '#484F58', lineHeight: 1.4 }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', lineHeight: 1.4 }}>
                   {ts(m.desc)}
                 </div>
               </button>
@@ -202,7 +202,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
 
         {/* Question count */}
         <div>
-          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px', textAlign: 'center' }}>{ts('Questions')}</div>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '12px', textAlign: 'center' }}>{ts('Questions')}</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
             {countOptions.map(n => (
               <button key={n} onClick={() => setTestCount(n)} className="quiz-count-btn" style={{

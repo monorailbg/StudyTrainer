@@ -123,15 +123,15 @@ function SidebarItem({
       style={{
         borderRadius: '14px',
         background: active ? 'rgba(255,255,255,0.07)' : 'transparent',
-        color: active ? '#E6EDF3' : '#8B949E',
+        color: active ? 'var(--text-1)' : 'var(--text-2)',
       }}
     >
-      <span style={{ flexShrink: 0, color: active ? '#E6EDF3' : '#8B949E' }}>{icon}</span>
+      <span style={{ flexShrink: 0, color: active ? 'var(--text-1)' : 'var(--text-2)' }}>{icon}</span>
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-medium leading-tight truncate" style={{ fontFamily: "'Sora',sans-serif" }}>{label}</span>
-        {sublabel && <span className="block text-[11px] mt-0.5 leading-tight" style={{ color: active ? '#8B949E' : '#484F58' }}>{sublabel}</span>}
+        {sublabel && <span className="block text-[11px] mt-0.5 leading-tight" style={{ color: active ? 'var(--text-2)' : 'var(--text-3)' }}>{sublabel}</span>}
       </span>
-      {dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor || '#3D7EFF', boxShadow: `0 0 5px ${dotColor || '#3D7EFF'}` }} />}
+      {dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor || 'var(--accent-primary)', boxShadow: `0 0 5px ${dotColor || 'var(--accent-primary)'}` }} />}
     </button>
   );
 }
@@ -268,7 +268,7 @@ function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }
           <path d="M6 20h12" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
         </svg>
       </div>
-      <div className="text-sm font-semibold mb-2" style={{ color: '#E6EDF3' }}>{ts('No content yet')}</div>
+      <div className="text-sm font-semibold mb-2" style={{ color: 'var(--text-1)' }}>{ts('No content yet')}</div>
       <div className="text-xs mb-5 text-center max-w-xs" style={{ color: '#8B949E' }}>
         {ts('Upload a file and use AI to generate flashcards, notes, or a quiz.')}
       </div>
