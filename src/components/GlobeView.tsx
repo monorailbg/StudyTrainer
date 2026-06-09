@@ -83,6 +83,8 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
     // Only use subjects that have coordinates
     const pinSubjects = subjects.filter(s => s.lat != null);
 
+    const isLight = document.body.classList.contains('theme-light');
+
     import('globe.gl').then(({ default: GlobeModule }) => {
       if (!containerRef.current) return;
 
@@ -94,8 +96,8 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
         .height(el.clientHeight)
         .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg')
         .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png')
-        .atmosphereColor('#5599FF')
-        .atmosphereAltitude(0.28)
+        .atmosphereColor(isLight ? '#C4956A' : '#5599FF')
+        .atmosphereAltitude(isLight ? 0.12 : 0.28)
         .backgroundColor('rgba(0,0,0,0)')
         // Arcs
         .arcsData(arcs)
@@ -145,11 +147,11 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
               font-family:'Sora',sans-serif;
               font-size:10px;font-weight:700;
               color:${d.color};
-              background:rgba(13,17,23,0.82);
+              background:${isLight ? 'rgba(237,232,220,0.92)' : 'rgba(13,17,23,0.82)'};
               padding:2px 7px;border-radius:5px;
-              text-shadow:0 1px 4px rgba(0,0,0,1);
+              text-shadow:${isLight ? '0 1px 3px rgba(0,0,0,0.25)' : '0 1px 4px rgba(0,0,0,1)'};
               letter-spacing:0.05em;pointer-events:none;
-              border:1px solid ${d.color}44;
+              border:1px solid ${d.color}55;
             ">${d.title}</div>
           `;
 

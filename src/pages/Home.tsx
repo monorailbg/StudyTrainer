@@ -101,12 +101,12 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
       style={{
         ['--d' as string]: `${index * 60}ms`,
         padding: '16px 18px',
-        background: `radial-gradient(120% 120% at 100% 0%, ${color}0E 0%, #161B22 55%)`,
+        background: `radial-gradient(120% 120% at 100% 0%, ${color}0E 0%, var(--bg-surface) 55%)`,
         position: 'relative', overflow: 'hidden',
       }}
     >
       <div className="flex items-start justify-between mb-2">
-        <div className="text-[9px] font-semibold uppercase tracking-[0.13em]" style={{ color: '#8B949E' }}>
+        <div className="text-[9px] font-semibold uppercase tracking-[0.13em]" style={{ color: 'var(--text-2)' }}>
           {label}
         </div>
         {icon && (
@@ -116,7 +116,7 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
         )}
       </div>
       <div className="flex items-end justify-between gap-2">
-        <div className="mono text-2xl leading-none" style={{ color: '#E6EDF3' }}>{value}</div>
+        <div className="mono text-2xl leading-none" style={{ color: 'var(--text-1)' }}>{value}</div>
         {spark && spark.length >= 2 && <Sparkline points={spark} color={color} />}
       </div>
       {progress !== undefined && (
@@ -136,7 +136,7 @@ function ProgressRow({ label, read, total, color, delay, mounted }: {
   const pct = total > 0 ? Math.round((read / total) * 100) : 0;
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] flex-shrink-0" style={{ color: '#8B949E', width: '34px' }}>{label}</span>
+      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] flex-shrink-0" style={{ color: 'var(--text-2)', width: '34px' }}>{label}</span>
       <div className="flex-1 overflow-hidden" style={{ height: '4px', background: 'var(--border-light)', borderRadius: '999px' }}>
         <div style={{
           height: '100%', width: mounted && total > 0 ? `${pct}%` : '0%',
@@ -195,7 +195,7 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
             <div className="text-sm font-semibold leading-snug mb-1" style={{ fontFamily: "'Sora',sans-serif", color: 'var(--text-1)' }}>
               {subject.title}
             </div>
-            <div className="text-[11px] leading-relaxed" style={{ color: '#8B949E' }}>
+            <div className="text-[11px] leading-relaxed" style={{ color: 'var(--text-2)' }}>
               {subject.description}
             </div>
           </div>
@@ -246,15 +246,15 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
 function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
     <div className="flex items-center gap-3 mb-5">
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#8B949E' }}>
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--text-2)' }}>
         {children}
       </span>
       {count !== undefined && (
-        <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: '#1F2937', color: '#8B949E', border: '1px solid #30363D' }}>
+        <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: 'var(--bg-elevated)', color: 'var(--text-2)', border: '1px solid var(--border-base)' }}>
           {count}
         </span>
       )}
-      <div className="flex-1 h-px" style={{ background: '#30363D' }} />
+      <div className="flex-1 h-px" style={{ background: 'var(--border-base)' }} />
     </div>
   );
 }
@@ -367,7 +367,7 @@ export default function Home() {
         <div style={{
           position: 'absolute', top: 'clamp(16px, 4vw, 32px)', right: 'clamp(16px, 4vw, 32px)',
           zIndex: 11, display: 'flex', gap: '3px', padding: '3px',
-          background: 'rgba(22,27,34,0.82)', border: '1px solid #30363D', borderRadius: '12px',
+          background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderRadius: '12px',
           backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
         }}>
           {([['globe', 'Globe'], ['mindmap', 'Mind Map']] as const).map(([key, label]) => (
@@ -378,7 +378,7 @@ export default function Home() {
                 height: '30px', padding: '0 12px', borderRadius: '9px', cursor: 'pointer', border: 'none',
                 fontSize: '12px', fontWeight: 600, fontFamily: "'Inter',sans-serif",
                 background: heroView === key ? 'rgba(61,126,255,0.18)' : 'transparent',
-                color: heroView === key ? '#93B8FF' : '#8B949E',
+                color: heroView === key ? 'var(--text-1)' : 'var(--text-2)',
                 transition: 'background 0.2s ease, color 0.2s ease',
               }}
             >
@@ -414,7 +414,7 @@ export default function Home() {
             fontFamily: "'Sora',sans-serif",
             fontWeight: 800,
             fontSize: 'clamp(1.9rem,3.5vw,2.8rem)',
-            color: '#E6EDF3',
+            color: 'var(--text-1)',
             letterSpacing: '-0.03em',
             lineHeight: 1.1,
             margin: 0,
@@ -424,7 +424,7 @@ export default function Home() {
           <p style={{
             fontFamily: "'Inter',sans-serif",
             fontSize: '13px',
-            color: '#8B949E',
+            color: 'var(--text-2)',
             margin: '8px 0 0',
             lineHeight: 1.5,
           }}>
@@ -463,7 +463,7 @@ export default function Home() {
           left: 0,
           right: 0,
           height: '100px',
-          background: 'linear-gradient(to bottom, transparent, #0D1117)',
+          background: 'linear-gradient(to bottom, transparent, var(--bg-page))',
           zIndex: 5,
           pointerEvents: 'none',
         }} />
@@ -522,8 +522,8 @@ export default function Home() {
                     >
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{d.subject!.title}</div>
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{d.subject!.title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px' }}>
                           {d.date.replace(/-/g, '/')} · <span style={{ color, fontWeight: 600 }}>{diff > 0 ? ts('{n} days left', { n: diff }) : diff === 0 ? ts('Today') : ts('{n} days ago', { n: -diff })}</span>
                         </div>
                       </div>
@@ -557,17 +557,17 @@ export default function Home() {
                         position: 'relative',
                         display: 'flex', alignItems: 'center', gap: '11px',
                         padding: '11px 30px 11px 12px', borderRadius: '14px',
-                        background: 'var(--bg-surface)', border: '1px solid #21262D',
+                        background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
                         transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
                       }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = s.color + '45'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
                     >
                       <span className="[&>svg]:w-[18px] [&>svg]:h-[18px]" style={{ width: '36px', height: '36px', borderRadius: '11px', background: s.color + '1F', border: `1px solid ${s.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <SubjectIcon id={s.id} icon={s.icon} color={s.color} />
                       </span>
                       <div className="min-w-0">
-                        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 600, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
+                        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
                           {s.title}
                         </div>
                         <div style={{ fontSize: '11px', color: s.color, fontWeight: 600 }}>{ts('Resume')} →</div>
@@ -581,11 +581,11 @@ export default function Home() {
                           position: 'absolute', top: '7px', right: '7px',
                           width: '18px', height: '18px', borderRadius: '50%', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: 'rgba(255,255,255,0.04)', border: '1px solid #30363D', color: '#8B949E',
+                          background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)',
                           transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
                         }}
                         onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(248,81,73,0.16)'; el.style.color = '#F97979'; el.style.borderColor = 'rgba(248,81,73,0.45)'; }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(255,255,255,0.04)'; el.style.color = '#8B949E'; el.style.borderColor = '#30363D'; }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'var(--bg-elevated)'; el.style.color = 'var(--text-2)'; el.style.borderColor = 'var(--border-base)'; }}
                       >
                         <svg viewBox="0 0 12 12" width="9" height="9" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
                       </button>
@@ -604,10 +604,10 @@ export default function Home() {
               <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--text-2)' }}>
                 {t('core_subjects')}
               </span>
-              <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: '#1F2937', color: '#8B949E', border: '1px solid #30363D' }}>
+              <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: 'var(--bg-elevated)', color: 'var(--text-2)', border: '1px solid var(--border-base)' }}>
                 {coreSubjects.length}
               </span>
-              <div className="flex-1 h-px" style={{ background: '#30363D' }} />
+              <div className="flex-1 h-px" style={{ background: 'var(--border-base)' }} />
             </div>
             <button
               onClick={() => setManaging(true)}
