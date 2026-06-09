@@ -2257,18 +2257,18 @@ export default function SubjectPage() {
 
             return (
               <>
-              {quizHistory.length > 0 && (
-                <QuizProgressDashboard
-                  stats={{
-                    totalAttempts: quizHistory.length,
-                    totalQuestions: totalQs,
-                    totalCorrect,
-                    averagePercent: avgPct,
-                    bestScore,
-                  }}
-                  color={subject.color}
-                />
-              )}
+              <QuizProgressDashboard
+                stats={{
+                  totalAttempts: quizHistory.length,
+                  totalQuestions: totalQs,
+                  totalCorrect,
+                  averagePercent: avgPct,
+                  bestScore,
+                  totalSavedQuizzes: savedQuizzes.length,
+                  totalSavedQuestions: savedQuizzes.reduce((a, q) => a + q.questions.length, 0),
+                }}
+                color={subject.color}
+              />
               <FolderBoard<StoredQuiz>
                 kind="quiz" label={ts('Previous quizzes')} color={subject.color}
                 folders={folders} items={savedQuizzes}

@@ -148,6 +148,8 @@ export interface QuizStats {
   totalCorrect: number;
   averagePercent: number;
   bestScore: number;
+  totalSavedQuizzes: number;
+  totalSavedQuestions: number;
 }
 
 export function QuizProgressDashboard({ stats, color }: {
@@ -157,6 +159,7 @@ export function QuizProgressDashboard({ stats, color }: {
   const { ts } = useLang();
 
   const accuracy = stats.totalQuestions > 0 ? Math.round((stats.totalCorrect / stats.totalQuestions) * 100) : 0;
+  const hasHistory = stats.totalAttempts > 0;
 
   return (
     <div style={{ marginBottom: '32px' }}>
@@ -166,7 +169,7 @@ export function QuizProgressDashboard({ stats, color }: {
 
       {/* Main stats grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-        {/* Attempts */}
+        {/* Saved Quizzes */}
         <div style={{
           background: '#161B22', border: '1px solid #21262D', borderRadius: '12px',
           padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
@@ -178,15 +181,18 @@ export function QuizProgressDashboard({ stats, color }: {
           }} />
           <div>
             <div style={{ fontSize: '11px', color: '#8B949E', marginBottom: '6px', position: 'relative', zIndex: 1 }}>
-              {ts('Attempts')}
+              {ts('Saved Quizzes')}
             </div>
             <div style={{ fontSize: '28px', fontWeight: 700, color: '#E6EDF3', position: 'relative', zIndex: 1 }}>
-              {stats.totalAttempts}
+              {stats.totalSavedQuizzes}
             </div>
+          </div>
+          <div style={{ fontSize: '9px', color: '#484F58', position: 'relative', zIndex: 1 }}>
+            {stats.totalSavedQuestions} {ts('questions total')}
           </div>
         </div>
 
-        {/* Average Score */}
+        {/* Attempts */}
         <div style={{
           background: '#161B22', border: `1px solid ${color}30`, borderRadius: '12px',
           padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
@@ -198,10 +204,30 @@ export function QuizProgressDashboard({ stats, color }: {
           }} />
           <div>
             <div style={{ fontSize: '11px', color: '#8B949E', marginBottom: '6px', position: 'relative', zIndex: 1 }}>
-              {ts('Average')}
+              {ts('Attempts')}
             </div>
             <div style={{ fontSize: '28px', fontWeight: 700, color, position: 'relative', zIndex: 1 }}>
-              {stats.averagePercent}%
+              {stats.totalAttempts}
+            </div>
+          </div>
+        </div>
+
+        {/* Average Score */}
+        <div style={{
+          background: '#161B22', border: '1px solid #21262D', borderRadius: '12px',
+          padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          minHeight: '100px', position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{
+            position: 'absolute', top: '-40%', right: '-20%', width: '120px', height: '120px',
+            borderRadius: '50%', background: hasHistory ? '#56D36408' : color + '08', pointerEvents: 'none',
+          }} />
+          <div>
+            <div style={{ fontSize: '11px', color: '#8B949E', marginBottom: '6px', position: 'relative', zIndex: 1 }}>
+              {ts('Average')}
+            </div>
+            <div style={{ fontSize: '28px', fontWeight: 700, color: hasHistory ? '#56D364' : '#484F58', position: 'relative', zIndex: 1 }}>
+              {hasHistory ? `${stats.averagePercent}%` : '—'}
             </div>
           </div>
         </div>
@@ -214,14 +240,14 @@ export function QuizProgressDashboard({ stats, color }: {
         }}>
           <div style={{
             position: 'absolute', top: '-40%', right: '-20%', width: '120px', height: '120px',
-            borderRadius: '50%', background: '#56D36408', pointerEvents: 'none',
+            borderRadius: '50%', background: hasHistory ? '#56D36408' : '#30363D08', pointerEvents: 'none',
           }} />
           <div>
             <div style={{ fontSize: '11px', color: '#8B949E', marginBottom: '6px', position: 'relative', zIndex: 1 }}>
               {ts('Best Score')}
             </div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: '#56D364', position: 'relative', zIndex: 1 }}>
-              {stats.bestScore}%
+            <div style={{ fontSize: '28px', fontWeight: 700, color: hasHistory ? '#56D364' : '#484F58', position: 'relative', zIndex: 1 }}>
+              {hasHistory ? `${stats.bestScore}%` : '—'}
             </div>
           </div>
         </div>
@@ -230,40 +256,40 @@ export function QuizProgressDashboard({ stats, color }: {
       {/* Accuracy bar */}
       <div style={{
         background: '#161B22', border: '1px solid #21262D', borderRadius: '12px',
-        padding: '14px', display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '14px',
       }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#E6EDF3' }}>
-              {ts('Accuracy')}
-            </span>
-            <span style={{ fontSize: '11px', fontWeight: 700, color }}>
-              {accuracy}%
-            </span>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#E6EDF3' }}>
+            {ts('Accuracy')}
+          </span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: hasHistory ? color : '#484F58' }}>
+            {hasHistory ? `${accuracy}%` : ts('No attempts yet')}
+          </span>
+        </div>
+        <div style={{
+          height: '8px', background: '#0D1117', borderRadius: '999px', overflow: 'hidden',
+          border: `1px solid #30363D`,
+        }}>
           <div style={{
-            height: '8px', background: '#0D1117', borderRadius: '999px', overflow: 'hidden',
-            border: `1px solid #30363D`,
-          }}>
-            <div style={{
-              height: '100%', width: `${accuracy}%`, background: `linear-gradient(90deg, ${color}, ${color}DD)`,
-              borderRadius: '999px', transition: 'width 0.6s ease',
-            }} />
-          </div>
+            height: '100%', width: `${accuracy}%`, background: `linear-gradient(90deg, ${color}, ${color}DD)`,
+            borderRadius: '999px', transition: 'width 0.6s ease',
+          }} />
         </div>
       </div>
 
-      {/* Breakdown */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginTop: '14px' }}>
-        <div style={{ padding: '10px 12px', background: '#0D1117', borderRadius: '10px', border: '1px solid #21262D', textAlign: 'center' }}>
-          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '4px' }}>{ts('Correct')}</div>
-          <div style={{ fontSize: '16px', fontWeight: 700, color: '#56D364' }}>{stats.totalCorrect}</div>
+      {/* Breakdown — only if there's history */}
+      {hasHistory && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginTop: '14px' }}>
+          <div style={{ padding: '10px 12px', background: '#0D1117', borderRadius: '10px', border: '1px solid #21262D', textAlign: 'center' }}>
+            <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '4px' }}>{ts('Correct')}</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#56D364' }}>{stats.totalCorrect}</div>
+          </div>
+          <div style={{ padding: '10px 12px', background: '#0D1117', borderRadius: '10px', border: '1px solid #21262D', textAlign: 'center' }}>
+            <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '4px' }}>{ts('Answered')}</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#8B949E' }}>{stats.totalQuestions}</div>
+          </div>
         </div>
-        <div style={{ padding: '10px 12px', background: '#0D1117', borderRadius: '10px', border: '1px solid #21262D', textAlign: 'center' }}>
-          <div style={{ fontSize: '9px', color: '#8B949E', marginBottom: '4px' }}>{ts('Total')}</div>
-          <div style={{ fontSize: '16px', fontWeight: 700, color: '#8B949E' }}>{stats.totalQuestions}</div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
