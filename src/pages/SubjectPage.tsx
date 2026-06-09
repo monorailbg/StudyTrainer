@@ -38,6 +38,7 @@ import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
 import { DictionaryView } from '../components/DictionaryView';
+import { FlashcardProgressDashboard, QuizProgressDashboard } from '../components/ProgressDashboard';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
 import { getStudyQueue } from '../lib/srs';
 
@@ -1952,8 +1953,16 @@ export default function SubjectPage() {
               return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
             }
 
+            const allCardIds = savedFlashcardSets.flatMap(s => s.cards.map(c => c.id));
+            const overallStats = subjectSrsStats(srsCards, allCardIds);
+
             return (
-              <FolderBoard<StoredFlashcardSet>
+              <>
+                <FlashcardProgressDashboard
+                  stats={overallStats}
+                  color={subject.color}
+                />
+                <FolderBoard<StoredFlashcardSet>
                 kind="card" label={ts('Flashcard sets')} color={subject.color}
                 folders={folders} items={savedFlashcardSets}
                 draggedId={draggedItem?.kind === 'card' ? draggedItem.id : null}
@@ -2056,6 +2065,7 @@ export default function SubjectPage() {
                   );
                 }}
               />
+              </>
             );
           })()}
 
@@ -2240,8 +2250,25 @@ export default function SubjectPage() {
               return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
             }
 
+            const totalCorrect = quizHistory.reduce((a, r) => a + r.correctAnswers, 0);
+            const totalQs = quizHistory.reduce((a, r) => a + r.totalQuestions, 0);
+            const avgPct = quizHistory.length > 0 ? Math.round((totalCorrect / totalQs) * 100) : 0;
+            const bestScore = quizHistory.length > 0 ? Math.max(...quizHistory.map(r => r.scorePercent)) : 0;
+
             return (
               <>
+              {quizHistory.length > 0 && (
+                <QuizProgressDashboard
+                  stats={{
+                    totalAttempts: quizHistory.length,
+                    totalQuestions: totalQs,
+                    totalCorrect,
+                    averagePercent: avgPct,
+                    bestScore,
+                  }}
+                  color={subject.color}
+                />
+              )}
               <FolderBoard<StoredQuiz>
                 kind="quiz" label={ts('Previous quizzes')} color={subject.color}
                 folders={folders} items={savedQuizzes}
