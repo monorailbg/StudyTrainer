@@ -111,6 +111,26 @@ body.theme-light {
   --text-3: #9B8B78;
   --accent-primary: #8B6F47;
   --accent-orange: #D97706;
+
+  /* ── Remap md-design tokens to cream palette ─────────────────────
+     Every Tailwind utility that reads a --color-md-* var updates
+     automatically — no component changes needed.                   */
+  --color-md-background:                var(--bg-page);
+  --color-md-surface:                   var(--bg-page);
+  --color-md-surface-dim:               var(--bg-nav);
+  --color-md-surface-container-lowest:  var(--bg-page);
+  --color-md-surface-container-low:     var(--bg-nav);
+  --color-md-surface-container:         var(--bg-surface);
+  --color-md-surface-container-high:    var(--bg-elevated);
+  --color-md-surface-container-highest: #CBBDA8;
+
+  --color-md-on-surface:         var(--text-1);
+  --color-md-on-surface-variant: var(--text-2);
+  --color-md-outline:            var(--text-3);
+  --color-md-outline-variant:    var(--border-light);
+
+  --color-md-inverse-surface:    var(--text-1);
+  --color-md-inverse-on-surface: var(--bg-page);
 }
 
 /* ── Reset ───────────────────────────────────────────────────────── */
@@ -256,6 +276,26 @@ body.theme-light .explore-link {
   filter: saturate(1.4) brightness(0.72);
 }
 
+/* ── Generate page: extra light-mode polish ─────────────────────── */
+body.theme-light .md-input::placeholder,
+body.theme-light .md-textarea::placeholder {
+  color: var(--text-3);
+}
+
+/* Active generate button casts a warmer shadow on cream */
+body.theme-light .btn-accent:not(:disabled) {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.45) inset,
+    0 3px 14px rgba(61,126,255,0.28),
+    0 1px 3px rgba(0,0,0,0.12);
+}
+body.theme-light .btn-accent:not(:disabled):hover {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.55) inset,
+    0 6px 22px rgba(61,126,255,0.38),
+    0 2px 5px rgba(0,0,0,0.10);
+}
+
 /* ── Button elevation ────────────────────────────────────────────── */
 .btn-accent:not(:disabled) {
   border-radius: 999px;
@@ -319,9 +359,10 @@ body.theme-light .explore-link {
 body.theme-light .md-input,
 body.theme-light .md-textarea,
 body.theme-light .md-select {
-  background-color: var(--bg-surface);
+  /* Lighter than the --bg-surface card body so inputs read as a distinct inset */
+  background-color: var(--bg-page);
   color: var(--text-1);
-  border-color: var(--border-light);
+  border-color: var(--border-base);
 }
 
 body.theme-light .md-input:focus,
