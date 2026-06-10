@@ -33,49 +33,134 @@ const UKFlag = () => {
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
 
+const STARS = [
+  { x: 9,  y: 6,  r: 1.5, delay: '0ms'   },
+  { x: 19, y: 11, r: 1.0, delay: '70ms'  },
+  { x: 14, y: 19, r: 1.2, delay: '35ms'  },
+  { x: 25, y: 7,  r: 0.8, delay: '110ms' },
+];
+
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   const { ts } = useLang();
+  const dark = theme === 'dark';
+
   return (
     <button
       onClick={toggleTheme}
-      title={theme === 'dark' ? ts('Switch to light mode') : ts('Switch to dark mode')}
-      aria-label={theme === 'dark' ? ts('Switch to light mode') : ts('Switch to dark mode')}
+      title={dark ? ts('Switch to light mode') : ts('Switch to dark mode')}
+      aria-label={dark ? ts('Switch to light mode') : ts('Switch to dark mode')}
+      className="theme-toggle-btn"
       style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: '32px', height: '32px',
-        padding: '0',
-        borderRadius: '7px',
-        background: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        color: '#6B7280',
+        position: 'relative',
+        width: '54px',
+        height: '28px',
+        borderRadius: '999px',
+        border: 'none',
+        padding: 0,
         cursor: 'pointer',
-        fontSize: '16px',
-        transition: 'all 0.15s ease',
-      }}
-      onMouseEnter={e => {
-        const btn = e.currentTarget as HTMLElement;
-        btn.style.background = 'rgba(61,126,255,0.1)';
-        btn.style.borderColor = 'rgba(61,126,255,0.3)';
-        btn.style.color = '#93B8FF';
-      }}
-      onMouseLeave={e => {
-        const btn = e.currentTarget as HTMLElement;
-        btn.style.background = 'rgba(255,255,255,0.05)';
-        btn.style.borderColor = 'rgba(255,255,255,0.08)';
-        btn.style.color = '#6B7280';
+        flexShrink: 0,
+        overflow: 'hidden',
+        background: dark
+          ? 'linear-gradient(135deg, #07091A 0%, #0E1D3B 60%, #162650 100%)'
+          : 'linear-gradient(135deg, #FDE68A 0%, #FBBF24 55%, #F59E0B 100%)',
+        boxShadow: dark
+          ? '0 0 0 1px rgba(147,197,253,0.12), inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.55)'
+          : '0 0 0 1px rgba(217,119,6,0.4), inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 8px rgba(245,158,11,0.4)',
+        transition: 'background 0.55s cubic-bezier(0.4,0,0.2,1), box-shadow 0.4s ease',
       }}
     >
-      {theme === 'dark' ? (
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
-          <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.4"/>
-          <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      {/* Stars — visible in dark mode */}
+      {STARS.map((s, i) => (
+        <span key={i} style={{
+          position: 'absolute',
+          left: s.x,
+          top: s.y,
+          width: s.r * 2,
+          height: s.r * 2,
+          borderRadius: '50%',
+          background: '#BAD6F5',
+          opacity: dark ? 1 : 0,
+          transform: dark ? 'scale(1)' : 'scale(0)',
+          transition: `opacity 0.35s ease ${s.delay}, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) ${s.delay}`,
+          pointerEvents: 'none',
+        }} />
+      ))}
+
+      {/* Sun rays — visible in light mode, spin slowly */}
+      <span className={dark ? '' : 'theme-toggle-rays'} style={{
+        position: 'absolute',
+        top: '50%',
+        left: '14px',
+        width: '28px',
+        height: '28px',
+        marginTop: '-14px',
+        marginLeft: '-14px',
+        opacity: dark ? 0 : 1,
+        transform: dark ? 'scale(0.4)' : 'scale(1)',
+        transition: 'opacity 0.35s ease 0.05s, transform 0.45s cubic-bezier(0.34,1.56,0.64,1)',
+        pointerEvents: 'none',
+      }}>
+        <svg viewBox="0 0 28 28" width="28" height="28" fill="none">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <line
+              key={i}
+              x1="14" y1="1.5" x2="14" y2="4.5"
+              stroke="rgba(217,119,6,0.55)"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              transform={`rotate(${i * 45} 14 14)`}
+            />
+          ))}
         </svg>
-      ) : (
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
-          <path d="M13.5 10A6 6 0 016 2.5a6 6 0 100 11 6 6 0 007.5-3.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-        </svg>
-      )}
+      </span>
+
+      {/* Sliding knob */}
+      <span style={{
+        position: 'absolute',
+        top: '3px',
+        left: dark ? 'calc(100% - 25px)' : '3px',
+        width: '22px',
+        height: '22px',
+        borderRadius: '50%',
+        background: dark
+          ? 'linear-gradient(145deg, #1C3360 0%, #2A4A8A 100%)'
+          : 'linear-gradient(145deg, #FFFDE7 0%, #FFF8C0 100%)',
+        boxShadow: dark
+          ? '0 0 10px rgba(99,179,237,0.45), inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 6px rgba(0,0,0,0.5)'
+          : '0 0 14px rgba(251,191,36,0.65), inset 0 1px 0 rgba(255,255,255,1), 0 2px 4px rgba(0,0,0,0.15)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'left 0.48s cubic-bezier(0.34,1.56,0.64,1), background 0.45s ease, box-shadow 0.45s ease',
+      }}>
+        {/* Moon — visible in dark mode */}
+        <span style={{
+          position: 'absolute',
+          opacity: dark ? 1 : 0,
+          transform: dark ? 'scale(1) rotate(0deg)' : 'scale(0.3) rotate(-45deg)',
+          transition: 'opacity 0.3s ease 0.05s, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
+        }}>
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none">
+            <path d="M10 7.5A4.5 4.5 0 013.5 1a5 5 0 100 10A4.5 4.5 0 0010 7.5z" fill="rgba(186,230,253,0.95)" />
+            <circle cx="7.5" cy="3" r="0.6" fill="rgba(186,230,253,0.4)" />
+            <circle cx="4" cy="4.5" r="0.4" fill="rgba(186,230,253,0.3)" />
+          </svg>
+        </span>
+
+        {/* Sun — visible in light mode */}
+        <span style={{
+          position: 'absolute',
+          opacity: dark ? 0 : 1,
+          transform: dark ? 'scale(0.3) rotate(45deg)' : 'scale(1) rotate(0deg)',
+          transition: 'opacity 0.3s ease 0.05s, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
+        }}>
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none">
+            <circle cx="6" cy="6" r="3" fill="#F59E0B" />
+            <circle cx="6" cy="6" r="2" fill="#FCD34D" />
+          </svg>
+        </span>
+      </span>
     </button>
   );
 }

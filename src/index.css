@@ -599,6 +599,21 @@ body.theme-light .toast {
   border-radius: 4px;
 }
 
+/* ── Theme toggle ─────────────────────────────────────────────────── */
+@keyframes theme-rays-spin {
+  to { transform: scale(1) rotate(360deg); }
+}
+.theme-toggle-rays {
+  animation: theme-rays-spin 10s linear infinite;
+}
+.theme-toggle-btn:hover {
+  filter: brightness(1.08);
+}
+.theme-toggle-btn:active {
+  transform: scale(0.93);
+  transition: transform 0.1s ease !important;
+}
+
 /* ── Reduced motion ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -606,6 +621,7 @@ body.theme-light .toast {
     transition-duration: 0.01ms !important;
   }
   .flip-card-inner { transition-duration: 0.01ms !important; }
+  .theme-toggle-rays { animation: none; }
 }
 
 /* ── Notes reading: extreme chrome dimming ──────────────────────────
