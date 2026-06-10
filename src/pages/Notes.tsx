@@ -44,10 +44,10 @@ function SubjectBtn({ subject, count, active, onClick }: {
         background: color,
         boxShadow: active ? `0 0 6px ${color}` : 'none',
       }} />
-      <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? '#E6EDF3' : '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {subject?.title ?? ts('All subjects')}
       </span>
-      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : '#484F58' }}>
+      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : 'var(--text-3)' }}>
         {count}
       </span>
     </button>
@@ -64,23 +64,33 @@ function NoteCard({ note, color, onClick, index = 0 }: { note: StoredNote; color
       className="anim-rise"
       style={{
         ['--d' as string]: `${index * 45}ms`,
-        background: '#161B22', border: '1px solid #21262D', borderRadius: '16px',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '16px',
         padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
-        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
+        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '40'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = 'translateY(-2px)';
+        el.style.borderColor = color + '50';
+        el.style.boxShadow = `0 4px 16px ${color}14`;
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = '';
+        el.style.borderColor = 'var(--border-light)';
+        el.style.boxShadow = '';
+      }}
     >
       <div style={{
         width: '36px', height: '36px', borderRadius: '10px', marginBottom: '12px',
-        background: color + '18', color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: color + '18', border: `1px solid ${color}30`, color, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.3"/><line x1="5" y1="6" x2="13" y2="6" stroke="currentColor" strokeWidth="1.3"/><line x1="5" y1="9" x2="11" y2="9" stroke="currentColor" strokeWidth="1.3"/><line x1="5" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.3"/></svg>
       </div>
-      <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {note.name}
       </div>
-      <div style={{ fontSize: '11px', color: '#8B949E' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
         {ts('{n} sections', { n: note.note.sections.length })} · {new Date(note.createdAt).toLocaleDateString()}
       </div>
     </button>
@@ -92,10 +102,10 @@ function NoteCard({ note, color, onClick, index = 0 }: { note: StoredNote; color
 function Empty() {
   const { ts } = useLang();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: '#8B949E', textAlign: 'center', gap: '12px' }}>
-      <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><rect x="6" y="6" width="36" height="36" rx="6" stroke="#30363D" strokeWidth="2"/><line x1="14" y1="16" x2="34" y2="16" stroke="#484F58" strokeWidth="2"/><line x1="14" y1="24" x2="28" y2="24" stroke="#484F58" strokeWidth="2"/><line x1="14" y1="32" x2="22" y2="32" stroke="#484F58" strokeWidth="2"/></svg>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: 'var(--text-2)', textAlign: 'center', gap: '12px' }}>
+      <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><rect x="6" y="6" width="36" height="36" rx="6" stroke="var(--border-base)" strokeWidth="2"/><line x1="14" y1="16" x2="34" y2="16" stroke="var(--text-3)" strokeWidth="2"/><line x1="14" y1="24" x2="28" y2="24" stroke="var(--text-3)" strokeWidth="2"/><line x1="14" y1="32" x2="22" y2="32" stroke="var(--text-3)" strokeWidth="2"/></svg>
       <div>
-        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>{ts('No notes yet')}</div>
+        <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '4px' }}>{ts('No notes yet')}</div>
         <div style={{ fontSize: '13px' }}>{ts('Upload files to a subject and generate notes from the subject page.')}</div>
       </div>
     </div>
@@ -202,12 +212,12 @@ export default function Notes() {
       <aside className="notes-sidebar hidden md:flex flex-col" style={{
         width: sidebarOpen ? '220px' : '0',
         flexShrink: 0,
-        borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
+        borderRight: sidebarOpen ? '1px solid var(--border-light)' : 'none',
         padding: sidebarOpen ? '16px 10px' : '0',
         gap: '2px', overflowY: 'auto', overflowX: 'hidden',
         transition: 'width 0.25s ease, padding 0.25s ease',
       }}>
-        <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
+        <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Notes')}
         </div>
         <SubjectBtn subject={null} count={notes.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveNote(null); setSidebarOpen(true); }} />
@@ -224,13 +234,13 @@ export default function Notes() {
             <div className="notes-breadcrumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <button
                 onClick={() => { setActiveNote(null); setSidebarOpen(true); }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#8B949E', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 ← {ts('All notes')}
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {activeSubject && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />}
-                <span style={{ fontSize: '11px', color: '#8B949E', fontWeight: 600 }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-2)', fontWeight: 600 }}>
                   {activeSubject?.title ?? ''} · {activeNote.name}
                 </span>
               </div>
@@ -267,9 +277,9 @@ export default function Notes() {
                 <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? ts('Unknown subject')}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} notes', { n: groupNotes.length })}</span>
-                    <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.06em' }}>{subject?.title ?? ts('Unknown subject')}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} notes', { n: groupNotes.length })}</span>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
                   </div>
                   <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
                     {groupNotes.map((note, i) => (

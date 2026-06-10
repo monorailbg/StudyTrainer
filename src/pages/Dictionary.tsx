@@ -23,10 +23,10 @@ function SubjectBtn({ color, label, count, active, onClick }: {
         width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
         background: color, boxShadow: active ? `0 0 6px ${color}` : 'none',
       }} />
-      <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? '#E6EDF3' : '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {label}
       </span>
-      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : '#484F58' }}>
+      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : 'var(--text-3)' }}>
         {count}
       </span>
     </button>
@@ -66,11 +66,11 @@ export default function Dictionary() {
 
       {/* Left sidebar */}
       <aside style={{
-        width: '220px', flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)',
+        width: '220px', flexShrink: 0, borderRight: '1px solid var(--border-light)',
         background: 'var(--bg-page)', display: 'flex', flexDirection: 'column',
         overflowY: 'auto', padding: '20px 12px',
       }}>
-        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 4px', marginBottom: '8px', fontFamily: "'Sora',sans-serif" }}>
+        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 4px', marginBottom: '8px', fontFamily: "'Sora',sans-serif" }}>
           {ts('Dictionary')}
         </div>
 
@@ -83,7 +83,7 @@ export default function Dictionary() {
         />
 
         {subjectsWithEntries.length > 0 && (
-          <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.05)', margin: '8px 0' }} />
+          <div style={{ width: '100%', height: '1px', background: 'var(--border-light)', margin: '8px 0' }} />
         )}
 
         {subjectsWithEntries.map(s => (
