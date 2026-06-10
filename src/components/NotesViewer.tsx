@@ -254,8 +254,8 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
         visibility: pos ? 'visible' : 'hidden',
         zIndex: 9999,
         display: 'flex', alignItems: 'center', gap: '2px', padding: '5px 7px',
-        background: '#0D1117', border: '1px solid rgba(255,255,255,0.14)',
-        borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+        borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
         userSelect: 'none',
       }}
     >
@@ -271,7 +271,7 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
           }}
         />
       ))}
-      <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+      <div style={{ width: '1px', height: '16px', background: 'var(--border-base)', margin: '0 2px' }} />
       {UNDERLINE_COLORS.map(c => (
         <button
           key={c.id}
@@ -289,7 +289,7 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
           }}
         >U</button>
       ))}
-      <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+      <div style={{ width: '1px', height: '16px', background: 'var(--border-base)', margin: '0 2px' }} />
       <button
         onClick={onAddToDictionary}
         title={ts('Add to dictionary')}
@@ -313,8 +313,8 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
         title="翻訳 (Japanese definition)"
         style={{
           height: '28px', padding: '0 9px', borderRadius: '7px',
-          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
-          cursor: 'pointer', color: 'rgba(230,237,243,0.85)', fontSize: '11px', fontWeight: 600,
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
+          cursor: 'pointer', color: 'var(--text-2)', fontSize: '11px', fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: '5px',
           flexShrink: 0, whiteSpace: 'nowrap',
           letterSpacing: '0.02em',
@@ -345,8 +345,8 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
             position: 'absolute', left: caretX, width: 0, height: 0,
             transform: 'translateX(-50%)',
             ...(pos.below
-              ? { top: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: '6px solid #111827' }
-              : { bottom: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid #111827' }),
+              ? { top: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: '6px solid var(--bg-surface)' }
+              : { bottom: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid var(--bg-surface)' }),
           }}
         />
       )}

@@ -316,6 +316,26 @@ body.theme-light .explore-link {
   color: #484F58;
 }
 
+body.theme-light .md-input,
+body.theme-light .md-textarea,
+body.theme-light .md-select {
+  background-color: var(--bg-surface);
+  color: var(--text-1);
+  border-color: var(--border-light);
+}
+
+body.theme-light .md-input:focus,
+body.theme-light .md-textarea:focus,
+body.theme-light .md-select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(139, 111, 71, 0.15);
+}
+
+body.theme-light .md-input::placeholder,
+body.theme-light .md-textarea::placeholder {
+  color: var(--text-3);
+}
+
 .md-textarea {
   resize: vertical;
   min-height: 100px;
@@ -423,6 +443,14 @@ body.theme-light .explore-link {
 }
 * { scrollbar-width: thin; scrollbar-color: #30363D transparent; }
 
+body.theme-light ::-webkit-scrollbar-thumb {
+  background: var(--border-base);
+}
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+body.theme-light * { scrollbar-color: var(--border-base) transparent; }
+
 /* ── Button base — consistent padding / radius / states ──────────── */
 .btn {
   display: inline-flex;
@@ -490,6 +518,18 @@ body.theme-light .explore-link {
 }
 @keyframes shimmer { to { transform: translateX(100%); } }
 
+body.theme-light .skeleton {
+  background: var(--bg-elevated);
+}
+body.theme-light .skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0,0,0,0.05) 50%,
+    transparent 100%
+  );
+}
+
 /* ── Staggered entrance — set --d for per-item delay ─────────────── */
 @keyframes rise {
   from { opacity: 0; transform: translateY(12px); }
@@ -532,6 +572,17 @@ body.theme-light .explore-link {
 }
 .toast.leaving { animation: toast-out 0.3s var(--ease-md-accelerate) forwards; }
 .toast-accent { width: 3px; border-radius: 999px; align-self: stretch; flex-shrink: 0; }
+
+body.theme-light .toast {
+  background: var(--bg-surface);
+  border-color: var(--border-light);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.08);
+  color: var(--text-1);
+}
+
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(24px) scale(0.96); }
   to   { opacity: 1; transform: translateX(0) scale(1); }
@@ -562,6 +613,9 @@ body.theme-light .explore-link {
    disappears. Hover restores each element for usability. */
 .page-notes-reading {
   background: #07070f !important;
+}
+body.theme-light .page-notes-reading {
+  background: var(--bg-page) !important;
 }
 .page-notes-reading .notes-sidebar {
   opacity: 0.06;
@@ -628,6 +682,23 @@ body.notes-reading.notes-scrolling-down .notes-reading-fade-top { top: 0; }
   color: rgba(255, 255, 255, 0.88) !important;
 }
 
+body.theme-light .page-notes-reading .notes-content-main {
+  background: transparent;
+}
+body.theme-light .page-notes-reading .notes-section-card {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset !important;
+}
+body.theme-light .page-notes-reading .notes-title {
+  color: var(--text-1) !important;
+}
+body.theme-light .page-notes-reading .notes-section-body {
+  color: var(--text-1) !important;
+}
+
 /* ── Notes focus mode: dim chrome, spotlight content ──────────────────
    Triggered by the Focus button inside the note reader on a subject page.
    Navbar and breadcrumb strip fade to near-invisible; hover restores them. */
@@ -671,6 +742,18 @@ body.notes-focus-active .notes-content-main .notes-section-body {
   color: rgba(255, 255, 255, 0.90) !important;
 }
 
+body.theme-light.notes-focus-active .notes-content-main .notes-section-card {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-light) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.6) inset !important;
+}
+body.theme-light.notes-focus-active .notes-content-main .notes-title {
+  color: var(--text-1) !important;
+}
+body.theme-light.notes-focus-active .notes-content-main .notes-section-body {
+  color: var(--text-1) !important;
+}
+
 
 /* ── Notes ToC panel ─────────────────────────────────────────────────
    Hidden by default; toggled via the vertical pill on the right edge. */
@@ -691,6 +774,10 @@ body.notes-focus-active .notes-content-main .notes-section-body {
   pointer-events: none;
   transform: translateX(16px);
   transition: opacity 200ms ease, transform 200ms ease;
+}
+body.theme-light .notes-toc-panel {
+  background: var(--bg-nav);
+  border-left-color: var(--border-light);
 }
 .notes-toc-panel.visible {
   opacity: 1;
@@ -723,6 +810,12 @@ body.notes-focus-active .notes-content-main .notes-section-body {
 .notes-toc-toggle.panel-open {
   right: 232px;
   opacity: 0.60;
+}
+
+body.theme-light .notes-toc-toggle {
+  background: var(--bg-surface);
+  border-color: var(--border-light);
+  color: var(--text-2);
 }
 
 /* ── Flashcard session: extreme immersive dimming ───────────────────
@@ -769,6 +862,10 @@ body.flashcards-session nav:hover {
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 8px 48px rgba(0, 0, 0, 0.80),
     0 0 80px rgba(72, 199, 142, 0.06);
+}
+
+body.theme-light .page-flashcards-session {
+  background: var(--bg-page) !important;
 }
 
 /* ── Responsive: notes section cards ────────────────────────────────── */
