@@ -166,7 +166,10 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
   const barDelay = index * 60;
 
   return (
-    <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms`, position: 'relative' }}>
+    <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms`, position: 'relative' }}
+      onMouseEnter={e => { const card = (e.currentTarget as HTMLElement).querySelector('[class*="card-panel"]') as HTMLElement; if (card) { card.style.backgroundColor = 'var(--bg-surface)'; card.style.borderColor = '#D97706'; } }}
+      onMouseLeave={e => { const card = (e.currentTarget as HTMLElement).querySelector('[class*="card-panel"]') as HTMLElement; if (card) { card.style.backgroundColor = ''; card.style.borderColor = ''; } }}
+    >
       {/* Due-for-review badge — overlaps the top-right corner */}
       {due > 0 && (
         <span style={{
@@ -179,7 +182,7 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
           {ts('{n} due', { n: due })}
         </span>
       )}
-      <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}>
+      <TiltCard className="card-panel h-full" style={{ minHeight: '160px', borderColor: 'var(--border-base)', transition: 'background-color 0.2s ease, border-color 0.2s ease' }}>
         <div className="p-5 flex flex-col h-full gap-3">
           {/* Icon + color accent */}
           <div className="flex items-start justify-between">

@@ -205,8 +205,8 @@ export default function Navbar() {
             <div style={{
               display: 'flex', gap: '1px',
               padding: '4px',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-light)',
               borderRadius: '14px',
             }}>
               {navItems.map(({ to, labelKey }) => {
@@ -220,7 +220,7 @@ export default function Navbar() {
                       padding: '6px 13px', borderRadius: '10px',
                       fontFamily: "'Inter', sans-serif",
                       fontSize: '13px', fontWeight: active ? 600 : 400,
-                      color: active ? 'var(--text-1)' : '#5B6475',
+                      color: active ? 'var(--text-1)' : 'var(--text-2)',
                       background: active ? 'var(--bg-elevated)' : 'transparent',
                       textDecoration: 'none',
                       transition: 'color 0.15s ease, background 0.15s ease',
@@ -228,10 +228,10 @@ export default function Navbar() {
                       whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={e => {
-                      if (!active) (e.currentTarget as HTMLElement).style.color = '#9BA3AE';
+                      if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--text-1)';
                     }}
                     onMouseLeave={e => {
-                      if (!active) (e.currentTarget as HTMLElement).style.color = '#5B6475';
+                      if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--text-2)';
                     }}
                   >
                     {active && (
@@ -311,7 +311,7 @@ export default function Navbar() {
         <div style={{
           position: 'fixed', top: '72px', left: 0, right: 0, bottom: 0,
           zIndex: 49,
-          background: 'rgba(8,11,16,0.99)',
+          background: 'var(--bg-page)',
           backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
           display: 'flex', flexDirection: 'column', padding: '20px 16px',
           overflowY: 'auto',
@@ -327,15 +327,15 @@ export default function Navbar() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '13px 16px', borderRadius: '12px', textDecoration: 'none',
-                    color: active ? 'var(--text-1)' : '#6B7280',
-                    background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
+                    color: active ? 'var(--text-1)' : 'var(--text-2)',
+                    background: active ? 'var(--bg-elevated)' : 'transparent',
                     fontSize: '15px', fontWeight: active ? 600 : 400,
                     transition: 'background 0.15s ease, color 0.15s ease',
                   }}
                 >
                   <span style={{
                     width: '6px', height: '6px', borderRadius: '50%',
-                    background: active ? '#3D7EFF' : '#2A3040', flexShrink: 0,
+                    background: active ? '#3D7EFF' : 'transparent', flexShrink: 0,
                     boxShadow: active ? '0 0 6px rgba(61,126,255,0.7)' : 'none',
                   }} />
                   {t(labelKey)}
