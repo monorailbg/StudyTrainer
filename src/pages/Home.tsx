@@ -36,10 +36,12 @@ function getGreeting() {
 
 // ── Tilt card ──────────────────────────────────────────────────────────────────
 
-function TiltCard({ children, className, style }: {
+function TiltCard({ children, className, style, hoverBorderColor = 'rgba(61,126,255,0.4)', hoverBackground }: {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  hoverBorderColor?: string;
+  hoverBackground?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -50,7 +52,8 @@ function TiltCard({ children, className, style }: {
     const y = ((e.clientY - r.top)  / r.height - 0.5) * -7;
     el.style.transform = `perspective(900px) rotateX(${y}deg) rotateY(${x}deg) translateY(-6px) scale(1.01)`;
     el.style.boxShadow = '0 1px 0 rgba(255,255,255,0.09) inset,0 12px 32px rgba(0,0,0,0.55),0 28px 60px rgba(0,0,0,0.38),0 0 0 1px rgba(61,126,255,0.3)';
-    el.style.borderColor = 'rgba(61,126,255,0.4)';
+    el.style.borderColor = hoverBorderColor;
+    if (hoverBackground) el.style.background = hoverBackground;
   }
 
   function onLeave() {
@@ -58,10 +61,11 @@ function TiltCard({ children, className, style }: {
     el.style.transform = '';
     el.style.boxShadow = '';
     el.style.borderColor = '';
+    el.style.background = '';
   }
 
   return (
-    <div ref={ref} className={className} style={{ ...style, transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.45s cubic-bezier(0.34,1.56,0.64,1),border-color 0.45s cubic-bezier(0.34,1.56,0.64,1)' }}
+    <div ref={ref} className={className} style={{ ...style, transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.45s cubic-bezier(0.34,1.56,0.64,1),border-color 0.35s ease,background 0.35s ease' }}
       onMouseMove={onMove} onMouseLeave={onLeave}>
       {children}
     </div>
@@ -166,10 +170,7 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
   const barDelay = index * 60;
 
   return (
-    <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms`, position: 'relative' }}
-      onMouseEnter={e => { const card = (e.currentTarget as HTMLElement).querySelector('[class*="card-panel"]') as HTMLElement; if (card) { card.style.backgroundColor = 'var(--bg-surface)'; card.style.borderColor = '#D97706'; } }}
-      onMouseLeave={e => { const card = (e.currentTarget as HTMLElement).querySelector('[class*="card-panel"]') as HTMLElement; if (card) { card.style.backgroundColor = ''; card.style.borderColor = ''; } }}
-    >
+    <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms`, position: 'relative' }}>
       {/* Due-for-review badge — overlaps the top-right corner */}
       {due > 0 && (
         <span style={{
@@ -182,7 +183,10 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
           {ts('{n} due', { n: due })}
         </span>
       )}
-      <TiltCard className="card-panel h-full" style={{ minHeight: '160px', borderColor: 'var(--border-base)', transition: 'background-color 0.2s ease, border-color 0.2s ease' }}>
+      <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}
+        hoverBorderColor="rgba(217,119,6,0.6)"
+        hoverBackground="rgba(217,119,6,0.11)"
+      >
         <div className="p-5 flex flex-col h-full gap-3">
           {/* Icon + color accent */}
           <div className="flex items-start justify-between">
