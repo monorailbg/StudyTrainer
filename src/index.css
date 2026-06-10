@@ -601,10 +601,10 @@ body.theme-light .toast {
 
 /* ── Theme toggle ─────────────────────────────────────────────────── */
 .theme-toggle-btn:hover {
-  opacity: 0.92;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.5) !important;
 }
 .theme-toggle-btn:active {
-  transform: scale(0.91);
+  transform: scale(0.96);
   transition: transform 0.08s ease !important;
 }
 
@@ -614,15 +614,17 @@ body.theme-light .toast {
   100% { transform: translateX(280%) skewX(-12deg); }
 }
 .generate-btn:hover {
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.7), 0 4px 20px rgba(79,70,229,0.6), inset 0 1px 0 rgba(255,255,255,0.25) !important;
-  transform: translateY(-1px) scale(1.02);
+  background: var(--bg-elevated);
+  border-color: var(--border-base);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.5) !important;
+  transform: translateY(-0.5px);
 }
 .generate-btn:active {
-  transform: translateY(0) scale(0.97) !important;
+  transform: translateY(0) scale(0.98) !important;
   transition: transform 0.08s ease !important;
 }
 .generate-btn:hover .generate-btn-shimmer {
-  animation: generate-shimmer 0.55s ease forwards;
+  animation: generate-shimmer 0.45s ease forwards;
 }
 
 /* ── Reduced motion ──────────────────────────────────────────────── */

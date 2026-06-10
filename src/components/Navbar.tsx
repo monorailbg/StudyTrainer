@@ -60,18 +60,16 @@ function ThemeToggle() {
         width: '54px',
         height: '28px',
         borderRadius: '999px',
-        border: 'none',
+        border: '1px solid var(--border-light)',
         padding: 0,
         cursor: 'pointer',
         flexShrink: 0,
         overflow: 'hidden',
-        background: dark
-          ? 'linear-gradient(135deg, #07091A 0%, #0E1D3B 60%, #162650 100%)'
-          : 'linear-gradient(135deg, #FDE68A 0%, #FBBF24 55%, #F59E0B 100%)',
+        background: dark ? 'var(--bg-surface)' : 'var(--bg-surface)',
         boxShadow: dark
-          ? '0 0 0 1px rgba(147,197,253,0.12), inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.55)'
-          : '0 0 0 1px rgba(217,119,6,0.4), inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 8px rgba(245,158,11,0.4)',
-        transition: 'background 0.55s cubic-bezier(0.4,0,0.2,1), box-shadow 0.4s ease',
+          ? '0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.06)'
+          : '0 0 0 1px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)',
+        transition: 'background 0.5s ease, box-shadow 0.3s ease',
       }}
     >
       {/* Stars — visible in dark mode */}
@@ -83,10 +81,10 @@ function ThemeToggle() {
           width: s.r * 2,
           height: s.r * 2,
           borderRadius: '50%',
-          background: '#BAD6F5',
-          opacity: dark ? 1 : 0,
+          background: 'rgba(147,197,253,0.5)',
+          opacity: dark ? 0.6 : 0,
           transform: dark ? 'scale(1)' : 'scale(0)',
-          transition: `opacity 0.35s ease ${s.delay}, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) ${s.delay}`,
+          transition: `opacity 0.3s ease ${s.delay}, transform 0.35s cubic-bezier(0.3,1.2,0.4,1) ${s.delay}`,
           pointerEvents: 'none',
         }} />
       ))}
@@ -100,15 +98,15 @@ function ThemeToggle() {
         height: '28px',
         marginTop: '-14px',
         marginLeft: '-14px',
-        opacity: dark ? 0 : 1,
+        opacity: dark ? 0 : 0.4,
         transform: dark ? 'scale(0.4) rotate(-30deg)' : 'scale(1) rotate(0deg)',
-        transition: 'opacity 0.3s ease, transform 0.45s cubic-bezier(0.34,1.56,0.64,1)',
+        transition: 'opacity 0.25s ease, transform 0.4s cubic-bezier(0.3,1.2,0.4,1)',
         pointerEvents: 'none',
       }}>
         <svg viewBox="0 0 28 28" width="28" height="28" fill="none">
           {Array.from({ length: 8 }).map((_, i) => (
             <line key={i} x1="14" y1="1.5" x2="14" y2="5"
-              stroke="rgba(217,119,6,0.5)" strokeWidth="1.5" strokeLinecap="round"
+              stroke="rgba(155,139,120,0.4)" strokeWidth="1.2" strokeLinecap="round"
               transform={`rotate(${i * 45} 14 14)`}
             />
           ))}
@@ -125,28 +123,28 @@ function ThemeToggle() {
         borderRadius: '50%',
         willChange: 'transform',
         background: dark
-          ? 'linear-gradient(145deg, #1C3360 0%, #2A4A8A 100%)'
-          : 'linear-gradient(145deg, #FFFDE7 0%, #FFF8C0 100%)',
+          ? 'var(--bg-elevated)'
+          : 'var(--bg-elevated)',
         boxShadow: dark
-          ? '0 0 10px rgba(99,179,237,0.45), inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 6px rgba(0,0,0,0.5)'
-          : '0 0 14px rgba(251,191,36,0.65), inset 0 1px 0 rgba(255,255,255,1), 0 2px 4px rgba(0,0,0,0.15)',
+          ? '0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.3)'
+          : '0 0 0 1px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(0,0,0,0.08)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         transform: dark ? `translateX(${KNOB_TRAVEL}px)` : 'translateX(0px)',
-        transition: 'transform 0.42s cubic-bezier(0.34,1.56,0.64,1), background 0.45s ease, box-shadow 0.45s ease',
+        transition: 'transform 0.4s cubic-bezier(0.3,1.2,0.4,1), background 0.35s ease, box-shadow 0.35s ease',
       }}>
         {/* Moon */}
         <span style={{
           position: 'absolute',
           opacity: dark ? 1 : 0,
           transform: dark ? 'scale(1) rotate(0deg)' : 'scale(0.3) rotate(-45deg)',
-          transition: 'opacity 0.3s ease 0.05s, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
+          transition: 'opacity 0.25s ease 0.05s, transform 0.35s cubic-bezier(0.3,1.2,0.4,1) 0.05s',
         }}>
           <svg viewBox="0 0 12 12" width="11" height="11" fill="none">
-            <path d="M10 7.5A4.5 4.5 0 013.5 1a5 5 0 100 10A4.5 4.5 0 0010 7.5z" fill="rgba(186,230,253,0.95)" />
-            <circle cx="7.5" cy="3" r="0.6" fill="rgba(186,230,253,0.4)" />
-            <circle cx="4" cy="4.5" r="0.4" fill="rgba(186,230,253,0.3)" />
+            <path d="M10 7.5A4.5 4.5 0 013.5 1a5 5 0 100 10A4.5 4.5 0 0010 7.5z" fill="rgba(155,139,120,0.7)" />
+            <circle cx="7.5" cy="3" r="0.6" fill="rgba(155,139,120,0.3)" />
+            <circle cx="4" cy="4.5" r="0.4" fill="rgba(155,139,120,0.2)" />
           </svg>
         </span>
 
@@ -155,11 +153,11 @@ function ThemeToggle() {
           position: 'absolute',
           opacity: dark ? 0 : 1,
           transform: dark ? 'scale(0.3) rotate(45deg)' : 'scale(1) rotate(0deg)',
-          transition: 'opacity 0.3s ease 0.05s, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
+          transition: 'opacity 0.25s ease 0.05s, transform 0.35s cubic-bezier(0.3,1.2,0.4,1) 0.05s',
         }}>
           <svg viewBox="0 0 12 12" width="11" height="11" fill="none">
-            <circle cx="6" cy="6" r="3" fill="#F59E0B" />
-            <circle cx="6" cy="6" r="2" fill="#FCD34D" />
+            <circle cx="6" cy="6" r="3" fill="rgba(155,139,120,0.6)" />
+            <circle cx="6" cy="6" r="2" fill="rgba(155,139,120,0.4)" />
           </svg>
         </span>
       </span>
@@ -375,33 +373,33 @@ export default function Navbar() {
               className="generate-btn"
               style={{
                 position: 'relative',
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '0 15px 0 11px',
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '0 14px 0 11px',
                 height: '30px',
                 borderRadius: '999px',
-                background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 60%, #6366F1 100%)',
-                border: 'none',
-                color: '#EEF2FF',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-light)',
+                color: 'var(--text-1)',
                 cursor: 'pointer',
                 fontSize: '12px',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
                 overflow: 'hidden',
-                boxShadow: '0 0 0 1px rgba(99,102,241,0.5), 0 2px 10px rgba(79,70,229,0.45), inset 0 1px 0 rgba(255,255,255,0.18)',
-                transition: 'box-shadow 0.25s ease, transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+                boxShadow: '0 0 0 1px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.4)',
+                transition: 'box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease',
               }}
             >
               {/* Shimmer sweep on hover (CSS class controls animation) */}
               <span className="generate-btn-shimmer" style={{
                 position: 'absolute', top: 0, left: 0, bottom: 0, width: '45%',
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%)',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(61,126,255,0.15) 50%, transparent 100%)',
                 transform: 'translateX(-120%) skewX(-12deg)',
                 pointerEvents: 'none',
               }} />
               {/* AI sparkle icon */}
               <svg viewBox="0 0 13 13" width="12" height="12" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M6.5 1L7.4 5.1 11.5 6 7.4 6.9 6.5 11 5.6 6.9 1.5 6 5.6 5.1Z" fill="white" fillOpacity="0.95"/>
-                <path d="M10.5 1L11 3 13 3.5 11 4 10.5 6 10 4 8 3.5 10 3Z" fill="white" fillOpacity="0.7"/>
+                <path d="M6.5 1L7.4 5.1 11.5 6 7.4 6.9 6.5 11 5.6 6.9 1.5 6 5.6 5.1Z" fill="var(--accent-primary)" fillOpacity="0.75"/>
+                <path d="M10.5 1L11 3 13 3.5 11 4 10.5 6 10 4 8 3.5 10 3Z" fill="var(--accent-primary)" fillOpacity="0.5"/>
               </svg>
               {ts('Generate')}
             </button>
