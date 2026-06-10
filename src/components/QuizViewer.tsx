@@ -7,6 +7,13 @@ import { saveQuizResult, type QuizResult, type QuizResultQuestion } from '../lib
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
+// Per-question edit draft — sits on top of AI-generated data
+interface EditDraft {
+  question: string;
+  options: [string, string, string, string];
+  correct: 0 | 1 | 2 | 3;
+}
+
 export type QuizMode = 'focused' | 'test' | 'practice';
 
 const LAST_MODE_KEY = 'gbs-last-quiz-mode';
@@ -244,6 +251,166 @@ function SetupScreen({ total, color, onStart, initialMode }: {
   );
 }
 
+// ── Inline question editor ─────────────────────────────────────────────────────
+
+function InlineEditForm({
+  draft, color, onChange, onSave, onCancel,
+}: {
+  draft: EditDraft;
+  color: string;
+  onChange: (d: EditDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const { ts } = useLang();
+
+  function setOption(i: number, v: string) {
+    const opts = [...draft.options] as [string, string, string, string];
+    opts[i] = v;
+    onChange({ ...draft, options: opts });
+  }
+
+  const fieldBase: React.CSSProperties = {
+    width: '100%', background: 'var(--bg-surface)', color: 'var(--text-1)',
+    border: '1px solid var(--border-light)', borderRadius: '10px',
+    padding: '9px 13px', fontSize: '14px',
+    fontFamily: "'Inter', system-ui, sans-serif",
+    outline: 'none', lineHeight: 1.5, boxSizing: 'border-box',
+  };
+
+  const iconBtn: React.CSSProperties = {
+    background: 'none', border: 'none', cursor: 'pointer',
+    color: 'var(--text-3)', padding: '4px', borderRadius: '6px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  };
+
+  return (
+    <div
+      onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onCancel(); } }}
+      style={{ padding: 'clamp(14px, 3vw, 22px)', background: 'var(--bg-surface)' }}
+    >
+      {/* Header row */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border-light)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <svg viewBox="0 0 14 14" width="12" height="12" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="var(--text-2)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-2)' }}>
+            {ts('Edit Question')}
+          </span>
+        </div>
+        <button onClick={onCancel} style={iconBtn}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-1)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; }}
+        >
+          <svg viewBox="0 0 14 14" width="13" height="13" fill="none">
+            <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Question textarea */}
+      <div style={{ marginBottom: '18px' }}>
+        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: '8px' }}>
+          {ts('Question')}
+        </div>
+        <textarea
+          value={draft.question}
+          onChange={e => onChange({ ...draft, question: e.target.value })}
+          rows={3}
+          style={{ ...fieldBase, resize: 'none' as const }}
+          onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-base)'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; }}
+        />
+      </div>
+
+      {/* Answer options */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
+          <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text-3)' }}>
+            {ts('Answers')}
+          </span>
+          <span style={{ fontSize: '10px', color: 'var(--text-3)', opacity: 0.7 }}>
+            {ts('— tap letter to mark correct')}
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {draft.options.map((opt, i) => {
+            const isCorrect = draft.correct === i;
+            const tint = LETTER_TINTS[i] ?? LETTER_TINTS[0];
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Clickable badge — tap to mark as correct answer */}
+                <button
+                  onClick={() => onChange({ ...draft, correct: i as 0 | 1 | 2 | 3 })}
+                  title={ts('Mark as correct answer')}
+                  style={{
+                    width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0,
+                    background: isCorrect ? tint.bg : 'var(--bg-elevated)',
+                    border: `1.5px solid ${isCorrect ? tint.border : 'var(--border-base)'}`,
+                    color: isCorrect ? tint.text : 'var(--text-3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '13px', fontWeight: 700,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    cursor: 'pointer', transition: 'all 0.18s',
+                  }}
+                  onMouseEnter={e => { if (!isCorrect) (e.currentTarget as HTMLElement).style.borderColor = 'var(--text-3)'; }}
+                  onMouseLeave={e => { if (!isCorrect) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; }}
+                >
+                  {isCorrect
+                    ? <svg viewBox="0 0 12 12" width="13" height="13" fill="none"><path d="M2 6l2.5 2.5L10 3.5" stroke={tint.text} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    : LETTERS[i]}
+                </button>
+                {/* Option text input */}
+                <input
+                  type="text"
+                  value={opt}
+                  onChange={e => setOption(i, e.target.value)}
+                  style={{ ...fieldBase, flex: 1, padding: '8px 13px' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-base)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Save / Cancel */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+        <button
+          onClick={onCancel}
+          style={{
+            height: '34px', padding: '0 16px', borderRadius: '999px',
+            background: 'transparent', border: '1px solid var(--border-base)',
+            color: 'var(--text-2)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+        >
+          {ts('Cancel')}
+        </button>
+        <button
+          onClick={onSave}
+          style={{
+            height: '34px', padding: '0 20px', borderRadius: '999px',
+            background: color, border: 'none',
+            color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+            boxShadow: `0 2px 10px ${color}38`,
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.88'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+        >
+          ✓ {ts('Save Edit')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Option button ─────────────────────────────────────────────────────────────
 
 // Per-letter accent tints — gives each option a unique, scannable identity.
@@ -387,15 +554,33 @@ function FocusedMode({
   const [animKey, setAnimKey] = useState(0);
   const startTime = useRef(Date.now());
 
+  // Inline edit state
+  const [overrides, setOverrides] = useState<Record<string, EditDraft>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+
   const q = questions[idx];
-  const correct = Number(q.correct);
+  const ov = overrides[q.id];
+  // Rendering always uses the overridden version if present
+  const currentQ = ov
+    ? { ...q, question: ov.question, options: ov.options, correct: ov.correct }
+    : q;
+
+  const correct = Number(currentQ.correct);
   const isCorrect = chosen === correct;
   const total = questions.length;
   const progress = (idx / total) * 100;
-  const doneCount = answeredList.filter(a => a.chosen === Number(questions[a.qi].correct)).length;
+  const isEditing = editingId === q.id;
+
+  // Correct count also respects overrides
+  const doneCount = answeredList.filter(a => {
+    const aq = questions[a.qi];
+    const aCorrect = overrides[aq.id]?.correct ?? Number(aq.correct);
+    return a.chosen === aCorrect;
+  }).length;
 
   function pick(oi: number) {
-    if (revealed) return;
+    if (revealed || isEditing) return;
     setChosen(oi);
     setRevealed(true);
   }
@@ -414,6 +599,33 @@ function FocusedMode({
       setRevealed(false);
     }
   }
+
+  function startEdit() {
+    setEditDraft({
+      question: currentQ.question,
+      options: [...currentQ.options] as [string, string, string, string],
+      correct: currentQ.correct as 0 | 1 | 2 | 3,
+    });
+    setEditingId(q.id);
+  }
+
+  function cancelEdit() { setEditingId(null); setEditDraft(null); }
+
+  function saveEdit() {
+    if (!editDraft) return;
+    setOverrides(prev => ({ ...prev, [q.id]: editDraft }));
+    setEditingId(null);
+    setEditDraft(null);
+  }
+
+  // Small pencil icon button — reused in header + TestMode
+  const editBtnStyle: React.CSSProperties = {
+    width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-light)',
+    color: 'var(--text-3)', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'all 0.15s',
+  };
 
   return (
     <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 8px' }}>
@@ -462,55 +674,95 @@ function FocusedMode({
         overflow: 'hidden',
         boxShadow: '0 2px 20px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04) inset',
       }}>
-        <div style={{ padding: 'clamp(16px, 4vw, 32px) clamp(14px, 4vw, 36px) clamp(12px, 2vw, 20px)', margin: '0 0 4px' }}>
-          <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, letterSpacing: '0.005em' }}>
-            {q.question}
+        {/* Question section with pencil button */}
+        <div style={{ padding: 'clamp(16px, 4vw, 32px) clamp(14px, 4vw, 36px) clamp(12px, 2vw, 20px)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <div style={{ flex: 1, fontSize: '20px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, letterSpacing: '0.005em' }}>
+              {currentQ.question}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {/* Edited indicator dot */}
+              {ov && !isEditing && (
+                <span title={ts('Edited')} style={{
+                  width: '5px', height: '5px', borderRadius: '50%',
+                  background: color, display: 'inline-block', marginTop: '4px',
+                }} />
+              )}
+              {/* Pencil edit button — hidden once answer is revealed */}
+              {!revealed && !isEditing && (
+                <button
+                  onClick={startEdit}
+                  title={ts('Edit this question')}
+                  style={editBtnStyle}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-1)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+                >
+                  <svg viewBox="0 0 14 14" width="13" height="13" fill="none">
+                    <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
         <div style={{ height: '1px', background: 'var(--border-light)', margin: '0 clamp(12px, 3vw, 28px)' }} />
 
-        <div style={{ padding: 'clamp(12px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {q.options.map((opt, oi) => {
-            const state = !revealed
-              ? (chosen === oi ? 'chosen' : 'idle')
-              : (oi === correct ? 'right' : (chosen === oi ? 'wrong' : 'idle'));
-            return (
-              <OptionBtn key={oi} letter={LETTERS[oi]} text={opt} state={state}
-                color={color} disabled={revealed} onClick={() => pick(oi)} />
-            );
-          })}
-        </div>
+        {/* Options panel OR inline edit form */}
+        {isEditing && editDraft ? (
+          <InlineEditForm
+            draft={editDraft}
+            color={color}
+            onChange={setEditDraft}
+            onSave={saveEdit}
+            onCancel={cancelEdit}
+          />
+        ) : (
+          <>
+            <div style={{ padding: 'clamp(12px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {currentQ.options.map((opt, oi) => {
+                const state = !revealed
+                  ? (chosen === oi ? 'chosen' : 'idle')
+                  : (oi === correct ? 'right' : (chosen === oi ? 'wrong' : 'idle'));
+                return (
+                  <OptionBtn key={oi} letter={LETTERS[oi]} text={opt} state={state}
+                    color={color} disabled={revealed} onClick={() => pick(oi)} />
+                );
+              })}
+            </div>
 
-        {revealed && q.explanation && (
-          <div style={{ margin: '0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px)' }}>
-            <Explanation correct={isCorrect} text={q.explanation} />
-          </div>
-        )}
-        {revealed && !q.explanation && (
-          <div className="anim-fadein" style={{ margin: '0 clamp(10px, 3vw, 20px) 12px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: isCorrect ? '#56D364' : '#F97979' }}>
-              {isCorrect ? `✓ ${ts('Correct')}` : `✗ ${ts('Incorrect — correct: {answer}', { answer: q.options[correct] })}`}
-            </span>
-          </div>
-        )}
+            {revealed && currentQ.explanation && (
+              <div style={{ margin: '0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px)' }}>
+                <Explanation correct={isCorrect} text={currentQ.explanation} />
+              </div>
+            )}
+            {revealed && !currentQ.explanation && (
+              <div className="anim-fadein" style={{ margin: '0 clamp(10px, 3vw, 20px) 12px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: isCorrect ? '#56D364' : '#F97979' }}>
+                  {isCorrect ? `✓ ${ts('Correct')}` : `✗ ${ts('Incorrect — correct: {answer}', { answer: currentQ.options[correct] })}`}
+                </span>
+              </div>
+            )}
 
-        {revealed && (
-          <div className="anim-fadein" style={{ padding: '0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px)', display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={next}
-              style={{
-                height: '38px', padding: '0 24px', borderRadius: '999px',
-                background: color, color: '#fff', border: 'none',
-                fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-                boxShadow: `0 2px 12px ${color}40`, letterSpacing: '0.03em',
-                transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.04)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
-            >
-              {idx + 1 >= total ? ts('See Results') : `${ts('Next')} →`}
-            </button>
-          </div>
+            {revealed && (
+              <div className="anim-fadein" style={{ padding: '0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px)', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={next}
+                  style={{
+                    height: '38px', padding: '0 24px', borderRadius: '999px',
+                    background: color, color: '#fff', border: 'none',
+                    fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                    boxShadow: `0 2px 12px ${color}40`, letterSpacing: '0.03em',
+                    transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.04)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+                >
+                  {idx + 1 >= total ? ts('See Results') : `${ts('Next')} →`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -530,7 +782,38 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
   const [submitted, setSubmitted] = useState(false);
   const startTime = useRef(Date.now());
 
-  const score = submitted ? questions.filter(q => answers[q.id] === Number(q.correct)).length : 0;
+  // Inline edit state
+  const [overrides, setOverrides] = useState<Record<string, EditDraft>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+
+  function effectiveQ(q: GeneratedQuizQuestion): GeneratedQuizQuestion {
+    const ov = overrides[q.id];
+    return ov ? { ...q, question: ov.question, options: ov.options, correct: ov.correct } : q;
+  }
+
+  function startEdit(q: GeneratedQuizQuestion) {
+    const eq = effectiveQ(q);
+    setEditDraft({
+      question: eq.question,
+      options: [...eq.options] as [string, string, string, string],
+      correct: eq.correct as 0 | 1 | 2 | 3,
+    });
+    setEditingId(q.id);
+  }
+
+  function cancelEdit() { setEditingId(null); setEditDraft(null); }
+
+  function saveEdit(qId: string) {
+    if (!editDraft) return;
+    setOverrides(prev => ({ ...prev, [qId]: editDraft }));
+    // Clear any answer for this question since options may have changed
+    setAnswers(a => { const n = { ...a }; delete n[qId]; return n; });
+    setEditingId(null);
+    setEditDraft(null);
+  }
+
+  const score = submitted ? questions.filter(q => answers[q.id] === Number(effectiveQ(q).correct)).length : 0;
   const pct = submitted && questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
   const answered = Object.keys(answers).length;
   const counted = useCountUp(pct, submitted);
@@ -543,6 +826,14 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
     setSubmitted(true);
     onDone(answers, Math.floor((Date.now() - startTime.current) / 1000));
   }
+
+  const editBtnStyle: React.CSSProperties = {
+    width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0,
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-light)',
+    color: 'var(--text-3)', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'all 0.15s',
+  };
 
   return (
     <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 8px' }}>
@@ -578,36 +869,71 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {questions.map((q, qi) => {
+          const eq = effectiveQ(q);
           const chosen = answers[q.id];
           const reveal = submitted;
-          const answeredCorrectly = chosen !== undefined && chosen === Number(q.correct);
+          const answeredCorrectly = chosen !== undefined && chosen === Number(eq.correct);
+          const isEditing = editingId === q.id;
+          const ov = overrides[q.id];
 
           return (
             <div key={q.id} style={{
               background: 'var(--bg-surface)', borderRadius: '16px', overflow: 'hidden',
               border: '1px solid var(--border-light)',
             }}>
-              <div style={{ padding: '18px 20px 14px' }}>
-                <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.55 }}>
+              {/* Question header with edit button */}
+              <div style={{ padding: '18px 20px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <p style={{ flex: 1, margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.55 }}>
                   <span className="mono" style={{ fontSize: '10px', color: 'var(--text-3)', marginRight: '10px', fontWeight: 700 }}>
                     {String(qi + 1).padStart(2, '0')}
                   </span>
-                  {q.question}
+                  {eq.question}
                 </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                  {ov && !isEditing && (
+                    <span title={ts('Edited')} style={{ width: '5px', height: '5px', borderRadius: '50%', background: color, display: 'inline-block' }} />
+                  )}
+                  {!submitted && !isEditing && (
+                    <button
+                      onClick={() => startEdit(q)}
+                      title={ts('Edit this question')}
+                      style={editBtnStyle}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-1)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+                    >
+                      <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+                        <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
-              <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {q.options.map((opt, oi) => {
-                  const state = !reveal
-                    ? (chosen === oi ? 'chosen' : 'idle')
-                    : (oi === Number(q.correct) ? 'right' : (chosen === oi ? 'chosen' : 'idle'));
-                  return (
-                    <OptionBtn key={oi} letter={LETTERS[oi]} text={opt}
-                      state={state as 'idle' | 'chosen' | 'right' | 'wrong'}
-                      color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi)}
-                      compact />
-                  );
-                })}
-              </div>
+
+              {/* Inline edit form OR options */}
+              {isEditing && editDraft ? (
+                <InlineEditForm
+                  draft={editDraft}
+                  color={color}
+                  onChange={setEditDraft}
+                  onSave={() => saveEdit(q.id)}
+                  onCancel={cancelEdit}
+                />
+              ) : (
+                <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {eq.options.map((opt, oi) => {
+                    const state = !reveal
+                      ? (chosen === oi ? 'chosen' : 'idle')
+                      : (oi === Number(eq.correct) ? 'right' : (chosen === oi ? 'chosen' : 'idle'));
+                    return (
+                      <OptionBtn key={oi} letter={LETTERS[oi]} text={opt}
+                        state={state as 'idle' | 'chosen' | 'right' | 'wrong'}
+                        color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi)}
+                        compact />
+                    );
+                  })}
+                </div>
+              )}
+
               {reveal && q.explanation && (
                 <div style={{ margin: '0 12px 14px' }}>
                   <Explanation correct={answeredCorrectly} text={q.explanation} />

@@ -110,6 +110,141 @@ const RATINGS: { key: Rating; label: string; hint: string; color: string }[] = [
   { key: 'easy',  label: 'Easy',  hint: '4', color: '#2EA043' },
 ];
 
+// ── Card edit draft ───────────────────────────────────────────────────────────
+
+interface CardEditDraft {
+  front: string;
+  back: string;
+}
+
+// ── Inline card editor ─────────────────────────────────────────────────────────
+
+function CardEditForm({
+  draft, color, onChange, onSave, onCancel,
+}: {
+  draft: CardEditDraft;
+  color: string;
+  onChange: (d: CardEditDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const { ts } = useLang();
+
+  const fieldBase: React.CSSProperties = {
+    width: '100%', background: 'var(--bg-surface)', color: 'var(--text-1)',
+    border: '1px solid var(--border-light)', borderRadius: '10px',
+    padding: '10px 14px', fontSize: '15px',
+    fontFamily: "'Inter', system-ui, sans-serif",
+    outline: 'none', lineHeight: 1.5,
+    boxSizing: 'border-box', resize: 'none' as const,
+  };
+
+  return (
+    <div
+      className="anim-fadein"
+      onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onCancel(); } }}
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-light)',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        marginBottom: '20px',
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 20px', borderBottom: '1px solid var(--border-light)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <svg viewBox="0 0 14 14" width="12" height="12" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="var(--text-2)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-2)' }}>
+            {ts('Edit Card')}
+          </span>
+        </div>
+        <button
+          onClick={onCancel}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-3)', padding: '4px', borderRadius: '6px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-1)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; }}
+        >
+          <svg viewBox="0 0 14 14" width="13" height="13" fill="none">
+            <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div style={{ padding: '18px 20px' }}>
+        {/* Front */}
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color, marginBottom: '7px' }}>
+            {ts('Front')}
+          </div>
+          <textarea
+            value={draft.front}
+            onChange={e => onChange({ ...draft, front: e.target.value })}
+            rows={3}
+            style={fieldBase}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-base)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; }}
+          />
+        </div>
+
+        {/* Back */}
+        <div style={{ marginBottom: '18px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color, marginBottom: '7px' }}>
+            {ts('Back')}
+          </div>
+          <textarea
+            value={draft.back}
+            onChange={e => onChange({ ...draft, back: e.target.value })}
+            rows={4}
+            style={fieldBase}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-base)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; }}
+          />
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              height: '34px', padding: '0 16px', borderRadius: '999px',
+              background: 'transparent', border: '1px solid var(--border-base)',
+              color: 'var(--text-2)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >
+            {ts('Cancel')}
+          </button>
+          <button
+            onClick={onSave}
+            style={{
+              height: '34px', padding: '0 20px', borderRadius: '999px',
+              background: color, border: 'none',
+              color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+              boxShadow: `0 2px 10px ${color}38`,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.88'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+          >
+            ✓ {ts('Save Edit')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQuiz, onBack }: {
   cards: GeneratedFlashcard[];
   color: string;
@@ -136,6 +271,11 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   const [showSettings,  setShowSettings] = useState(false);
   const [confirmReset,  setConfirmReset] = useState(false);
 
+  // Inline card edit state
+  const [cardOverrides, setCardOverrides] = useState<Record<string, CardEditDraft>>({});
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [editCardDraft, setEditCardDraft] = useState<CardEditDraft | null>(null);
+
   const reviewedRef  = useRef(0);
   const reportedRef  = useRef(false);
 
@@ -151,6 +291,10 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   // Derived current card — never access before empty-state guard below
   const card = srsMode ? queue[0] : cards[index];
 
+  // Apply any user override to the currently displayed card
+  const cardOv = card ? cardOverrides[card.id] : null;
+  const displayCard = (card && cardOv) ? { ...card, front: cardOv.front, back: cardOv.back } : card;
+
   // SRS session done = queue drained AND at least one card completed
   const done = srsMode && queue.length === 0 && reviewed > 0;
 
@@ -160,6 +304,24 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   }, [done, report]);
 
   const flip = () => setFlipped(f => !f);
+
+  function startCardEdit() {
+    if (!displayCard) return;
+    const v = parseVocab(displayCard.back);
+    if (v) return; // skip vocab cards — structured content
+    setEditCardDraft({ front: displayCard.front, back: displayCard.back });
+    setEditingCardId(displayCard.id);
+    setFlipped(false);
+  }
+  function cancelCardEdit() { setEditingCardId(null); setEditCardDraft(null); }
+  function saveCardEdit() {
+    if (!card || !editCardDraft) return;
+    setCardOverrides(prev => ({ ...prev, [card.id]: editCardDraft }));
+    setEditingCardId(null);
+    setEditCardDraft(null);
+  }
+  const isEditingCard = editingCardId === card?.id;
+
   const prev = () => { setIndex(i => Math.max(0, i - 1)); setFlipped(false); };
   const next = () => { setIndex(i => Math.min(cards.length - 1, i + 1)); setFlipped(false); };
 
@@ -294,7 +456,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   if (!card) return null;
 
   const cardW      = 'min(740px, 96vw)';
-  const vocab      = parseVocab(card.back);
+  const vocab      = parseVocab(displayCard?.back ?? card.back);
   const isVocabCard = vocab !== null;
 
   // Progress: in SRS mode, fraction of initial cards completed
@@ -358,8 +520,34 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: color + '10', color, border: `1px solid ${color}20` }}>
-            {card.topic}
+            {displayCard!.topic}
           </span>
+
+          {/* Edit card button — non-vocab cards only */}
+          {!isVocabCard && !isEditingCard && (
+            <button
+              onClick={startCardEdit}
+              aria-label={ts('Edit this card')}
+              title={ts('Edit this card')}
+              style={{
+                width: '28px', height: '28px', borderRadius: '8px', cursor: 'pointer',
+                background: 'transparent',
+                border: '1px solid transparent',
+                color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-2)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              <svg viewBox="0 0 14 14" width="13" height="13" fill="none">
+                <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
+          {/* Override indicator dot */}
+          {cardOv && !isEditingCard && (
+            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: color, display: 'inline-block' }} title={ts('Edited')} />
+          )}
 
           {/* Settings button — SRS mode only */}
           {srsMode && (
@@ -462,78 +650,88 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
         </div>
       </div>
 
-      {/* Flip card */}
-      <div
-        className="flashcard-card flip-card cursor-pointer mb-5"
-        style={{ width: cardW, minHeight: '320px' }}
-        onClick={flip}
-        role="button"
-        tabIndex={0}
-        aria-label={flipped ? ts('Showing answer — click to flip back') : ts('Showing question — click to reveal answer')}
-        onKeyDown={e => (e.key === 'Enter') && flip()}
-      >
-        <div className={`flip-card-inner${flipped ? ' flipped' : ''}`}>
-          {/* Front */}
-          <div
-            className="flip-card-front flex flex-col items-center justify-center gap-4"
-            style={{
-              padding: 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
-              borderRadius: '12px',
-              background: 'var(--bg-surface)',
-              border: `1px solid ${isVocabCard ? color + '35' : color + '25'}`,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-            }}
-          >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
-              {isVocabCard ? ts('Word') : ts('Question')}
-            </div>
-            {isVocabCard ? (
-              <div style={{
-                fontFamily: "'LXGW WenKai Mono TC', monospace",
-                fontWeight: 700,
-                fontSize: 'clamp(40px, 12vw, 72px)',
-                color: 'var(--text-1)',
-                textAlign: 'center',
-                lineHeight: 1.1,
-                letterSpacing: '0.06em',
-              }}>
-                {card.front}
+      {/* Flip card or inline editor */}
+      {isEditingCard && editCardDraft ? (
+        <CardEditForm
+          draft={editCardDraft}
+          color={color}
+          onChange={setEditCardDraft}
+          onSave={saveCardEdit}
+          onCancel={cancelCardEdit}
+        />
+      ) : (
+        <div
+          className="flashcard-card flip-card cursor-pointer mb-5"
+          style={{ width: cardW, minHeight: '320px' }}
+          onClick={flip}
+          role="button"
+          tabIndex={0}
+          aria-label={flipped ? ts('Showing answer — click to flip back') : ts('Showing question — click to reveal answer')}
+          onKeyDown={e => (e.key === 'Enter') && flip()}
+        >
+          <div className={`flip-card-inner${flipped ? ' flipped' : ''}`}>
+            {/* Front */}
+            <div
+              className="flip-card-front flex flex-col items-center justify-center gap-4"
+              style={{
+                padding: 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
+                borderRadius: '12px',
+                background: 'var(--bg-surface)',
+                border: `1px solid ${isVocabCard ? color + '35' : color + '25'}`,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+              }}
+            >
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
+                {isVocabCard ? ts('Word') : ts('Question')}
               </div>
-            ) : (
-              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: 'var(--text-1)', lineHeight: 1.45 }}>
-                {card.front}
+              {isVocabCard ? (
+                <div style={{
+                  fontFamily: "'LXGW WenKai Mono TC', monospace",
+                  fontWeight: 700,
+                  fontSize: 'clamp(40px, 12vw, 72px)',
+                  color: 'var(--text-1)',
+                  textAlign: 'center',
+                  lineHeight: 1.1,
+                  letterSpacing: '0.06em',
+                }}>
+                  {displayCard!.front}
+                </div>
+              ) : (
+                <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: 'var(--text-1)', lineHeight: 1.45 }}>
+                  {displayCard!.front}
+                </div>
+              )}
+              <div className="hidden md:flex text-xs mt-1 items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
+                <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)' }}>Space</kbd>
+                {ts('to reveal')}
               </div>
-            )}
-            <div className="hidden md:flex text-xs mt-1 items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
-              <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)' }}>Space</kbd>
-              {ts('to reveal')}
             </div>
-          </div>
 
-          {/* Back */}
-          <div
-            className="flip-card-back flex flex-col items-center justify-center gap-4"
-            style={{
-              padding: 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
-              borderRadius: '12px',
-              background: `linear-gradient(135deg, ${color}12 0%, var(--bg-elevated) 100%)`,
-              border: `1px solid ${color}40`,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-            }}
-          >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
-              {isVocabCard ? ts('Meaning') : ts('Answer')}
-            </div>
-            {isVocabCard && vocab ? (
-              <VocabBack vocab={vocab} color={color} />
-            ) : (
-              <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: 'var(--text-1)', lineHeight: 1.65 }}>
-                {card.back}
+            {/* Back */}
+            <div
+              className="flip-card-back flex flex-col items-center justify-center gap-4"
+              style={{
+                padding: 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
+                borderRadius: '12px',
+                background: `linear-gradient(135deg, ${color}12 0%, var(--bg-elevated) 100%)`,
+                border: `1px solid ${color}40`,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+              }}
+            >
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
+                {isVocabCard ? ts('Meaning') : ts('Answer')}
               </div>
-            )}
+              {isVocabCard && vocab ? (
+                <VocabBack vocab={vocab} color={color} />
+              ) : (
+                <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: 'var(--text-1)', lineHeight: 1.65 }}>
+                  {displayCard!.back}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Controls */}
       <div className="flashcard-controls" style={{ width: cardW }}>
