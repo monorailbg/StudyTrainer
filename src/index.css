@@ -600,18 +600,29 @@ body.theme-light .toast {
 }
 
 /* ── Theme toggle ─────────────────────────────────────────────────── */
-@keyframes theme-rays-spin {
-  to { transform: scale(1) rotate(360deg); }
-}
-.theme-toggle-rays {
-  animation: theme-rays-spin 10s linear infinite;
-}
 .theme-toggle-btn:hover {
-  filter: brightness(1.08);
+  opacity: 0.92;
 }
 .theme-toggle-btn:active {
-  transform: scale(0.93);
-  transition: transform 0.1s ease !important;
+  transform: scale(0.91);
+  transition: transform 0.08s ease !important;
+}
+
+/* ── Generate button ──────────────────────────────────────────────── */
+@keyframes generate-shimmer {
+  0%   { transform: translateX(-120%) skewX(-12deg); }
+  100% { transform: translateX(280%) skewX(-12deg); }
+}
+.generate-btn:hover {
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.7), 0 4px 20px rgba(79,70,229,0.6), inset 0 1px 0 rgba(255,255,255,0.25) !important;
+  transform: translateY(-1px) scale(1.02);
+}
+.generate-btn:active {
+  transform: translateY(0) scale(0.97) !important;
+  transition: transform 0.08s ease !important;
+}
+.generate-btn:hover .generate-btn-shimmer {
+  animation: generate-shimmer 0.55s ease forwards;
 }
 
 /* ── Reduced motion ──────────────────────────────────────────────── */

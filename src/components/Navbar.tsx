@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useLang, type Lang } from '../context/LanguageContext';
+import { useLang } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
 // ── Flags ─────────────────────────────────────────────────────────────────────
@@ -39,6 +39,10 @@ const STARS = [
   { x: 14, y: 19, r: 1.2, delay: '35ms'  },
   { x: 25, y: 7,  r: 0.8, delay: '110ms' },
 ];
+
+// Track: 54px wide. Knob: 22px. Padding: 3px each side.
+// Slide distance: 54 - 22 - 3 - 3 = 26px
+const KNOB_TRAVEL = 26;
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -87,8 +91,8 @@ function ThemeToggle() {
         }} />
       ))}
 
-      {/* Sun rays — visible in light mode, spin slowly */}
-      <span className={dark ? '' : 'theme-toggle-rays'} style={{
+      {/* Sun rays — static, visible in light mode */}
+      <span style={{
         position: 'absolute',
         top: '50%',
         left: '14px',
@@ -97,32 +101,29 @@ function ThemeToggle() {
         marginTop: '-14px',
         marginLeft: '-14px',
         opacity: dark ? 0 : 1,
-        transform: dark ? 'scale(0.4)' : 'scale(1)',
-        transition: 'opacity 0.35s ease 0.05s, transform 0.45s cubic-bezier(0.34,1.56,0.64,1)',
+        transform: dark ? 'scale(0.4) rotate(-30deg)' : 'scale(1) rotate(0deg)',
+        transition: 'opacity 0.3s ease, transform 0.45s cubic-bezier(0.34,1.56,0.64,1)',
         pointerEvents: 'none',
       }}>
         <svg viewBox="0 0 28 28" width="28" height="28" fill="none">
           {Array.from({ length: 8 }).map((_, i) => (
-            <line
-              key={i}
-              x1="14" y1="1.5" x2="14" y2="4.5"
-              stroke="rgba(217,119,6,0.55)"
-              strokeWidth="1.5"
-              strokeLinecap="round"
+            <line key={i} x1="14" y1="1.5" x2="14" y2="5"
+              stroke="rgba(217,119,6,0.5)" strokeWidth="1.5" strokeLinecap="round"
               transform={`rotate(${i * 45} 14 14)`}
             />
           ))}
         </svg>
       </span>
 
-      {/* Sliding knob */}
+      {/* Sliding knob — uses transform for GPU-accelerated movement */}
       <span style={{
         position: 'absolute',
         top: '3px',
-        left: dark ? 'calc(100% - 25px)' : '3px',
+        left: '3px',
         width: '22px',
         height: '22px',
         borderRadius: '50%',
+        willChange: 'transform',
         background: dark
           ? 'linear-gradient(145deg, #1C3360 0%, #2A4A8A 100%)'
           : 'linear-gradient(145deg, #FFFDE7 0%, #FFF8C0 100%)',
@@ -132,9 +133,10 @@ function ThemeToggle() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        transition: 'left 0.48s cubic-bezier(0.34,1.56,0.64,1), background 0.45s ease, box-shadow 0.45s ease',
+        transform: dark ? `translateX(${KNOB_TRAVEL}px)` : 'translateX(0px)',
+        transition: 'transform 0.42s cubic-bezier(0.34,1.56,0.64,1), background 0.45s ease, box-shadow 0.45s ease',
       }}>
-        {/* Moon — visible in dark mode */}
+        {/* Moon */}
         <span style={{
           position: 'absolute',
           opacity: dark ? 1 : 0,
@@ -148,7 +150,7 @@ function ThemeToggle() {
           </svg>
         </span>
 
-        {/* Sun — visible in light mode */}
+        {/* Sun */}
         <span style={{
           position: 'absolute',
           opacity: dark ? 0 : 1,
@@ -169,30 +171,58 @@ function ThemeToggle() {
 
 function LangToggle() {
   const { lang, setLang, ts } = useLang();
-  const btn = (l: Lang, Flag: React.FC, label: string) => (
-    <button
-      key={l}
-      onClick={() => setLang(l)}
-      title={label}
-      aria-label={ts('Switch to {label}', { label })}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '5px',
-        padding: '5px 9px', borderRadius: '7px',
-        background: lang === l ? 'rgba(61,126,255,0.15)' : 'transparent',
-        color: lang === l ? '#93B8FF' : '#6B7280',
-        border: `1px solid ${lang === l ? 'rgba(61,126,255,0.3)' : 'transparent'}`,
-        cursor: 'pointer', fontSize: '11px', fontWeight: 600,
-        letterSpacing: '0.04em', transition: 'all 0.15s ease',
-      }}
-    >
-      <Flag />
-      {l.toUpperCase()}
-    </button>
-  );
+  const isJa = lang === 'ja';
+
   return (
-    <div style={{ display: 'flex', gap: '2px', padding: '3px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.07)' }}>
-      {btn('en', UKFlag, ts('English'))}
-      {btn('ja', JapanFlag, ts('Japanese'))}
+    <div style={{
+      position: 'relative',
+      display: 'flex',
+      height: '28px',
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border-light)',
+      borderRadius: '999px',
+      padding: '3px',
+    }}>
+      {/* Sliding indicator — GPU-accelerated via transform */}
+      <span style={{
+        position: 'absolute',
+        top: '3px',
+        left: '3px',
+        height: 'calc(100% - 6px)',
+        width: 'calc(50% - 3px)',
+        borderRadius: '999px',
+        background: 'linear-gradient(135deg, rgba(61,126,255,0.18) 0%, rgba(99,102,241,0.12) 100%)',
+        border: '1px solid rgba(61,126,255,0.28)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+        willChange: 'transform',
+        transform: isJa ? 'translateX(100%)' : 'translateX(0)',
+        transition: 'transform 0.38s cubic-bezier(0.34,1.56,0.64,1)',
+        pointerEvents: 'none',
+      }} />
+
+      {([['en', UKFlag, ts('English')], ['ja', JapanFlag, ts('Japanese')]] as const).map(([l, Flag, label]) => (
+        <button
+          key={l}
+          onClick={() => setLang(l)}
+          title={label}
+          aria-label={ts('Switch to {label}', { label })}
+          style={{
+            position: 'relative', zIndex: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+            padding: '0 10px',
+            flex: 1,
+            background: 'none', border: 'none',
+            color: lang === l ? 'var(--text-1)' : 'var(--text-3)',
+            cursor: 'pointer',
+            fontSize: '11px', fontWeight: 700,
+            letterSpacing: '0.05em',
+            transition: 'color 0.25s ease',
+          }}
+        >
+          <Flag />
+          {l.toUpperCase()}
+        </button>
+      ))}
     </div>
   );
 }
@@ -342,31 +372,36 @@ export default function Navbar() {
               onClick={() => navigate('/generate')}
               title={ts('Generate content')}
               aria-label={ts('Generate content')}
+              className="generate-btn"
               style={{
+                position: 'relative',
                 display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '6px 14px',
-                borderRadius: '7px',
-                background: 'rgba(61,126,255,0.1)',
-                border: '1px solid rgba(61,126,255,0.3)',
-                color: 'var(--accent-primary)',
+                padding: '0 15px 0 11px',
+                height: '30px',
+                borderRadius: '999px',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 60%, #6366F1 100%)',
+                border: 'none',
+                color: '#EEF2FF',
                 cursor: 'pointer',
                 fontSize: '12px',
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={e => {
-                const btn = e.currentTarget as HTMLElement;
-                btn.style.background = 'rgba(61,126,255,0.15)';
-                btn.style.borderColor = 'rgba(61,126,255,0.5)';
-              }}
-              onMouseLeave={e => {
-                const btn = e.currentTarget as HTMLElement;
-                btn.style.background = 'rgba(61,126,255,0.1)';
-                btn.style.borderColor = 'rgba(61,126,255,0.3)';
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                overflow: 'hidden',
+                boxShadow: '0 0 0 1px rgba(99,102,241,0.5), 0 2px 10px rgba(79,70,229,0.45), inset 0 1px 0 rgba(255,255,255,0.18)',
+                transition: 'box-shadow 0.25s ease, transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
               }}
             >
-              <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
-                <path d="M7 1v3M7 10v3M1 7h3M10 7h3M2.93 2.93l2.12 2.12M8.95 8.95l2.12 2.12M2.93 11.07l2.12-2.12M8.95 5.05l2.12-2.12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              {/* Shimmer sweep on hover (CSS class controls animation) */}
+              <span className="generate-btn-shimmer" style={{
+                position: 'absolute', top: 0, left: 0, bottom: 0, width: '45%',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%)',
+                transform: 'translateX(-120%) skewX(-12deg)',
+                pointerEvents: 'none',
+              }} />
+              {/* AI sparkle icon */}
+              <svg viewBox="0 0 13 13" width="12" height="12" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M6.5 1L7.4 5.1 11.5 6 7.4 6.9 6.5 11 5.6 6.9 1.5 6 5.6 5.1Z" fill="white" fillOpacity="0.95"/>
+                <path d="M10.5 1L11 3 13 3.5 11 4 10.5 6 10 4 8 3.5 10 3Z" fill="white" fillOpacity="0.7"/>
               </svg>
               {ts('Generate')}
             </button>

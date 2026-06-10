@@ -94,7 +94,7 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
     id: 'business-economics',
     title: 'Business Economics',
     description: 'Applied economics: business cycles, fiscal policy, exchange rates.',
-    color: '#fbbf24',
+    color: '#C2410C',
     lat: 1.35, lng: 103.82,    // Singapore — SE Asia business hub
   },
   {
