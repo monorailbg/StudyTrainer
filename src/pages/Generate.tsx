@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { generateFromTopic } from '../lib/geminiProxy';
 import type {
@@ -57,7 +58,14 @@ interface Result {
 
 export default function Generate() {
   const { ts } = useLang();
+  const { theme } = useTheme();
   const { allSubjects: ALL_SUBJECTS } = useResolvedSubjects();
+
+  const isLight = theme === 'light';
+  // In light mode, use warm aesthetic colors; in dark mode, use the neon blue
+  const buttonActiveBg = isLight ? '#D97706' : '#3D7EFF';       // burnt orange in light, neon blue in dark
+  const buttonActiveText = isLight ? '#3D3428' : '#E6EDF3';     // dark charcoal in light, white in dark
+  const buttonActiveIcon = isLight ? '#8B6F47' : '#E6EDF3';     // warm brown icon in light, white in dark
 
   const [topic, setTopic] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
@@ -227,14 +235,14 @@ export default function Generate() {
               disabled={!canGenerate || status === 'generating'}
               className={`h-11 px-7 rounded-full text-sm font-semibold flex items-center gap-2 border-0 cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-default whitespace-nowrap${canGenerate && status !== 'generating' ? ' btn-accent' : ''}`}
               style={{
-                backgroundColor: canGenerate && status !== 'generating' ? '#3D7EFF' : 'var(--color-md-surface-container-high)',
-                color: canGenerate && status !== 'generating' ? '#E6EDF3' : 'var(--color-md-on-surface-variant)',
+                backgroundColor: canGenerate && status !== 'generating' ? buttonActiveBg : 'var(--color-md-surface-container-high)',
+                color: canGenerate && status !== 'generating' ? buttonActiveText : 'var(--color-md-on-surface-variant)',
               }}
             >
               {status === 'generating' ? (
                 <><Spinner color={accentColor} />{ts('Generating...')}</>
               ) : (
-                <><SparkleIcon color={canGenerate ? '#E6EDF3' : 'var(--color-md-on-surface-variant)'} />{ts('Generate')}</>
+                <><SparkleIcon color={canGenerate ? buttonActiveIcon : 'var(--color-md-on-surface-variant)'} />{ts('Generate')}</>
               )}
             </button>
           </div>
