@@ -30,10 +30,10 @@ function SubjectBtn({ subject, count, active, onClick }: {
         background: color,
         boxShadow: active ? `0 0 6px ${color}` : 'none',
       }} />
-      <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? '#E6EDF3' : '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {subject?.title ?? ts('All subjects')}
       </span>
-      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : '#484F58' }}>
+      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : 'var(--text-3)' }}>
         {count}
       </span>
     </button>
@@ -50,23 +50,34 @@ function SetCard({ set, color, onClick, index = 0 }: { set: StoredFlashcardSet; 
       className="anim-rise"
       style={{
         ['--d' as string]: `${index * 45}ms`,
-        background: '#161B22', border: '1px solid #21262D', borderRadius: '16px',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '16px',
         padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
-        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
+        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '40'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = 'translateY(-2px)';
+        el.style.borderColor = color + '50';
+        el.style.boxShadow = `0 4px 16px ${color}14`;
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = '';
+        el.style.borderColor = 'var(--border-light)';
+        el.style.boxShadow = '';
+      }}
     >
       <div style={{
         width: '36px', height: '36px', borderRadius: '10px', marginBottom: '12px',
-        background: color + '18', color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: color + '18', border: `1px solid ${color}30`, color,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="1" y="4" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/><rect x="4" y="2" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>
       </div>
-      <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {set.name}
       </div>
-      <div style={{ fontSize: '11px', color: '#8B949E' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
         {ts('{n} cards', { n: set.cards.length })} · {new Date(set.createdAt).toLocaleDateString()}
       </div>
     </button>
@@ -78,10 +89,10 @@ function SetCard({ set, color, onClick, index = 0 }: { set: StoredFlashcardSet; 
 function Empty() {
   const { ts } = useLang();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: '#8B949E', textAlign: 'center', gap: '12px' }}>
-      <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><rect x="4" y="14" width="30" height="22" rx="5" stroke="#30363D" strokeWidth="2"/><rect x="14" y="8" width="30" height="22" rx="5" stroke="#484F58" strokeWidth="2" fill="none"/></svg>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: 'var(--text-2)', textAlign: 'center', gap: '12px' }}>
+      <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><rect x="4" y="14" width="30" height="22" rx="5" stroke="var(--border-base)" strokeWidth="2"/><rect x="14" y="8" width="30" height="22" rx="5" stroke="var(--text-3)" strokeWidth="2" fill="none"/></svg>
       <div>
-        <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '4px' }}>{ts('No flashcard sets yet')}</div>
+        <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '4px' }}>{ts('No flashcard sets yet')}</div>
         <div style={{ fontSize: '13px' }}>{ts('Upload files to a subject and generate flashcards from the subject page.')}</div>
       </div>
     </div>
@@ -151,12 +162,12 @@ export default function Flashcards() {
       <aside className="flashcards-sidebar hidden md:flex flex-col" style={{
         width: activeSet ? '0' : '220px',
         flexShrink: 0,
-        borderRight: activeSet ? 'none' : '1px solid #21262D',
+        borderRight: activeSet ? 'none' : '1px solid var(--border-light)',
         padding: activeSet ? '0' : '16px 10px',
         gap: '2px', overflowY: 'auto', overflowX: 'hidden',
         transition: 'width 0.25s ease, padding 0.25s ease',
       }}>
-        <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '8px' }}>
+        <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Flashcards')}
         </div>
         <SubjectBtn subject={null} count={sets.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveSet(null); }} />
@@ -176,7 +187,7 @@ export default function Flashcards() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <button
                 onClick={() => setActiveSet(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#8B949E', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 ← {ts('All flashcards')}
               </button>
@@ -190,19 +201,19 @@ export default function Flashcards() {
                     onBlur={commitRename}
                     onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null); }}
                     style={{
-                      background: '#0D1117', border: `1px solid ${activeColor}55`, borderRadius: '6px',
-                      color: '#E6EDF3', fontSize: '11px', fontWeight: 600, padding: '3px 8px', outline: 'none',
+                      background: 'var(--bg-page)', border: `1px solid ${activeColor}55`, borderRadius: '6px',
+                      color: 'var(--text-1)', fontSize: '11px', fontWeight: 600, padding: '3px 8px', outline: 'none',
                     }}
                   />
                 ) : (
-                  <span style={{ fontSize: '11px', color: '#8B949E', fontWeight: 600 }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-2)', fontWeight: 600 }}>
                     {activeSubject?.title ?? ''} · {activeSet.name} · {ts('{n} cards', { n: activeSet.cards.length })}
                   </span>
                 )}
                 <button
                   onClick={() => setRenaming({ id: activeSet.id, value: activeSet.name })}
                   title={ts('Rename set')}
-                  style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '6px', color: '#484F58', cursor: 'pointer', fontSize: '12px', padding: '3px 8px' }}
+                  style={{ background: 'transparent', border: '1px solid var(--border-base)', borderRadius: '6px', color: 'var(--text-3)', cursor: 'pointer', fontSize: '12px', padding: '3px 8px' }}
                 >
                   ✎
                 </button>
@@ -232,9 +243,9 @@ export default function Flashcards() {
                 <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E6EDF3', letterSpacing: '0.06em' }}>{subject?.title ?? ts('Unknown subject')}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} set{s}', { n: groupSets.length, s: groupSets.length !== 1 ? 's' : '' })}</span>
-                    <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.06em' }}>{subject?.title ?? ts('Unknown subject')}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} set{s}', { n: groupSets.length, s: groupSets.length !== 1 ? 's' : '' })}</span>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
                   </div>
                   <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
                     {groupSets.map((set, i) => (
