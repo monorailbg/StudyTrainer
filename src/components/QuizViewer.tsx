@@ -26,9 +26,9 @@ function saveLastMode(mode: QuizMode) {
 // Muted, non-distracting reminder shown during and after a practice session.
 function PracticeBanner({ text }: { text: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: '#8B949E' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: 'var(--text-2)' }}>
       <svg viewBox="0 0 14 14" width="12" height="12" fill="none" style={{ flexShrink: 0 }}>
-        <circle cx="7" cy="7" r="5.5" stroke="#8B949E" strokeWidth="1.2" />
+        <circle cx="7" cy="7" r="5.5" stroke="var(--text-2)" strokeWidth="1.2" />
       </svg>
       <span style={{ fontSize: '12px', lineHeight: 1.4 }}>{text}</span>
     </div>
@@ -96,8 +96,8 @@ function Toggle({ on, color, onChange, label }: { on: boolean; color: string; on
         role="switch" aria-checked={on} onClick={onChange}
         style={{
           width: '40px', height: '22px', borderRadius: '999px', flexShrink: 0,
-          background: on ? color : '#21262D',
-          border: `1px solid ${on ? color + '80' : '#30363D'}`,
+          background: on ? color : 'var(--border-base)',
+          border: `1px solid ${on ? color + '80' : 'var(--border-base)'}`,
           cursor: 'pointer', position: 'relative',
           transition: 'background 0.2s, border-color 0.2s',
         }}
@@ -105,12 +105,12 @@ function Toggle({ on, color, onChange, label }: { on: boolean; color: string; on
         <span style={{
           position: 'absolute', top: '2px', left: on ? '20px' : '2px',
           width: '16px', height: '16px', borderRadius: '50%',
-          background: on ? '#fff' : '#8B949E',
+          background: on ? '#fff' : 'var(--text-3)',
           transition: 'left 0.2s, background 0.2s',
           boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
         }} />
       </button>
-      <span style={{ fontSize: '13px', color: on ? '#E6EDF3' : '#8B949E', transition: 'color 0.2s' }}>
+      <span style={{ fontSize: '13px', color: on ? 'var(--text-1)' : 'var(--text-2)', transition: 'color 0.2s' }}>
         {label}
       </span>
     </label>
@@ -168,8 +168,8 @@ function SetupScreen({ total, color, onStart, initialMode }: {
               <button key={m.id} onClick={() => setMode(m.id)} style={{
                 position: 'relative',
                 padding: '12px 14px', borderRadius: '12px',
-                border: `1px solid ${mode === m.id ? color + '55' : '#21262D'}`,
-                background: mode === m.id ? color + '12' : '#161B22',
+                border: `1px solid ${mode === m.id ? color + '55' : 'var(--border-light)'}`,
+                background: mode === m.id ? color + '12' : 'var(--bg-surface)',
                 cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
               }}>
                 {m.id === 'practice' && (
@@ -177,7 +177,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
                     position: 'absolute', top: '8px', right: '8px',
                     padding: '2px 6px', borderRadius: '999px',
                     fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em',
-                    background: '#21262D', color: '#8B949E', border: '1px solid #30363D',
+                    background: 'var(--bg-elevated)', color: 'var(--text-2)', border: '1px solid var(--border-base)',
                   }}>
                     {ts('No save')}
                   </span>
@@ -185,10 +185,10 @@ function SetupScreen({ total, color, onStart, initialMode }: {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
                   {m.id === 'practice' && (
                     <svg viewBox="0 0 12 12" width="10" height="10" fill="none" style={{ flexShrink: 0 }}>
-                      <circle cx="6" cy="6" r="4.5" stroke={mode === m.id ? color : '#8B949E'} strokeWidth="1.1" />
+                      <circle cx="6" cy="6" r="4.5" stroke={mode === m.id ? color : 'var(--text-2)'} strokeWidth="1.1" />
                     </svg>
                   )}
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: mode === m.id ? color : '#8B949E' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: mode === m.id ? color : 'var(--text-2)' }}>
                     {ts(m.title)}
                   </span>
                 </div>
@@ -207,9 +207,9 @@ function SetupScreen({ total, color, onStart, initialMode }: {
             {countOptions.map(n => (
               <button key={n} onClick={() => setTestCount(n)} className="quiz-count-btn" style={{
                 height: '36px', padding: '0 16px', borderRadius: '999px',
-                background: testCount === n ? color + '18' : '#161B22',
-                color: testCount === n ? color : '#8B949E',
-                border: `1px solid ${testCount === n ? color + '55' : '#21262D'}`,
+                background: testCount === n ? color + '18' : 'var(--bg-surface)',
+                color: testCount === n ? color : 'var(--text-2)',
+                border: `1px solid ${testCount === n ? color + '55' : 'var(--border-light)'}`,
                 fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
               }}>
                 {n === total ? ts('All {n}', { n }) : n}
@@ -269,9 +269,9 @@ function OptionBtn({
 
   // Card surface + text per state.
   const card = {
-    idle:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)', text: 'rgba(255,255,255,0.90)' },
-    chosen: { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.75)', text: 'rgba(255,255,255,1)'    },
-    right:  { bg: 'rgba(72,199,142,0.15)',  border: 'rgba(72,199,142,0.70)',  text: 'rgb(72,199,142)'        },
+    idle:   { bg: 'var(--bg-elevated)', border: 'var(--border-base)', text: 'var(--text-1)'            },
+    chosen: { bg: 'var(--bg-elevated)', border: 'var(--text-2)',      text: 'var(--text-1)'             },
+    right:  { bg: 'rgba(72,199,142,0.15)',  border: 'rgba(72,199,142,0.70)',  text: 'rgb(72,199,142)'  },
     wrong:  { bg: 'rgba(252,100,100,0.12)', border: 'rgba(252,100,100,0.60)', text: 'rgba(252,100,100,0.90)' },
   }[state];
 
@@ -283,8 +283,8 @@ function OptionBtn({
     : tint;
 
   const hovering = hover && !disabled && state === 'idle';
-  const cardBg = hovering ? 'rgba(255,255,255,0.08)' : card.bg;
-  const cardBorder = hovering ? 'rgba(255,255,255,0.22)' : card.border;
+  const cardBg = hovering ? 'var(--bg-surface)' : card.bg;
+  const cardBorder = hovering ? 'var(--border-base)' : card.border;
 
   function handleClick() {
     if (!disabled) {
@@ -362,7 +362,7 @@ function Explanation({ correct, text }: { correct: boolean; text: string }) {
           {correct ? ts('CORRECT') : ts('INCORRECT')}
         </span>
       </div>
-      <p style={{ fontSize: '12px', color: '#8B949E', lineHeight: 1.6, margin: 0 }}>{text}</p>
+      <p style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.6, margin: 0 }}>{text}</p>
     </div>
   );
 }
@@ -433,7 +433,7 @@ function FocusedMode({
       {/* Progress header */}
       <div style={{ marginBottom: '28px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: '#484F58', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {ts('Question {n} of {total}', { n: idx + 1, total })}
           </span>
           {!isRedoMode && (
@@ -442,7 +442,7 @@ function FocusedMode({
             </span>
           )}
         </div>
-        <div style={{ height: '3px', background: '#161B22', borderRadius: '999px', overflow: 'hidden' }}>
+        <div style={{ height: '3px', background: 'var(--border-base)', borderRadius: '999px', overflow: 'hidden' }}>
           <div style={{
             height: '100%', borderRadius: '999px', background: color,
             width: `${progress}%`, transition: 'width 0.4s cubic-bezier(0,0,0.2,1)',
@@ -458,7 +458,7 @@ function FocusedMode({
 
       {/* Card */}
       <div key={animKey} className="anim-fadein" style={{
-        background: '#161B22', border: '1px solid #21262D', borderRadius: '20px',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '20px',
         overflow: 'hidden',
         boxShadow: '0 2px 20px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04) inset',
       }}>
@@ -467,7 +467,7 @@ function FocusedMode({
             {q.question}
           </div>
         </div>
-        <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0 clamp(12px, 3vw, 28px)' }} />
+        <div style={{ height: '1px', background: 'var(--border-light)', margin: '0 clamp(12px, 3vw, 28px)' }} />
 
         <div style={{ padding: 'clamp(12px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {q.options.map((opt, oi) => {
@@ -554,22 +554,22 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
       {submitted && (
         <div className="anim-fadein" style={{
           padding: '20px 24px', borderRadius: '16px', marginBottom: '20px',
-          background: `radial-gradient(120% 140% at 0% 0%, ${color}0E 0%, #161B22 55%)`,
+          background: `radial-gradient(120% 140% at 0% 0%, ${color}0E 0%, var(--bg-surface) 55%)`,
           border: `1px solid ${color}28`,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
               <span className="mono" style={{ fontSize: '2.8rem', color, lineHeight: 1, fontWeight: 700 }}>{counted}%</span>
-              <span style={{ fontSize: '13px', color: '#8B949E' }}>{ts('{score} / {total} correct', { score, total: questions.length })}</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-2)' }}>{ts('{score} / {total} correct', { score, total: questions.length })}</span>
             </div>
             <button
               onClick={() => { setAnswers({}); setSubmitted(false); }}
-              style={{ height: '32px', padding: '0 14px', borderRadius: '999px', background: '#1F2937', color: 'var(--text-1)', border: '1px solid #30363D', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+              style={{ height: '32px', padding: '0 14px', borderRadius: '999px', background: 'var(--bg-elevated)', color: 'var(--text-1)', border: '1px solid var(--border-base)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
             >
               {ts('Retry')}
             </button>
           </div>
-          <div style={{ display: 'flex', height: '6px', borderRadius: '999px', overflow: 'hidden', background: '#1F2937' }}>
+          <div style={{ display: 'flex', height: '6px', borderRadius: '999px', overflow: 'hidden', background: 'var(--bg-elevated)' }}>
             <div style={{ width: `${pct}%`, background: '#2EA043', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
             <div style={{ width: `${100 - pct}%`, background: 'rgba(248,81,73,0.5)', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
           </div>
@@ -584,12 +584,12 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
 
           return (
             <div key={q.id} style={{
-              background: '#161B22', borderRadius: '16px', overflow: 'hidden',
-              border: '1px solid #21262D',
+              background: 'var(--bg-surface)', borderRadius: '16px', overflow: 'hidden',
+              border: '1px solid var(--border-light)',
             }}>
               <div style={{ padding: '18px 20px 14px' }}>
                 <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.55 }}>
-                  <span className="mono" style={{ fontSize: '10px', color: '#484F58', marginRight: '10px', fontWeight: 700 }}>
+                  <span className="mono" style={{ fontSize: '10px', color: 'var(--text-3)', marginRight: '10px', fontWeight: 700 }}>
                     {String(qi + 1).padStart(2, '0')}
                   </span>
                   {q.question}
@@ -625,8 +625,8 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
             disabled={answered < questions.length}
             style={{
               height: '42px', padding: '0 28px', borderRadius: '999px',
-              background: answered === questions.length ? color : '#1F2937',
-              color: answered === questions.length ? '#fff' : '#8B949E',
+              background: answered === questions.length ? color : 'var(--bg-elevated)',
+              color: answered === questions.length ? '#fff' : 'var(--text-2)',
               border: 'none', fontSize: '13px', fontWeight: 700,
               cursor: answered < questions.length ? 'not-allowed' : 'pointer',
               opacity: answered < questions.length ? 0.55 : 1,
@@ -637,7 +637,7 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
             {ts('Check Answers')}
           </button>
           {answered < questions.length && (
-            <span style={{ fontSize: '12px', color: '#484F58' }}>{ts('{answered} / {total} answered', { answered, total: questions.length })}</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>{ts('{answered} / {total} answered', { answered, total: questions.length })}</span>
           )}
         </div>
       )}
@@ -690,21 +690,21 @@ function RedoResultsScreen({
       {perfect && <Confetti />}
       <div style={{
         padding: '28px', borderRadius: '20px',
-        background: perfect ? 'rgba(46,160,67,0.07)' : `radial-gradient(120% 140% at 0% 0%, ${color}0E 0%, #161B22 60%)`,
+        background: perfect ? 'rgba(46,160,67,0.07)' : `radial-gradient(120% 140% at 0% 0%, ${color}0E 0%, var(--bg-surface) 60%)`,
         border: `1px solid ${perfect ? 'rgba(46,160,67,0.3)' : color + '25'}`,
         boxShadow: '0 2px 20px rgba(0,0,0,0.3)',
         marginBottom: '16px',
       }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '8px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '8px' }}>
           {ts('Review complete')}
         </div>
         <div className="mono" style={{ fontSize: '2.8rem', fontWeight: 700, color: perfect ? '#56D364' : color, lineHeight: 1, marginBottom: '8px' }}>
           {correct} / {total}
         </div>
-        <div style={{ fontSize: '14px', fontWeight: 600, color: perfect ? '#56D364' : '#E6EDF3', marginBottom: '16px' }}>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: perfect ? '#56D364' : 'var(--text-1)', marginBottom: '16px' }}>
           {perfect ? ts('All correct! Great improvement.') : ts('{n} still incorrect', { n: total - correct })}
         </div>
-        <div style={{ height: '5px', background: '#21262D', borderRadius: '999px', overflow: 'hidden' }}>
+        <div style={{ height: '5px', background: 'var(--border-base)', borderRadius: '999px', overflow: 'hidden' }}>
           <div style={{
             height: '100%', background: perfect ? '#2EA043' : color,
             width: `${Math.round((correct / total) * 100)}%`,
@@ -726,7 +726,7 @@ function RedoResultsScreen({
         )}
         <button onClick={onBack} style={{
           height: '38px', padding: '0 20px', borderRadius: '999px',
-          background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+          background: 'var(--bg-surface)', color: 'var(--text-2)', border: '1px solid var(--border-light)',
           fontSize: '12px', fontWeight: 600, cursor: 'pointer',
         }}>
           {ts('Back to results')}
@@ -778,28 +778,28 @@ function ResultsScreen({
       {/* Score header */}
       <div style={{
         padding: '28px', borderRadius: '20px', marginBottom: '16px',
-        background: `radial-gradient(130% 150% at 0% 0%, ${color}0E 0%, #161B22 60%)`,
+        background: `radial-gradient(130% 150% at 0% 0%, ${color}0E 0%, var(--bg-surface) 60%)`,
         border: `1px solid ${color}25`,
         boxShadow: '0 2px 20px rgba(0,0,0,0.3)',
       }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '12px' }}>
           {isPractice ? ts('Practice complete') : ts('Quiz complete')}
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
           <div>
             <div className="mono" style={{ fontSize: '3.6rem', fontWeight: 700, lineHeight: 1, color: gradeColor, letterSpacing: '-0.02em' }}>
-              {result.correctAnswers} <span style={{ fontSize: '2rem', color: '#484F58' }}>/ {result.totalQuestions}</span>
+              {result.correctAnswers} <span style={{ fontSize: '2rem', color: 'var(--text-3)' }}>/ {result.totalQuestions}</span>
             </div>
             <div style={{ fontSize: '1.4rem', fontWeight: 700, color: gradeColor, marginTop: '4px' }}>{counted}% · {grade}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-            <span style={{ fontSize: '11px', color: '#8B949E' }}>{ts('Completed in')} <strong style={{ color: 'var(--text-1)' }}>{formatTime(result.timeTakenSeconds)}</strong></span>
-            <span style={{ fontSize: '11px', color: '#484F58' }}>{formatDate(result.completedAt)}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>{ts('Completed in')} <strong style={{ color: 'var(--text-1)' }}>{formatTime(result.timeTakenSeconds)}</strong></span>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{formatDate(result.completedAt)}</span>
           </div>
         </div>
 
         {/* Bar */}
-        <div style={{ display: 'flex', height: '6px', borderRadius: '999px', overflow: 'hidden', background: '#21262D', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', height: '6px', borderRadius: '999px', overflow: 'hidden', background: 'var(--border-base)', marginBottom: '16px' }}>
           <div style={{ width: `${result.scorePercent}%`, background: `linear-gradient(90deg, ${gradeColor}88, ${gradeColor})`, transition: 'width 1s cubic-bezier(0,0,0.2,1)', boxShadow: `0 0 8px ${gradeColor}60` }} />
           <div style={{ flex: 1, background: 'rgba(248,81,73,0.25)' }} />
         </div>
@@ -809,16 +809,16 @@ function ResultsScreen({
           {[
             { icon: '✅', label: ts('Correct'), val: result.correctAnswers, c: '#56D364' },
             { icon: '❌', label: ts('Wrong'), val: result.incorrectAnswers, c: '#F97979' },
-            { icon: '⏱', label: ts('Time'), val: formatTime(result.timeTakenSeconds), c: '#8B949E' },
+            { icon: '⏱', label: ts('Time'), val: formatTime(result.timeTakenSeconds), c: 'var(--text-2)' },
           ].map(p => (
             <div key={p.label} style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '5px 12px', borderRadius: '999px',
-              background: '#0D1117', border: '1px solid #21262D',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
             }}>
               <span style={{ fontSize: '11px' }}>{p.icon}</span>
               <span style={{ fontSize: '11px', fontWeight: 700, color: p.c }}>{p.val}</span>
-              <span style={{ fontSize: '10px', color: '#484F58' }}>{p.label}</span>
+              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{p.label}</span>
             </div>
           ))}
         </div>
@@ -837,7 +837,7 @@ function ResultsScreen({
             </button>
             <button onClick={onStartRated ?? onRetakeSetup} style={{
               height: '40px', padding: '0 20px', borderRadius: '999px',
-              background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+              background: 'var(--bg-surface)', color: 'var(--text-2)', border: '1px solid var(--border-light)',
               fontSize: '12px', fontWeight: 600, cursor: 'pointer',
             }}>
               {ts('Start rated quiz')} →
@@ -845,7 +845,7 @@ function ResultsScreen({
             {onExit && (
               <button onClick={onExit} style={{
                 height: '40px', padding: '0 20px', borderRadius: '999px',
-                background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+                background: 'var(--bg-surface)', color: 'var(--text-2)', border: '1px solid var(--border-light)',
                 fontSize: '12px', fontWeight: 600, cursor: 'pointer',
               }}>
                 {ts('Back to subject')}
@@ -870,14 +870,14 @@ function ResultsScreen({
             )}
             <button onClick={onRetry} style={{
               height: '40px', padding: '0 20px', borderRadius: '999px',
-              background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+              background: 'var(--bg-surface)', color: 'var(--text-2)', border: '1px solid var(--border-light)',
               fontSize: '12px', fontWeight: 600, cursor: 'pointer',
             }}>
               {ts('Retry same questions')}
             </button>
             <button onClick={onRetakeSetup} style={{
               height: '40px', padding: '0 20px', borderRadius: '999px',
-              background: '#161B22', color: '#8B949E', border: '1px solid #21262D',
+              background: 'var(--bg-surface)', color: 'var(--text-2)', border: '1px solid var(--border-light)',
               fontSize: '12px', fontWeight: 600, cursor: 'pointer',
             }}>
               {ts('New test')}
@@ -888,7 +888,7 @@ function ResultsScreen({
 
       {/* Question breakdown */}
       <div style={{ marginBottom: '8px' }}>
-        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58', marginBottom: '12px' }}>
+        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '12px' }}>
           {ts('Question breakdown')}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -910,15 +910,15 @@ function ResultsScreen({
                   <span style={{ fontSize: '12px', marginTop: '1px' }}>{rq.wasCorrect ? '✅' : '❌'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-1)', fontWeight: 500, lineHeight: 1.45, marginBottom: '2px' }}>
-                      <span className="mono" style={{ fontSize: '10px', color: '#484F58', marginRight: '6px' }}>
+                      <span className="mono" style={{ fontSize: '10px', color: 'var(--text-3)', marginRight: '6px' }}>
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       {rq.questionText}
                     </div>
                     {!rq.wasCorrect && (
-                      <div style={{ fontSize: '11px', color: '#8B949E', lineHeight: 1.4 }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.4 }}>
                         <span style={{ color: '#F97979' }}>{ts('Your answer:')} {rq.userAnswer}</span>
-                        <span style={{ color: '#484F58', margin: '0 4px' }}>·</span>
+                        <span style={{ color: 'var(--text-3)', margin: '0 4px' }}>·</span>
                         <span style={{ color: '#56D364' }}>{ts('Correct:')} {rq.correctAnswer}</span>
                       </div>
                     )}
@@ -927,17 +927,17 @@ function ResultsScreen({
                     )}
                   </div>
                   <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, marginTop: '4px', transform: isOpen ? 'rotate(180deg)' : '', transition: 'transform 0.2s' }}>
-                    <path d="M1 1l4 4 4-4" stroke="#484F58" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M1 1l4 4 4-4" stroke="var(--text-3)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
 
                 {isOpen && (
                   <div className="anim-fadein" style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <div style={{ height: '1px', background: '#21262D', marginBottom: '8px' }} />
+                    <div style={{ height: '1px', background: 'var(--border-light)', marginBottom: '8px' }} />
                     {rq.options.map((opt, oi) => {
                       const isCorrect = opt === rq.correctAnswer;
                       const isChosen = opt === rq.userAnswer;
-                      let bg = 'transparent', border = '#21262D', color = '#8B949E';
+                      let bg = 'transparent', border = 'var(--border-base)', color = 'var(--text-2)';
                       if (isCorrect) { bg = 'rgba(46,160,67,0.08)'; border = 'rgba(46,160,67,0.3)'; color = '#56D364'; }
                       if (isChosen && !isCorrect) { bg = 'rgba(248,81,73,0.08)'; border = 'rgba(248,81,73,0.3)'; color = '#F97979'; }
                       return (
@@ -946,7 +946,7 @@ function ResultsScreen({
                           padding: '8px 12px', borderRadius: '8px',
                           border: `1px solid ${border}`, background: bg,
                         }}>
-                          <span style={{ width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0, background: isCorrect ? 'rgba(46,160,67,0.2)' : (isChosen ? 'rgba(248,81,73,0.2)' : '#21262D'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800, color, fontFamily: 'JetBrains Mono, monospace' }}>
+                          <span style={{ width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0, background: isCorrect ? 'rgba(46,160,67,0.2)' : (isChosen ? 'rgba(248,81,73,0.2)' : 'var(--bg-elevated)'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800, color, fontFamily: 'JetBrains Mono, monospace' }}>
                             {LETTERS[oi]}
                           </span>
                           <span style={{ fontSize: '11px', color, lineHeight: 1.4 }}>{opt}</span>
@@ -957,7 +957,7 @@ function ResultsScreen({
                     })}
                     {rq.explanation && (
                       <div style={{ marginTop: '6px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(61,126,255,0.05)', border: '1px solid rgba(61,126,255,0.15)' }}>
-                        <span style={{ fontSize: '11px', color: '#8B949E', lineHeight: 1.55 }}>{rq.explanation}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.55 }}>{rq.explanation}</span>
                       </div>
                     )}
                   </div>
@@ -970,8 +970,8 @@ function ResultsScreen({
         {result.questions.length > 8 && (
           <button onClick={() => setShowAll(s => !s)} style={{
             marginTop: '10px', width: '100%', padding: '10px',
-            background: 'transparent', border: '1px dashed #30363D', borderRadius: '10px',
-            fontSize: '11px', color: '#8B949E', cursor: 'pointer', fontWeight: 600,
+            background: 'transparent', border: '1px dashed var(--border-base)', borderRadius: '10px',
+            fontSize: '11px', color: 'var(--text-2)', cursor: 'pointer', fontWeight: 600,
           }}>
             {showAll ? ts('Show less') : ts('Show all {n} questions', { n: result.questions.length })}
           </button>

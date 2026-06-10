@@ -281,7 +281,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           <button
             onClick={onGoToQuiz}
             className="h-10 px-6 text-sm font-semibold cursor-pointer"
-            style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '999px' }}
+            style={{ background: 'var(--bg-elevated)', color: 'var(--text-1)', border: '1px solid var(--border-base)', borderRadius: '999px' }}
           >
             {ts('Test your Knowledge →')}
           </button>
@@ -504,8 +504,8 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 {card.front}
               </div>
             )}
-            <div className="hidden md:flex text-xs mt-1 items-center gap-1.5" style={{ color: '#484F58' }}>
-              <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: '#1F2937', border: '1px solid #30363D', color: '#8B949E' }}>Space</kbd>
+            <div className="hidden md:flex text-xs mt-1 items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
+              <kbd className="px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)' }}>Space</kbd>
               {ts('to reveal')}
             </div>
           </div>
@@ -570,7 +570,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               <button
                 onClick={flip}
                 className="h-11 px-8 text-sm font-semibold cursor-pointer"
-                style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
+                style={{ background: 'var(--bg-elevated)', color: 'var(--text-1)', border: '1px solid var(--border-base)', borderRadius: '9999px' }}
               >
                 {ts('Show answer')}
               </button>
@@ -595,7 +595,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               <button
                 onClick={flip}
                 className="h-10 px-7 text-sm font-semibold transition-all duration-150 cursor-pointer btn-accent"
-                style={{ background: '#1D3461', color: '#93B8FF', border: '1px solid rgba(61,126,255,0.4)', borderRadius: '9999px' }}
+                style={{ background: 'var(--bg-elevated)', color: 'var(--text-1)', border: '1px solid var(--border-base)', borderRadius: '9999px' }}
               >
                 {ts('Flip card')}
               </button>

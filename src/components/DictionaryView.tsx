@@ -96,7 +96,7 @@ export function DictionaryView({
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div className="flex items-center gap-2.5">
           <span style={{ color }}><IconBook /></span>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#E6EDF3' }}>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-1)' }}>
             {ts('Dictionary')}
           </h2>
           {entries.length > 0 && (
@@ -114,7 +114,7 @@ export function DictionaryView({
         {englishEntries.length > 0 && (
           <div style={{
             display: 'flex', gap: '2px', padding: '3px',
-            background: '#161B22', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-light)',
           }}>
             {(['az', 'topic'] as SortMode[]).map(m => (
               <button
@@ -124,7 +124,7 @@ export function DictionaryView({
                   padding: '5px 12px', borderRadius: '6px', border: 'none',
                   cursor: 'pointer', fontSize: '12px', fontWeight: 600,
                   background: sort === m ? color + '22' : 'transparent',
-                  color: sort === m ? color : '#8B949E',
+                  color: sort === m ? color : 'var(--text-2)',
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -139,7 +139,7 @@ export function DictionaryView({
       {entries.length > 3 && (
         <div style={{ position: 'relative', marginBottom: '24px' }}>
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none"
-            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#484F58', pointerEvents: 'none' }}>
+            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', pointerEvents: 'none' }}>
             <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.4"/>
             <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
@@ -149,8 +149,8 @@ export function DictionaryView({
             placeholder={ts('Search terms…')}
             style={{
               width: '100%', boxSizing: 'border-box',
-              background: '#161B22', border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '10px', color: '#E6EDF3', fontSize: '13px',
+              background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+              borderRadius: '10px', color: 'var(--text-1)', fontSize: '13px',
               padding: '9px 14px 9px 36px', outline: 'none',
             }}
           />
@@ -162,14 +162,14 @@ export function DictionaryView({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
           {pendingTerms.map(p => (
             <div key={p.id} style={{
-              background: '#161B22', border: '1px solid rgba(61,126,255,0.2)',
+              background: 'var(--bg-surface)', border: '1px solid rgba(61,126,255,0.2)',
               borderRadius: '12px', padding: '16px 18px',
               display: 'flex', alignItems: 'center', gap: '12px',
             }}>
               <Spinner />
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#E6EDF3', marginBottom: '3px' }}>{p.term}</div>
-                <div style={{ fontSize: '12px', color: '#484F58' }}>{ts('Generating definition…')}</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '3px' }}>{p.term}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>{ts('Generating definition…')}</div>
               </div>
             </div>
           ))}
@@ -180,14 +180,14 @@ export function DictionaryView({
       {isEmpty && (
         <div style={{
           textAlign: 'center', padding: '64px 24px',
-          background: '#161B22', borderRadius: '16px',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--bg-surface)', borderRadius: '16px',
+          border: '1px solid var(--border-light)',
         }}>
           <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.5 }}>📖</div>
-          <div style={{ fontSize: '15px', fontWeight: 600, color: '#E6EDF3', marginBottom: '6px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '6px' }}>
             {ts('No dictionary entries yet')}
           </div>
-          <div style={{ fontSize: '13px', color: '#484F58', maxWidth: '320px', margin: '0 auto' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-3)', maxWidth: '320px', margin: '0 auto' }}>
             {ts('Select a word or phrase in any note, then tap the dictionary button to add it here with an AI-generated definition.')}
           </div>
         </div>
@@ -195,7 +195,7 @@ export function DictionaryView({
 
       {/* No search results */}
       {!isEmpty && filtered.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#484F58', fontSize: '13px' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-3)', fontSize: '13px' }}>
           {ts('No entries match "{q}"', { q: search })}
         </div>
       )}
@@ -206,12 +206,12 @@ export function DictionaryView({
           <div style={{
             fontSize: sort === 'az' ? '22px' : '11px',
             fontWeight: sort === 'az' ? 700 : 600,
-            color: sort === 'az' ? color : '#8B949E',
+            color: sort === 'az' ? color : 'var(--text-2)',
             letterSpacing: sort === 'az' ? '-0.02em' : '0.1em',
             textTransform: sort === 'topic' ? 'uppercase' : 'none',
             marginBottom: '10px',
             paddingBottom: '6px',
-            borderBottom: `1px solid rgba(255,255,255,0.05)`,
+            borderBottom: `1px solid var(--border-light)`,
           }}>
             {label}
           </div>
@@ -229,15 +229,15 @@ export function DictionaryView({
           <div style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             marginBottom: '16px', paddingBottom: '10px',
-            borderBottom: '1px solid rgba(255,255,255,0.07)',
+            borderBottom: '1px solid var(--border-light)',
           }}>
             <span style={{ fontSize: '20px', lineHeight: 1, opacity: 0.7 }}>あ</span>
-            <span style={{ fontSize: '16px', fontWeight: 700, color: 'rgba(230,237,243,0.85)', letterSpacing: '-0.01em' }}>
+            <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>
               翻訳
             </span>
             <span style={{
-              fontSize: '11px', fontWeight: 600, color: 'rgba(230,237,243,0.5)',
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+              fontSize: '11px', fontWeight: 600, color: 'var(--text-2)',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-light)',
               borderRadius: '999px', padding: '2px 8px',
             }}>
               {filteredJapanese.length}
@@ -288,19 +288,19 @@ function EntryCard({
   return (
     <div
       style={{
-        background: '#161B22', border: '1px solid rgba(255,255,255,0.07)',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
         borderRadius: '12px', padding: '16px 18px',
         transition: 'border-color 0.15s ease',
       }}
       onMouseEnter={e => (e.currentTarget.style.borderColor = color + '40')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-light)')}
     >
       <div className="flex items-start justify-between gap-3">
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Term */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '7px' }}>
             <span style={{
-              fontSize: '15px', fontWeight: 700, color: '#E6EDF3',
+              fontSize: '15px', fontWeight: 700, color: 'var(--text-1)',
               fontFamily: 'Sora, sans-serif',
             }}>
               {entry.term}
@@ -317,7 +317,7 @@ function EntryCard({
           </div>
 
           {/* Definition */}
-          <div style={{ fontSize: '13px', lineHeight: 1.65, color: 'rgba(230,237,243,0.75)' }}>
+          <div style={{ fontSize: '13px', lineHeight: 1.65, color: 'var(--text-2)' }}>
             {renderDefinition(entry.definition)}
           </div>
         </div>
@@ -328,11 +328,11 @@ function EntryCard({
           title={ts('Delete')}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
-            color: '#484F58', padding: '2px', lineHeight: 0, flexShrink: 0,
+            color: 'var(--text-3)', padding: '2px', lineHeight: 0, flexShrink: 0,
             transition: 'color 0.15s ease',
           }}
           onMouseEnter={e => (e.currentTarget.style.color = '#F85149')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
         >
           <IconTrash />
         </button>
