@@ -12,6 +12,7 @@ import Quiz from './pages/Quiz';
 import SubjectPage from './pages/SubjectPage';
 import Generate from './pages/Generate';
 import Dictionary from './pages/Dictionary';
+import KnowledgeGraphPage from './pages/KnowledgeGraph';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -25,6 +26,7 @@ function AnimatedRoutes() {
         <Route path="/quiz" element={<Quiz />} />
         <Route path="/generate" element={<Generate />} />
         <Route path="/dictionary" element={<Dictionary />} />
+        <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
         <Route path="/subject/:id" element={<SubjectPage />} />
       </Routes>
     </div>

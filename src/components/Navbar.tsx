@@ -256,12 +256,13 @@ const IconClose = () => (
 // ── Nav items ──────────────────────────────────────────────────────────────────
 
 const navItems = [
-  { to: '/',            labelKey: 'nav_dashboard' as const },
-  { to: '/mindmap',     labelKey: 'nav_mindmap' as const },
-  { to: '/flashcards',  labelKey: 'nav_flashcards' as const },
-  { to: '/notes',       labelKey: 'nav_notes' as const },
-  { to: '/quiz',        labelKey: 'nav_quiz' as const },
-  { to: '/dictionary',  labelKey: 'nav_dictionary' as const },
+  { to: '/',                  labelKey: 'nav_dashboard' as const },
+  { to: '/mindmap',           labelKey: 'nav_mindmap' as const },
+  { to: '/flashcards',        labelKey: 'nav_flashcards' as const },
+  { to: '/notes',             labelKey: 'nav_notes' as const },
+  { to: '/quiz',              labelKey: 'nav_quiz' as const },
+  { to: '/dictionary',        labelKey: 'nav_dictionary' as const },
+  { to: '/knowledge-graph',   labelKey: 'nav_knowledge_graph' as const },
 ];
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
