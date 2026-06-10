@@ -19,6 +19,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { useResolvedSubjects } from '../store/useSubjects';
 import type { SubjectDef } from '../data/subjects';
 import { SubjectIcon } from '../data/subjectIcons';
@@ -138,6 +139,8 @@ function Handles() {
 
 function RootNode({ data }: NodeProps) {
   const { ts } = useLang();
+  const { theme } = useTheme();
+  const light = theme === 'light';
   const d = data as { dimmed?: boolean };
   return (
     <div
@@ -149,18 +152,22 @@ function RootNode({ data }: NodeProps) {
         gap: '3px', textAlign: 'center',
         width: '220px', padding: '20px 22px',
         borderRadius: '24px',
-        background: 'radial-gradient(120% 120% at 50% 0%, rgba(61,126,255,0.30), rgba(22,27,34,0.95))',
+        background: light
+          ? `radial-gradient(120% 120% at 50% 0%, rgba(61,126,255,0.12), var(--bg-surface))`
+          : `radial-gradient(120% 120% at 50% 0%, rgba(61,126,255,0.30), rgba(22,27,34,0.95))`,
         border: `1.5px solid ${ROOT_COLOR}`,
-        boxShadow: `0 0 0 6px rgba(61,126,255,0.10), 0 0 38px ${ROOT_COLOR}66, 0 14px 40px rgba(0,0,0,0.5)`,
+        boxShadow: light
+          ? `0 0 0 4px rgba(61,126,255,0.07), 0 4px 20px rgba(61,126,255,0.18), 0 2px 8px rgba(0,0,0,0.08)`
+          : `0 0 0 6px rgba(61,126,255,0.10), 0 0 38px ${ROOT_COLOR}66, 0 14px 40px rgba(0,0,0,0.5)`,
         opacity: d.dimmed ? 0.4 : 1,
         transition: 'opacity .25s ease',
       }}
     >
       <Handles />
-      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#93B8FF' }}>
+      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: ROOT_COLOR }}>
         {ts('Mind Map')}
       </div>
-      <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '17px', fontWeight: 800, color: '#E6EDF3', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '17px', fontWeight: 800, color: light ? 'var(--text-1)' : '#E6EDF3', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
         {ROOT_LABEL}
       </div>
     </div>
@@ -169,6 +176,8 @@ function RootNode({ data }: NodeProps) {
 
 function SubjectNode({ data }: NodeProps) {
   const { ts } = useLang();
+  const { theme } = useTheme();
+  const light = theme === 'light';
   const d = data as {
     subject: SubjectDef; expanded: boolean; topicCount: number;
     dimmed: boolean; highlight: boolean; idx: number;
@@ -184,11 +193,15 @@ function SubjectNode({ data }: NodeProps) {
         display: 'flex', alignItems: 'center', gap: '10px',
         width: '204px', padding: '11px 13px',
         borderRadius: '16px',
-        background: 'rgba(22,27,34,0.96)',
-        border: `1.5px solid ${d.highlight ? s.color : s.color + '55'}`,
-        boxShadow: d.highlight
-          ? `0 0 0 3px ${s.color}40, 0 0 26px ${s.color}88, 0 10px 26px rgba(0,0,0,0.45)`
-          : `0 0 18px ${s.color}33, 0 8px 22px rgba(0,0,0,0.4)`,
+        background: light ? 'var(--bg-surface)' : 'rgba(22,27,34,0.96)',
+        border: `1.5px solid ${d.highlight ? s.color : s.color + (light ? '70' : '55')}`,
+        boxShadow: light
+          ? (d.highlight
+            ? `0 0 0 2px ${s.color}30, 0 2px 16px ${s.color}22, 0 4px 12px rgba(0,0,0,0.09)`
+            : `0 1px 4px rgba(0,0,0,0.07), 0 2px 10px rgba(0,0,0,0.05)`)
+          : (d.highlight
+            ? `0 0 0 3px ${s.color}40, 0 0 26px ${s.color}88, 0 10px 26px rgba(0,0,0,0.45)`
+            : `0 0 18px ${s.color}33, 0 8px 22px rgba(0,0,0,0.4)`),
         opacity: d.dimmed ? 0.28 : 1,
         cursor: 'pointer',
         transition: 'opacity .25s ease, box-shadow .25s ease, border-color .25s ease',
@@ -203,10 +216,10 @@ function SubjectNode({ data }: NodeProps) {
         <SubjectIcon id={s.id} icon={s.icon} color={s.color} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 700, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 700, color: light ? 'var(--text-1)' : '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {s.title}
         </div>
-        <div style={{ fontSize: '10px', color: '#8B949E', marginTop: '1px' }}>
+        <div style={{ fontSize: '10px', color: light ? 'var(--text-3)' : '#8B949E', marginTop: '1px' }}>
           {d.topicCount > 0
             ? (d.topicCount > 1 ? ts('{count} topics', { count: d.topicCount }) : ts('{count} topic', { count: d.topicCount }))
             : ts('No notes yet')}
@@ -229,7 +242,9 @@ function SubjectNode({ data }: NodeProps) {
           style={{
             width: '20px', height: '20px', borderRadius: '7px', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#8B949E', background: 'rgba(255,255,255,0.05)', border: '1px solid #30363D',
+            color: light ? 'var(--text-2)' : '#8B949E',
+            background: light ? 'var(--bg-elevated)' : 'rgba(255,255,255,0.05)',
+            border: light ? '1px solid var(--border-light)' : '1px solid #30363D',
           }}
         >
           <svg viewBox="0 0 12 12" width="10" height="10" fill="none"><path d="M4 8l4-4M5 4h3v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -241,6 +256,8 @@ function SubjectNode({ data }: NodeProps) {
 
 function TopicNode({ data }: NodeProps) {
   const { ts } = useLang();
+  const { theme } = useTheme();
+  const light = theme === 'light';
   const d = data as { label: string; color: string; empty?: boolean; dimmed: boolean; highlight: boolean; idx: number };
   return (
     <div
@@ -250,9 +267,11 @@ function TopicNode({ data }: NodeProps) {
         position: 'relative',
         maxWidth: '184px', padding: '7px 12px',
         borderRadius: '12px',
-        background: 'rgba(13,17,23,0.94)',
-        border: `1px solid ${d.highlight ? d.color : (d.empty ? '#30363D' : d.color + '40')}`,
-        boxShadow: d.highlight ? `0 0 16px ${d.color}77` : `0 4px 14px rgba(0,0,0,0.4)`,
+        background: light ? 'var(--bg-surface)' : 'rgba(13,17,23,0.94)',
+        border: `1px solid ${d.highlight ? d.color : (d.empty ? (light ? 'var(--border-base)' : '#30363D') : d.color + (light ? '60' : '40'))}`,
+        boxShadow: light
+          ? (d.highlight ? `0 0 0 2px ${d.color}35` : `0 1px 4px rgba(0,0,0,0.07)`)
+          : (d.highlight ? `0 0 16px ${d.color}77` : `0 4px 14px rgba(0,0,0,0.4)`),
         opacity: d.dimmed ? 0.25 : 1,
         cursor: 'pointer',
         transition: 'opacity .25s ease, box-shadow .25s ease, border-color .25s ease',
@@ -261,7 +280,7 @@ function TopicNode({ data }: NodeProps) {
       <Handles />
       <div style={{
         fontSize: '11px', fontWeight: d.empty ? 600 : 500,
-        color: d.empty ? d.color : '#C9D1D9',
+        color: d.empty ? d.color : (light ? 'var(--text-1)' : '#C9D1D9'),
         lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {d.empty ? ts('No notes yet — Generate →') : d.label}
@@ -377,30 +396,47 @@ function Toolbar({
   anyExpanded: boolean;
 }) {
   const { ts } = useLang();
+  const { theme } = useTheme();
+  const light = theme === 'light';
+
   const pill: React.CSSProperties = {
     height: '34px', padding: '0 13px', borderRadius: '10px', cursor: 'pointer',
-    background: 'rgba(22,27,34,0.92)', border: '1px solid #30363D', color: '#C9D1D9',
+    background: light ? 'var(--bg-surface)' : 'rgba(22,27,34,0.92)',
+    border: light ? '1px solid var(--border-light)' : '1px solid #30363D',
+    color: light ? 'var(--text-1)' : '#C9D1D9',
     fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px',
     backdropFilter: 'blur(8px)', whiteSpace: 'nowrap',
+    boxShadow: light ? '0 1px 4px rgba(0,0,0,0.08)' : undefined,
   };
+  const iconStroke = light ? '#9B8B78' : '#8B949E';
+
   return (
     <>
       {/* Search — top left */}
       <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 6, display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: '8px', height: '38px', padding: '0 12px',
-          borderRadius: '12px', background: 'rgba(22,27,34,0.92)', border: '1px solid #30363D',
-          backdropFilter: 'blur(8px)', boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+          borderRadius: '12px',
+          background: light ? 'var(--bg-surface)' : 'rgba(22,27,34,0.92)',
+          border: light ? '1px solid var(--border-light)' : '1px solid #30363D',
+          backdropFilter: 'blur(8px)',
+          boxShadow: light ? '0 1px 6px rgba(0,0,0,0.09)' : '0 6px 20px rgba(0,0,0,0.4)',
         }}>
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="7" cy="7" r="4.5" stroke="#8B949E" strokeWidth="1.4" /><path d="M14 14l-3.2-3.2" stroke="#8B949E" strokeWidth="1.6" strokeLinecap="round" /></svg>
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+            <circle cx="7" cy="7" r="4.5" stroke={iconStroke} strokeWidth="1.4" />
+            <path d="M14 14l-3.2-3.2" stroke={iconStroke} strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder={ts('Search topics…')}
-            style={{ width: '180px', background: 'transparent', border: 'none', outline: 'none', color: '#E6EDF3', fontSize: '13px' }}
+            style={{
+              width: '180px', background: 'transparent', border: 'none', outline: 'none',
+              color: light ? 'var(--text-1)' : '#E6EDF3', fontSize: '13px',
+            }}
           />
           {query && (
-            <button onClick={() => setQuery('')} aria-label={ts('Clear search')} style={{ cursor: 'pointer', background: 'none', border: 'none', color: '#8B949E', display: 'flex' }}>
+            <button onClick={() => setQuery('')} aria-label={ts('Clear search')} style={{ cursor: 'pointer', background: 'none', border: 'none', color: iconStroke, display: 'flex' }}>
               <svg viewBox="0 0 12 12" width="12" height="12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
             </button>
           )}
@@ -429,6 +465,8 @@ function MindMapInner() {
   const navigate = useNavigate();
   const { fitView } = useReactFlow();
   const { allSubjects } = useResolvedSubjects();
+  const { theme } = useTheme();
+  const light = theme === 'light';
 
   const [topicsMap, setTopicsMap] = useState<Record<string, string[]>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -492,9 +530,9 @@ function MindMapInner() {
         elementsSelectable={false}
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{ type: 'gradient' }}
-        style={{ background: '#0D1117' }}
+        style={{ background: light ? 'var(--bg-page)' : '#0D1117' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={30} size={1} color="#1b212b" />
+        <Background variant={BackgroundVariant.Dots} gap={30} size={1} color={light ? 'var(--border-light)' : '#1b212b'} />
         <MiniMap
           pannable
           zoomable
@@ -504,8 +542,11 @@ function MindMapInner() {
             return d.subject?.color ?? d.color ?? '#8B949E';
           }}
           nodeStrokeWidth={0}
-          maskColor="rgba(13,17,23,0.7)"
-          style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '12px' }}
+          maskColor={light ? 'rgba(237,232,220,0.75)' : 'rgba(13,17,23,0.7)'}
+          style={light
+            ? { background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '12px' }
+            : { background: '#161B22', border: '1px solid #30363D', borderRadius: '12px' }
+          }
         />
       </ReactFlow>
       <Toolbar
