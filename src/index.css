@@ -652,13 +652,6 @@ body.notes-reading .notes-reading-fade { opacity: 1; }
 body.notes-reading .notes-reading-fade-top { top: 72px; }
 body.notes-reading.notes-scrolling-down .notes-reading-fade-top { top: 0; }
 
-.page-notes-reading .notes-meta-row {
-  opacity: 0.15;
-  transition: opacity 200ms ease;
-}
-.page-notes-reading .notes-meta-row:hover {
-  opacity: 0.85;
-}
 
 /* Elevate note content */
 .page-notes-reading .notes-content-main {

@@ -1126,47 +1126,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
         </button>
       )}
 
-      {/* Top fade — fixed overlay, only shown while reading */}
-      {createPortal(
-        <div
-          className="notes-reading-fade notes-reading-fade-top"
-          style={{
-            position: 'fixed', left: 0, right: 0, zIndex: 25,
-            height: '72px', pointerEvents: 'none',
-            background: 'linear-gradient(to bottom, var(--bg-nav) 0%, transparent 100%)',
-            transition: 'opacity 0.3s ease, top 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        />,
-        document.body
-      )}
-
-      {/* Bottom reading-progress fade — fixed overlay, only shown while reading */}
-      {createPortal(
-        <div
-          style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 25,
-            height: '72px', pointerEvents: 'none',
-            background: 'linear-gradient(to top, var(--bg-nav) 0%, transparent 100%)',
-            transition: 'opacity 0.3s ease',
-          }}
-          className="notes-reading-fade"
-        >
-          {/* Progress bar at the very bottom */}
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px',
-            background: 'var(--border-light)',
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${scrollPct * 100}%`,
-              background: color,
-              transition: 'width 0.25s ease',
-              boxShadow: `0 0 8px ${color}70`,
-            }} />
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }
