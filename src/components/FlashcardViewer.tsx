@@ -51,7 +51,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', 'JetBrains Mono', monospace",
           fontSize: '17px',
-          color: '#8B949E',
+          color: 'var(--text-3)',
           letterSpacing: '0.06em',
           textAlign: 'center',
         }}>
@@ -63,7 +63,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         fontFamily: "'LXGW WenKai Mono TC', monospace",
         fontWeight: 700,
         fontSize: 'clamp(26px, 5vw, 40px)',
-        color: '#E6EDF3',
+        color: 'var(--text-1)',
         textAlign: 'center',
         lineHeight: 1.4,
       }}>
@@ -78,7 +78,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
         <div style={{
           fontFamily: "'LXGW WenKai Mono TC', serif",
           fontSize: '16px',
-          color: '#8B949E',
+          color: 'var(--text-2)',
           textAlign: 'center',
           lineHeight: 1.8,
           letterSpacing: '0.02em',
@@ -92,7 +92,7 @@ function VocabBack({ vocab, color }: { vocab: VocabData; color: string }) {
           fontFamily: "'LXGW WenKai Mono TC', monospace",
           fontWeight: 300,
           fontSize: '14px',
-          color: '#8B949E',
+          color: 'var(--text-2)',
           textAlign: 'center',
           lineHeight: 1.6,
         }}>
@@ -479,12 +479,12 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             style={{
               padding: 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
               borderRadius: '12px',
-              background: '#161B22',
+              background: 'var(--bg-surface)',
               border: `1px solid ${isVocabCard ? color + '35' : color + '25'}`,
-              boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 16px rgba(0,0,0,0.4)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
             }}
           >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#8B949E' }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
               {isVocabCard ? ts('Word') : ts('Question')}
             </div>
             {isVocabCard ? (
@@ -492,7 +492,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 fontFamily: "'LXGW WenKai Mono TC', monospace",
                 fontWeight: 700,
                 fontSize: 'clamp(40px, 12vw, 72px)',
-                color: '#E6EDF3',
+                color: 'var(--text-1)',
                 textAlign: 'center',
                 lineHeight: 1.1,
                 letterSpacing: '0.06em',
@@ -500,7 +500,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                 {card.front}
               </div>
             ) : (
-              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: '#E6EDF3', lineHeight: 1.45 }}>
+              <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: 'var(--text-1)', lineHeight: 1.45 }}>
                 {card.front}
               </div>
             )}
@@ -516,20 +516,18 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             style={{
               padding: 'clamp(32px, 5vw, 52px) clamp(28px, 5vw, 52px)',
               borderRadius: '12px',
-              background: isVocabCard
-                ? `linear-gradient(135deg, ${color}14 0%, #161B22 100%)`
-                : 'linear-gradient(135deg, #1D3461 0%, #161B22 100%)',
+              background: `linear-gradient(135deg, ${color}12 0%, var(--bg-elevated) 100%)`,
               border: `1px solid ${color}40`,
-              boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.4)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
             }}
           >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: isVocabCard ? color : '#3D7EFF' }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
               {isVocabCard ? ts('Meaning') : ts('Answer')}
             </div>
             {isVocabCard && vocab ? (
               <VocabBack vocab={vocab} color={color} />
             ) : (
-              <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: '#E6EDF3', lineHeight: 1.65 }}>
+              <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: 'var(--text-1)', lineHeight: 1.65 }}>
                 {card.back}
               </div>
             )}
