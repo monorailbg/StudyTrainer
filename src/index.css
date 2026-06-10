@@ -895,6 +895,14 @@ body.theme-light .page-flashcards-session {
   .notes-section-card ul li { max-width: none !important; }
 }
 
+/* ── Globe: light-mode texture treatment ────────────────────────────── */
+/* Desaturate + slightly lift the day texture so it reads as a muted      */
+/* clay render rather than a vivid photo against the cream canvas.        */
+/* Only the WebGL <canvas> is targeted; HTML pin labels are unaffected.   */
+body.theme-light .globe-canvas-container canvas {
+  filter: saturate(0.68) brightness(1.06) contrast(0.88);
+}
+
 /* ── Globe: mobile — smaller hero, pass scroll through ──────────────── */
 @media (max-width: 768px) {
   .home-hero-section {
