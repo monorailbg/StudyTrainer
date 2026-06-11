@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { useStore } from '../store/useStore';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
@@ -158,6 +159,7 @@ function ProgressRow({ label, read, total, color, delay, mounted }: {
 
 function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDef; isCore: boolean; index?: number; stats?: SubjectStats }) {
   const { t, ts } = useLang();
+  const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const id = setTimeout(() => setMounted(true), 60); return () => clearTimeout(id); }, []);
 
@@ -169,6 +171,10 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
   const hasProgress = stats && (stats.notesTotal > 0 || stats.cardsTotal > 0);
   const due = stats?.cardsDue ?? 0;
   const barDelay = index * 60;
+
+  // Theme-aware hover colors: navy in dark, warm orange/brown in light
+  const hoverBorder = theme === 'light' ? 'rgba(217,119,6,0.7)' : 'rgba(30,58,138,0.8)';
+  const hoverBg = theme === 'light' ? 'rgba(217,119,6,0.08)' : 'rgba(30,58,138,0.06)';
 
   return (
     <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms`, position: 'relative' }}>
@@ -185,8 +191,8 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
         </span>
       )}
       <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}
-        hoverBorderColor="rgba(30,58,138,0.8)"
-        hoverBackground="rgba(30,58,138,0.06)"
+        hoverBorderColor={hoverBorder}
+        hoverBackground={hoverBg}
       >
         <div className="p-5 flex flex-col h-full gap-3">
           {/* Icon + color accent */}
