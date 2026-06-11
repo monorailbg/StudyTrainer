@@ -46,22 +46,22 @@ const SUPPLY_NODES: SupplyNode[] = [
   { id: 'kioxia-jp',    label: 'NAND Flash (Kioxia)',          role: 'memory',   color: '#F472B6', lat: 34.97, lng: 136.62 },
   { id: 'sony-sensors', label: 'Camera Sensor Labs (Sony)',    role: 'sensor',   color: '#EC4899', lat: 35.44, lng: 139.38 },
   // China — Raw materials
-  { id: 'baotou',       label: 'Rare Earth Mining',            role: 'rawmat',   color: '#F59E0B', lat: 40.66, lng: 109.82 },
-  { id: 'ganzhou',      label: 'Battery Materials',            role: 'rawmat',   color: '#F97316', lat: 25.83, lng: 114.93 },
+  { id: 'baotou',       label: 'Rare Earth Mining',            role: 'rawmat',   color: '#D4A574', lat: 40.66, lng: 109.82 },
+  { id: 'ganzhou',      label: 'Battery Materials',            role: 'rawmat',   color: '#C9A876', lat: 25.83, lng: 114.93 },
   // China — Final assembly
-  { id: 'zhengzhou',    label: 'iPhone Assembly (Foxconn)',    role: 'assembly', color: '#10B981', lat: 34.75, lng: 113.63 },
-  { id: 'shenzhen',     label: 'PCB & Electronics Hub',        role: 'assembly', color: '#34D399', lat: 22.54, lng: 114.06 },
-  { id: 'chengdu',      label: 'iPad Assembly (Foxconn)',       role: 'assembly', color: '#6EE7B7', lat: 30.57, lng: 104.07 },
+  { id: 'zhengzhou',    label: 'iPhone Assembly (Foxconn)',    role: 'assembly', color: '#4FB3D9', lat: 34.75, lng: 113.63 },
+  { id: 'shenzhen',     label: 'PCB & Electronics Hub',        role: 'assembly', color: '#6FC4E5', lat: 22.54, lng: 114.06 },
+  { id: 'chengdu',      label: 'iPad Assembly (Foxconn)',       role: 'assembly', color: '#8FD5F0', lat: 30.57, lng: 104.07 },
   // India — Assembly clusters
-  { id: 'chennai',      label: 'India iPhone Assembly',        role: 'assembly', color: '#22D3EE', lat: 13.08, lng:  80.27 },
-  { id: 'bengaluru',    label: 'India Assembly Hub',            role: 'assembly', color: '#06B6D4', lat: 12.97, lng:  77.59 },
+  { id: 'chennai',      label: 'India iPhone Assembly',        role: 'assembly', color: '#4DCCBD', lat: 13.08, lng:  80.27 },
+  { id: 'bengaluru',    label: 'India Assembly Hub',            role: 'assembly', color: '#6DD9CA', lat: 12.97, lng:  77.59 },
   // Vietnam — AirPods & Watch
-  { id: 'bacninh',      label: 'AirPods Assembly (Luxshare)',  role: 'assembly', color: '#4ADE80', lat: 21.12, lng: 106.06 },
-  { id: 'danang',       label: 'Watch & AirPods (Goertek)',    role: 'assembly', color: '#86EFAC', lat: 16.05, lng: 108.21 },
+  { id: 'bacninh',      label: 'AirPods Assembly (Luxshare)',  role: 'assembly', color: '#8BE6D7', lat: 21.12, lng: 106.06 },
+  { id: 'danang',       label: 'Watch & AirPods (Goertek)',    role: 'assembly', color: '#A5F0E0', lat: 16.05, lng: 108.21 },
   // Design & distribution
-  { id: 'cupertino',    label: 'Apple HQ',                     role: 'hq',       color: '#EF4444', lat: 37.33, lng: -122.03 },
-  { id: 'cork',         label: 'European Operations',           role: 'dist',     color: '#F87171', lat: 51.90, lng:   -8.47 },
-  { id: 'munich',       label: 'Silicon Design Center',         role: 'design',   color: '#FB923C', lat: 48.14, lng:   11.58 },
+  { id: 'cupertino',    label: 'Apple HQ',                     role: 'hq',       color: '#A78BFA', lat: 37.33, lng: -122.03 },
+  { id: 'cork',         label: 'European Operations',           role: 'dist',     color: '#C4B5FD', lat: 51.90, lng:   -8.47 },
+  { id: 'munich',       label: 'Silicon Design Center',         role: 'design',   color: '#DDD6FE', lat: 48.14, lng:   11.58 },
 ];
 
 type SupplyArcType = 'rawmaterial' | 'upstream' | 'downstream';
@@ -102,75 +102,107 @@ const SUPPLY_ARC_DEFS: SupplyArcDef[] = [
   { from: 'shenzhen',      to: 'cork',           type: 'downstream' },
   { from: 'bacninh',       to: 'cupertino',      type: 'downstream' },
   { from: 'danang',        to: 'cupertino',      type: 'downstream' },
-  // Cupertino ↔ Munich design loop
   { from: 'cupertino',     to: 'munich',         type: 'downstream' },
 ];
 
-// Vibrant, saturated arc colors — stay legible in both light and dark
-const SUPPLY_ARC_COLORS: Record<SupplyArcType, [string, string]> = {
-  rawmaterial: ['#F59E0BF2', '#FB923CF2'],
-  upstream:    ['#3B82F6F2', '#10B981F2'],
-  downstream:  ['#EF4444FF', '#F87171F0'],
+// Calming, semi-transparent supply line colors
+// Light mode: soft slate blue, muted amber, soft teal
+// Dark mode: ethereal neon-cyan, soft lavender, mint green
+const SUPPLY_ARC_COLORS_LIGHT: Record<SupplyArcType, [string, string]> = {
+  rawmaterial: ['#8B9DC366', '#A0B97F55'],
+  upstream:    ['#5B8DBF77', '#4DCCBD66'],
+  downstream:  ['#7BA5D088', '#8FD5F077'],
 };
 
-// Globe-pin styles injected once into <head>.
-// CSS custom properties (--gpin-color, --gpin-border) are set on .gpin-wrapper.
-// body.theme-light overrides produce solid, high-contrast labels on the cream canvas.
+const SUPPLY_ARC_COLORS_DARK: Record<SupplyArcType, [string, string]> = {
+  rawmaterial: ['#7DD3C0AA', '#9D84B788'],
+  upstream:    ['#00E5FFCC', '#7C3AEDAA'],
+  downstream:  ['#A5F0E0BB', '#67E8F9BB'],
+};
+
+// Globe-pin styles with optimized label sizing and dark-mode glassmorphism
 const PIN_STYLES = `
   @keyframes gpin-pulse {
-    0%   { transform: scale(1);   opacity: 0.55; }
-    100% { transform: scale(3.2); opacity: 0; }
+    0%   { transform: scale(1);   opacity: 0.4; }
+    100% { transform: scale(2.8); opacity: 0; }
   }
+  @keyframes gpin-glow-pulse {
+    0%   { opacity: 0.5;  filter: drop-shadow(0 0 4px currentColor); }
+    50%  { opacity: 0.8;  filter: drop-shadow(0 0 8px currentColor); }
+    100% { opacity: 0.5;  filter: drop-shadow(0 0 4px currentColor); }
+  }
+
   .gpin-ring {
     position:absolute; inset:0; border-radius:50%;
-    animation: gpin-pulse 2.8s ease-out infinite;
+    animation: gpin-pulse 3.2s ease-out infinite;
   }
-  .gpin-ring2 { animation-delay: 1.4s; }
+  .gpin-ring2 { animation-delay: 1.6s; }
   .gpin-dot {
     position:relative; z-index:2;
     transition: transform 0.2s ease;
   }
-  .gpin-wrapper:hover .gpin-dot { transform: scale(1.45); }
+  .gpin-wrapper:hover .gpin-dot { transform: scale(1.3); }
 
-  /* ── Label: dark-mode default ── */
+  /* ── Label: base styles — reduced size & padding ── */
   .gpin-label {
-    position:absolute; top:-30px; left:50%;
+    position:absolute; top:-32px; left:50%;
     transform:translateX(-50%);
     white-space:nowrap;
     font-family:'Sora',sans-serif;
-    font-size:10px; font-weight:700;
-    letter-spacing:0.05em; pointer-events:none;
-    padding:2px 8px 2px 6px; border-radius:5px;
-    display:flex; align-items:center; gap:5px;
-    background:rgba(13,17,23,0.82);
+    font-size:7px; font-weight:700;
+    letter-spacing:0.04em; pointer-events:none;
+    padding:1px 6px 1px 5px; border-radius:4px;
+    display:flex; align-items:center; gap:3px;
+    background:rgba(13,17,23,0.75);
     color:var(--gpin-color);
-    border:1px solid var(--gpin-border);
-    text-shadow:0 1px 4px rgba(0,0,0,0.9);
+    border:0.5px solid var(--gpin-border);
+    text-shadow:0 0.5px 2px rgba(0,0,0,0.8);
     box-shadow:none;
+    opacity:0.85;
+    transition: opacity 0.3s ease;
   }
   .gpin-label-dot {
-    width:5px; height:5px; border-radius:50%; flex-shrink:0;
+    width:3px; height:3px; border-radius:50%; flex-shrink:0;
     background:var(--gpin-color);
-    box-shadow:0 0 5px var(--gpin-color);
+    box-shadow:0 0 3px var(--gpin-color);
   }
 
-  /* ── Label: light-mode — solid off-white, sharp charcoal, explicit border ── */
+  /* ── Label: light-mode — crisp micro-border ── */
   body.theme-light .gpin-label {
-    background:rgba(255,252,247,1.0);
-    color:#1E2028;
-    border:1px solid rgba(0,0,0,0.12);
+    background:rgba(255,252,247,0.95);
+    color:#2C2A25;
+    border:0.5px solid rgba(0,0,0,0.08);
     text-shadow:none;
-    box-shadow:0 2px 10px rgba(0,0,0,0.16),0 1px 3px rgba(0,0,0,0.10);
+    box-shadow:0 1px 3px rgba(0,0,0,0.10);
+    opacity:0.90;
   }
-  /* Retain the colored identification dot in light mode */
   body.theme-light .gpin-label .gpin-label-dot {
-    box-shadow:0 0 4px var(--gpin-color);
+    box-shadow:0 0 2px var(--gpin-color);
   }
 
-  /* ── Dot: tone down neon glow on bright background ── */
+  /* ── Label: dark-mode — glassmorphism with blur ── */
+  body.theme-dark .gpin-label {
+    background:rgba(15,23,42,0.60);
+    backdrop-filter:blur(4px);
+    color:#E8F4F8;
+    border:0.5px solid rgba(255,255,255,0.15);
+    text-shadow:none;
+    box-shadow:0 4px 12px rgba(0,0,0,0.25);
+    opacity:0.88;
+  }
+  body.theme-dark .gpin-label .gpin-label-dot {
+    box-shadow:0 0 3px var(--gpin-color);
+  }
+
+  /* ── Dot: subtle glow, no aggressive neon ── */
   body.theme-light .gpin-dot {
-    box-shadow:0 2px 6px rgba(0,0,0,0.20),0 0 7px var(--gpin-color) !important;
-    border-color:rgba(255,255,255,0.65) !important;
+    box-shadow:0 1px 3px rgba(0,0,0,0.18),0 0 4px var(--gpin-color) !important;
+    border-color:rgba(255,255,255,0.5) !important;
+  }
+  body.theme-dark .gpin-dot {
+    box-shadow:0 0 6px var(--gpin-color),0 0 12px var(--gpin-color)44 !important;
+    border-color:rgba(255,255,255,0.25) !important;
+    animation: gpin-glow-pulse 3s ease-in-out infinite;
   }
 `;
 
@@ -187,6 +219,7 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
   const initialized = useRef(false);
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const cameraRef = useRef({ lat: 0, lng: 0, altitude: 2 });
 
   useEffect(() => {
     if (initialized.current || !containerRef.current) return;
@@ -239,10 +272,10 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
         .height(el.clientHeight)
         .globeImageUrl(isLight ? GLOBE_DAY : GLOBE_NIGHT)
         .bumpImageUrl(GLOBE_BUMP)
-        .atmosphereColor(isLight ? '#C4956A' : '#5599FF')
-        .atmosphereAltitude(isLight ? 0.12 : 0.28)
+        .atmosphereColor(isLight ? '#C4956A' : '#1a3a52')
+        .atmosphereAltitude(isLight ? 0.08 : 0.20)
         .backgroundColor('rgba(0,0,0,0)')
-        // ── Arcs ──────────────────────────────────────────────────────────
+        // ── Arcs: thin, elegant, calming ──────────────────────────────────
         .arcsData(isLight ? supplyArcs : arcs)
         .arcStartLat((d: any) => d.startLat)
         .arcStartLng((d: any) => d.startLng)
@@ -250,67 +283,66 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
         .arcEndLng((d: any) => d.endLng)
         .arcColor((d: any) => {
           if (isLight) {
-            return SUPPLY_ARC_COLORS[d.type as SupplyArcType] ?? ['#6B7280F0', '#6B7280F0'];
+            return SUPPLY_ARC_COLORS_LIGHT[d.type as SupplyArcType] ?? ['#64748B88', '#64748B77'];
           }
-          return [`${d.srcColor}EE`, `${d.dstColor}EE`];
+          return SUPPLY_ARC_COLORS_DARK[d.type as SupplyArcType] ?? ['#7DD3C088', '#9D84B755'];
         })
-        .arcDashLength(0.42)
-        .arcDashGap(0.58)
+        .arcDashLength(0.35)
+        .arcDashGap(0.65)
         .arcDashAnimateTime((d: any) => {
-          if (!isLight) return 2400;
-          if (d.type === 'downstream') return 1800;
-          if (d.type === 'upstream')   return 2500;
-          return 3400; // rawmaterial — slower
+          if (!isLight) return 3200; // slower, more meditative
+          if (d.type === 'downstream') return 2000;
+          if (d.type === 'upstream')   return 3000;
+          return 4200; // rawmaterial — slowest
         })
         .arcStroke((d: any) => {
-          if (!isLight) return 0.7;
-          if (d.type === 'downstream') return 1.4;
-          if (d.type === 'upstream')   return 1.1;
-          return 0.8; // rawmaterial
+          if (!isLight) return 0.5; // thinner in dark mode
+          if (d.type === 'downstream') return 0.8;
+          if (d.type === 'upstream')   return 0.7;
+          return 0.6; // rawmaterial
         })
         .arcAltitude(null)
-        .arcAltitudeAutoScale(0.4)
-        // ── HTML pins ─────────────────────────────────────────────────────
+        .arcAltitudeAutoScale(0.35)
+        // ── HTML pins with distance-based opacity ──────────────────────────
         .htmlElementsData(isLight ? SUPPLY_NODES : pinSubjects)
         .htmlLat((d: any) => d.lat)
         .htmlLng((d: any) => d.lng)
-        .htmlAltitude(0.025)
+        .htmlAltitude(0.020)
         .htmlElement((d: any) => {
           const wrapper = document.createElement('div');
           wrapper.className = 'gpin-wrapper';
 
-          // Dot size scaled by supply chain role
+          // Smaller dot sizes for cleaner look
           const dotSize = isLight
-            ? (d.role === 'hq'       ? 19
-             : d.role === 'assembly' ? 15
-             : d.role === 'silicon' || d.role === 'display' ? 13
-             : 11)
-            : 15;
+            ? (d.role === 'hq'       ? 14
+             : d.role === 'assembly' ? 10
+             : d.role === 'silicon' || d.role === 'display' ? 9
+             : 7)
+            : 12;
 
           wrapper.style.cssText = [
             `--gpin-color:${d.color}`,
-            `--gpin-border:${d.color}55`,
+            `--gpin-border:${d.color}44`,
             'pointer-events:all',
             'cursor:pointer',
             'position:relative',
             'display:flex',
             'align-items:center',
             'justify-content:center',
-            'width:26px',
-            'height:26px',
+            'width:22px',
+            'height:22px',
           ].join(';');
 
-          // Label text: supply nodes use d.label; subject pins use d.title
           const labelText = isLight ? d.label : d.title;
 
           wrapper.innerHTML = `
-            <div class="gpin-ring"  style="background:${d.color}44;"></div>
-            <div class="gpin-ring gpin-ring2" style="background:${d.color}33;"></div>
+            <div class="gpin-ring"  style="background:${d.color}33;"></div>
+            <div class="gpin-ring gpin-ring2" style="background:${d.color}22;"></div>
             <div class="gpin-dot" style="
               width:${dotSize}px;height:${dotSize}px;border-radius:50%;
               background:${d.color};
-              box-shadow:0 0 8px ${d.color},0 0 20px ${d.color}88;
-              border:2px solid rgba(255,255,255,0.45);
+              box-shadow:0 0 6px ${d.color}88;
+              border:1.5px solid rgba(255,255,255,0.35);
             "></div>
             <div class="gpin-label">
               <span class="gpin-label-dot"></span>
@@ -318,7 +350,6 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
             </div>
           `;
 
-          // Only subject pins navigate; supply nodes are informational
           if (!isLight) {
             wrapper.addEventListener('click', () => {
               navigate(`/subject/${d.id}`);
@@ -332,18 +363,24 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
 
       const controls = globe.controls();
       controls.autoRotate = true;
-      controls.autoRotateSpeed = isLight ? 0.25 : 0.35;
+      controls.autoRotateSpeed = isLight ? 0.20 : 0.30;
       controls.enableZoom = false;
       controls.minPolarAngle = Math.PI / 5;
       controls.maxPolarAngle = (4 * Math.PI) / 5;
 
-      // Light mode: focus on the East-Asia / Pacific supply chain region.
-      // Dark mode: keep Europe/Middle-East so most subject pins are visible on load.
+      // Track camera position for occlusion opacity
+      const onUpdate = () => {
+        const pov = globe.pointOfView();
+        cameraRef.current = pov;
+      };
+
       globe.pointOfView(
         isLight
-          ? { lat: 28, lng: 108, altitude: 1.70 }
+          ? { lat: 28, lng: 108, altitude: 1.65 }
           : { lat: 22, lng:  30, altitude: 1.75 },
       );
+
+      globe.onUpdate?.(onUpdate);
 
       const onResize = () => {
         if (containerRef.current) {
