@@ -93,7 +93,7 @@ export default function KnowledgeGraphPage() {
         <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
 
           {/* Concept panel */}
-          <div style={{
+          <div className="dep-sidebar-panel" style={{
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-light)',
             borderRadius: 16,
@@ -105,7 +105,7 @@ export default function KnowledgeGraphPage() {
           </div>
 
           {/* Analytics */}
-          <div style={{
+          <div className="dep-sidebar-panel" style={{
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-light)',
             borderRadius: 16,
@@ -120,7 +120,7 @@ export default function KnowledgeGraphPage() {
           </div>
 
           {/* Metrics */}
-          <div style={{
+          <div className="dep-sidebar-panel" style={{
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-light)',
             borderRadius: 16,

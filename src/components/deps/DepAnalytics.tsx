@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import { useDependencies } from '../../store/useDependencies';
 import { CATEGORY_COLORS } from '../../data/conceptGraph';
 import { findBottlenecks, findHighLeverage, simulateWhatIf, getAllPrereqs, getAllUnlocks } from '../../lib/depAlgorithms';
@@ -14,6 +15,8 @@ export default function DepAnalytics({ concepts }: Props) {
   const [tab, setTab] = useState<Tab>('bottlenecks');
   const { setMastery, getMastery, whatIfConceptId, whatIfScore, setWhatIf, selectConcept } =
     useDependencies();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
 
   const bottlenecks = useMemo(() => findBottlenecks(concepts).slice(0, 6), [concepts]);
   const leverage    = useMemo(() => findHighLeverage(concepts).slice(0, 6), [concepts]);
@@ -149,12 +152,16 @@ export default function DepAnalytics({ concepts }: Props) {
                 if (!c) return null;
                 const color = CATEGORY_COLORS[c.category] ?? '#6B7280';
                 return (
-                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, background: '#0F2D2A', border: '1px solid #065F4644', marginBottom: 4 }}>
+                  <div key={id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, marginBottom: 4,
+                    background: isLight ? 'rgba(209,250,229,0.6)' : '#0F2D2A',
+                    border: isLight ? '1px solid rgba(16,185,129,0.25)' : '1px solid #065F4644',
+                  }}>
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                    <span style={{ color: '#6EE7B7', fontSize: 12, flex: 1 }}>{c.name}</span>
+                    <span style={{ color: isLight ? '#065f46' : '#6EE7B7', fontSize: 12, flex: 1 }}>{c.name}</span>
                     <button
                       onClick={() => setMastery(whatIfConceptId, whatIfScore)}
-                      style={{ fontSize: 10, color: '#10B981', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      style={{ fontSize: 10, color: '#10B981', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}
                     >
                       Apply
                     </button>

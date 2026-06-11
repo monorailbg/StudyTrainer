@@ -492,6 +492,71 @@ body.theme-light ::-webkit-scrollbar-thumb:hover {
 }
 body.theme-light * { scrollbar-color: var(--border-base) transparent; }
 
+/* ── Dependency Graph — light mode overrides ─────────────────────── */
+
+/* React Flow controls (+ / - / fit / lock) */
+body.theme-light .react-flow__controls {
+  background: rgba(255,255,255,0.80) !important;
+  border: 1px solid rgba(0,0,0,0.09) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+}
+body.theme-light .react-flow__controls-button {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(0,0,0,0.07) !important;
+  color: #334155 !important;
+  fill: #334155;
+}
+body.theme-light .react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+body.theme-light .react-flow__controls-button:hover {
+  background: rgba(0,0,0,0.05) !important;
+}
+body.theme-light .react-flow__controls-button svg {
+  fill: #475569 !important;
+}
+
+/* MiniMap */
+body.theme-light .react-flow__minimap {
+  background: rgba(255,255,255,0.75) !important;
+  border: 1px solid rgba(0,0,0,0.09) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+}
+
+/* Attribution link */
+body.theme-light .react-flow__attribution {
+  background: rgba(255,255,255,0.65) !important;
+  color: #64748b !important;
+  backdrop-filter: blur(4px);
+}
+body.theme-light .react-flow__attribution a {
+  color: #3b82f6 !important;
+}
+
+/* Selection box */
+body.theme-light .react-flow__selection {
+  background: rgba(59,130,246,0.06) !important;
+  border: 1px solid rgba(59,130,246,0.4) !important;
+}
+
+/* Sidebar panels — frosted glassmorphism in light mode */
+body.theme-light .dep-sidebar-panel {
+  background: rgba(255,255,255,0.65) !important;
+  border-color: rgba(0,0,0,0.07) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 2px 8px rgba(0,0,0,0.07),
+    0 8px 24px rgba(0,0,0,0.05) !important;
+}
+
 /* ── Button base — consistent padding / radius / states ──────────── */
 .btn {
   display: inline-flex;

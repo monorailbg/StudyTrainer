@@ -14,6 +14,7 @@ import DepConceptNode from './DepConceptNode';
 import { getAllPrereqs, getAllUnlocks } from '../../lib/depAlgorithms';
 import type { EnrichedConcept } from '../../lib/depAlgorithms';
 import { CATEGORY_COLORS } from '../../data/conceptGraph';
+import { useTheme } from '../../context/ThemeContext';
 
 const nodeTypes: NodeTypes = { concept: DepConceptNode };
 
@@ -43,7 +44,6 @@ function layoutConcepts(concepts: EnrichedConcept[]) {
   let colIdx = 0;
 
   for (const [, group] of Object.entries(categories)) {
-    // Sort within category by depth
     group.sort((a, b) => a.depth - b.depth);
     group.forEach((c, rowIdx) => {
       positions[c.id] = { x: colIdx * colW, y: rowIdx * rowH };
@@ -56,6 +56,8 @@ function layoutConcepts(concepts: EnrichedConcept[]) {
 export default function DepGraph({ concepts, searchQuery }: DepGraphProps) {
   const { selectedConceptId, highlightPrereqs, highlightUnlocks, selectConcept } =
     useDependencies();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
 
   const positions = useMemo(() => layoutConcepts(concepts), [concepts.length]);
 
@@ -90,22 +92,24 @@ export default function DepGraph({ concepts, searchQuery }: DepGraphProps) {
             (selectedConceptId === c.id || selectedConceptId === prereqId) ||
             highlightPrereqs.has(prereqId) || highlightUnlocks.has(c.id);
           const catColor = CATEGORY_COLORS[c.category] ?? '#6B7280';
+          // Light mode: inactive edges are steel-gray; dark: charcoal
+          const inactiveStroke = isLight ? '#b0bec8' : '#2D3748';
           edges.push({
             id: eid,
             source: prereqId,
             target: c.id,
             animated: isHighlighted,
             style: {
-              stroke: isHighlighted ? catColor : '#2D3748',
+              stroke: isHighlighted ? catColor : inactiveStroke,
               strokeWidth: isHighlighted ? 2 : 1,
-              opacity: isHighlighted ? 1 : 0.45,
+              opacity: isHighlighted ? 1 : (isLight ? 0.55 : 0.45),
             },
           });
         }
       }
     }
     return { nodes, edges };
-  }, [concepts, selectedConceptId, highlightPrereqs, highlightUnlocks, searchQuery, positions]);
+  }, [concepts, selectedConceptId, highlightPrereqs, highlightUnlocks, searchQuery, positions, isLight]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     const prereqs = getAllPrereqs(node.id);
@@ -118,7 +122,10 @@ export default function DepGraph({ concepts, searchQuery }: DepGraphProps) {
   }, []);
 
   return (
-    <div style={{ width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden', border: '1px solid #1E2D3D' }}>
+    <div style={{
+      width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden',
+      border: isLight ? '1px solid rgba(0,0,0,0.09)' : '1px solid #1E2D3D',
+    }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -130,27 +137,33 @@ export default function DepGraph({ concepts, searchQuery }: DepGraphProps) {
         minZoom={0.2}
         maxZoom={2}
       >
-        <Background color="#1A2035" gap={20} />
+        <Background
+          color={isLight ? 'rgba(0,0,0,0.18)' : '#1A2035'}
+          gap={20}
+          style={{ background: isLight ? '#e8e1d8' : undefined }}
+        />
         <Controls
           style={{
-            background: 'rgba(13,17,23,0.9)',
-            border: '1px solid #1E2D3D',
+            background: isLight ? 'rgba(255,255,255,0.78)' : 'rgba(13,17,23,0.9)',
+            border: isLight ? '1px solid rgba(0,0,0,0.09)' : '1px solid #1E2D3D',
             borderRadius: 8,
+            backdropFilter: isLight ? 'blur(8px)' : undefined,
           }}
         />
         <MiniMap
           nodeColor={(n) => {
             const d = n.data as { status: string };
-            if (d.status === 'mastered') return '#10B981';
-            if (d.status === 'partial') return '#F59E0B';
-            if (d.status === 'weak') return '#EF4444';
-            return '#374151';
+            if (d.status === 'mastered') return isLight ? '#059669' : '#10B981';
+            if (d.status === 'partial') return isLight ? '#D97706' : '#F59E0B';
+            if (d.status === 'weak')    return isLight ? '#DC2626' : '#EF4444';
+            return isLight ? '#94a3b8' : '#374151';
           }}
-          maskColor="rgba(13,17,23,0.75)"
+          maskColor={isLight ? 'rgba(232,225,216,0.78)' : 'rgba(13,17,23,0.75)'}
           style={{
-            background: '#0D1117',
-            border: '1px solid #1E2D3D',
+            background: isLight ? 'rgba(255,255,255,0.75)' : '#0D1117',
+            border: isLight ? '1px solid rgba(0,0,0,0.09)' : '1px solid #1E2D3D',
             borderRadius: 8,
+            backdropFilter: isLight ? 'blur(8px)' : undefined,
           }}
         />
       </ReactFlow>
