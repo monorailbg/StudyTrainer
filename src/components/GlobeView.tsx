@@ -211,6 +211,11 @@ export default function GlobeView() {
     const isLight = theme === 'light';
 
     // ── Both modes: Apple supply chain arcs & pins ───────────────────────────
+    // Coordinate synchronization: all lat/lng values use the same geographic
+    // coordinate system from SUPPLY_NODES. Arc endpoints (startLat/startLng,
+    // endLat/endLng) map directly to pin coordinates (lat/lng), ensuring arcs
+    // terminate exactly at pin positions. HTML pins use negative margins (-11px each)
+    // to center the 22×22px wrapper around the globe coordinate, matching arc anchor hierarchy.
     const supplyNodeMap = new Map(SUPPLY_NODES.map(n => [n.id, n]));
     const supplyArcs = SUPPLY_ARC_DEFS.map(def => {
       const src = supplyNodeMap.get(def.from);
@@ -284,6 +289,9 @@ export default function GlobeView() {
             : d.role === 'silicon' || d.role === 'display' ? 9
             : 7;
 
+          // Anchor synchronization: center the 22×22px wrapper around the globe coordinate
+          // using negative margins (half the element size). This ensures the visual dot center
+          // aligns exactly with arc endpoints, eliminating coordinate offset between pins & arcs.
           wrapper.style.cssText = [
             `--gpin-color:${d.color}`,
             `--gpin-border:${d.color}44`,
@@ -295,6 +303,8 @@ export default function GlobeView() {
             'justify-content:center',
             'width:22px',
             'height:22px',
+            'margin-left:-11px',
+            'margin-top:-11px',
           ].join(';');
 
           wrapper.innerHTML = `
