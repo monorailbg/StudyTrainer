@@ -8,7 +8,7 @@ import { saveQuizResult, type QuizResult, type QuizResultQuestion } from '../lib
 const LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
 // Per-question edit draft — sits on top of AI-generated data
-interface EditDraft {
+export interface EditDraft {
   question: string;
   options: [string, string, string, string];
   correct: 0 | 1 | 2 | 3;
@@ -126,12 +126,14 @@ function Toggle({ on, color, onChange, label }: { on: boolean; color: string; on
 
 // ── Setup screen ───────────────────────────────────────────────────────────────
 
-function SetupScreen({ total, color, onStart, initialMode }: {
-  total: number;
+function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved }: {
+  questions: GeneratedQuizQuestion[];
   color: string;
   onStart: (count: number, shuffle: boolean, mode: QuizMode) => void;
   initialMode?: QuizMode;
+  onQuestionSaved?: (qid: string, draft: EditDraft) => void;
 }) {
+  const total = questions.length;
   const { ts } = useLang();
   const rawOptions = [5, 10, 15, 20].filter(n => n < total);
   const countOptions = [...rawOptions, total];
@@ -139,6 +141,25 @@ function SetupScreen({ total, color, onStart, initialMode }: {
   const [testCount, setTestCount] = useState(defaultCount);
   const [shuffle, setShuffle] = useState(true);
   const [mode, setMode] = useState<QuizMode>(initialMode ?? loadLastMode());
+  const [showList, setShowList]         = useState(false);
+  const [listEditId, setListEditId]     = useState<string | null>(null);
+  const [listEditDraft, setListEditDraft] = useState<EditDraft | null>(null);
+  const [listOverrides, setListOverrides] = useState<Record<string, EditDraft>>({});
+
+  function startListEdit(q: GeneratedQuizQuestion) {
+    const ov = listOverrides[q.id];
+    const dq = ov ? { ...q, ...ov } : q;
+    setListEditDraft({ question: dq.question, options: [...dq.options] as [string,string,string,string], correct: dq.correct as 0|1|2|3 });
+    setListEditId(q.id);
+  }
+  function cancelListEdit() { setListEditId(null); setListEditDraft(null); }
+  function saveListEdit(qid: string) {
+    if (!listEditDraft) return;
+    onQuestionSaved?.(qid, listEditDraft);
+    setListOverrides(prev => ({ ...prev, [qid]: listEditDraft }));
+    setListEditId(null);
+    setListEditDraft(null);
+  }
 
   const MODES: { id: QuizMode; title: string; desc: string }[] = [
     { id: 'focused',  title: 'Focused',  desc: 'One question at a time' },
@@ -147,6 +168,7 @@ function SetupScreen({ total, color, onStart, initialMode }: {
   ];
 
   return (
+    <>
     <div style={{
       minHeight: 'min(640px, calc(100vh - 220px))',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -165,6 +187,16 @@ function SetupScreen({ total, color, onStart, initialMode }: {
             {total}
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-2)', marginTop: '6px' }}>{ts('questions available')}</div>
+          <button
+            onClick={() => setShowList(true)}
+            style={{
+              marginTop: '10px', background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '11px', fontWeight: 600, color: 'var(--text-3)',
+              letterSpacing: '0.04em', textDecoration: 'underline', textUnderlineOffset: '2px',
+            }}
+          >
+            {ts('View all questions')} →
+          </button>
         </div>
 
         {/* Mode selector */}
@@ -248,6 +280,131 @@ function SetupScreen({ total, color, onStart, initialMode }: {
         </button>
       </div>
     </div>
+
+        {/* Full-screen question list overlay */}
+        {showList && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            background: 'var(--bg-page)', overflowY: 'auto',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Sticky header */}
+            <div style={{
+              position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-page)',
+              borderBottom: '1px solid var(--border-light)',
+              padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
+                  {ts('All Questions')}
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', marginTop: '2px' }}>
+                  {total} {ts('questions')}
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowList(false); cancelListEdit(); }}
+                style={{
+                  height: '34px', padding: '0 16px', borderRadius: '999px',
+                  background: 'var(--bg-surface)', border: '1px solid var(--border-base)',
+                  color: 'var(--text-2)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                ← {ts('Back to setup')}
+              </button>
+            </div>
+
+            {/* Question list */}
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
+              {questions.map((q, qi) => {
+                const ov = listOverrides[q.id];
+                const dq = ov ? { ...q, question: ov.question, options: ov.options, correct: ov.correct } : q;
+                const isEditing = listEditId === q.id;
+
+                return (
+                  <div key={q.id} style={{
+                    background: 'var(--bg-surface)', borderRadius: '16px', overflow: 'hidden',
+                    border: '1px solid var(--border-light)',
+                  }}>
+                    {isEditing && listEditDraft ? (
+                      <InlineEditForm
+                        draft={listEditDraft}
+                        color={color}
+                        onChange={setListEditDraft}
+                        onSave={() => saveListEdit(q.id)}
+                        onCancel={cancelListEdit}
+                      />
+                    ) : (
+                      <div style={{ padding: '16px 18px' }}>
+                        {/* Question row */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px' }}>
+                          <span className="mono" style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: 700, flexShrink: 0, marginTop: '3px' }}>
+                            {String(qi + 1).padStart(2, '0')}
+                          </span>
+                          <div style={{ flex: 1, fontSize: '14px', fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                            {dq.question}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                            {ov && (
+                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: color, display: 'inline-block' }} title={ts('Edited')} />
+                            )}
+                            <button
+                              onClick={() => startListEdit(q)}
+                              title={ts('Edit this question')}
+                              style={{
+                                width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0,
+                                background: 'var(--bg-elevated)', border: '1px solid var(--border-light)',
+                                color: 'var(--text-3)', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.15s',
+                              }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-1)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+                            >
+                              <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+                                <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Options */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', paddingLeft: '24px' }}>
+                          {dq.options.map((opt, oi) => {
+                            const isCorrect = oi === Number(dq.correct);
+                            return (
+                              <div key={oi} style={{
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                padding: '6px 10px', borderRadius: '8px',
+                                background: isCorrect ? 'rgba(72,199,142,0.08)' : 'var(--bg-elevated)',
+                                border: `1px solid ${isCorrect ? 'rgba(72,199,142,0.3)' : 'var(--border-light)'}`,
+                              }}>
+                                <span style={{
+                                  width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0,
+                                  background: isCorrect ? 'rgba(72,199,142,0.2)' : 'transparent',
+                                  border: `1px solid ${isCorrect ? 'rgba(72,199,142,0.5)' : 'var(--border-base)'}`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: '10px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace',
+                                  color: isCorrect ? 'rgb(72,199,142)' : 'var(--text-3)',
+                                }}>
+                                  {isCorrect
+                                    ? <svg viewBox="0 0 10 10" width="9" height="9" fill="none"><path d="M2 5l2 2 4-4" stroke="rgb(72,199,142)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    : LETTERS[oi]}
+                                </span>
+                                <span style={{ fontSize: '12px', color: isCorrect ? 'rgb(72,199,142)' : 'var(--text-2)', lineHeight: 1.4 }}>{opt}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+    </>
   );
 }
 
@@ -588,13 +745,14 @@ function ConfidencePicker({
 
 function FocusedMode({
   questions, color, isRedoMode = false, isPractice = false,
-  onDone,
+  onDone, onQuestionSaved,
 }: {
   questions: GeneratedQuizQuestion[];
   color: string;
   isRedoMode?: boolean;
   isPractice?: boolean;
   onDone: (answers: Record<string, number>, confidences: Record<string, number>, timeSec: number) => void;
+  onQuestionSaved?: (qid: string, draft: EditDraft) => void;
 }) {
   const { ts } = useLang();
   const [idx, setIdx] = useState(0);
@@ -671,6 +829,7 @@ function FocusedMode({
   function saveEdit() {
     if (!editDraft) return;
     setOverrides(prev => ({ ...prev, [q.id]: editDraft }));
+    onQuestionSaved?.(q.id, editDraft);
     setEditingId(null);
     setEditDraft(null);
   }
@@ -734,7 +893,7 @@ function FocusedMode({
         {/* Question section with pencil button */}
         <div style={{ padding: 'clamp(16px, 4vw, 32px) clamp(14px, 4vw, 36px) clamp(12px, 2vw, 20px)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <div style={{ flex: 1, fontSize: '20px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, letterSpacing: '0.005em' }}>
+            <div style={{ flex: 1, fontSize: '20px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, letterSpacing: '0.005em', whiteSpace: 'pre-wrap' }}>
               {currentQ.question}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
@@ -833,11 +992,12 @@ function FocusedMode({
 
 // ── Test mode ──────────────────────────────────────────────────────────────────
 
-function TestMode({ questions, color, isPractice = false, onDone }: {
+function TestMode({ questions, color, isPractice = false, onDone, onQuestionSaved }: {
   questions: GeneratedQuizQuestion[];
   color: string;
   isPractice?: boolean;
   onDone: (answers: Record<string, number>, confidences: Record<string, number>, timeSec: number) => void;
+  onQuestionSaved?: (qid: string, draft: EditDraft) => void;
 }) {
   const { ts } = useLang();
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -869,6 +1029,7 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
   function saveEdit(qId: string) {
     if (!editDraft) return;
     setOverrides(prev => ({ ...prev, [qId]: editDraft }));
+    onQuestionSaved?.(qId, editDraft);
     // Clear any answer for this question since options may have changed
     setAnswers(a => { const n = { ...a }; delete n[qId]; return n; });
     setEditingId(null);
@@ -945,7 +1106,7 @@ function TestMode({ questions, color, isPractice = false, onDone }: {
             }}>
               {/* Question header with edit button */}
               <div style={{ padding: '18px 20px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                <p style={{ flex: 1, margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.55 }}>
+                <p style={{ flex: 1, margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
                   <span className="mono" style={{ fontSize: '10px', color: 'var(--text-3)', marginRight: '10px', fontWeight: 700 }}>
                     {String(qi + 1).padStart(2, '0')}
                   </span>
@@ -1379,6 +1540,7 @@ export function QuizViewer({
   onComplete,
   initialRedoResult,
   onExit,
+  onQuestionEdit,
 }: {
   questions: GeneratedQuizQuestion[];
   color: string;
@@ -1388,6 +1550,7 @@ export function QuizViewer({
   onComplete?: (result: QuizResult) => void;
   initialRedoResult?: QuizResult;
   onExit?: () => void;
+  onQuestionEdit?: (questionId: string, draft: EditDraft) => void;
 }) {
   const [phase, setPhase] = useState<Phase>(initialRedoResult ? 'redo' : 'setup');
   const [activeQuestions, setActiveQuestions] = useState<GeneratedQuizQuestion[]>(
@@ -1467,9 +1630,10 @@ export function QuizViewer({
   if (phase === 'setup') {
     return (
       <SetupScreen
-        total={questions.length}
+        questions={questions}
         color={color}
         initialMode={setupMode}
+        onQuestionSaved={onQuestionEdit}
         onStart={(count, shuffle, mode) => {
           const pool = shuffle ? [...questions].sort(() => Math.random() - 0.5) : [...questions];
           setActiveQuestions(pool.slice(0, count));
@@ -1484,8 +1648,8 @@ export function QuizViewer({
   if (phase === 'playing') {
     const isPractice = quizMode === 'practice';
     return quizMode === 'test'
-      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} />
-      : <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} />;
+      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} onQuestionSaved={onQuestionEdit} />
+      : <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} onQuestionSaved={onQuestionEdit} />;
   }
 
   if (phase === 'results' && lastResult) {

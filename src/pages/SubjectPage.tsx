@@ -2398,6 +2398,20 @@ export default function SubjectPage() {
                       useStore.getState().addQuizScore(subject.id, result.correctAnswers, result.totalQuestions);
                       recordActivity({ type: 'quiz', subjectId: subject.id, subjectName: subject.title, detail: `Scored ${result.scorePercent}% on ${subject.title} quiz` });
                     }}
+                    onQuestionEdit={(questionId, draft) => {
+                      setSavedQuizzes(prev => prev.map(q => {
+                        if (q.id !== activeQuiz.id) return q;
+                        const updatedQuestions = q.questions.map(qq =>
+                          qq.id === questionId
+                            ? { ...qq, question: draft.question, options: draft.options, correct: draft.correct }
+                            : qq
+                        );
+                        const updated = { ...q, questions: updatedQuestions };
+                        if (isFirebaseConfigured) saveCloudQuiz({ ...updated, subjectId: id! }).catch(() => {});
+                        else saveQuiz(updated).catch(() => {});
+                        return updated;
+                      }));
+                    }}
                   />
                 </div>
               );

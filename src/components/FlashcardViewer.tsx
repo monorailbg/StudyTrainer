@@ -697,7 +697,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
                   {displayCard!.front}
                 </div>
               ) : (
-                <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: 'var(--text-1)', lineHeight: 1.45 }}>
+                <div className="text-center leading-relaxed" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 'clamp(18px, 2.5vw, 26px)', color: 'var(--text-1)', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
                   {displayCard!.front}
                 </div>
               )}
@@ -724,7 +724,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               {isVocabCard && vocab ? (
                 <VocabBack vocab={vocab} color={color} />
               ) : (
-                <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: 'var(--text-1)', lineHeight: 1.65 }}>
+                <div className="text-center" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: 'var(--text-1)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
                   {displayCard!.back}
                 </div>
               )}
