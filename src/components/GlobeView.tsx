@@ -78,23 +78,33 @@ const APPLE_ARC_DEFS: InternalArcDef[] = [
 ];
 
 // ── Nestlé supply chain — complete 16-node dataset ────────────────────────────
+// Color logic mirrors Apple: each functional type gets its own hue family,
+// and nodes within the same type share the same hue with slight tonal variation.
+//   HQ/Research  → warm amber-gold   (#D97706 / #FBBF24)
+//   Coffee src   → earthy green      (#16A34A / #15803D)
+//   Cocoa src    → deep chocolate    (#92400E / #78350F)
+//   Agri src     → olive             (#A16207)
+//   Dairy        → sky blue / cream  (#0EA5E9 / #38BDF8)
+//   Mfg Americas → warm coral-orange (#EA580C / #DC4F0B / #C2410C)
+//   Mfg Asia     → violet-purple     (#7C3AED / #6D28D9)
+//   Mfg Europe   → teal-green        (#0F766E / #0D9488)
 const NESTLE_NODES: SupplyChainNetwork['nodes'] = [
-  { id: 'nestle-vevey-hq',             name: 'Nestlé Headquarters',        lat:  46.4628, lng:   6.8426, type: 'hq',            color: '#7a5230', desc: 'Global management, procurement strategy, product development.' },
-  { id: 'nestle-lausanne-research',     name: 'Nestlé Research',            lat:  46.5197, lng:   6.6323, type: 'research',       color: '#6b4826', desc: 'Largest research center; nutrition, food science, product innovation.' },
-  { id: 'nestle-brazil-coffee',         name: 'Coffee Sourcing Network',    lat: -18.5122, lng: -44.5550, type: 'sourcing',       color: '#c8943e', desc: 'Major source of coffee for Nescafé products.' },
-  { id: 'nestle-vietnam-coffee',        name: 'Coffee Sourcing Network',    lat:  12.6667, lng: 108.0500, type: 'sourcing',       color: '#c49a3a', desc: "One of Nestlé's largest coffee sourcing regions." },
-  { id: 'nestle-cotedivoire-cocoa',     name: 'Cocoa Sourcing Network',     lat:   7.5400, lng:  -5.5471, type: 'sourcing',       color: '#b5844e', desc: 'Largest cocoa source for chocolate products.' },
-  { id: 'nestle-ghana-cocoa',           name: 'Cocoa Sourcing Network',     lat:   7.9465, lng:  -1.0232, type: 'sourcing',       color: '#b07840', desc: 'Major cocoa supplier.' },
-  { id: 'nestle-indonesia-agri',        name: 'Coffee & Dairy Sourcing',    lat:  -7.5360, lng: 112.2384, type: 'sourcing',       color: '#c08c40', desc: 'Coffee beans and agricultural ingredients.' },
-  { id: 'nestle-nz-dairy',              name: 'Dairy Suppliers',            lat: -37.6878, lng: 175.4430, type: 'dairy',          color: '#a07040', desc: 'Milk powder and dairy ingredients.' },
-  { id: 'nestle-usa-solon',             name: 'Coffee Production Facilities', lat: 41.3898, lng: -81.4412, type: 'manufacturing', color: '#8c6239', desc: 'Production of coffee brands and products.' },
-  { id: 'nestle-usa-glendale',          name: 'Beverage Manufacturing',     lat:  33.5387, lng: -112.1860, type: 'manufacturing', color: '#8c6239', desc: 'Creamers and beverage products.' },
-  { id: 'nestle-mexico-toluca',         name: 'Food Manufacturing Hub',     lat:  19.2826, lng:  -99.6557, type: 'manufacturing', color: '#9a7040', desc: 'Food and beverage production for North America.' },
-  { id: 'nestle-china-tianjin',         name: 'Manufacturing Hub',          lat:  39.3434, lng:  117.3616, type: 'manufacturing', color: '#9a7040', desc: 'Food and beverage production for China.' },
-  { id: 'nestle-india-moga',            name: 'Dairy Collection Network',   lat:  30.8175, lng:   75.1730, type: 'dairy',          color: '#b07840', desc: "One of Nestlé's largest milk procurement centers." },
-  { id: 'nestle-india-nanjangud',       name: 'Manufacturing Plant',        lat:  12.1200, lng:   76.6800, type: 'manufacturing', color: '#8c6239', desc: 'Foods, beverages, and confectionery.' },
-  { id: 'nestle-germany-biessenhofen',  name: 'Dairy Production',           lat:  47.7667, lng:   10.6333, type: 'manufacturing', color: '#9a7040', desc: 'Milk-based products and ingredients.' },
-  { id: 'nestle-france-dieppe',         name: 'Coffee Manufacturing',       lat:  49.9230, lng:    1.0747, type: 'manufacturing', color: '#8c6239', desc: 'Coffee processing and production.' },
+  { id: 'nestle-vevey-hq',             name: 'Nestlé Headquarters',          lat:  46.4628, lng:   6.8426, type: 'hq',            color: '#D97706', desc: 'Global management, procurement strategy, product development.' },
+  { id: 'nestle-lausanne-research',     name: 'Nestlé Research',              lat:  46.5197, lng:   6.6323, type: 'research',       color: '#FBBF24', desc: 'Largest research center; nutrition, food science, product innovation.' },
+  { id: 'nestle-brazil-coffee',         name: 'Coffee Sourcing Network',      lat: -18.5122, lng: -44.5550, type: 'sourcing-coffee', color: '#16A34A', desc: 'Major source of coffee for Nescafé products.' },
+  { id: 'nestle-vietnam-coffee',        name: 'Coffee Sourcing Network',      lat:  12.6667, lng: 108.0500, type: 'sourcing-coffee', color: '#15803D', desc: "One of Nestlé's largest coffee sourcing regions." },
+  { id: 'nestle-cotedivoire-cocoa',     name: 'Cocoa Sourcing Network',       lat:   7.5400, lng:  -5.5471, type: 'sourcing-cocoa',  color: '#92400E', desc: 'Largest cocoa source for chocolate products.' },
+  { id: 'nestle-ghana-cocoa',           name: 'Cocoa Sourcing Network',       lat:   7.9465, lng:  -1.0232, type: 'sourcing-cocoa',  color: '#78350F', desc: 'Major cocoa supplier.' },
+  { id: 'nestle-indonesia-agri',        name: 'Coffee & Dairy Sourcing',      lat:  -7.5360, lng: 112.2384, type: 'sourcing-agri',   color: '#A16207', desc: 'Coffee beans and agricultural ingredients.' },
+  { id: 'nestle-nz-dairy',              name: 'Dairy Suppliers',              lat: -37.6878, lng: 175.4430, type: 'dairy',           color: '#0EA5E9', desc: 'Milk powder and dairy ingredients.' },
+  { id: 'nestle-usa-solon',             name: 'Coffee Production Facilities', lat:  41.3898, lng:  -81.4412, type: 'mfg-americas',  color: '#EA580C', desc: 'Production of coffee brands and products.' },
+  { id: 'nestle-usa-glendale',          name: 'Beverage Manufacturing',       lat:  33.5387, lng: -112.1860, type: 'mfg-americas',  color: '#DC4F0B', desc: 'Creamers and beverage products.' },
+  { id: 'nestle-mexico-toluca',         name: 'Food Manufacturing Hub',       lat:  19.2826, lng:  -99.6557, type: 'mfg-americas',  color: '#C2410C', desc: 'Food and beverage production for North America.' },
+  { id: 'nestle-china-tianjin',         name: 'Manufacturing Hub',            lat:  39.3434, lng:  117.3616, type: 'mfg-asia',      color: '#7C3AED', desc: 'Food and beverage production for China.' },
+  { id: 'nestle-india-moga',            name: 'Dairy Collection Network',     lat:  30.8175, lng:   75.1730, type: 'dairy',          color: '#38BDF8', desc: "One of Nestlé's largest milk procurement centers." },
+  { id: 'nestle-india-nanjangud',       name: 'Manufacturing Plant',          lat:  12.1200, lng:   76.6800, type: 'mfg-asia',      color: '#6D28D9', desc: 'Foods, beverages, and confectionery.' },
+  { id: 'nestle-germany-biessenhofen',  name: 'Dairy Production',             lat:  47.7667, lng:   10.6333, type: 'mfg-europe',    color: '#0F766E', desc: 'Milk-based products and ingredients.' },
+  { id: 'nestle-france-dieppe',         name: 'Coffee Manufacturing',         lat:  49.9230, lng:    1.0747, type: 'mfg-europe',    color: '#0D9488', desc: 'Coffee processing and production.' },
 ];
 
 const NESTLE_ARC_DEFS: InternalArcDef[] = [
@@ -283,11 +293,11 @@ function injectPinStyles() {
 
 // ── Dot size by node type ─────────────────────────────────────────────────────
 function dotSizeForType(type: string): number {
-  if (type === 'hq')                           return 14;
-  if (type === 'research')                     return 12;
-  if (type === 'assembly' || type === 'manufacturing') return 10;
-  if (type === 'silicon'  || type === 'display')       return  9;
-  if (type === 'sourcing' || type === 'dairy')         return  8;
+  if (type === 'hq')                                          return 14;
+  if (type === 'research')                                    return 12;
+  if (type === 'assembly' || type.startsWith('mfg-'))        return 10;
+  if (type === 'silicon'  || type === 'display')             return  9;
+  if (type === 'dairy'    || type.startsWith('sourcing'))    return  8;
   return 7;
 }
 
