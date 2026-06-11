@@ -27,15 +27,6 @@ interface SubjectStats {
 }
 
 
-// ── Greeting ───────────────────────────────────────────────────────────────────
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning.';
-  if (h < 17) return 'Good afternoon.';
-  return 'Good evening.';
-}
-
 // ── Tilt card ──────────────────────────────────────────────────────────────────
 
 function TiltCard({ children, className, style, hoverBorderColor = 'rgba(61,126,255,0.4)', hoverBackground }: {
