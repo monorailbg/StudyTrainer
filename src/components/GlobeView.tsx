@@ -113,11 +113,6 @@ const PIN_STYLES = `
     100% { opacity: 0.5;  filter: drop-shadow(0 0 4px currentColor); }
   }
 
-  /* Percentage-based centering: scales correctly under all camera projections */
-  .gpin-wrapper {
-    transform: translate(-50%, -50%);
-  }
-
   .gpin-ring {
     position:absolute; inset:0; border-radius:50%;
     animation: gpin-pulse 3.2s ease-out infinite;
@@ -282,8 +277,11 @@ export default function GlobeView() {
         .htmlLng((d: any) => d.lng)
         .htmlAltitude(0.020)
         .htmlElement((d: any) => {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'gpin-wrapper';
+          // Zero-size anchor: globe.gl sets this element's style.transform every frame
+          // to position it at the projected coordinate. Keeping it 0×0 gives globe.gl
+          // an exact origin with no size ambiguity.
+          const anchor = document.createElement('div');
+          anchor.style.cssText = 'position:relative;width:0;height:0;overflow:visible;';
 
           // Dot sizes scaled by supply chain role
           const dotSize = d.role === 'hq'
@@ -292,17 +290,27 @@ export default function GlobeView() {
             : d.role === 'silicon' || d.role === 'display' ? 9
             : 7;
 
+          // Inner wrapper: holds dot + label together as one unified node.
+          // The inline transform:translate(-50%,-50%) is applied to this child — NOT to
+          // the anchor — so globe.gl's per-frame positioning override cannot touch it.
+          // Percentage values resolve against wrapper's own 22×22 size, keeping the dot
+          // center pinned to the coordinate under all zoom levels and rotation angles.
+          const wrapper = document.createElement('div');
+          wrapper.className = 'gpin-wrapper';
           wrapper.style.cssText = [
             `--gpin-color:${d.color}`,
             `--gpin-border:${d.color}44`,
             'pointer-events:all',
             'cursor:pointer',
-            'position:relative',
+            'position:absolute',
+            'top:0',
+            'left:0',
             'display:flex',
             'align-items:center',
             'justify-content:center',
             'width:22px',
             'height:22px',
+            'transform:translate(-50%,-50%)',
           ].join(';');
 
           wrapper.innerHTML = `
@@ -320,7 +328,8 @@ export default function GlobeView() {
             </div>
           `;
 
-          return wrapper;
+          anchor.appendChild(wrapper);
+          return anchor;
         });
 
       globe(el);
