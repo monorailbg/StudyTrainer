@@ -14,6 +14,7 @@ import Generate from './pages/Generate';
 import Dictionary from './pages/Dictionary';
 import KnowledgeGraphPage from './pages/KnowledgeGraph';
 import BlindSpots from './pages/BlindSpots';
+import PersonalKnowledgeGraph from './pages/PersonalKnowledgeGraph';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -29,6 +30,7 @@ function AnimatedRoutes() {
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
         <Route path="/blind-spots" element={<BlindSpots />} />
+        <Route path="/pkg" element={<PersonalKnowledgeGraph />} />
         <Route path="/subject/:id" element={<SubjectPage />} />
       </Routes>
     </div>

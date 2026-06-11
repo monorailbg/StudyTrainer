@@ -366,6 +366,28 @@ export const ja: Record<string, string> = {
   'Clear search': '検索をクリア',
   'Close': '閉じる',
 
+  // ── Personal Knowledge Graph ─────────────────────────────────────────────
+  'Knowledge Engine': 'ナレッジエンジン',
+  'Personal Knowledge Graph': 'パーソナルナレッジグラフ',
+  '{count} nodes · {types} types': '{count} ノード · {types} タイプ',
+  'Search nodes…': 'ノードを検索…',
+  'Loading graph…': 'グラフを読み込み中…',
+  'Node Details': 'ノード詳細',
+  'Graph Intelligence': 'グラフ分析',
+  'Click any node to see details': 'ノードをクリックして詳細を表示',
+  'Mastery': '習得度',
+  'wrong answers recorded': '回の間違いを記録',
+  'Connections': '接続',
+  'Difficulty': '難易度',
+  'No connections yet': '接続がありません',
+  'Nodes': 'ノード',
+  'Edges': 'エッジ',
+  'Clusters': 'クラスター',
+  'No hub nodes yet': 'ハブノードがありません',
+  'No knowledge gaps': '知識のギャップがありません',
+  'No confusion pairs detected': '混同ペアが見つかりません',
+  'All nodes are connected!': 'すべてのノードが接続されています！',
+
   // ── Misc ──────────────────────────────────────────────────────────────────
   'Select a word or phrase': '単語やフレーズを選択',
 };

@@ -264,6 +264,7 @@ const navItems = [
   { to: '/dictionary',        labelKey: 'nav_dictionary' as const },
   { to: '/knowledge-graph',   labelKey: 'nav_knowledge_graph' as const },
   { to: '/blind-spots',       labelKey: 'nav_blind_spots' as const },
+  { to: '/pkg',               labelKey: 'nav_pkg' as const },
 ];
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
