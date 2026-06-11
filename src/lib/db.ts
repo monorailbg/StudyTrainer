@@ -324,13 +324,14 @@ export async function deleteFolder(folderId: string): Promise<void> {
 // ── Quiz results ─────────────────────────────────────────────────────────────
 
 export interface QuizResultQuestion {
-  questionId:    string;
-  questionText:  string;
-  userAnswer:    string;   // text of the chosen option
-  correctAnswer: string;   // text of the correct option
-  wasCorrect:    boolean;
-  options:       string[];
-  explanation?:  string;
+  questionId:      string;
+  questionText:    string;
+  userAnswer:      string;   // text of the chosen option
+  correctAnswer:   string;   // text of the correct option
+  wasCorrect:      boolean;
+  options:         string[];
+  explanation?:    string;
+  confidenceRating?: number; // 1-5 self-assessed confidence before answering
 }
 
 export interface QuizResult {
