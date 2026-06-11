@@ -277,6 +277,8 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
 
 export default function Home() {
   const { t, ts } = useLang();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const { flashcardsStudied, flashcardsKnown, quizScores, notesRead, recentSubjects, removeRecentSubject } = useStore();
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
@@ -424,12 +426,12 @@ export default function Home() {
             fontFamily: "'Inter',sans-serif",
             fontWeight: 600,
             fontSize: '9px',
-            color: '#3D7EFF',
+            color: isLight ? '#B45309' : '#3D7EFF',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
             marginBottom: '8px',
           }}>
-            {ts('Global Business Studies')}
+            {isLight ? 'Apple Inc.' : ts('Global Business Studies')}
           </div>
           <h1 style={{
             fontFamily: "'Sora',sans-serif",
@@ -440,7 +442,7 @@ export default function Home() {
             lineHeight: 1.1,
             margin: 0,
           }}>
-            {ts(getGreeting())}
+            {isLight ? 'Global Supply Chain' : ts(getGreeting())}
           </h1>
           <p style={{
             fontFamily: "'Inter',sans-serif",
@@ -448,8 +450,11 @@ export default function Home() {
             color: 'var(--text-2)',
             margin: '8px 0 0',
             lineHeight: 1.5,
+            maxWidth: isLight ? 340 : undefined,
           }}>
-            {ts('Click a subject on the globe to dive in.')}
+            {isLight
+              ? 'Tracking raw materials, advanced semiconductors, display modules, and final assembly logistics.'
+              : ts('Click a subject on the globe to dive in.')}
           </p>
         </div>
         )}
