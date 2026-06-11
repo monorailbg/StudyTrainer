@@ -52,7 +52,7 @@ function TiltCard({ children, className, style, hoverBorderColor = 'rgba(61,126,
     const x = ((e.clientX - r.left) / r.width  - 0.5) * 9;
     const y = ((e.clientY - r.top)  / r.height - 0.5) * -7;
     el.style.transform = `perspective(900px) rotateX(${y}deg) rotateY(${x}deg) translateY(-6px) scale(1.01)`;
-    el.style.boxShadow = '0 1px 0 rgba(255,255,255,0.09) inset,0 12px 32px rgba(0,0,0,0.55),0 28px 60px rgba(0,0,0,0.38),0 0 0 1px rgba(61,126,255,0.3)';
+    el.style.boxShadow = '0 1px 0 rgba(255,255,255,0.09) inset,0 12px 32px rgba(0,0,0,0.55),0 28px 60px rgba(0,0,0,0.38)';
     el.style.borderColor = hoverBorderColor;
     if (hoverBackground) el.style.background = hoverBackground;
   }
@@ -185,8 +185,8 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
         </span>
       )}
       <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}
-        hoverBorderColor="rgba(217,119,6,0.6)"
-        hoverBackground="rgba(217,119,6,0.11)"
+        hoverBorderColor="rgba(30,58,138,0.8)"
+        hoverBackground="rgba(30,58,138,0.06)"
       >
         <div className="p-5 flex flex-col h-full gap-3">
           {/* Icon + color accent */}
