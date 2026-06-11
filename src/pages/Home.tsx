@@ -286,8 +286,6 @@ export default function Home() {
   const { dates: examDates } = useExamDates();
   const activityEvents = useActivity(s => s.events);
   const blindSpots = useBlindSpots();
-  // Force the globe to rebuild when the set of subjects changes.
-  const globeKey = allSubjects.map(s => s.id).join(',');
 
   // Generated content across subjects — drives the per-subject progress bars,
   // due badges and the global due count.
@@ -383,7 +381,7 @@ export default function Home() {
       >
         {/* Globe / mind map canvas */}
         {heroView === 'globe'
-          ? <GlobeView key={globeKey} subjects={allSubjects} />
+          ? <GlobeView />
           : <MindMap />}
 
         {/* View toggle — top right */}

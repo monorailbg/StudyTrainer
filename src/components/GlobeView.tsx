@@ -1,29 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { SubjectDef } from '../data/subjects';
 import { useTheme } from '../context/ThemeContext';
 
 const GLOBE_NIGHT = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg';
 const GLOBE_DAY   = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-day.jpg';
 const GLOBE_BUMP  = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png';
 
-// ── Dark-mode: subject network arcs ─────────────────────────────────────────
-const ARC_PAIRS: [string, string][] = [
-  ['international-trade', 'finance'],
-  ['international-trade', 'economics'],
-  ['international-trade', 'chinese'],
-  ['international-trade', 'accounting-advanced'],
-  ['finance', 'accounting-advanced'],
-  ['finance', 'economics'],
-  ['finance', 'management'],
-  ['marketing', 'management'],
-  ['marketing', 'business-economics'],
-  ['japanese', 'chinese'],
-  ['research-business', 'pre-seminar'],
-  ['eq-pc', 'management'],
-  ['economics', 'business-economics'],
-  ['japanese', 'international-trade'],
-];
 
 // ── Light-mode: Apple supply chain nodes ─────────────────────────────────────
 interface SupplyNode {
@@ -214,10 +195,9 @@ function injectPinStyles() {
   document.head.appendChild(s);
 }
 
-export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
+export default function GlobeView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
-  const navigate = useNavigate();
   const { theme } = useTheme();
   const cameraRef = useRef({ lat: 0, lng: 0, altitude: 2 });
 
@@ -230,21 +210,7 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
     const el = containerRef.current;
     const isLight = theme === 'light';
 
-    // ── Dark mode: subject network arcs & pins ───────────────────────────────
-    const subjectMap = new Map(subjects.map(s => [s.id, s]));
-    const arcs = ARC_PAIRS.flatMap(([a, b]) => {
-      const src = subjectMap.get(a);
-      const dst = subjectMap.get(b);
-      if (!src || !dst || src.lat == null || dst.lat == null) return [];
-      return [{
-        startLat: src.lat!, startLng: src.lng!,
-        endLat:   dst.lat!, endLng:   dst.lng!,
-        srcColor: src.color, dstColor: dst.color,
-      }];
-    });
-    const pinSubjects = subjects.filter(s => s.lat != null);
-
-    // ── Light mode: Apple supply chain arcs & pins ───────────────────────────
+    // ── Both modes: Apple supply chain arcs & pins ───────────────────────────
     const supplyNodeMap = new Map(SUPPLY_NODES.map(n => [n.id, n]));
     const supplyArcs = SUPPLY_ARC_DEFS.map(def => {
       const src = supplyNodeMap.get(def.from);
@@ -276,7 +242,7 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
         .atmosphereAltitude(isLight ? 0.08 : 0.20)
         .backgroundColor('rgba(0,0,0,0)')
         // ── Arcs: thin, elegant, calming ──────────────────────────────────
-        .arcsData(isLight ? supplyArcs : arcs)
+        .arcsData(supplyArcs)
         .arcStartLat((d: any) => d.startLat)
         .arcStartLng((d: any) => d.startLng)
         .arcEndLat((d: any) => d.endLat)
@@ -290,21 +256,20 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
         .arcDashLength(0.35)
         .arcDashGap(0.65)
         .arcDashAnimateTime((d: any) => {
-          if (!isLight) return 3200; // slower, more meditative
-          if (d.type === 'downstream') return 2000;
-          if (d.type === 'upstream')   return 3000;
-          return 4200; // rawmaterial — slowest
+          // Dramatically slower animations — contemplative rather than urgent
+          if (d.type === 'downstream') return 6000; // ~6 seconds
+          if (d.type === 'upstream')   return 8000; // ~8 seconds
+          return 12000; // rawmaterial — slow meditation (~12 seconds)
         })
         .arcStroke((d: any) => {
-          if (!isLight) return 0.5; // thinner in dark mode
           if (d.type === 'downstream') return 0.8;
           if (d.type === 'upstream')   return 0.7;
           return 0.6; // rawmaterial
         })
         .arcAltitude(null)
         .arcAltitudeAutoScale(0.35)
-        // ── HTML pins with distance-based opacity ──────────────────────────
-        .htmlElementsData(isLight ? SUPPLY_NODES : pinSubjects)
+        // ── HTML pins: supply chain nodes in both modes ──────────────────────
+        .htmlElementsData(SUPPLY_NODES)
         .htmlLat((d: any) => d.lat)
         .htmlLng((d: any) => d.lng)
         .htmlAltitude(0.020)
@@ -312,13 +277,12 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
           const wrapper = document.createElement('div');
           wrapper.className = 'gpin-wrapper';
 
-          // Smaller dot sizes for cleaner look
-          const dotSize = isLight
-            ? (d.role === 'hq'       ? 14
-             : d.role === 'assembly' ? 10
-             : d.role === 'silicon' || d.role === 'display' ? 9
-             : 7)
-            : 12;
+          // Dot sizes scaled by supply chain role
+          const dotSize = d.role === 'hq'
+            ? 14
+            : d.role === 'assembly' ? 10
+            : d.role === 'silicon' || d.role === 'display' ? 9
+            : 7;
 
           wrapper.style.cssText = [
             `--gpin-color:${d.color}`,
@@ -333,8 +297,6 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
             'height:22px',
           ].join(';');
 
-          const labelText = isLight ? d.label : d.title;
-
           wrapper.innerHTML = `
             <div class="gpin-ring"  style="background:${d.color}33;"></div>
             <div class="gpin-ring gpin-ring2" style="background:${d.color}22;"></div>
@@ -346,15 +308,9 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
             "></div>
             <div class="gpin-label">
               <span class="gpin-label-dot"></span>
-              ${labelText}
+              ${d.label}
             </div>
           `;
-
-          if (!isLight) {
-            wrapper.addEventListener('click', () => {
-              navigate(`/subject/${d.id}`);
-            });
-          }
 
           return wrapper;
         });
@@ -363,7 +319,7 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
 
       const controls = globe.controls();
       controls.autoRotate = true;
-      controls.autoRotateSpeed = isLight ? 0.20 : 0.30;
+      controls.autoRotateSpeed = 0.20; // Slow, contemplative rotation
       controls.enableZoom = false;
       controls.minPolarAngle = Math.PI / 5;
       controls.maxPolarAngle = (4 * Math.PI) / 5;
@@ -374,11 +330,8 @@ export default function GlobeView({ subjects }: { subjects: SubjectDef[] }) {
         cameraRef.current = pov;
       };
 
-      globe.pointOfView(
-        isLight
-          ? { lat: 28, lng: 108, altitude: 1.65 }
-          : { lat: 22, lng:  30, altitude: 1.75 },
-      );
+      // Both modes show supply chain centered on East Asia
+      globe.pointOfView({ lat: 28, lng: 108, altitude: 1.65 });
 
       globe.onUpdate?.(onUpdate);
 
