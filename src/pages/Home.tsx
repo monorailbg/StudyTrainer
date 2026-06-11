@@ -283,6 +283,7 @@ export default function Home() {
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
+  const [activeCompany, setActiveCompany] = useState<'apple' | 'nestle'>('apple');
   const { dates: examDates } = useExamDates();
   const activityEvents = useActivity(s => s.events);
   const blindSpots = useBlindSpots();
@@ -381,7 +382,7 @@ export default function Home() {
       >
         {/* Globe / mind map canvas */}
         {heroView === 'globe'
-          ? <GlobeView />
+          ? <GlobeView activeCompanyId={activeCompany} />
           : <MindMap />}
 
         {/* View toggle — top right */}
@@ -409,53 +410,98 @@ export default function Home() {
         </div>
 
         {/* Title overlay — top left (globe only; the mind map has its own search here) */}
-        {heroView === 'globe' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'clamp(16px, 4vw, 32px)',
-            left: 'clamp(16px, 4vw, 32px)',
-            zIndex: 10,
-            pointerEvents: 'none',
-            maxWidth: 'min(55vw, 400px)',
-          }}
-        >
-          <div style={{
-            fontFamily: "'Inter',sans-serif",
-            fontWeight: 600,
-            fontSize: '9px',
-            color: isLight ? '#B45309' : '#3D7EFF',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            marginBottom: '8px',
-          }}>
-            {isLight ? 'Apple Inc.' : ts('Global Business Studies')}
-          </div>
-          <h1 style={{
-            fontFamily: "'Sora',sans-serif",
-            fontWeight: 800,
-            fontSize: 'clamp(1.9rem,3.5vw,2.8rem)',
-            color: 'var(--text-1)',
-            letterSpacing: '-0.03em',
-            lineHeight: 1.1,
-            margin: 0,
-          }}>
-            {isLight ? 'Global Supply Chain' : ts(getGreeting())}
-          </h1>
-          <p style={{
-            fontFamily: "'Inter',sans-serif",
-            fontSize: '13px',
-            color: 'var(--text-2)',
-            margin: '8px 0 0',
-            lineHeight: 1.5,
-            maxWidth: isLight ? 340 : undefined,
-          }}>
-            {isLight
-              ? 'Tracking raw materials, advanced semiconductors, display modules, and final assembly logistics.'
-              : ts('Click a subject on the globe to dive in.')}
-          </p>
-        </div>
-        )}
+        {heroView === 'globe' && (() => {
+          const COMPANY = {
+            apple: {
+              label: 'Apple Inc.',
+              accentLight: '#B45309',
+              accentDark:  '#60A5FA',
+              title: 'Global Supply Chain',
+              desc:  'Tracking raw materials, advanced semiconductors, display modules, and final assembly logistics.',
+            },
+            nestle: {
+              label: 'Nestlé',
+              accentLight: '#7a5230',
+              accentDark:  '#c8943e',
+              title: 'Global Food & Beverage',
+              desc:  'Tracking coffee & cocoa sourcing, dairy networks, and regional manufacturing across 50+ countries.',
+            },
+          } as const;
+          const meta = COMPANY[activeCompany];
+          const accent = isLight ? meta.accentLight : meta.accentDark;
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'clamp(16px, 4vw, 32px)',
+                left: 'clamp(16px, 4vw, 32px)',
+                zIndex: 10,
+                maxWidth: 'min(55vw, 400px)',
+              }}
+            >
+              {/* Company selector pills */}
+              <div style={{ display: 'flex', gap: '3px', marginBottom: '10px' }}>
+                {(['apple', 'nestle'] as const).map(id => {
+                  const c = COMPANY[id];
+                  const isActive = activeCompany === id;
+                  const col = isLight ? c.accentLight : c.accentDark;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setActiveCompany(id)}
+                      style={{
+                        padding: '3px 11px', borderRadius: '999px', border: 'none',
+                        fontSize: '9px', fontWeight: 700, letterSpacing: '0.15em',
+                        textTransform: 'uppercase', cursor: 'pointer',
+                        fontFamily: "'Inter',sans-serif",
+                        background: isActive
+                          ? (isLight ? col + '18' : col + '25')
+                          : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)'),
+                        color: isActive ? col : 'var(--text-3)',
+                        boxShadow: isActive ? `inset 0 0 0 1px ${col}50` : `inset 0 0 0 1px transparent`,
+                        transition: 'all 0.18s ease',
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <h1 style={{
+                fontFamily: "'Sora',sans-serif",
+                fontWeight: 800,
+                fontSize: 'clamp(1.9rem,3.5vw,2.8rem)',
+                color: 'var(--text-1)',
+                letterSpacing: '-0.03em',
+                lineHeight: 1.1,
+                margin: 0,
+                pointerEvents: 'none',
+              }}>
+                {meta.title}
+              </h1>
+              <p style={{
+                fontFamily: "'Inter',sans-serif",
+                fontSize: '13px',
+                color: 'var(--text-2)',
+                margin: '8px 0 0',
+                lineHeight: 1.5,
+                maxWidth: 340,
+                pointerEvents: 'none',
+              }}>
+                {meta.desc}
+              </p>
+
+              {/* Active company accent line */}
+              <div style={{
+                marginTop: '14px', height: '2px', width: '32px',
+                background: accent, borderRadius: '999px',
+                opacity: 0.7, pointerEvents: 'none',
+                transition: 'background 0.3s ease',
+              }} />
+            </div>
+          );
+        })()}
 
         {/* Scroll hint */}
         {heroView === 'globe' && (

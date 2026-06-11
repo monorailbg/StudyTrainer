@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
 
 const GLOBE_NIGHT = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg';
@@ -291,60 +291,6 @@ function dotSizeForType(type: string): number {
   return 7;
 }
 
-// ── Company pill toggle ───────────────────────────────────────────────────────
-function CompanyToggle({
-  active,
-  isLight,
-  onChange,
-}: {
-  active: 'apple' | 'nestle';
-  isLight: boolean;
-  onChange: (id: 'apple' | 'nestle') => void;
-}) {
-  const companies: Array<{ id: 'apple' | 'nestle'; label: string; color: string }> = [
-    { id: 'apple',  label: 'Apple Inc.', color: '#60A5FA' },
-    { id: 'nestle', label: 'Nestlé',     color: '#c8943e' },
-  ];
-
-  return (
-    <div style={{
-      position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
-      zIndex: 10, display: 'flex', gap: '2px', padding: '3px',
-      background: isLight ? 'rgba(255,252,247,0.88)' : 'rgba(15,23,42,0.75)',
-      backdropFilter: 'blur(8px)',
-      borderRadius: '999px',
-      border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.13)',
-      boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
-      pointerEvents: 'all',
-    }}>
-      {companies.map(({ id, label, color }) => {
-        const isActive = active === id;
-        return (
-          <button
-            key={id}
-            onClick={() => onChange(id)}
-            style={{
-              padding: '6px 16px', borderRadius: '999px', border: 'none',
-              cursor: 'pointer', fontSize: '12px', fontWeight: 600,
-              fontFamily: "'Sora', sans-serif", whiteSpace: 'nowrap',
-              background: isActive
-                ? (isLight ? color + '22' : color + '33')
-                : 'transparent',
-              color: isActive
-                ? (isLight ? color : color)
-                : (isLight ? '#888' : '#8B949E'),
-              boxShadow: isActive ? `inset 0 0 0 1px ${color}44` : 'none',
-              transition: 'all 0.18s ease',
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // ── Initial point-of-view per company ────────────────────────────────────────
 const INITIAL_POV = {
   apple:  { lat: 28,  lng: 108, altitude: 1.65 },
@@ -352,13 +298,15 @@ const INITIAL_POV = {
 };
 
 // ── GlobeView ─────────────────────────────────────────────────────────────────
-export default function GlobeView() {
+export default function GlobeView({
+  activeCompanyId = 'apple',
+}: {
+  activeCompanyId?: 'apple' | 'nestle';
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initialized  = useRef(false);
   const { theme }    = useTheme();
   const isLight      = theme === 'light';
-
-  const [activeCompanyId, setActiveCompanyId] = useState<'apple' | 'nestle'>('apple');
 
   useEffect(() => {
     if (initialized.current || !containerRef.current) return;
@@ -498,17 +446,10 @@ export default function GlobeView() {
   }, [theme, activeCompanyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
-      <div
-        ref={containerRef}
-        className="globe-canvas-container"
-        style={{ position: 'absolute', inset: 0 }}
-      />
-      <CompanyToggle
-        active={activeCompanyId}
-        isLight={isLight}
-        onChange={setActiveCompanyId}
-      />
-    </div>
+    <div
+      ref={containerRef}
+      className="globe-canvas-container"
+      style={{ position: 'absolute', inset: 0 }}
+    />
   );
 }
