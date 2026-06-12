@@ -130,6 +130,106 @@ const NESTLE_ARC_DEFS: InternalArcDef[] = [
   { from: 'nestle-lausanne-research',     to: 'nestle-usa-glendale',         arcType: 'downstream' },
 ];
 
+// ── Walmart supply chain — 30-node dataset ───────────────────────────────────
+// Color logic: Walmart signature retail blue (#0071dc) family.
+//   HQ / US core          → Walmart blue     #0071dc / #1565c0
+//   US ports              → sky blue         #0288d1 / #039be5
+//   US inland dist        → mid-blue         #0277bd
+//   China mfg             → steel blue       #4a90d9 / #5b9de0 / #6aaae7 / #79b7ee / #88c4f5
+//   Vietnam alt mfg       → teal-cyan        #00acc1 / #00b8cc / #00c4d8
+//   India sourcing        → indigo-violet    #5c6bc0 / #7986cb / #9fa8da
+//   Bangladesh apparel    → rose-coral       #e57373 / #ef9a9a
+//   Cambodia apparel      → mauve            #ba68c8
+//   Mexico nearshore      → cyan-teal        #26c6da / #29d6ea / #2ce6fa
+//   Canada dist           → dark navy        #1a4fa0
+//   S. America agri       → leaf green       #4caf50 / #66bb6a / #81c784
+//   South Africa          → amber-gold       #ffa726
+//   Thailand / Indonesia  → orchid / sienna  #ab47bc / #8d6e63
+
+const WALMART_NODES: SupplyChainNetwork['nodes'] = [
+  // ── United States ────────────────────────────────────────────────────────
+  { id: 'wmt-bentonville',  name: 'Walmart HQ',              lat:  36.3729, lng:  -94.2088, type: 'hq',       color: '#0071dc', desc: 'Global headquarters, supply chain management, sourcing strategy.' },
+  { id: 'wmt-dallas',       name: 'Dallas–Fort Worth Hub',   lat:  32.7767, lng:  -96.7970, type: 'dist',     color: '#0277bd', desc: 'Major distribution and logistics hub for the central US.' },
+  { id: 'wmt-los-angeles',  name: 'Los Angeles Gateway',     lat:  34.0522, lng: -118.2437, type: 'port',     color: '#0288d1', desc: 'Main import gateway for Asian goods entering the US.' },
+  { id: 'wmt-long-beach',   name: 'Long Beach Port',         lat:  33.7701, lng: -118.1937, type: 'port',     color: '#039be5', desc: 'Major container port receiving bulk Asian imports.' },
+  { id: 'wmt-savannah',     name: 'Savannah Gateway',        lat:  32.0809, lng:  -81.0912, type: 'port',     color: '#0288d1', desc: 'Key East Coast logistics and distribution gateway.' },
+  { id: 'wmt-houston',      name: 'Houston Logistics Hub',   lat:  29.7604, lng:  -95.3698, type: 'dist',     color: '#0277bd', desc: 'Gulf Coast logistics, import hub, and agricultural receiving center.' },
+  // ── China ────────────────────────────────────────────────────────────────
+  { id: 'wmt-shenzhen',     name: 'Shenzhen Sourcing',       lat:  22.5431, lng:  114.0579, type: 'mfg',      color: '#4a90d9', desc: 'Largest sourcing hub for electronics, toys, and household goods.' },
+  { id: 'wmt-dongguan',     name: 'Dongguan Manufacturing',  lat:  23.0210, lng:  113.7518, type: 'mfg',      color: '#5b9de0', desc: 'Manufacturing and export production center.' },
+  { id: 'wmt-guangzhou',    name: 'Guangzhou Goods Hub',     lat:  23.1291, lng:  113.2644, type: 'mfg',      color: '#6aaae7', desc: 'Consumer goods manufacturing and export coordination.' },
+  { id: 'wmt-shanghai',     name: 'Shanghai Sourcing Office',lat:  31.2304, lng:  121.4737, type: 'mfg',      color: '#79b7ee', desc: 'Major sourcing office and primary export gateway.' },
+  { id: 'wmt-ningbo',       name: 'Ningbo Shipping Hub',     lat:  29.8683, lng:  121.5440, type: 'mfg',      color: '#88c4f5', desc: 'High-volume manufacturing and container shipping hub.' },
+  // ── Vietnam ──────────────────────────────────────────────────────────────
+  { id: 'wmt-hcmc',         name: 'Ho Chi Minh City Mfg',   lat:  10.8231, lng:  106.6297, type: 'mfg',      color: '#00acc1', desc: 'Major alternative manufacturing hub to China.' },
+  { id: 'wmt-haiphong',     name: 'Hai Phong Export Port',   lat:  20.8449, lng:  106.6881, type: 'port',     color: '#00b8cc', desc: 'Export manufacturing and primary shipping port.' },
+  { id: 'wmt-hanoi',        name: 'Hanoi Supplier Mgmt',     lat:  21.0285, lng:  105.8542, type: 'mfg',      color: '#00c4d8', desc: 'Supplier management and northern Vietnam manufacturing.' },
+  // ── India ────────────────────────────────────────────────────────────────
+  { id: 'wmt-bengaluru',    name: 'Bengaluru Sourcing Ctr',  lat:  12.9716, lng:   77.5946, type: 'mfg',      color: '#5c6bc0', desc: 'Major sourcing office and supplier development center.' },
+  { id: 'wmt-delhi',        name: 'Delhi NCR Sourcing',      lat:  28.6139, lng:   77.2090, type: 'mfg',      color: '#7986cb', desc: 'Textiles and consumer goods sourcing for global stores.' },
+  { id: 'wmt-mumbai',       name: 'Mumbai Export Coord.',    lat:  19.0760, lng:   72.8777, type: 'port',     color: '#9fa8da', desc: 'Export coordination and supplier logistics gateway.' },
+  // ── Bangladesh ───────────────────────────────────────────────────────────
+  { id: 'wmt-dhaka',        name: 'Dhaka Apparel Mfg',       lat:  23.8103, lng:   90.4125, type: 'mfg',      color: '#e57373', desc: 'Large-scale apparel manufacturing for Walmart private labels.' },
+  { id: 'wmt-chattogram',   name: 'Chattogram Garment Port', lat:  22.3569, lng:   91.7832, type: 'port',     color: '#ef9a9a', desc: 'Garment exports and primary sea logistics gateway.' },
+  // ── Cambodia ─────────────────────────────────────────────────────────────
+  { id: 'wmt-phnom-penh',   name: 'Phnom Penh Apparel',      lat:  11.5564, lng:  104.9282, type: 'mfg',      color: '#ba68c8', desc: 'Apparel manufacturing, growing alternative to Bangladesh.' },
+  // ── Mexico ───────────────────────────────────────────────────────────────
+  { id: 'wmt-monterrey',    name: 'Monterrey Nearshore',      lat:  25.6866, lng: -100.3161, type: 'mfg',      color: '#26c6da', desc: 'Nearshoring manufacturing hub serving US stores directly.' },
+  { id: 'wmt-guadalajara',  name: 'Guadalajara Mfg',          lat:  20.6597, lng: -103.3496, type: 'mfg',      color: '#29d6ea', desc: 'Consumer goods and electronics manufacturing.' },
+  { id: 'wmt-mexico-city',  name: 'Mexico City Dist.',        lat:  19.4326, lng:  -99.1332, type: 'dist',     color: '#2ce6fa', desc: 'Distribution and supplier coordination for Latin America.' },
+  // ── Canada ───────────────────────────────────────────────────────────────
+  { id: 'wmt-mississauga',  name: 'Mississauga Canadian Ops', lat:  43.5890, lng:  -79.6441, type: 'dist',     color: '#1a4fa0', desc: 'Canadian distribution operations center.' },
+  // ── South America (agricultural) ─────────────────────────────────────────
+  { id: 'wmt-santiago',     name: 'Santiago Produce Hub',     lat: -33.4489, lng:  -70.6693, type: 'agri',     color: '#4caf50', desc: 'Fruit, produce, and fresh seafood sourcing for US stores.' },
+  { id: 'wmt-lima',         name: 'Lima Fresh Produce',       lat: -12.0464, lng:  -77.0428, type: 'agri',     color: '#66bb6a', desc: 'Fresh produce, asparagus, and agricultural goods sourcing.' },
+  { id: 'wmt-san-jose',     name: 'San José Agri Exports',    lat:   9.9281, lng:  -84.0907, type: 'agri',     color: '#81c784', desc: 'Pineapples, bananas, and tropical agricultural exports.' },
+  // ── South Africa ─────────────────────────────────────────────────────────
+  { id: 'wmt-johannesburg', name: 'Johannesburg Retail Hub',  lat: -26.2041, lng:   28.0473, type: 'dist',     color: '#ffa726', desc: 'African distribution and retail operations hub.' },
+  // ── Thailand ─────────────────────────────────────────────────────────────
+  { id: 'wmt-bangkok',      name: 'Bangkok Goods Mfg',        lat:  13.7563, lng:  100.5018, type: 'mfg',      color: '#ab47bc', desc: 'Consumer goods and home-goods manufacturing.' },
+  // ── Indonesia ────────────────────────────────────────────────────────────
+  { id: 'wmt-jakarta',      name: 'Jakarta Apparel Sourcing', lat:  -6.2088, lng:  106.8456, type: 'mfg',      color: '#8d6e63', desc: 'Apparel and consumer goods sourcing hub.' },
+];
+
+const WALMART_ARC_DEFS: InternalArcDef[] = [
+  // Upstream: regional Chinese factories → Shenzhen / Shanghai export hubs
+  { from: 'wmt-dongguan',    to: 'wmt-shenzhen',    arcType: 'upstream' },
+  { from: 'wmt-guangzhou',   to: 'wmt-shenzhen',    arcType: 'upstream' },
+  { from: 'wmt-bangkok',     to: 'wmt-shenzhen',    arcType: 'upstream' },
+  { from: 'wmt-jakarta',     to: 'wmt-shenzhen',    arcType: 'upstream' },
+  { from: 'wmt-phnom-penh',  to: 'wmt-hcmc',        arcType: 'upstream' },
+  { from: 'wmt-hanoi',       to: 'wmt-haiphong',    arcType: 'upstream' },
+  { from: 'wmt-dhaka',       to: 'wmt-chattogram',  arcType: 'upstream' },
+  { from: 'wmt-delhi',       to: 'wmt-mumbai',      arcType: 'upstream' },
+  { from: 'wmt-bengaluru',   to: 'wmt-mumbai',      arcType: 'upstream' },
+  { from: 'wmt-guadalajara', to: 'wmt-monterrey',   arcType: 'upstream' },
+  { from: 'wmt-mexico-city', to: 'wmt-monterrey',   arcType: 'upstream' },
+  // Raw agricultural sourcing → US Gulf / East Coast hubs
+  { from: 'wmt-santiago',    to: 'wmt-houston',     arcType: 'rawmaterial' },
+  { from: 'wmt-lima',        to: 'wmt-houston',     arcType: 'rawmaterial' },
+  { from: 'wmt-san-jose',    to: 'wmt-houston',     arcType: 'rawmaterial' },
+  { from: 'wmt-san-jose',    to: 'wmt-savannah',    arcType: 'rawmaterial' },
+  { from: 'wmt-johannesburg',to: 'wmt-savannah',    arcType: 'rawmaterial' },
+  // Downstream: Asian port hubs → US West Coast entry points
+  { from: 'wmt-shenzhen',    to: 'wmt-long-beach',  arcType: 'downstream' },
+  { from: 'wmt-shenzhen',    to: 'wmt-los-angeles', arcType: 'downstream' },
+  { from: 'wmt-ningbo',      to: 'wmt-long-beach',  arcType: 'downstream' },
+  { from: 'wmt-shanghai',    to: 'wmt-long-beach',  arcType: 'downstream' },
+  { from: 'wmt-haiphong',    to: 'wmt-los-angeles', arcType: 'downstream' },
+  { from: 'wmt-chattogram',  to: 'wmt-long-beach',  arcType: 'downstream' },
+  { from: 'wmt-hcmc',        to: 'wmt-los-angeles', arcType: 'downstream' },
+  { from: 'wmt-mumbai',      to: 'wmt-savannah',    arcType: 'downstream' },
+  // Downstream: US ports + nearshore → Dallas distribution hub
+  { from: 'wmt-long-beach',  to: 'wmt-dallas',      arcType: 'downstream' },
+  { from: 'wmt-los-angeles', to: 'wmt-dallas',      arcType: 'downstream' },
+  { from: 'wmt-savannah',    to: 'wmt-dallas',      arcType: 'downstream' },
+  { from: 'wmt-houston',     to: 'wmt-dallas',      arcType: 'downstream' },
+  { from: 'wmt-monterrey',   to: 'wmt-dallas',      arcType: 'downstream' },
+  // Downstream: regional hubs → Bentonville HQ
+  { from: 'wmt-dallas',      to: 'wmt-bentonville', arcType: 'downstream' },
+  { from: 'wmt-mississauga', to: 'wmt-bentonville', arcType: 'downstream' },
+];
+
 // ── Johnson & Johnson supply chain — 14-node dataset ─────────────────────────
 // Color logic: each functional type gets its own hue family.
 //   HQ                    → crimson red     #DC2626
@@ -198,34 +298,42 @@ const ARC_COLORS = {
     light: { rawmaterial: '#F4748855', upstream: '#12708277', downstream: '#DC262666' },
     dark:  { rawmaterial: '#FB718888', upstream: '#22D3EECC', downstream: '#F87171BB' },
   },
+  walmart: {
+    light: { rawmaterial: '#4caf5066', upstream: '#0288d177', downstream: '#0071dc88' },
+    dark:  { rawmaterial: '#81c78499', upstream: '#29b6f6BB', downstream: '#40c4ffCC' },
+  },
 } as const;
 
 // ── Arc animation timing (ms) ─────────────────────────────────────────────────
 const ARC_TIMING = {
-  apple:  { rawmaterial: 12000, upstream:  8000, downstream:  6000 },
-  nestle: { rawmaterial: 15000, upstream: 10000, downstream:  7000 },
-  jnj:    { rawmaterial: 13000, upstream:  9000, downstream:  6500 },
+  apple:   { rawmaterial: 12000, upstream:  8000, downstream:  6000 },
+  nestle:  { rawmaterial: 15000, upstream: 10000, downstream:  7000 },
+  jnj:     { rawmaterial: 13000, upstream:  9000, downstream:  6500 },
+  walmart: { rawmaterial: 14000, upstream:  9500, downstream:  6000 },
 } as const;
 
 // ── Company lookup tables ─────────────────────────────────────────────────────
-type CompanyId = 'apple' | 'nestle' | 'jnj';
+type CompanyId = 'apple' | 'nestle' | 'jnj' | 'walmart';
 
 const COMPANY_META: Record<CompanyId, { companyName: string; subtitle: string }> = {
-  apple:  { companyName: 'Apple Inc.',        subtitle: 'Global Hardware Supply Chain' },
-  nestle: { companyName: 'Nestlé',            subtitle: 'Global Food & Beverage Supply Matrix' },
-  jnj:    { companyName: 'Johnson & Johnson', subtitle: 'Global Pharmaceutical Supply Network' },
+  apple:   { companyName: 'Apple Inc.',        subtitle: 'Global Hardware Supply Chain' },
+  nestle:  { companyName: 'Nestlé',            subtitle: 'Global Food & Beverage Supply Matrix' },
+  jnj:     { companyName: 'Johnson & Johnson', subtitle: 'Global Pharmaceutical Supply Network' },
+  walmart: { companyName: 'Walmart',           subtitle: 'Global Retail Supply Network' },
 };
 
 const COMPANY_NODES: Record<CompanyId, SupplyChainNetwork['nodes']> = {
-  apple:  APPLE_NODES,
-  nestle: NESTLE_NODES,
-  jnj:    JNJ_NODES,
+  apple:   APPLE_NODES,
+  nestle:  NESTLE_NODES,
+  jnj:     JNJ_NODES,
+  walmart: WALMART_NODES,
 };
 
 const COMPANY_ARC_DEFS: Record<CompanyId, InternalArcDef[]> = {
-  apple:  APPLE_ARC_DEFS,
-  nestle: NESTLE_ARC_DEFS,
-  jnj:    JNJ_ARC_DEFS,
+  apple:   APPLE_ARC_DEFS,
+  nestle:  NESTLE_ARC_DEFS,
+  jnj:     JNJ_ARC_DEFS,
+  walmart: WALMART_ARC_DEFS,
 };
 
 // ── Build a fully-resolved SupplyChainNetwork ─────────────────────────────────
@@ -370,17 +478,20 @@ function dotSizeForType(type: string): number {
   if (type === 'research' || type === 'vaccine')                  return 12;
   if (type === 'assembly' || type.startsWith('mfg-') ||
       type.startsWith('pharma-'))                                  return 10;
-  if (type === 'silicon'  || type === 'display' || type === 'dist') return  9;
+  if (type === 'dist' || type === 'port')                         return 10;
+  if (type === 'silicon'  || type === 'display')                  return  9;
+  if (type === 'mfg')                                             return  9;
   if (type === 'dairy'    || type.startsWith('sourcing') ||
-      type === 'api')                                              return  8;
+      type === 'api'      || type === 'agri')                     return  8;
   return 7;
 }
 
 // ── Initial point-of-view per company ────────────────────────────────────────
 const INITIAL_POV: Record<CompanyId, { lat: number; lng: number; altitude: number }> = {
-  apple:  { lat: 28, lng: 108, altitude: 1.65 },
-  nestle: { lat: 20, lng:  15, altitude: 1.80 },
-  jnj:    { lat: 38, lng: -50, altitude: 1.75 },
+  apple:   { lat:  28, lng:  108, altitude: 1.65 },
+  nestle:  { lat:  20, lng:   15, altitude: 1.80 },
+  jnj:     { lat:  38, lng:  -50, altitude: 1.75 },
+  walmart: { lat:  25, lng:  -40, altitude: 1.70 },
 };
 
 // ── GlobeView ─────────────────────────────────────────────────────────────────
