@@ -882,6 +882,7 @@ export default function SubjectPage() {
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [quizCount, setQuizCount] = useState(10);
   const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [quizMode, setQuizMode] = useState<'generated' | 'extraction'>('generated');
   const [cardCount, setCardCount] = useState(0); // 0 = undecided; multiples of 5 up to 50
   const [flashcardMode, setFlashcardMode] = useState<'standard' | 'vocabulary'>('standard');
   const [focusTopic, setFocusTopic] = useState('');
@@ -1377,6 +1378,7 @@ export default function SubjectPage() {
           cardCount: cardCount === 0 ? undefined : cardCount,
           questionCount: quizCount,
           difficulty: quizDifficulty,
+          quizMode: selectedType === 'quiz' ? quizMode : undefined,
           focusTopic: focusTopic.trim() || undefined,
           notesDetail,
           notesIncludes,
@@ -2706,6 +2708,21 @@ export default function SubjectPage() {
               {/* Quiz options */}
               {selectedType === 'quiz' && (
                 <div className="mb-3 flex flex-col gap-2.5">
+                  <div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
+                    <div className="flex gap-1.5">
+                      {([
+                        { key: 'generated', label: 'AI Generated' },
+                        { key: 'extraction', label: 'Extraction Only' },
+                      ] as const).map(m => (
+                        <button key={m.key} onClick={() => setQuizMode(m.key)}
+                          className="h-8 flex-1 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                          style={{ borderRadius: '999px', background: quizMode === m.key ? subject.color + '20' : 'transparent', color: quizMode === m.key ? subject.color : 'var(--text-2)', borderColor: quizMode === m.key ? subject.color + '50' : 'var(--border-base)' }}>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div>
                     <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
                     <div className="flex gap-1.5 flex-wrap">

@@ -191,6 +191,7 @@ export interface GenerateOptions {
   language?:       'english' | 'japanese' | 'both';
   difficulty?:     'easy' | 'medium' | 'hard';
   flashcardMode?:  'standard' | 'vocabulary';
+  quizMode?:       'generated' | 'extraction';
 }
 
 function languageInstruction(language?: 'english' | 'japanese' | 'both'): string {
@@ -318,7 +319,35 @@ function difficultyInstruction(difficulty?: 'easy' | 'medium' | 'hard'): string 
   return `\nDifficulty level: ${DIFFICULTY_MAP[difficulty]}`;
 }
 
+function quizExtractionPrompt(subject: string, opts: GenerateOptions): string {
+  const count  = opts.questionCount ?? 10;
+  const focus  = opts.focusTopic?.trim();
+  return `You are a verbatim content extractor for a ${subject} study tool.
+
+Your task is to create exactly ${count} multiple-choice questions by lifting sentences and phrases WORD FOR WORD from the provided document — do NOT paraphrase, summarise, or invent content.
+${focus ? `Focus on passages related to: "${focus}".` : ''}
+
+For each question:
+1. Find a meaningful sentence or short passage in the document that contains a key term, figure, or fact.
+2. Use that sentence verbatim as the question stem, replacing one key term or number with "___________".
+3. The correct answer (option at index "correct") must be the exact word(s) you blanked out, copied verbatim from the document.
+4. The three distractors must be plausible alternatives drawn from elsewhere in the document or closely related concepts — never invented.
+5. The explanation must cite the exact sentence from the document where the answer appears.
+
+Return ONLY valid JSON — no markdown, no commentary:
+{
+  "questions": [
+    {
+      "question": "The company reported revenue of ___________ in fiscal year 2023.",
+      "options": ["$512 billion", "$480 billion", "$390 billion", "$620 billion"],
+      "correct": 0,
+      "explanation": "The document states verbatim: 'The company reported revenue of $512 billion in fiscal year 2023.'"
+    }
+  ]
+}`;}
+
 function quizFilePrompt(subject: string, opts: GenerateOptions): string {
+  if (opts.quizMode === 'extraction') return quizExtractionPrompt(subject, opts);
   const count  = opts.questionCount ?? 10;
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
