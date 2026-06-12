@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useLayoutEffect, forwardRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, forwardRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { GeneratedNote, GeneratedNoteSection } from '../lib/generator';
 import { AskAI } from './AskAI';
-import { useAnnotations, type Annotation } from '../store/useAnnotations';
+import { useAnnotations } from '../store/useAnnotations';
 import { useLang } from '../context/LanguageContext';
+import { MarkdownContent, stripMarkdown } from './MarkdownContent';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -16,8 +17,9 @@ function calcReadTime(note: GeneratedNote): number {
 }
 
 function firstSentence(text: string): string {
-  const m = text.match(/^[^.!?]+[.!?]/);
-  return m ? m[0] : text.slice(0, 120) + '…';
+  const plain = stripMarkdown(text);
+  const m = plain.match(/^[^.!?]+[.!?]/);
+  return m ? m[0] : plain.slice(0, 120) + '…';
 }
 
 // ── RichText: **bold** → accent-highlighted strong ───────────────────────────
@@ -59,126 +61,6 @@ const UNDERLINE_COLORS = [
   { id: 'rose',   value: '#FB7185' },
 ] as const;
 
-// ── buildSegments: merges bold markers + annotations into renderable segments ──
-
-type Segment = {
-  text: string;
-  isBold: boolean;
-  annotation?: Annotation | null;
-};
-
-function buildSegments(rawText: string, annotations: Annotation[]): Segment[] {
-  type BoldSeg = { text: string; isBold: boolean; visStart: number; visEnd: number };
-  const boldSegs: BoldSeg[] = [];
-  const boldRe = /\*\*([^*]+)\*\*/g;
-  let lastIdx = 0;
-  let visPos = 0;
-  let m: RegExpExecArray | null;
-
-  while ((m = boldRe.exec(rawText)) !== null) {
-    if (m.index > lastIdx) {
-      const t = rawText.slice(lastIdx, m.index);
-      boldSegs.push({ text: t, isBold: false, visStart: visPos, visEnd: visPos + t.length });
-      visPos += t.length;
-    }
-    const t = m[1];
-    boldSegs.push({ text: t, isBold: true, visStart: visPos, visEnd: visPos + t.length });
-    visPos += t.length;
-    lastIdx = boldRe.lastIndex;
-  }
-  if (lastIdx < rawText.length) {
-    const t = rawText.slice(lastIdx);
-    boldSegs.push({ text: t, isBold: false, visStart: visPos, visEnd: visPos + t.length });
-  }
-
-  const visibleText = boldSegs.map(s => s.text).join('');
-  const annRanges: { start: number; end: number; ann: Annotation }[] = [];
-  for (const ann of annotations) {
-    if (!ann.selectedText) continue;
-    const idx = visibleText.indexOf(ann.selectedText);
-    if (idx !== -1) annRanges.push({ start: idx, end: idx + ann.selectedText.length, ann });
-  }
-  annRanges.sort((a, b) => a.start - b.start);
-
-  if (annRanges.length === 0) {
-    return boldSegs.map(s => ({ text: s.text, isBold: s.isBold, annotation: null }));
-  }
-
-  const result: Segment[] = [];
-  for (const bs of boldSegs) {
-    let pos = bs.visStart;
-    for (const ar of annRanges) {
-      if (ar.end <= pos || ar.start >= bs.visEnd) continue;
-      if (ar.start > pos) {
-        const t = bs.text.slice(pos - bs.visStart, ar.start - bs.visStart);
-        if (t) result.push({ text: t, isBold: bs.isBold, annotation: null });
-        pos = ar.start;
-      }
-      const end = Math.min(ar.end, bs.visEnd);
-      const t = bs.text.slice(pos - bs.visStart, end - bs.visStart);
-      if (t) result.push({ text: t, isBold: bs.isBold, annotation: ar.ann });
-      pos = end;
-    }
-    if (pos < bs.visEnd) {
-      const t = bs.text.slice(pos - bs.visStart);
-      if (t) result.push({ text: t, isBold: bs.isBold, annotation: null });
-    }
-  }
-  return result;
-}
-
-// ── AnnotatedRichText ─────────────────────────────────────────────────────────
-
-function AnnotatedRichText({ rawText, accent, annotations }: {
-  rawText: string;
-  accent: string;
-  annotations: Annotation[];
-}) {
-  const segments = useMemo(() => buildSegments(rawText, annotations), [rawText, annotations]);
-  return (
-    <>
-      {segments.map((seg, i) => {
-        const ann = seg.annotation;
-        let annStyle: React.CSSProperties = {};
-        if (ann) {
-          if (ann.type === 'highlight') {
-            annStyle = {
-              background: ann.color ?? 'rgba(255,214,0,0.35)',
-              borderRadius: '2px', padding: '0 1px',
-              opacity: 1,
-            };
-          } else {
-            annStyle = {
-              textDecoration: 'underline',
-              textDecorationColor: ann.color ?? accent,
-              textDecorationThickness: '2px',
-              textUnderlineOffset: '4px',
-              color: 'inherit',
-            };
-          }
-        }
-        if (seg.isBold) {
-          return (
-            <strong key={i} data-ann-id={ann?.id} style={{
-              background: ann ? undefined : accent + '22',
-              color: accent, borderRadius: '3px',
-              padding: '1px 5px', fontWeight: 600,
-              ...annStyle,
-            }}>{seg.text}</strong>
-          );
-        }
-        if (ann) {
-          return (
-            <mark key={i} data-ann-id={ann.id} style={{ background: 'transparent', color: 'inherit', ...annStyle }}>
-              {seg.text}
-            </mark>
-          );
-        }
-        return <span key={i}>{seg.text}</span>;
-      })}
-    </>
-  );
-}
 
 // ── AnnotationToolbar ─────────────────────────────────────────────────────────
 
@@ -401,13 +283,12 @@ interface SectionCardProps {
   color: string;
   understood: boolean;
   collapsed: boolean;
-  annotations: Annotation[];
   onToggleUnderstood: () => void;
   onToggleCollapsed: () => void;
 }
 
 const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function SectionCard(
-  { index, section, color, understood, collapsed, annotations, onToggleUnderstood, onToggleCollapsed },
+  { index, section, color, understood, collapsed, onToggleUnderstood, onToggleCollapsed },
   ref
 ) {
   const { ts } = useLang();
@@ -491,13 +372,9 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
 
       {/* Body */}
       <div style={{ padding: '0 clamp(14px, 4vw, 36px) 28px' }}>
-        <p className="notes-section-body" style={{
-          margin: '0 0 20px', fontSize: '15px', lineHeight: 1.80,
-          color: 'var(--text-1)', fontWeight: 400,
-          maxWidth: '640px', letterSpacing: '0.01em',
-        }}>
+        <div className="notes-section-body" style={{ margin: '0 0 20px', maxWidth: '680px' }}>
           {collapsed ? (
-            <>
+            <p style={{ margin: 0, fontSize: '15px', lineHeight: 1.80, color: 'var(--text-1)', letterSpacing: '0.01em' }}>
               {firstSentence(section.content)}
               {' '}
               <button
@@ -506,11 +383,11 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
               >
                 {ts('Read more')}
               </button>
-            </>
+            </p>
           ) : (
-            <AnnotatedRichText rawText={section.content} accent={color} annotations={annotations} />
+            <MarkdownContent content={section.content} accent={color} />
           )}
-        </p>
+        </div>
 
         {/* Formula block */}
         {!collapsed && section.formula && (
@@ -664,7 +541,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
 }) {
   const { ts } = useLang();
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation, getForSection } = useAnnotations();
+  const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation } = useAnnotations();
   const [toolbar, setToolbar] = useState<{
     rect: SelRect; sectionIndex: number; selectedText: string; existingId?: string;
   } | null>(null);
@@ -1052,7 +929,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
               color={color}
               understood={understood.has(i)}
               collapsed={collapsed.has(i)}
-              annotations={noteId ? getForSection(noteId, i) : []}
               onToggleUnderstood={() => toggleUnderstood(i)}
               onToggleCollapsed={() => toggleCollapsed(i)}
             />

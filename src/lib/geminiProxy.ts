@@ -262,47 +262,47 @@ function notesFilePrompt(subject: string, opts: GenerateOptions): string {
   const custom   = opts.customPrompt?.trim();
 
   const sectionCount = detail === 'concise' ? '3–4' : detail === 'comprehensive' ? '8–12' : '4–7';
-  const contentDepth =
+  const depthNote =
     detail === 'concise'
-      ? 'Keep each section brief — 1-2 sentences of content, 2-3 key points.'
+      ? 'Keep each section focused — 1 table + 1 callout max, 2-3 key points.'
       : detail === 'comprehensive'
-        ? 'Each section should have a thorough explanation (4-6 sentences) and 4-6 key points.'
-        : 'Each section should have a clear explanation (2-4 sentences) and 3-5 key points.';
+        ? 'Each section must be thorough — include a table, at least one Mermaid block where applicable, 4-6 key points.'
+        : 'Each section should include a table and a callout, 3-5 key points.';
 
-  const formulaInstruction = includes.includes('formulas')
-    ? 'If a section involves mathematics, physics, chemistry, or economics formulae, add a "formula" field with the key equation(s) in plain-text notation (e.g., "F = ma").'
-    : '';
-  const diagramInstruction = includes.includes('diagrams')
-    ? 'Where a process, flow, or structure is best shown visually, add a "diagram" field with a concise text diagram.'
-    : '';
   const mindmapInstruction = includes.includes('mindmap')
     ? 'Organise sections hierarchically: the first section introduces the top-level concept, subsequent sections each explore one branch.'
     : '';
 
-  const schemaExtras = (includes.includes('formulas') || includes.includes('diagrams'))
-    ? `      "formula": "optional — key equation or formula for this section",
-      "diagram": "optional — short text diagram or flow for this section",`
-    : '';
-
   return `You are an expert academic note-taker for university-level ${subject}.
 
-Analyse the content in this file and create ${detail} structured notes with ${sectionCount} sections.
-${contentDepth}
-${formulaInstruction}
-${diagramInstruction}
+Analyse the content in this file and produce ${detail} structured notes with ${sectionCount} sections.
+${depthNote}
 ${mindmapInstruction}
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
-Return ONLY valid JSON — no markdown, no commentary:
+MANDATORY FORMAT RULES — every rule must be followed:
+1. Wall-of-text is FORBIDDEN. The "content" field MUST use rich markdown, never plain prose paragraphs.
+2. Every section that introduces terminology MUST include a markdown table labelled "Key Terms Matrix":
+   | Term | Definition | Example / Context |
+   |------|-----------|-------------------|
+3. Use Mermaid.js code blocks (\`\`\`mermaid ... \`\`\`) for any process flow, hierarchy, timeline, or relationship diagram.
+4. Use GitHub-style callouts for key insights — pick the appropriate type:
+   > [!NOTE] Supplementary context or background
+   > [!TIP] Practical advice or study hacks
+   > [!WARNING] Common mistakes or important caveats
+5. Bold the first term of every bullet point using **bold**.
+6. Meta-commentary is FORBIDDEN — never write "In this section", "Here we explore", "Now we will", "Let's look at", "This section covers", etc.
+7. Each "keyPoints" item: max 15 words, starts with a **bolded term**.
+
+Return ONLY valid JSON — no markdown wrapper, no commentary:
 {
   "title": "Descriptive title of the material",
-  "summary": "2-3 sentence executive summary",
+  "summary": "2–3 sentence executive summary (plain text, no markdown)",
   "sections": [
     {
       "heading": "Section heading",
-      "content": "Main explanation paragraph",
-      ${schemaExtras}
-      "keyPoints": ["Key point 1", "Key point 2", "Key point 3"]
+      "content": "RICH MARKDOWN — tables, Mermaid blocks, callouts, bullet lists. NO plain paragraphs.",
+      "keyPoints": ["**Term**: brief definition or fact (max 15 words)"]
     }
   ]
 }`;
@@ -396,23 +396,37 @@ Return ONLY valid JSON — no markdown, no preamble:
   notes: (topic, context, level, language) =>
     `You are an expert academic note-taker for university students.
 
-Create comprehensive structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
+Create structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
 Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
 
-Return ONLY valid JSON — no markdown, no preamble:
+MANDATORY FORMAT RULES — every rule must be followed:
+1. Wall-of-text is FORBIDDEN. The "content" field MUST use rich markdown, never plain prose paragraphs.
+2. Every section that introduces terminology MUST include a markdown table labelled "Key Terms Matrix":
+   | Term | Definition | Example / Context |
+   |------|-----------|-------------------|
+3. Use Mermaid.js code blocks (\`\`\`mermaid ... \`\`\`) for any process flow, hierarchy, timeline, or relationship diagram.
+4. Use GitHub-style callouts for key insights — pick the appropriate type:
+   > [!NOTE] Supplementary context or background
+   > [!TIP] Practical advice or study hacks
+   > [!WARNING] Common mistakes or important caveats
+5. Bold the first term of every bullet point using **bold**.
+6. Meta-commentary is FORBIDDEN — never write "In this section", "Here we explore", "Now we will", "Let's look at", "This section covers", etc.
+7. Each "keyPoints" item: max 15 words, starts with a **bolded term**.
+
+Return ONLY valid JSON — no markdown wrapper, no preamble:
 {
   "title": "Descriptive title",
-  "summary": "2-3 sentence overview",
+  "summary": "2–3 sentence overview (plain text, no markdown)",
   "sections": [
     {
       "heading": "Section heading",
-      "content": "Explanation paragraph (2-4 sentences)",
-      "keyPoints": ["Key point 1", "Key point 2", "Key point 3"]
+      "content": "RICH MARKDOWN — tables, Mermaid blocks, callouts, bullet lists. NO plain paragraphs.",
+      "keyPoints": ["**Term**: brief definition or fact (max 15 words)"]
     }
   ]
 }
 
-Create 4-7 sections.`,
+Create 4–7 sections.`,
 
   quiz: (topic, context, level, language) =>
     `You are an expert exam question writer for university students.
