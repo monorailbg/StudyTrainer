@@ -23,6 +23,7 @@ const T = {
     nav_knowledge_graph: 'Knowledge Graph',
     nav_blind_spots: 'Blind Spots',
     nav_pkg: 'My Graph',
+    nav_companies: 'Companies',
     nav_generate: 'Generate',
     tagline: 'Study Platform',
     // Dashboard
@@ -96,6 +97,7 @@ const T = {
     nav_knowledge_graph: 'ナレッジグラフ',
     nav_blind_spots: '盲点検出',
     nav_pkg: 'マイグラフ',
+    nav_companies: '企業',
     nav_generate: '生成',
     tagline: '学習プラットフォーム',
     dash_title: '学習ダッシュボード',
