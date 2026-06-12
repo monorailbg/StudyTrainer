@@ -791,7 +791,7 @@ body.notes-reading .notes-reading-fade { opacity: 1; }
    top when the navbar scrolls away. The transition is driven by the
    inline style transition on the element itself. */
 .notes-reading-fade-top { top: 0; }
-body.notes-reading .notes-reading-fade-top { top: 72px; }
+body.notes-reading .notes-reading-fade-top { top: 76px; }
 body.notes-reading.notes-scrolling-down .notes-reading-fade-top { top: 0; }
 
 

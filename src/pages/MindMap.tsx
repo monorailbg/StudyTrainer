@@ -4,7 +4,7 @@ import MindMap from '../components/MindMap';
 // the remaining height with no page scroll of its own.
 export default function MindMapPage() {
   return (
-    <div style={{ position: 'relative', height: 'calc(100vh - 72px)', overflow: 'hidden', background: 'var(--bg-page)' }}>
+    <div style={{ position: 'relative', height: 'calc(100vh - 76px)', overflow: 'hidden', background: 'var(--bg-page)' }}>
       <MindMap />
     </div>
   );
