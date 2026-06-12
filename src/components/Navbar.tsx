@@ -147,7 +147,6 @@ function LangToggle() {
         pointerEvents: 'none',
       }} />
       {(['en', 'ja'] as const).map((l, idx) => {
-        const Flag = l === 'en' ? UKFlag : JapanFlag;
         const label = l === 'en' ? ts('English') : ts('Japanese');
         return (
           <button
