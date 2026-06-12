@@ -279,9 +279,11 @@ export default function Navbar() {
     <>
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50, height: '72px',
+        backgroundColor: 'var(--bg-nav)',
         background: 'var(--bg-nav)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        isolation: 'isolate',
       }}>
         <div style={{
           maxWidth: '1400px', margin: '0 auto',

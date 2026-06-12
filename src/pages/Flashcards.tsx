@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { getAllFlashcardSets, saveFlashcardSet, type StoredFlashcardSet } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudFlashcardSets, renameCloudFlashcardSet } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
@@ -146,7 +146,7 @@ export default function Flashcards() {
   const activeSubject = activeSet ? subjectMap.get(activeSet.subjectId) : undefined;
   const activeColor = activeSubject?.color ?? '#3D7EFF';
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.body.classList.toggle('flashcards-session', !!activeSet);
     return () => { document.body.classList.remove('flashcards-session'); };
   }, [activeSet]);
@@ -180,11 +180,11 @@ export default function Flashcards() {
       <div className="md:hidden" style={{ display: 'none' }} />
 
       {/* Main */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: 'clamp(14px, 4vw, 28px)' }}>
+      <main style={{ flex: 1, overflowY: 'auto', padding: 'clamp(14px, 4vw, 28px)', background: 'transparent' }}>
 
         {activeSet ? (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', width: 'min(740px, 96vw)' }}>
               <button
                 onClick={() => setActiveSet(null)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}

@@ -958,6 +958,9 @@ body.theme-light .notes-toc-toggle {
    Everything else recedes almost to black. */
 .page-flashcards-session {
   background: #080810 !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 .page-flashcards-session .flashcards-sidebar {
   opacity: 0.05;
@@ -969,9 +972,13 @@ body.theme-light .notes-toc-toggle {
 body.flashcards-session nav {
   opacity: 0.08;
   transition: opacity 200ms ease;
+  background-color: var(--bg-nav) !important;
 }
 body.flashcards-session nav:hover {
   opacity: 0.75;
+}
+nav {
+  transition: opacity 200ms ease;
 }
 .page-flashcards-session .flashcard-progress-bar-track {
   opacity: 0.15;
