@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getAllFlashcardSets, saveFlashcardSet, type StoredFlashcardSet } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudFlashcardSets, renameCloudFlashcardSet } from '../lib/cloudDb';
+import { getAllFlashcardSets, saveFlashcardSet, getFolders, type StoredFlashcardSet, type Folder } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudFlashcardSets, renameCloudFlashcardSet, getCloudFolders } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { FlashcardViewer } from '../components/FlashcardViewer';
@@ -110,6 +110,7 @@ export default function Flashcards() {
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeSet, setActiveSet] = useState<StoredFlashcardSet | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const record = useActivity(s => s.record);
 
   const commitRename = () => {
@@ -133,6 +134,14 @@ export default function Flashcards() {
       : getAllFlashcardSets().then(data => setSets(data.sort((a, b) => b.createdAt - a.createdAt)));
     p.finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!filterId) { setFolders([]); return; }
+    const p = isFirebaseConfigured
+      ? getCloudFolders(filterId).then(data => setFolders(data as Folder[]))
+      : getFolders(filterId).then(setFolders);
+    p.catch(() => {});
+  }, [filterId]);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
   const subjectsWithSets = allSubjects.filter(s => sets.some(x => x.subjectId === s.id));
@@ -245,6 +254,8 @@ export default function Flashcards() {
             {groups.map(({ subject, sets: groupSets }) => {
               if (groupSets.length === 0) return null;
               const color = subject?.color ?? '#3D7EFF';
+              const cardFolders = folders.filter(f => f.kind === 'card' && f.subjectId === subject?.id);
+              const hasFolders = filterId && cardFolders.length > 0;
               return (
                 <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -253,11 +264,51 @@ export default function Flashcards() {
                     <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} set{s}', { n: groupSets.length, s: groupSets.length !== 1 ? 's' : '' })}</span>
                     <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
                   </div>
-                  <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                    {groupSets.map((set, i) => (
-                      <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />
-                    ))}
-                  </div>
+                  {hasFolders ? (
+                    <>
+                      {cardFolders.map(folder => {
+                        const folderSets = groupSets.filter(s => s.folderId === folder.id);
+                        if (folderSets.length === 0) return null;
+                        return (
+                          <div key={folder.id} style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                              <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z" stroke="var(--text-3)" strokeWidth="1.2" fill="none"/></svg>
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)' }}>{folder.name}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{folderSets.length}</span>
+                            </div>
+                            <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                              {folderSets.map((set, i) => (
+                                <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(() => {
+                        const unfiledSets = groupSets.filter(s => !s.folderId || !cardFolders.some(f => f.id === s.folderId));
+                        if (unfiledSets.length === 0) return null;
+                        return (
+                          <div style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-3)' }}>{ts('Unfiled')}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{unfiledSets.length}</span>
+                            </div>
+                            <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                              {unfiledSets.map((set, i) => (
+                                <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                      {groupSets.map((set, i) => (
+                        <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

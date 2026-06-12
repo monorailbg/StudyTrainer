@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { getAllNotes, type StoredNote, type DictionaryEntry, saveDictionaryEntry } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudNotes } from '../lib/cloudDb';
+import { getAllNotes, getFolders, type StoredNote, type DictionaryEntry, type Folder, saveDictionaryEntry } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudNotes, getCloudFolders } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
@@ -123,6 +123,7 @@ export default function Notes() {
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeNote, setActiveNote] = useState<StoredNote | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const mainRef = useRef<HTMLElement>(null);
   const record = useActivity(s => s.record);
   const markNoteRead = useStore(s => s.markNoteRead);
@@ -133,6 +134,14 @@ export default function Notes() {
       : getAllNotes().then(data => setNotes(data.sort((a, b) => b.createdAt - a.createdAt)));
     p.finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!filterId) { setFolders([]); return; }
+    const p = isFirebaseConfigured
+      ? getCloudFolders(filterId).then(data => setFolders(data as Folder[]))
+      : getFolders(filterId).then(setFolders);
+    p.catch(() => {});
+  }, [filterId]);
 
   const addToEnglishDictionary = async (term: string, noteTitle?: string, noteId?: string) => {
     if (!activeNote) return;
@@ -273,6 +282,8 @@ export default function Notes() {
             {groups.map(({ subject, notes: groupNotes }) => {
               if (groupNotes.length === 0) return null;
               const color = subject?.color ?? '#3D7EFF';
+              const noteFolders = folders.filter(f => f.kind === 'note' && f.subjectId === subject?.id);
+              const hasFolders = filterId && noteFolders.length > 0;
               return (
                 <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -281,11 +292,51 @@ export default function Notes() {
                     <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} notes', { n: groupNotes.length })}</span>
                     <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
                   </div>
-                  <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                    {groupNotes.map((note, i) => (
-                      <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
-                    ))}
-                  </div>
+                  {hasFolders ? (
+                    <>
+                      {noteFolders.map(folder => {
+                        const folderNotes = groupNotes.filter(n => n.folderId === folder.id);
+                        if (folderNotes.length === 0) return null;
+                        return (
+                          <div key={folder.id} style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                              <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z" stroke="var(--text-3)" strokeWidth="1.2" fill="none"/></svg>
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)' }}>{folder.name}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{folderNotes.length}</span>
+                            </div>
+                            <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                              {folderNotes.map((note, i) => (
+                                <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(() => {
+                        const unfiledNotes = groupNotes.filter(n => !n.folderId || !noteFolders.some(f => f.id === n.folderId));
+                        if (unfiledNotes.length === 0) return null;
+                        return (
+                          <div style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-3)' }}>{ts('Unfiled')}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{unfiledNotes.length}</span>
+                            </div>
+                            <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                              {unfiledNotes.map((note, i) => (
+                                <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                      {groupNotes.map((note, i) => (
+                        <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

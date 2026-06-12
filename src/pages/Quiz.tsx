@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLang } from '../context/LanguageContext';
-import { getAllQuizzes, type StoredQuiz } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudQuizzes } from '../lib/cloudDb';
+import { getAllQuizzes, getFolders, type StoredQuiz, type Folder } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudQuizzes, getCloudFolders } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
@@ -108,6 +108,7 @@ export default function Quiz() {
   const [loading, setLoading] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<StoredQuiz | null>(null);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const record = useActivity(s => s.record);
   const addQuizScore = useStore(s => s.addQuizScore);
 
@@ -117,6 +118,14 @@ export default function Quiz() {
       : getAllQuizzes().then(data => setQuizzes(data.sort((a, b) => b.createdAt - a.createdAt)));
     p.finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!filterId) { setFolders([]); return; }
+    const p = isFirebaseConfigured
+      ? getCloudFolders(filterId).then(data => setFolders(data as Folder[]))
+      : getFolders(filterId).then(setFolders);
+    p.catch(() => {});
+  }, [filterId]);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
   const subjectsWithQuizzes = allSubjects.filter(s => quizzes.some(q => q.subjectId === s.id));
@@ -194,6 +203,8 @@ export default function Quiz() {
             {groups.map(({ subject, quizzes: groupQuizzes }) => {
               if (groupQuizzes.length === 0) return null;
               const color = subject?.color ?? '#3D7EFF';
+              const quizFolders = folders.filter(f => f.kind === 'quiz' && f.subjectId === subject?.id);
+              const hasFolders = filterId && quizFolders.length > 0;
               return (
                 <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -202,11 +213,51 @@ export default function Quiz() {
                     <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{groupQuizzes.length !== 1 ? ts('{n} quizzes', { n: groupQuizzes.length }) : ts('{n} quiz', { n: groupQuizzes.length })}</span>
                     <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
                   </div>
-                  <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                    {groupQuizzes.map((quiz, i) => (
-                      <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />
-                    ))}
-                  </div>
+                  {hasFolders ? (
+                    <>
+                      {quizFolders.map(folder => {
+                        const folderQuizzes = groupQuizzes.filter(q => q.folderId === folder.id);
+                        if (folderQuizzes.length === 0) return null;
+                        return (
+                          <div key={folder.id} style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                              <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z" stroke="var(--text-3)" strokeWidth="1.2" fill="none"/></svg>
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)' }}>{folder.name}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{folderQuizzes.length}</span>
+                            </div>
+                            <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                              {folderQuizzes.map((quiz, i) => (
+                                <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(() => {
+                        const unfiledQuizzes = groupQuizzes.filter(q => !q.folderId || !quizFolders.some(f => f.id === q.folderId));
+                        if (unfiledQuizzes.length === 0) return null;
+                        return (
+                          <div style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-3)' }}>{ts('Unfiled')}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{unfiledQuizzes.length}</span>
+                            </div>
+                            <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                              {unfiledQuizzes.map((quiz, i) => (
+                                <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                      {groupQuizzes.map((quiz, i) => (
+                        <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
