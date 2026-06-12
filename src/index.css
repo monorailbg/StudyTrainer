@@ -402,6 +402,13 @@ body.theme-light .md-textarea::placeholder {
 }
 .flip-card-back { transform: rotateY(180deg); }
 
+.flashcard-card:focus,
+.flashcard-card:focus-visible,
+.flashcard-card:active {
+  outline: none;
+  box-shadow: none;
+}
+
 /* ── Animations ──────────────────────────────────────────────────── */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
