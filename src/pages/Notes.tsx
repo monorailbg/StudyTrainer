@@ -11,8 +11,6 @@ import { useToast } from '../components/Toast';
 import { generateDefinition, generateJapaneseDefinition } from '../lib/geminiProxy';
 import type { SubjectDef } from '../data/subjects';
 
-// ── Error helper ───────────────────────────────────────────────────────────────
-
 function friendlyError(raw?: string): string {
   if (!raw) return 'Definition failed.';
   if (raw.includes('401') || raw.includes('API_KEY_INVALID')) return 'Invalid or expired API key. Check the server configuration.';
@@ -30,14 +28,11 @@ function SubjectBtn({ subject, count, active, onClick }: {
   const { ts } = useLang();
   const color = subject?.color ?? '#3D7EFF';
   return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '9px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-        background: active ? color + '18' : 'transparent', transition: 'background 0.15s ease',
-      }}
-    >
+    <button onClick={onClick} style={{
+      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+      padding: '9px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+      background: active ? color + '18' : 'transparent', transition: 'background 0.15s ease',
+    }}>
       <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, boxShadow: active ? `0 0 6px ${color}` : 'none' }} />
       <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {subject?.title ?? ts('All subjects')}
@@ -51,21 +46,16 @@ function FolderBtn({ name, count, active, onClick, color }: {
   name: string; count: number; active: boolean; onClick: () => void; color: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '7px 12px 7px 28px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-        background: active ? color + '12' : 'transparent', transition: 'background 0.15s ease',
-      }}
-    >
+    <button onClick={onClick} style={{
+      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '7px 12px 7px 28px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+      background: active ? color + '12' : 'transparent', transition: 'background 0.15s ease',
+    }}>
       <svg viewBox="0 0 14 14" width="11" height="11" fill="none" style={{ flexShrink: 0 }}>
         <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z"
           stroke={active ? color : 'var(--text-3)'} strokeWidth="1.2" fill={active ? color + '20' : 'none'} />
       </svg>
-      <span style={{ flex: 1, minWidth: 0, fontSize: '11px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {name}
-      </span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: '11px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       <span style={{ fontSize: '10px', color: active ? color : 'var(--text-3)' }}>{count}</span>
     </button>
   );
@@ -76,15 +66,12 @@ function FolderBtn({ name, count, active, onClick, color }: {
 function NoteCard({ note, color, onClick, index = 0 }: { note: StoredNote; color: string; onClick: () => void; index?: number }) {
   const { ts } = useLang();
   return (
-    <button
-      onClick={onClick}
-      className="anim-rise"
-      style={{
-        ['--d' as string]: `${index * 45}ms`,
-        background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '16px',
-        padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
-        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
-      }}
+    <button onClick={onClick} className="anim-rise" style={{
+      ['--d' as string]: `${index * 45}ms`,
+      background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '16px',
+      padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
+      transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
+    }}
       onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.borderColor = color + '50'; el.style.boxShadow = `0 4px 16px ${color}14`; }}
       onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = ''; el.style.borderColor = 'var(--border-light)'; el.style.boxShadow = ''; }}
     >
@@ -112,21 +99,26 @@ function Empty() {
   );
 }
 
-// ── Folder section header ─────────────────────────────────────────────────────
+// ── Folder section (collapsible) ──────────────────────────────────────────────
 
-function FolderSection({ name, count, color, children }: { name: string; count: number; color: string; children: React.ReactNode }) {
+function FolderSection({ name, count, color, collapsed, onToggle, children }: {
+  name: string; count: number; color: string; collapsed: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-        <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+    <div style={{ marginBottom: '20px' }}>
+      <button onClick={onToggle} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: collapsed ? 0 : '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+        <svg viewBox="0 0 14 14" width="14" height="14" fill="none" style={{ flexShrink: 0 }}>
           <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z"
-            stroke={color} strokeWidth="1.2" fill={color + '15'} />
+            stroke={color} strokeWidth="1.2" fill={color + '18'} />
         </svg>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)' }}>{name}</span>
-        <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{count}</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>{name}</span>
+        <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 500 }}>{count}</span>
         <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
-      </div>
-      {children}
+        <svg viewBox="0 0 10 10" width="10" height="10" fill="none" style={{ flexShrink: 0, transition: 'transform 0.2s ease', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="var(--text-3)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {!collapsed && children}
     </div>
   );
 }
@@ -144,25 +136,33 @@ export default function Notes() {
   const [activeNote, setActiveNote] = useState<StoredNote | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const mainRef = useRef<HTMLElement>(null);
   const record = useActivity(s => s.record);
   const markNoteRead = useStore(s => s.markNoteRead);
 
-  useEffect(() => {
-    const p = isFirebaseConfigured
-      ? getAllCloudNotes().then(data => setNotes(data as StoredNote[]))
-      : getAllNotes().then(data => setNotes(data.sort((a, b) => b.createdAt - a.createdAt)));
-    p.finally(() => setLoading(false));
-  }, []);
+  const toggleFolder = (id: string) => setCollapsedFolders(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   useEffect(() => {
-    setFolderFilter(null);
-    if (!filterId) { setFolders([]); return; }
-    const p = isFirebaseConfigured
-      ? getCloudFolders(filterId).then(data => setFolders(data as Folder[]))
-      : getFolders(filterId).then(setFolders);
-    p.catch(() => setFolders([]));
-  }, [filterId]);
+    const loadData = isFirebaseConfigured
+      ? getAllCloudNotes().then(data => data as StoredNote[])
+      : getAllNotes().then(data => data.sort((a, b) => b.createdAt - a.createdAt));
+
+    loadData.then(data => {
+      setNotes(data);
+      const subjectIds = [...new Set(data.map(n => n.subjectId))];
+      return Promise.all(subjectIds.map(id => isFirebaseConfigured
+        ? getCloudFolders(id).then(f => f as Folder[])
+        : getFolders(id)
+      ));
+    }).then(results => setFolders(results.flat())).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { setFolderFilter(null); }, [filterId]);
 
   const addToEnglishDictionary = async (term: string, noteTitle?: string, noteId?: string) => {
     if (!activeNote) return;
@@ -179,9 +179,7 @@ export default function Notes() {
       };
       await saveDictionaryEntry(entry);
       toast('success', `"${trimmed}" added to dictionary`, definition.replace(/^[•\-*]\s*/gm, '').trim());
-    } catch (err) {
-      toast('error', `Failed to define "${trimmed}"`, friendlyError(String(err)));
-    }
+    } catch (err) { toast('error', `Failed to define "${trimmed}"`, friendlyError(String(err))); }
   };
 
   const addToJapaneseDictionary = async (term: string, noteTitle?: string, noteId?: string) => {
@@ -199,21 +197,20 @@ export default function Notes() {
       };
       await saveDictionaryEntry(entry);
       toast('success', `"${trimmed}" を翻訳しました`, definition.replace(/^[•\-*]\s*/gm, '').trim());
-    } catch (err) {
-      toast('error', `翻訳に失敗しました "${trimmed}"`, friendlyError(String(err)));
-    }
+    } catch (err) { toast('error', `翻訳に失敗しました "${trimmed}"`, friendlyError(String(err))); }
   };
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
   const subjectsWithNotes = allSubjects.filter(s => notes.some(n => n.subjectId === s.id));
   const noteFolders = folders.filter(f => f.kind === 'note');
+  const subjectNoteFolders = filterId ? noteFolders.filter(f => f.subjectId === filterId) : [];
 
   const visibleNotes = (() => {
     if (!filterId) return notes;
-    const subjectNotes = notes.filter(n => n.subjectId === filterId);
-    if (folderFilter === 'unfiled') return subjectNotes.filter(n => !n.folderId || !noteFolders.some(f => f.id === n.folderId));
-    if (folderFilter) return subjectNotes.filter(n => n.folderId === folderFilter);
-    return subjectNotes;
+    const sn = notes.filter(n => n.subjectId === filterId);
+    if (folderFilter === 'unfiled') return sn.filter(n => !n.folderId || !subjectNoteFolders.some(f => f.id === n.folderId));
+    if (folderFilter) return sn.filter(n => n.folderId === folderFilter);
+    return sn;
   })();
 
   const activeSubject = activeNote ? subjectMap.get(activeNote.subjectId) : undefined;
@@ -221,17 +218,54 @@ export default function Notes() {
   const selectedSubject = filterId ? subjectMap.get(filterId) : undefined;
   const selectedColor = selectedSubject?.color ?? '#3D7EFF';
 
-  const countForFolder = (folderId: string) =>
-    notes.filter(n => n.subjectId === filterId && n.folderId === folderId).length;
-  const countUnfiled = () => {
-    const sn = notes.filter(n => n.subjectId === filterId);
-    return sn.filter(n => !n.folderId || !noteFolders.some(f => f.id === n.folderId)).length;
+  const countForFolder = (subjectId: string, folderId: string) =>
+    notes.filter(n => n.subjectId === subjectId && n.folderId === folderId).length;
+  const countUnfiledFor = (subjectId: string) => {
+    const sf = noteFolders.filter(f => f.subjectId === subjectId);
+    return notes.filter(n => n.subjectId === subjectId && (!n.folderId || !sf.some(f => f.id === n.folderId))).length;
   };
 
   useEffect(() => {
     document.body.classList.toggle('notes-reading', !!activeNote);
     return () => { document.body.classList.remove('notes-reading'); };
   }, [activeNote]);
+
+  const renderNoteGrid = (groupNotes: StoredNote[], subjectId: string, color: string, onOpen: (n: StoredNote) => void) => {
+    const sf = noteFolders.filter(f => f.subjectId === subjectId);
+    if (sf.length === 0) {
+      return (
+        <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+          {groupNotes.map((note, i) => <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => onOpen(note)} />)}
+        </div>
+      );
+    }
+    const unfiledNotes = groupNotes.filter(n => !n.folderId || !sf.some(f => f.id === n.folderId));
+    return (
+      <>
+        {sf.map(folder => {
+          const folderNotes = groupNotes.filter(n => n.folderId === folder.id);
+          if (folderNotes.length === 0) return null;
+          const isCollapsed = collapsedFolders.has(folder.id);
+          return (
+            <FolderSection key={folder.id} name={folder.name} count={folderNotes.length} color={color} collapsed={isCollapsed} onToggle={() => toggleFolder(folder.id)}>
+              <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                {folderNotes.map((note, i) => <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => onOpen(note)} />)}
+              </div>
+            </FolderSection>
+          );
+        })}
+        {unfiledNotes.length > 0 && (
+          <FolderSection name={ts('Unfiled')} count={unfiledNotes.length} color="#94a3b8" collapsed={collapsedFolders.has(`${subjectId}:unfiled`)} onToggle={() => toggleFolder(`${subjectId}:unfiled`)}>
+            <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+              {unfiledNotes.map((note, i) => <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => onOpen(note)} />)}
+            </div>
+          </FolderSection>
+        )}
+      </>
+    );
+  };
+
+  const openNote = (note: StoredNote) => { setActiveNote(note); setSidebarOpen(false); };
 
   const renderMain = () => {
     if (loading) return <SkeletonCardGrid />;
@@ -243,7 +277,6 @@ export default function Notes() {
       </div>
     );
 
-    // All-subjects view
     if (!filterId) {
       return (
         <div>
@@ -252,16 +285,14 @@ export default function Notes() {
             if (groupNotes.length === 0) return null;
             const color = s.color ?? '#3D7EFF';
             return (
-              <div key={s.id} style={{ marginBottom: '32px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div key={s.id} style={{ marginBottom: '36px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.06em' }}>{s.title}</span>
                   <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} notes', { n: groupNotes.length })}</span>
                   <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
                 </div>
-                <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                  {groupNotes.map((note, i) => <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
-                </div>
+                {renderNoteGrid(groupNotes, s.id, color, openNote)}
               </div>
             );
           })}
@@ -269,55 +300,19 @@ export default function Notes() {
       );
     }
 
-    // Specific folder selected
     if (folderFilter) {
       return (
         <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-          {visibleNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
+          {visibleNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => openNote(note)} />)}
         </div>
       );
     }
 
-    // Subject selected, group by folder
-    if (noteFolders.length > 0) {
-      const subjectNotes = notes.filter(n => n.subjectId === filterId);
-      const unfiledNotes = subjectNotes.filter(n => !n.folderId || !noteFolders.some(f => f.id === n.folderId));
-      return (
-        <div>
-          {noteFolders.map(folder => {
-            const folderNotes = subjectNotes.filter(n => n.folderId === folder.id);
-            if (folderNotes.length === 0) return null;
-            return (
-              <FolderSection key={folder.id} name={folder.name} count={folderNotes.length} color={selectedColor}>
-                <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                  {folderNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
-                </div>
-              </FolderSection>
-            );
-          })}
-          {unfiledNotes.length > 0 && (
-            <FolderSection name={ts('Unfiled')} count={unfiledNotes.length} color="#94a3b8">
-              <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                {unfiledNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
-              </div>
-            </FolderSection>
-          )}
-        </div>
-      );
-    }
-
-    // Subject selected, no folders
-    return (
-      <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-        {visibleNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
-      </div>
-    );
+    return renderNoteGrid(visibleNotes, filterId, selectedColor, openNote);
   };
 
   return (
     <div className={activeNote ? 'page-notes-reading' : ''} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: 'var(--bg-page)' }}>
-
-      {/* Sidebar */}
       <aside className="notes-sidebar hidden md:flex flex-col" style={{
         width: sidebarOpen ? '220px' : '0', flexShrink: 0,
         borderRight: sidebarOpen ? '1px solid var(--border-light)' : 'none',
@@ -328,41 +323,28 @@ export default function Notes() {
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Notes')}
         </div>
-
         <SubjectBtn subject={null} count={notes.length} active={filterId === null}
           onClick={() => { setFilterId(null); setActiveNote(null); setSidebarOpen(true); }} />
-
         {subjectsWithNotes.map(s => {
           const isSelected = filterId === s.id;
           const color = s.color ?? '#3D7EFF';
+          const sf = noteFolders.filter(f => f.subjectId === s.id);
           return (
             <div key={s.id}>
-              <SubjectBtn
-                subject={s}
-                count={notes.filter(n => n.subjectId === s.id).length}
+              <SubjectBtn subject={s} count={notes.filter(n => n.subjectId === s.id).length}
                 active={isSelected && folderFilter === null}
-                onClick={() => { setFilterId(s.id); setFolderFilter(null); setActiveNote(null); setSidebarOpen(true); }}
-              />
-              {isSelected && noteFolders.length > 0 && (
+                onClick={() => { setFilterId(s.id); setFolderFilter(null); setActiveNote(null); setSidebarOpen(true); }} />
+              {isSelected && sf.length > 0 && (
                 <div style={{ marginTop: '2px', marginBottom: '2px' }}>
-                  {noteFolders.map(folder => (
-                    <FolderBtn
-                      key={folder.id}
-                      name={folder.name}
-                      count={countForFolder(folder.id)}
-                      active={folderFilter === folder.id}
-                      color={color}
-                      onClick={() => { setFolderFilter(folder.id); setActiveNote(null); setSidebarOpen(true); }}
-                    />
+                  {sf.map(folder => (
+                    <FolderBtn key={folder.id} name={folder.name} count={countForFolder(s.id, folder.id)}
+                      active={folderFilter === folder.id} color={color}
+                      onClick={() => { setFolderFilter(folder.id); setActiveNote(null); setSidebarOpen(true); }} />
                   ))}
-                  {countUnfiled() > 0 && (
-                    <FolderBtn
-                      name={ts('Unfiled')}
-                      count={countUnfiled()}
-                      active={folderFilter === 'unfiled'}
-                      color={color}
-                      onClick={() => { setFolderFilter('unfiled'); setActiveNote(null); setSidebarOpen(true); }}
-                    />
+                  {countUnfiledFor(s.id) > 0 && (
+                    <FolderBtn name={ts('Unfiled')} count={countUnfiledFor(s.id)}
+                      active={folderFilter === 'unfiled'} color={color}
+                      onClick={() => { setFolderFilter('unfiled'); setActiveNote(null); setSidebarOpen(true); }} />
                   )}
                 </div>
               )}
@@ -371,31 +353,21 @@ export default function Notes() {
         })}
       </aside>
 
-      {/* Main */}
       <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', padding: activeNote ? 0 : 'clamp(14px, 4vw, 28px)' }}>
         {activeNote ? (
           <div>
             <div className="notes-breadcrumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <button
-                onClick={() => { setActiveNote(null); setSidebarOpen(true); }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
+              <button onClick={() => { setActiveNote(null); setSidebarOpen(true); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 ← {ts('All notes')}
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {activeSubject && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />}
-                <span style={{ fontSize: '11px', color: 'var(--text-2)', fontWeight: 600 }}>
-                  {activeSubject?.title ?? ''} · {activeNote.name}
-                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text-2)', fontWeight: 600 }}>{activeSubject?.title ?? ''} · {activeNote.name}</span>
               </div>
             </div>
-            <NotesViewer
-              key={activeNote.id}
-              notes={activeNote.note}
-              color={activeColor}
-              noteId={activeNote.id}
-              noteTitle={activeNote.name}
-              scrollElRef={mainRef}
+            <NotesViewer key={activeNote.id} notes={activeNote.note} color={activeColor}
+              noteId={activeNote.id} noteTitle={activeNote.name} scrollElRef={mainRef}
               onRead={() => {
                 const already = useStore.getState().notesRead.includes(activeNote.id);
                 markNoteRead(activeNote.id);
@@ -405,8 +377,7 @@ export default function Notes() {
                 }
               }}
               onAddToDictionary={addToEnglishDictionary}
-              onAddToJapaneseDictionary={addToJapaneseDictionary}
-            />
+              onAddToJapaneseDictionary={addToJapaneseDictionary} />
           </div>
         ) : renderMain()}
       </main>

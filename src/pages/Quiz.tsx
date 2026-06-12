@@ -17,14 +17,11 @@ function SubjectBtn({ subject, count, active, onClick }: {
   const { ts } = useLang();
   const color = subject?.color ?? '#3D7EFF';
   return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '9px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-        background: active ? color + '18' : 'transparent', transition: 'background 0.15s ease',
-      }}
-    >
+    <button onClick={onClick} style={{
+      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+      padding: '9px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+      background: active ? color + '18' : 'transparent', transition: 'background 0.15s ease',
+    }}>
       <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, boxShadow: active ? `0 0 6px ${color}` : 'none' }} />
       <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {subject?.title ?? ts('All subjects')}
@@ -38,21 +35,16 @@ function FolderBtn({ name, count, active, onClick, color }: {
   name: string; count: number; active: boolean; onClick: () => void; color: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '7px 12px 7px 28px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-        background: active ? color + '12' : 'transparent', transition: 'background 0.15s ease',
-      }}
-    >
+    <button onClick={onClick} style={{
+      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '7px 12px 7px 28px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+      background: active ? color + '12' : 'transparent', transition: 'background 0.15s ease',
+    }}>
       <svg viewBox="0 0 14 14" width="11" height="11" fill="none" style={{ flexShrink: 0 }}>
         <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z"
           stroke={active ? color : 'var(--text-3)'} strokeWidth="1.2" fill={active ? color + '20' : 'none'} />
       </svg>
-      <span style={{ flex: 1, minWidth: 0, fontSize: '11px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {name}
-      </span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: '11px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       <span style={{ fontSize: '10px', color: active ? color : 'var(--text-3)' }}>{count}</span>
     </button>
   );
@@ -63,15 +55,12 @@ function FolderBtn({ name, count, active, onClick, color }: {
 function QuizCard({ quiz, color, onClick, index = 0 }: { quiz: StoredQuiz; color: string; onClick: () => void; index?: number }) {
   const { ts } = useLang();
   return (
-    <button
-      onClick={onClick}
-      className="anim-rise"
-      style={{
-        ['--d' as string]: `${index * 45}ms`,
-        background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '16px',
-        padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
-        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
-      }}
+    <button onClick={onClick} className="anim-rise" style={{
+      ['--d' as string]: `${index * 45}ms`,
+      background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '16px',
+      padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
+      transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
+    }}
       onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.borderColor = color + '50'; el.style.boxShadow = `0 4px 16px ${color}14`; }}
       onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = ''; el.style.borderColor = 'var(--border-light)'; el.style.boxShadow = ''; }}
     >
@@ -99,21 +88,26 @@ function Empty() {
   );
 }
 
-// ── Folder section header ─────────────────────────────────────────────────────
+// ── Folder section (collapsible) ──────────────────────────────────────────────
 
-function FolderSection({ name, count, color, children }: { name: string; count: number; color: string; children: React.ReactNode }) {
+function FolderSection({ name, count, color, collapsed, onToggle, children }: {
+  name: string; count: number; color: string; collapsed: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-        <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+    <div style={{ marginBottom: '20px' }}>
+      <button onClick={onToggle} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: collapsed ? 0 : '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+        <svg viewBox="0 0 14 14" width="14" height="14" fill="none" style={{ flexShrink: 0 }}>
           <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z"
-            stroke={color} strokeWidth="1.2" fill={color + '15'} />
+            stroke={color} strokeWidth="1.2" fill={color + '18'} />
         </svg>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)' }}>{name}</span>
-        <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{count}</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>{name}</span>
+        <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 500 }}>{count}</span>
         <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
-      </div>
-      {children}
+        <svg viewBox="0 0 10 10" width="10" height="10" fill="none" style={{ flexShrink: 0, transition: 'transform 0.2s ease', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="var(--text-3)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {!collapsed && children}
     </div>
   );
 }
@@ -129,35 +123,44 @@ export default function Quiz() {
   const [folderFilter, setFolderFilter] = useState<string | 'unfiled' | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<StoredQuiz | null>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const record = useActivity(s => s.record);
   const addQuizScore = useStore(s => s.addQuizScore);
 
-  useEffect(() => {
-    const p = isFirebaseConfigured
-      ? getAllCloudQuizzes().then(data => setQuizzes(data as StoredQuiz[]))
-      : getAllQuizzes().then(data => setQuizzes(data.sort((a, b) => b.createdAt - a.createdAt)));
-    p.finally(() => setLoading(false));
-  }, []);
+  const toggleFolder = (id: string) => setCollapsedFolders(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   useEffect(() => {
-    setFolderFilter(null);
-    if (!filterId) { setFolders([]); return; }
-    const p = isFirebaseConfigured
-      ? getCloudFolders(filterId).then(data => setFolders(data as Folder[]))
-      : getFolders(filterId).then(setFolders);
-    p.catch(() => setFolders([]));
-  }, [filterId]);
+    const loadData = isFirebaseConfigured
+      ? getAllCloudQuizzes().then(data => data as StoredQuiz[])
+      : getAllQuizzes().then(data => data.sort((a, b) => b.createdAt - a.createdAt));
+
+    loadData.then(data => {
+      setQuizzes(data);
+      const subjectIds = [...new Set(data.map(q => q.subjectId))];
+      return Promise.all(subjectIds.map(id => isFirebaseConfigured
+        ? getCloudFolders(id).then(f => f as Folder[])
+        : getFolders(id)
+      ));
+    }).then(results => setFolders(results.flat())).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { setFolderFilter(null); }, [filterId]);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
   const subjectsWithQuizzes = allSubjects.filter(s => quizzes.some(q => q.subjectId === s.id));
   const quizFolders = folders.filter(f => f.kind === 'quiz');
+  const subjectQuizFolders = filterId ? quizFolders.filter(f => f.subjectId === filterId) : [];
 
   const visibleQuizzes = (() => {
     if (!filterId) return quizzes;
-    const subjectQuizzes = quizzes.filter(q => q.subjectId === filterId);
-    if (folderFilter === 'unfiled') return subjectQuizzes.filter(q => !q.folderId || !quizFolders.some(f => f.id === q.folderId));
-    if (folderFilter) return subjectQuizzes.filter(q => q.folderId === folderFilter);
-    return subjectQuizzes;
+    const sq = quizzes.filter(q => q.subjectId === filterId);
+    if (folderFilter === 'unfiled') return sq.filter(q => !q.folderId || !subjectQuizFolders.some(f => f.id === q.folderId));
+    if (folderFilter) return sq.filter(q => q.folderId === folderFilter);
+    return sq;
   })();
 
   const activeSubject = activeQuiz ? subjectMap.get(activeQuiz.subjectId) : undefined;
@@ -165,11 +168,46 @@ export default function Quiz() {
   const selectedSubject = filterId ? subjectMap.get(filterId) : undefined;
   const selectedColor = selectedSubject?.color ?? '#3D7EFF';
 
-  const countForFolder = (folderId: string) =>
-    quizzes.filter(q => q.subjectId === filterId && q.folderId === folderId).length;
-  const countUnfiled = () => {
-    const sq = quizzes.filter(q => q.subjectId === filterId);
-    return sq.filter(q => !q.folderId || !quizFolders.some(f => f.id === q.folderId)).length;
+  const countForFolder = (subjectId: string, folderId: string) =>
+    quizzes.filter(q => q.subjectId === subjectId && q.folderId === folderId).length;
+  const countUnfiledFor = (subjectId: string) => {
+    const sf = quizFolders.filter(f => f.subjectId === subjectId);
+    return quizzes.filter(q => q.subjectId === subjectId && (!q.folderId || !sf.some(f => f.id === q.folderId))).length;
+  };
+
+  const renderQuizGrid = (groupQuizzes: StoredQuiz[], subjectId: string, color: string) => {
+    const sf = quizFolders.filter(f => f.subjectId === subjectId);
+    if (sf.length === 0) {
+      return (
+        <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+          {groupQuizzes.map((quiz, i) => <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />)}
+        </div>
+      );
+    }
+    const unfiledQuizzes = groupQuizzes.filter(q => !q.folderId || !sf.some(f => f.id === q.folderId));
+    return (
+      <>
+        {sf.map(folder => {
+          const folderQuizzes = groupQuizzes.filter(q => q.folderId === folder.id);
+          if (folderQuizzes.length === 0) return null;
+          const isCollapsed = collapsedFolders.has(folder.id);
+          return (
+            <FolderSection key={folder.id} name={folder.name} count={folderQuizzes.length} color={color} collapsed={isCollapsed} onToggle={() => toggleFolder(folder.id)}>
+              <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                {folderQuizzes.map((quiz, i) => <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />)}
+              </div>
+            </FolderSection>
+          );
+        })}
+        {unfiledQuizzes.length > 0 && (
+          <FolderSection name={ts('Unfiled')} count={unfiledQuizzes.length} color="#94a3b8" collapsed={collapsedFolders.has(`${subjectId}:unfiled`)} onToggle={() => toggleFolder(`${subjectId}:unfiled`)}>
+            <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+              {unfiledQuizzes.map((quiz, i) => <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />)}
+            </div>
+          </FolderSection>
+        )}
+      </>
+    );
   };
 
   const renderMain = () => {
@@ -182,7 +220,6 @@ export default function Quiz() {
       </div>
     );
 
-    // All-subjects view
     if (!filterId) {
       return (
         <div>
@@ -191,16 +228,14 @@ export default function Quiz() {
             if (groupQuizzes.length === 0) return null;
             const color = s.color ?? '#3D7EFF';
             return (
-              <div key={s.id} style={{ marginBottom: '32px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div key={s.id} style={{ marginBottom: '36px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.06em' }}>{s.title}</span>
                   <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{groupQuizzes.length !== 1 ? ts('{n} quizzes', { n: groupQuizzes.length }) : ts('{n} quiz', { n: groupQuizzes.length })}</span>
                   <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
                 </div>
-                <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                  {groupQuizzes.map((quiz, i) => <QuizCard key={quiz.id} quiz={quiz} color={color} index={i} onClick={() => setActiveQuiz(quiz)} />)}
-                </div>
+                {renderQuizGrid(groupQuizzes, s.id, color)}
               </div>
             );
           })}
@@ -208,7 +243,6 @@ export default function Quiz() {
       );
     }
 
-    // Specific folder selected
     if (folderFilter) {
       return (
         <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
@@ -217,46 +251,11 @@ export default function Quiz() {
       );
     }
 
-    // Subject selected, group by folder
-    if (quizFolders.length > 0) {
-      const subjectQuizzes = quizzes.filter(q => q.subjectId === filterId);
-      const unfiledQuizzes = subjectQuizzes.filter(q => !q.folderId || !quizFolders.some(f => f.id === q.folderId));
-      return (
-        <div>
-          {quizFolders.map(folder => {
-            const folderQuizzes = subjectQuizzes.filter(q => q.folderId === folder.id);
-            if (folderQuizzes.length === 0) return null;
-            return (
-              <FolderSection key={folder.id} name={folder.name} count={folderQuizzes.length} color={selectedColor}>
-                <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                  {folderQuizzes.map((quiz, i) => <QuizCard key={quiz.id} quiz={quiz} color={selectedColor} index={i} onClick={() => setActiveQuiz(quiz)} />)}
-                </div>
-              </FolderSection>
-            );
-          })}
-          {unfiledQuizzes.length > 0 && (
-            <FolderSection name={ts('Unfiled')} count={unfiledQuizzes.length} color="#94a3b8">
-              <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                {unfiledQuizzes.map((quiz, i) => <QuizCard key={quiz.id} quiz={quiz} color={selectedColor} index={i} onClick={() => setActiveQuiz(quiz)} />)}
-              </div>
-            </FolderSection>
-          )}
-        </div>
-      );
-    }
-
-    // Subject selected, no folders
-    return (
-      <div className="quiz-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-        {visibleQuizzes.map((quiz, i) => <QuizCard key={quiz.id} quiz={quiz} color={selectedColor} index={i} onClick={() => setActiveQuiz(quiz)} />)}
-      </div>
-    );
+    return renderQuizGrid(visibleQuizzes, filterId, selectedColor);
   };
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 76px)', background: 'var(--bg-page)' }}>
-
-      {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{
         width: activeQuiz ? '0' : '220px', flexShrink: 0,
         borderRight: activeQuiz ? 'none' : '1px solid var(--border-light)',
@@ -267,41 +266,28 @@ export default function Quiz() {
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Quizzes')}
         </div>
-
         <SubjectBtn subject={null} count={quizzes.length} active={filterId === null}
           onClick={() => { setFilterId(null); setActiveQuiz(null); }} />
-
         {subjectsWithQuizzes.map(s => {
           const isSelected = filterId === s.id;
           const color = s.color ?? '#3D7EFF';
+          const sf = quizFolders.filter(f => f.subjectId === s.id);
           return (
             <div key={s.id}>
-              <SubjectBtn
-                subject={s}
-                count={quizzes.filter(q => q.subjectId === s.id).length}
+              <SubjectBtn subject={s} count={quizzes.filter(q => q.subjectId === s.id).length}
                 active={isSelected && folderFilter === null}
-                onClick={() => { setFilterId(s.id); setFolderFilter(null); setActiveQuiz(null); }}
-              />
-              {isSelected && quizFolders.length > 0 && (
+                onClick={() => { setFilterId(s.id); setFolderFilter(null); setActiveQuiz(null); }} />
+              {isSelected && sf.length > 0 && (
                 <div style={{ marginTop: '2px', marginBottom: '2px' }}>
-                  {quizFolders.map(folder => (
-                    <FolderBtn
-                      key={folder.id}
-                      name={folder.name}
-                      count={countForFolder(folder.id)}
-                      active={folderFilter === folder.id}
-                      color={color}
-                      onClick={() => { setFolderFilter(folder.id); setActiveQuiz(null); }}
-                    />
+                  {sf.map(folder => (
+                    <FolderBtn key={folder.id} name={folder.name} count={countForFolder(s.id, folder.id)}
+                      active={folderFilter === folder.id} color={color}
+                      onClick={() => { setFolderFilter(folder.id); setActiveQuiz(null); }} />
                   ))}
-                  {countUnfiled() > 0 && (
-                    <FolderBtn
-                      name={ts('Unfiled')}
-                      count={countUnfiled()}
-                      active={folderFilter === 'unfiled'}
-                      color={color}
-                      onClick={() => { setFolderFilter('unfiled'); setActiveQuiz(null); }}
-                    />
+                  {countUnfiledFor(s.id) > 0 && (
+                    <FolderBtn name={ts('Unfiled')} count={countUnfiledFor(s.id)}
+                      active={folderFilter === 'unfiled'} color={color}
+                      onClick={() => { setFolderFilter('unfiled'); setActiveQuiz(null); }} />
                   )}
                 </div>
               )}
@@ -310,7 +296,6 @@ export default function Quiz() {
         })}
       </aside>
 
-      {/* Main */}
       <main style={{ flex: 1, overflowY: 'auto', padding: 'clamp(14px, 4vw, 28px)' }}>
         {activeQuiz ? (
           <div>
@@ -325,20 +310,14 @@ export default function Quiz() {
                 </span>
               </div>
             </div>
-            <QuizViewer
-              key={activeQuiz.id}
-              questions={activeQuiz.questions}
-              color={activeColor}
-              quizId={activeQuiz.id}
-              quizTitle={activeQuiz.name}
-              subjectId={activeQuiz.subjectId}
+            <QuizViewer key={activeQuiz.id} questions={activeQuiz.questions} color={activeColor}
+              quizId={activeQuiz.id} quizTitle={activeQuiz.name} subjectId={activeQuiz.subjectId}
               onExit={() => setActiveQuiz(null)}
               onComplete={(result) => {
                 const name = activeSubject?.title ?? ts('a subject');
                 addQuizScore(activeSubject?.id ?? activeQuiz.subjectId, result.correctAnswers, result.totalQuestions);
                 record({ type: 'quiz', subjectId: activeQuiz.subjectId, subjectName: name, detail: ts('Scored {percent}% on {name} quiz', { percent: result.scorePercent, name }) });
-              }}
-            />
+              }} />
           </div>
         ) : renderMain()}
       </main>

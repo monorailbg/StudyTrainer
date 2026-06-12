@@ -17,19 +17,12 @@ function SubjectBtn({ subject, count, active, onClick }: {
   const { ts } = useLang();
   const color = subject?.color ?? '#3D7EFF';
   return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '9px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-        background: active ? color + '18' : 'transparent',
-        transition: 'background 0.15s ease',
-      }}
-    >
-      <span style={{
-        width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-        background: color, boxShadow: active ? `0 0 6px ${color}` : 'none',
-      }} />
+    <button onClick={onClick} style={{
+      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+      padding: '9px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+      background: active ? color + '18' : 'transparent', transition: 'background 0.15s ease',
+    }}>
+      <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, boxShadow: active ? `0 0 6px ${color}` : 'none' }} />
       <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {subject?.title ?? ts('All subjects')}
       </span>
@@ -42,22 +35,16 @@ function FolderBtn({ name, count, active, onClick, color }: {
   name: string; count: number; active: boolean; onClick: () => void; color: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '7px 12px 7px 28px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-        background: active ? color + '12' : 'transparent',
-        transition: 'background 0.15s ease',
-      }}
-    >
+    <button onClick={onClick} style={{
+      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '7px 12px 7px 28px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+      background: active ? color + '12' : 'transparent', transition: 'background 0.15s ease',
+    }}>
       <svg viewBox="0 0 14 14" width="11" height="11" fill="none" style={{ flexShrink: 0 }}>
         <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z"
           stroke={active ? color : 'var(--text-3)'} strokeWidth="1.2" fill={active ? color + '20' : 'none'} />
       </svg>
-      <span style={{ flex: 1, minWidth: 0, fontSize: '11px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {name}
-      </span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: '11px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       <span style={{ fontSize: '10px', color: active ? color : 'var(--text-3)' }}>{count}</span>
     </button>
   );
@@ -68,15 +55,12 @@ function FolderBtn({ name, count, active, onClick, color }: {
 function SetCard({ set, color, onClick, index = 0 }: { set: StoredFlashcardSet; color: string; onClick: () => void; index?: number }) {
   const { ts } = useLang();
   return (
-    <button
-      onClick={onClick}
-      className="anim-rise"
-      style={{
-        ['--d' as string]: `${index * 45}ms`,
-        background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '16px',
-        padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
-        transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
-      }}
+    <button onClick={onClick} className="anim-rise" style={{
+      ['--d' as string]: `${index * 45}ms`,
+      background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '16px',
+      padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
+      transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
+    }}
       onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.borderColor = color + '50'; el.style.boxShadow = `0 4px 16px ${color}14`; }}
       onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = ''; el.style.borderColor = 'var(--border-light)'; el.style.boxShadow = ''; }}
     >
@@ -104,21 +88,29 @@ function Empty() {
   );
 }
 
-// ── Folder section header ─────────────────────────────────────────────────────
+// ── Folder section (collapsible) ──────────────────────────────────────────────
 
-function FolderSection({ name, count, color, children }: { name: string; count: number; color: string; children: React.ReactNode }) {
+function FolderSection({ name, count, color, collapsed, onToggle, children }: {
+  name: string; count: number; color: string; collapsed: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-        <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+    <div style={{ marginBottom: '20px' }}>
+      <button
+        onClick={onToggle}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: collapsed ? 0 : '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}
+      >
+        <svg viewBox="0 0 14 14" width="14" height="14" fill="none" style={{ flexShrink: 0 }}>
           <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z"
-            stroke={color} strokeWidth="1.2" fill={color + '15'} />
+            stroke={color} strokeWidth="1.2" fill={color + '18'} />
         </svg>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)' }}>{name}</span>
-        <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{count}</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>{name}</span>
+        <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 500 }}>{count}</span>
         <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
-      </div>
-      {children}
+        <svg viewBox="0 0 10 10" width="10" height="10" fill="none" style={{ flexShrink: 0, transition: 'transform 0.2s ease', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="var(--text-3)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {!collapsed && children}
     </div>
   );
 }
@@ -135,7 +127,14 @@ export default function Flashcards() {
   const [activeSet, setActiveSet] = useState<StoredFlashcardSet | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const record = useActivity(s => s.record);
+
+  const toggleFolder = (id: string) => setCollapsedFolders(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const commitRename = () => {
     if (!renaming) return;
@@ -152,34 +151,40 @@ export default function Flashcards() {
     setRenaming(null);
   };
 
+  // Load all sets, then eagerly load folders for every subject that has sets
   useEffect(() => {
-    const p = isFirebaseConfigured
-      ? getAllCloudFlashcardSets().then(data => setSets(data as StoredFlashcardSet[]))
-      : getAllFlashcardSets().then(data => setSets(data.sort((a, b) => b.createdAt - a.createdAt)));
-    p.finally(() => setLoading(false));
+    const loadData = isFirebaseConfigured
+      ? getAllCloudFlashcardSets().then(data => data as StoredFlashcardSet[])
+      : getAllFlashcardSets().then(data => data.sort((a, b) => b.createdAt - a.createdAt));
+
+    loadData.then(data => {
+      setSets(data);
+      const subjectIds = [...new Set(data.map(s => s.subjectId))];
+      return Promise.all(
+        subjectIds.map(id => isFirebaseConfigured
+          ? getCloudFolders(id).then(f => f as Folder[])
+          : getFolders(id)
+        )
+      );
+    }).then(results => {
+      setFolders(results.flat());
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  // Load folders whenever the selected subject changes
-  useEffect(() => {
-    setFolderFilter(null);
-    if (!filterId) { setFolders([]); return; }
-    const p = isFirebaseConfigured
-      ? getCloudFolders(filterId).then(data => setFolders(data as Folder[]))
-      : getFolders(filterId).then(setFolders);
-    p.catch(() => setFolders([]));
-  }, [filterId]);
+  // Reset folder filter when subject selection changes
+  useEffect(() => { setFolderFilter(null); }, [filterId]);
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
   const subjectsWithSets = allSubjects.filter(s => sets.some(x => x.subjectId === s.id));
-
-  // Card-kind folders for the selected subject
   const cardFolders = folders.filter(f => f.kind === 'card');
 
-  // Sets visible in the main area, based on both subject + folder selection
+  // Card-kind folders for the selected subject (sidebar navigation)
+  const subjectCardFolders = filterId ? cardFolders.filter(f => f.subjectId === filterId) : [];
+
   const visibleSets = (() => {
     if (!filterId) return sets;
     const subjectSets = sets.filter(s => s.subjectId === filterId);
-    if (folderFilter === 'unfiled') return subjectSets.filter(s => !s.folderId || !cardFolders.some(f => f.id === s.folderId));
+    if (folderFilter === 'unfiled') return subjectSets.filter(s => !s.folderId || !subjectCardFolders.some(f => f.id === s.folderId));
     if (folderFilter) return subjectSets.filter(s => s.folderId === folderFilter);
     return subjectSets;
   })();
@@ -189,23 +194,57 @@ export default function Flashcards() {
   const selectedSubject = filterId ? subjectMap.get(filterId) : undefined;
   const selectedColor = selectedSubject?.color ?? '#3D7EFF';
 
+  const countForFolder = (subjectId: string, folderId: string) =>
+    sets.filter(s => s.subjectId === subjectId && s.folderId === folderId).length;
+  const countUnfiledFor = (subjectId: string) => {
+    const sf = cardFolders.filter(f => f.subjectId === subjectId);
+    return sets.filter(s => s.subjectId === subjectId && (!s.folderId || !sf.some(f => f.id === s.folderId))).length;
+  };
+
   const location = useLocation();
   useEffect(() => { setActiveSet(null); }, [location.key]);
-
   useLayoutEffect(() => {
     document.body.classList.toggle('flashcards-session', !!activeSet);
     return () => { document.body.classList.remove('flashcards-session'); };
   }, [activeSet]);
 
-  // Count helpers for sidebar
-  const countForFolder = (folderId: string) =>
-    sets.filter(s => s.subjectId === filterId && s.folderId === folderId).length;
-  const countUnfiled = () => {
-    const subjectSets = sets.filter(s => s.subjectId === filterId);
-    return subjectSets.filter(s => !s.folderId || !cardFolders.some(f => f.id === s.folderId)).length;
+  // Render a grid of sets, optionally grouped by folders
+  const renderSetGrid = (groupSets: StoredFlashcardSet[], subjectId: string, color: string) => {
+    const sf = cardFolders.filter(f => f.subjectId === subjectId);
+    if (sf.length === 0) {
+      return (
+        <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+          {groupSets.map((set, i) => <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />)}
+        </div>
+      );
+    }
+
+    const unfiledSets = groupSets.filter(s => !s.folderId || !sf.some(f => f.id === s.folderId));
+    return (
+      <>
+        {sf.map(folder => {
+          const folderSets = groupSets.filter(s => s.folderId === folder.id);
+          if (folderSets.length === 0) return null;
+          const isCollapsed = collapsedFolders.has(folder.id);
+          return (
+            <FolderSection key={folder.id} name={folder.name} count={folderSets.length} color={color} collapsed={isCollapsed} onToggle={() => toggleFolder(folder.id)}>
+              <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                {folderSets.map((set, i) => <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />)}
+              </div>
+            </FolderSection>
+          );
+        })}
+        {unfiledSets.length > 0 && (
+          <FolderSection name={ts('Unfiled')} count={unfiledSets.length} color="#94a3b8" collapsed={collapsedFolders.has(`${subjectId}:unfiled`)} onToggle={() => toggleFolder(`${subjectId}:unfiled`)}>
+            <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+              {unfiledSets.map((set, i) => <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />)}
+            </div>
+          </FolderSection>
+        )}
+      </>
+    );
   };
 
-  // Main area: when showing all sets for a subject (no folder filter), group by folder
   const renderMain = () => {
     if (loading) return <SkeletonCardGrid />;
     if (sets.length === 0) return <Empty />;
@@ -216,7 +255,7 @@ export default function Flashcards() {
       </div>
     );
 
-    // All-subjects view: group by subject
+    // All-subjects view: each subject has its own folder groups
     if (!filterId) {
       return (
         <div>
@@ -225,16 +264,14 @@ export default function Flashcards() {
             if (groupSets.length === 0) return null;
             const color = s.color ?? '#3D7EFF';
             return (
-              <div key={s.id} style={{ marginBottom: '32px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div key={s.id} style={{ marginBottom: '36px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.06em' }}>{s.title}</span>
                   <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} set{s}', { n: groupSets.length, s: groupSets.length !== 1 ? 's' : '' })}</span>
                   <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
                 </div>
-                <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                  {groupSets.map((set, i) => <SetCard key={set.id} set={set} color={color} index={i} onClick={() => setActiveSet(set)} />)}
-                </div>
+                {renderSetGrid(groupSets, s.id, color)}
               </div>
             );
           })}
@@ -242,7 +279,7 @@ export default function Flashcards() {
       );
     }
 
-    // Subject selected, specific folder filter: flat list
+    // Specific folder selected: flat list
     if (folderFilter) {
       return (
         <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
@@ -251,40 +288,8 @@ export default function Flashcards() {
       );
     }
 
-    // Subject selected, no folder filter: group by folder
-    if (cardFolders.length > 0) {
-      const subjectSets = sets.filter(s => s.subjectId === filterId);
-      const unfiledSets = subjectSets.filter(s => !s.folderId || !cardFolders.some(f => f.id === s.folderId));
-      return (
-        <div>
-          {cardFolders.map(folder => {
-            const folderSets = subjectSets.filter(s => s.folderId === folder.id);
-            if (folderSets.length === 0) return null;
-            return (
-              <FolderSection key={folder.id} name={folder.name} count={folderSets.length} color={selectedColor}>
-                <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                  {folderSets.map((set, i) => <SetCard key={set.id} set={set} color={selectedColor} index={i} onClick={() => setActiveSet(set)} />)}
-                </div>
-              </FolderSection>
-            );
-          })}
-          {unfiledSets.length > 0 && (
-            <FolderSection name={ts('Unfiled')} count={unfiledSets.length} color="#94a3b8">
-              <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                {unfiledSets.map((set, i) => <SetCard key={set.id} set={set} color={selectedColor} index={i} onClick={() => setActiveSet(set)} />)}
-              </div>
-            </FolderSection>
-          )}
-        </div>
-      );
-    }
-
-    // Subject selected, no folders exist: flat list
-    return (
-      <div className="flashcard-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-        {visibleSets.map((set, i) => <SetCard key={set.id} set={set} color={selectedColor} index={i} onClick={() => setActiveSet(set)} />)}
-      </div>
-    );
+    // Subject selected, no folder filter: grouped by folder
+    return renderSetGrid(visibleSets, filterId, selectedColor);
   };
 
   return (
@@ -301,45 +306,28 @@ export default function Flashcards() {
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Flashcards')}
         </div>
-
-        {/* All subjects */}
         <SubjectBtn subject={null} count={sets.length} active={filterId === null}
           onClick={() => { setFilterId(null); setActiveSet(null); }} />
-
-        {/* Per-subject + nested folders when that subject is selected */}
         {subjectsWithSets.map(s => {
           const isSelected = filterId === s.id;
           const color = s.color ?? '#3D7EFF';
-          const subjectCount = sets.filter(x => x.subjectId === s.id).length;
+          const sf = cardFolders.filter(f => f.subjectId === s.id);
           return (
             <div key={s.id}>
-              <SubjectBtn
-                subject={s}
-                count={subjectCount}
+              <SubjectBtn subject={s} count={sets.filter(x => x.subjectId === s.id).length}
                 active={isSelected && folderFilter === null}
-                onClick={() => { setFilterId(s.id); setFolderFilter(null); setActiveSet(null); }}
-              />
-              {/* Folder items nested under selected subject */}
-              {isSelected && cardFolders.length > 0 && (
+                onClick={() => { setFilterId(s.id); setFolderFilter(null); setActiveSet(null); }} />
+              {isSelected && sf.length > 0 && (
                 <div style={{ marginTop: '2px', marginBottom: '2px' }}>
-                  {cardFolders.map(folder => (
-                    <FolderBtn
-                      key={folder.id}
-                      name={folder.name}
-                      count={countForFolder(folder.id)}
-                      active={folderFilter === folder.id}
-                      color={color}
-                      onClick={() => { setFolderFilter(folder.id); setActiveSet(null); }}
-                    />
+                  {sf.map(folder => (
+                    <FolderBtn key={folder.id} name={folder.name} count={countForFolder(s.id, folder.id)}
+                      active={folderFilter === folder.id} color={color}
+                      onClick={() => { setFolderFilter(folder.id); setActiveSet(null); }} />
                   ))}
-                  {countUnfiled() > 0 && (
-                    <FolderBtn
-                      name={ts('Unfiled')}
-                      count={countUnfiled()}
-                      active={folderFilter === 'unfiled'}
-                      color={color}
-                      onClick={() => { setFolderFilter('unfiled'); setActiveSet(null); }}
-                    />
+                  {countUnfiledFor(s.id) > 0 && (
+                    <FolderBtn name={ts('Unfiled')} count={countUnfiledFor(s.id)}
+                      active={folderFilter === 'unfiled'} color={color}
+                      onClick={() => { setFolderFilter('unfiled'); setActiveSet(null); }} />
                   )}
                 </div>
               )}
@@ -359,13 +347,11 @@ export default function Flashcards() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {activeSubject && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />}
                 {renaming?.id === activeSet.id ? (
-                  <input
-                    autoFocus value={renaming.value}
+                  <input autoFocus value={renaming.value}
                     onChange={e => setRenaming({ ...renaming, value: e.target.value })}
                     onBlur={commitRename}
                     onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null); }}
-                    style={{ background: 'var(--bg-page)', border: `1px solid ${activeColor}55`, borderRadius: '6px', color: 'var(--text-1)', fontSize: '11px', fontWeight: 600, padding: '3px 8px', outline: 'none' }}
-                  />
+                    style={{ background: 'var(--bg-page)', border: `1px solid ${activeColor}55`, borderRadius: '6px', color: 'var(--text-1)', fontSize: '11px', fontWeight: 600, padding: '3px 8px', outline: 'none' }} />
                 ) : (
                   <span style={{ fontSize: '11px', color: 'var(--text-2)', fontWeight: 600 }}>
                     {activeSubject?.title ?? ''} · {activeSet.name} · {ts('{n} cards', { n: activeSet.cards.length })}
@@ -377,16 +363,11 @@ export default function Flashcards() {
                 </button>
               </div>
             </div>
-            <FlashcardViewer
-              key={activeSet.id}
-              cards={activeSet.cards}
-              color={activeColor}
-              subjectId={activeSet.subjectId}
+            <FlashcardViewer key={activeSet.id} cards={activeSet.cards} color={activeColor} subjectId={activeSet.subjectId}
               onSessionEnd={(n) => {
                 const name = activeSubject?.title ?? 'a subject';
                 record({ type: 'flashcards', subjectId: activeSet.subjectId, subjectName: name, detail: `Reviewed ${n} card${n !== 1 ? 's' : ''} in ${name}` });
-              }}
-            />
+              }} />
           </div>
         ) : renderMain()}
       </main>
