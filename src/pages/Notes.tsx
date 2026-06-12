@@ -22,7 +22,7 @@ function friendlyError(raw?: string): string {
   return `Definition failed: ${raw.replace(/^Error:\s*/i, '').slice(0, 140)}`;
 }
 
-// ── Subject sidebar item ──────────────────────────────────────────────────────
+// ── Sidebar buttons ───────────────────────────────────────────────────────────
 
 function SubjectBtn({ subject, count, active, onClick }: {
   subject: SubjectDef | null; count: number; active: boolean; onClick: () => void;
@@ -35,21 +35,38 @@ function SubjectBtn({ subject, count, active, onClick }: {
       style={{
         width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
         padding: '9px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-        background: active ? color + '18' : 'transparent',
-        transition: 'background 0.15s ease',
+        background: active ? color + '18' : 'transparent', transition: 'background 0.15s ease',
       }}
     >
-      <span style={{
-        width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-        background: color,
-        boxShadow: active ? `0 0 6px ${color}` : 'none',
-      }} />
+      <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, boxShadow: active ? `0 0 6px ${color}` : 'none' }} />
       <span style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {subject?.title ?? ts('All subjects')}
       </span>
-      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : 'var(--text-3)' }}>
-        {count}
+      <span style={{ fontSize: '10px', fontWeight: 600, color: active ? color : 'var(--text-3)' }}>{count}</span>
+    </button>
+  );
+}
+
+function FolderBtn({ name, count, active, onClick, color }: {
+  name: string; count: number; active: boolean; onClick: () => void; color: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px',
+        padding: '7px 12px 7px 28px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+        background: active ? color + '12' : 'transparent', transition: 'background 0.15s ease',
+      }}
+    >
+      <svg viewBox="0 0 14 14" width="11" height="11" fill="none" style={{ flexShrink: 0 }}>
+        <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z"
+          stroke={active ? color : 'var(--text-3)'} strokeWidth="1.2" fill={active ? color + '20' : 'none'} />
+      </svg>
+      <span style={{ flex: 1, minWidth: 0, fontSize: '11px', fontWeight: active ? 600 : 400, color: active ? 'var(--text-1)' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {name}
       </span>
+      <span style={{ fontSize: '10px', color: active ? color : 'var(--text-3)' }}>{count}</span>
     </button>
   );
 }
@@ -68,31 +85,14 @@ function NoteCard({ note, color, onClick, index = 0 }: { note: StoredNote; color
         padding: '16px', textAlign: 'left', cursor: 'pointer', width: '100%',
         transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease, box-shadow 0.2s ease',
       }}
-      onMouseEnter={e => {
-        const el = e.currentTarget as HTMLElement;
-        el.style.transform = 'translateY(-2px)';
-        el.style.borderColor = color + '50';
-        el.style.boxShadow = `0 4px 16px ${color}14`;
-      }}
-      onMouseLeave={e => {
-        const el = e.currentTarget as HTMLElement;
-        el.style.transform = '';
-        el.style.borderColor = 'var(--border-light)';
-        el.style.boxShadow = '';
-      }}
+      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.borderColor = color + '50'; el.style.boxShadow = `0 4px 16px ${color}14`; }}
+      onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = ''; el.style.borderColor = 'var(--border-light)'; el.style.boxShadow = ''; }}
     >
-      <div style={{
-        width: '36px', height: '36px', borderRadius: '10px', marginBottom: '12px',
-        background: color + '18', border: `1px solid ${color}30`, color, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+      <div style={{ width: '36px', height: '36px', borderRadius: '10px', marginBottom: '12px', background: color + '18', border: `1px solid ${color}30`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.3"/><line x1="5" y1="6" x2="13" y2="6" stroke="currentColor" strokeWidth="1.3"/><line x1="5" y1="9" x2="11" y2="9" stroke="currentColor" strokeWidth="1.3"/><line x1="5" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.3"/></svg>
       </div>
-      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {note.name}
-      </div>
-      <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
-        {ts('{n} sections', { n: note.note.sections.length })} · {new Date(note.createdAt).toLocaleDateString()}
-      </div>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note.name}</div>
+      <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>{ts('{n} sections', { n: note.note.sections.length })} · {new Date(note.createdAt).toLocaleDateString()}</div>
     </button>
   );
 }
@@ -112,6 +112,25 @@ function Empty() {
   );
 }
 
+// ── Folder section header ─────────────────────────────────────────────────────
+
+function FolderSection({ name, count, color, children }: { name: string; count: number; color: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+        <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+          <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z"
+            stroke={color} strokeWidth="1.2" fill={color + '15'} />
+        </svg>
+        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)' }}>{name}</span>
+        <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{count}</span>
+        <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Notes() {
@@ -121,6 +140,7 @@ export default function Notes() {
   const [notes, setNotes] = useState<StoredNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
+  const [folderFilter, setFolderFilter] = useState<string | 'unfiled' | null>(null);
   const [activeNote, setActiveNote] = useState<StoredNote | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -136,11 +156,12 @@ export default function Notes() {
   }, []);
 
   useEffect(() => {
+    setFolderFilter(null);
     if (!filterId) { setFolders([]); return; }
     const p = isFirebaseConfigured
       ? getCloudFolders(filterId).then(data => setFolders(data as Folder[]))
       : getFolders(filterId).then(setFolders);
-    p.catch(() => {});
+    p.catch(() => setFolders([]));
   }, [filterId]);
 
   const addToEnglishDictionary = async (term: string, noteTitle?: string, noteId?: string) => {
@@ -153,12 +174,8 @@ export default function Notes() {
       const definition = await generateDefinition(trimmed, subject?.title ?? '');
       const entry: DictionaryEntry = {
         id: `dict-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        subjectId: activeNote.subjectId,
-        term: trimmed,
-        definition,
-        sourceNoteTitle: noteTitle,
-        sourceNoteId: noteId,
-        createdAt: Date.now(),
+        subjectId: activeNote.subjectId, term: trimmed, definition,
+        sourceNoteTitle: noteTitle, sourceNoteId: noteId, createdAt: Date.now(),
       };
       await saveDictionaryEntry(entry);
       toast('success', `"${trimmed}" added to dictionary`, definition.replace(/^[•\-*]\s*/gm, '').trim());
@@ -177,13 +194,8 @@ export default function Notes() {
       const definition = await generateJapaneseDefinition(trimmed, subject?.title ?? '');
       const entry: DictionaryEntry = {
         id: `dict-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        subjectId: activeNote.subjectId,
-        term: trimmed,
-        definition,
-        folder: '翻訳',
-        sourceNoteTitle: noteTitle,
-        sourceNoteId: noteId,
-        createdAt: Date.now(),
+        subjectId: activeNote.subjectId, term: trimmed, definition, folder: '翻訳',
+        sourceNoteTitle: noteTitle, sourceNoteId: noteId, createdAt: Date.now(),
       };
       await saveDictionaryEntry(entry);
       toast('success', `"${trimmed}" を翻訳しました`, definition.replace(/^[•\-*]\s*/gm, '').trim());
@@ -194,33 +206,120 @@ export default function Notes() {
 
   const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
   const subjectsWithNotes = allSubjects.filter(s => notes.some(n => n.subjectId === s.id));
-  const visibleNotes = filterId ? notes.filter(n => n.subjectId === filterId) : notes;
+  const noteFolders = folders.filter(f => f.kind === 'note');
 
-  type Group = { subject: SubjectDef | undefined; notes: StoredNote[] };
-  const groups: Group[] = filterId
-    ? [{ subject: subjectMap.get(filterId), notes: visibleNotes }]
-    : subjectsWithNotes.map(s => ({ subject: s, notes: notes.filter(n => n.subjectId === s.id) }));
+  const visibleNotes = (() => {
+    if (!filterId) return notes;
+    const subjectNotes = notes.filter(n => n.subjectId === filterId);
+    if (folderFilter === 'unfiled') return subjectNotes.filter(n => !n.folderId || !noteFolders.some(f => f.id === n.folderId));
+    if (folderFilter) return subjectNotes.filter(n => n.folderId === folderFilter);
+    return subjectNotes;
+  })();
 
   const activeSubject = activeNote ? subjectMap.get(activeNote.subjectId) : undefined;
   const activeColor = activeSubject?.color ?? '#3D7EFF';
+  const selectedSubject = filterId ? subjectMap.get(filterId) : undefined;
+  const selectedColor = selectedSubject?.color ?? '#3D7EFF';
+
+  const countForFolder = (folderId: string) =>
+    notes.filter(n => n.subjectId === filterId && n.folderId === folderId).length;
+  const countUnfiled = () => {
+    const sn = notes.filter(n => n.subjectId === filterId);
+    return sn.filter(n => !n.folderId || !noteFolders.some(f => f.id === n.folderId)).length;
+  };
 
   useEffect(() => {
-    const reading = !!activeNote;
-    document.body.classList.toggle('notes-reading', reading);
+    document.body.classList.toggle('notes-reading', !!activeNote);
     return () => { document.body.classList.remove('notes-reading'); };
   }, [activeNote]);
 
-  const rootClasses = [
-    activeNote && 'page-notes-reading',
-  ].filter(Boolean).join(' ');
+  const renderMain = () => {
+    if (loading) return <SkeletonCardGrid />;
+    if (notes.length === 0) return <Empty />;
+    if (visibleNotes.length === 0) return (
+      <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-2)' }}>
+        <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '4px' }}>{ts('No notes here')}</div>
+        <div style={{ fontSize: '13px' }}>{ts('This folder is empty.')}</div>
+      </div>
+    );
+
+    // All-subjects view
+    if (!filterId) {
+      return (
+        <div>
+          {subjectsWithNotes.map(s => {
+            const groupNotes = notes.filter(n => n.subjectId === s.id);
+            if (groupNotes.length === 0) return null;
+            const color = s.color ?? '#3D7EFF';
+            return (
+              <div key={s.id} style={{ marginBottom: '32px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.06em' }}>{s.title}</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} notes', { n: groupNotes.length })}</span>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
+                </div>
+                <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                  {groupNotes.map((note, i) => <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Specific folder selected
+    if (folderFilter) {
+      return (
+        <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+          {visibleNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
+        </div>
+      );
+    }
+
+    // Subject selected, group by folder
+    if (noteFolders.length > 0) {
+      const subjectNotes = notes.filter(n => n.subjectId === filterId);
+      const unfiledNotes = subjectNotes.filter(n => !n.folderId || !noteFolders.some(f => f.id === n.folderId));
+      return (
+        <div>
+          {noteFolders.map(folder => {
+            const folderNotes = subjectNotes.filter(n => n.folderId === folder.id);
+            if (folderNotes.length === 0) return null;
+            return (
+              <FolderSection key={folder.id} name={folder.name} count={folderNotes.length} color={selectedColor}>
+                <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                  {folderNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
+                </div>
+              </FolderSection>
+            );
+          })}
+          {unfiledNotes.length > 0 && (
+            <FolderSection name={ts('Unfiled')} count={unfiledNotes.length} color="#94a3b8">
+              <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                {unfiledNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
+              </div>
+            </FolderSection>
+          )}
+        </div>
+      );
+    }
+
+    // Subject selected, no folders
+    return (
+      <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+        {visibleNotes.map((note, i) => <NoteCard key={note.id} note={note} color={selectedColor} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />)}
+      </div>
+    );
+  };
 
   return (
-    <div className={rootClasses} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: 'var(--bg-page)' }}>
+    <div className={activeNote ? 'page-notes-reading' : ''} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: 'var(--bg-page)' }}>
 
       {/* Sidebar */}
       <aside className="notes-sidebar hidden md:flex flex-col" style={{
-        width: sidebarOpen ? '220px' : '0',
-        flexShrink: 0,
+        width: sidebarOpen ? '220px' : '0', flexShrink: 0,
         borderRight: sidebarOpen ? '1px solid var(--border-light)' : 'none',
         padding: sidebarOpen ? '16px 10px' : '0',
         gap: '2px', overflowY: 'auto', overflowX: 'hidden',
@@ -229,15 +328,51 @@ export default function Notes() {
         <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '8px' }}>
           {ts('Notes')}
         </div>
-        <SubjectBtn subject={null} count={notes.length} active={filterId === null} onClick={() => { setFilterId(null); setActiveNote(null); setSidebarOpen(true); }} />
-        {subjectsWithNotes.map(s => (
-          <SubjectBtn key={s.id} subject={s} count={notes.filter(n => n.subjectId === s.id).length} active={filterId === s.id} onClick={() => { setFilterId(s.id); setActiveNote(null); setSidebarOpen(true); }} />
-        ))}
+
+        <SubjectBtn subject={null} count={notes.length} active={filterId === null}
+          onClick={() => { setFilterId(null); setActiveNote(null); setSidebarOpen(true); }} />
+
+        {subjectsWithNotes.map(s => {
+          const isSelected = filterId === s.id;
+          const color = s.color ?? '#3D7EFF';
+          return (
+            <div key={s.id}>
+              <SubjectBtn
+                subject={s}
+                count={notes.filter(n => n.subjectId === s.id).length}
+                active={isSelected && folderFilter === null}
+                onClick={() => { setFilterId(s.id); setFolderFilter(null); setActiveNote(null); setSidebarOpen(true); }}
+              />
+              {isSelected && noteFolders.length > 0 && (
+                <div style={{ marginTop: '2px', marginBottom: '2px' }}>
+                  {noteFolders.map(folder => (
+                    <FolderBtn
+                      key={folder.id}
+                      name={folder.name}
+                      count={countForFolder(folder.id)}
+                      active={folderFilter === folder.id}
+                      color={color}
+                      onClick={() => { setFolderFilter(folder.id); setActiveNote(null); setSidebarOpen(true); }}
+                    />
+                  ))}
+                  {countUnfiled() > 0 && (
+                    <FolderBtn
+                      name={ts('Unfiled')}
+                      count={countUnfiled()}
+                      active={folderFilter === 'unfiled'}
+                      color={color}
+                      onClick={() => { setFolderFilter('unfiled'); setActiveNote(null); setSidebarOpen(true); }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </aside>
 
       {/* Main */}
       <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', padding: activeNote ? 0 : 'clamp(14px, 4vw, 28px)' }}>
-
         {activeNote ? (
           <div>
             <div className="notes-breadcrumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -273,75 +408,7 @@ export default function Notes() {
               onAddToJapaneseDictionary={addToJapaneseDictionary}
             />
           </div>
-        ) : loading ? (
-          <SkeletonCardGrid />
-        ) : notes.length === 0 ? (
-          <Empty />
-        ) : (
-          <div>
-            {groups.map(({ subject, notes: groupNotes }) => {
-              if (groupNotes.length === 0) return null;
-              const color = subject?.color ?? '#3D7EFF';
-              const noteFolders = folders.filter(f => f.kind === 'note' && f.subjectId === subject?.id);
-              const hasFolders = filterId && noteFolders.length > 0;
-              return (
-                <div key={subject?.id ?? 'all'} style={{ marginBottom: '32px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-1)', letterSpacing: '0.06em' }}>{subject?.title ?? ts('Unknown subject')}</span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} notes', { n: groupNotes.length })}</span>
-                    <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
-                  </div>
-                  {hasFolders ? (
-                    <>
-                      {noteFolders.map(folder => {
-                        const folderNotes = groupNotes.filter(n => n.folderId === folder.id);
-                        if (folderNotes.length === 0) return null;
-                        return (
-                          <div key={folder.id} style={{ marginBottom: '20px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                              <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1 1 0 0 1 .707.293L6 3h5.5A1.5 1.5 0 0 1 13 4.5v6A1.5 1.5 0 0 1 11.5 12h-9A1.5 1.5 0 0 1 1 10.5v-7Z" stroke="var(--text-3)" strokeWidth="1.2" fill="none"/></svg>
-                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)' }}>{folder.name}</span>
-                              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{folderNotes.length}</span>
-                            </div>
-                            <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                              {folderNotes.map((note, i) => (
-                                <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {(() => {
-                        const unfiledNotes = groupNotes.filter(n => !n.folderId || !noteFolders.some(f => f.id === n.folderId));
-                        if (unfiledNotes.length === 0) return null;
-                        return (
-                          <div style={{ marginBottom: '20px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-3)' }}>{ts('Unfiled')}</span>
-                              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{unfiledNotes.length}</span>
-                            </div>
-                            <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                              {unfiledNotes.map((note, i) => (
-                                <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </>
-                  ) : (
-                    <div className="notes-set-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-                      {groupNotes.map((note, i) => (
-                        <NoteCard key={note.id} note={note} color={color} index={i} onClick={() => { setActiveNote(note); setSidebarOpen(false); }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        ) : renderMain()}
       </main>
     </div>
   );
