@@ -274,7 +274,7 @@ export default function Home() {
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
-  const [activeCompany, setActiveCompany] = useState<'apple' | 'nestle'>('apple');
+  const [activeCompany, setActiveCompany] = useState<'apple' | 'nestle' | 'jnj'>('apple');
   const { dates: examDates } = useExamDates();
   const activityEvents = useActivity(s => s.events);
   const blindSpots = useBlindSpots();
@@ -417,6 +417,13 @@ export default function Home() {
               title: 'Global Food & Beverage',
               desc:  'Tracking coffee & cocoa sourcing, dairy networks, and regional manufacturing across 50+ countries.',
             },
+            jnj: {
+              label: 'J&J',
+              accentLight: '#991B1B',
+              accentDark:  '#EF4444',
+              title: 'Global Pharmaceutical Network',
+              desc:  'Tracking API sourcing, vaccine & biologics labs, high-volume manufacturing, and distribution across 14 strategic sites.',
+            },
           } as const;
           const meta = COMPANY[activeCompany];
           const accent = isLight ? meta.accentLight : meta.accentDark;
@@ -432,7 +439,7 @@ export default function Home() {
             >
               {/* Company selector pills */}
               <div style={{ display: 'flex', gap: '3px', marginBottom: '10px' }}>
-                {(['apple', 'nestle'] as const).map(id => {
+                {(['apple', 'nestle', 'jnj'] as const).map(id => {
                   const c = COMPANY[id];
                   const isActive = activeCompany === id;
                   const col = isLight ? c.accentLight : c.accentDark;

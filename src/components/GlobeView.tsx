@@ -130,6 +130,60 @@ const NESTLE_ARC_DEFS: InternalArcDef[] = [
   { from: 'nestle-lausanne-research',     to: 'nestle-usa-glendale',         arcType: 'downstream' },
 ];
 
+// ── Johnson & Johnson supply chain — 14-node dataset ─────────────────────────
+// Color logic: each functional type gets its own hue family.
+//   HQ                    → crimson red     #DC2626
+//   Distribution (NJ)     → rose            #E11D48
+//   Pharma mfg USA (NJ/PA)→ coral-orange    #EA580C / #F97316
+//   Pharma mfg Europe     → medical teal/blue #0891B2 / #0E7490 / #06B6D4 / #2563EB
+//   Vaccine lab (NL)      → emerald         #059669
+//   Pharma mfg Puerto Rico→ amber           #D97706 / #CA8A04
+//   Pharma mfg Asia       → violet          #7C3AED / #9333EA
+//   API sourcing (India)  → green           #16A34A
+const JNJ_NODES: SupplyChainNetwork['nodes'] = [
+  { id: 'jnj-new-brunswick-hq', name: 'J&J Headquarters',              lat:  40.4934, lng:  -74.4447, type: 'hq',          color: '#DC2626', desc: 'Global management, R&D, supply-chain oversight.' },
+  { id: 'jnj-raritan-dist',     name: 'J&J Distribution Network',      lat:  40.5695, lng:  -74.6343, type: 'dist',         color: '#E11D48', desc: 'Major pharmaceutical distribution hub.' },
+  { id: 'jnj-titusville',       name: 'Janssen Operations',             lat:  40.3168, lng:  -74.8818, type: 'pharma-usa',  color: '#EA580C', desc: 'Pharmaceutical manufacturing and commercialization.' },
+  { id: 'jnj-horsham',          name: 'Janssen Biotech',                lat:  40.1779, lng:  -75.1235, type: 'pharma-usa',  color: '#F97316', desc: 'Drug development and operations.' },
+  { id: 'jnj-beerse',           name: 'Janssen Pharmaceuticals',        lat:  51.3194, lng:    4.8561, type: 'pharma-eu',   color: '#0891B2', desc: "One of J&J's most important pharmaceutical manufacturing and R&D sites." },
+  { id: 'jnj-cork',             name: 'J&J Manufacturing',              lat:  51.8985, lng:   -8.4756, type: 'pharma-eu',   color: '#0E7490', desc: 'Pharmaceutical production for global markets.' },
+  { id: 'jnj-ringaskiddy',      name: 'Janssen Sciences Ireland',       lat:  51.8315, lng:   -8.3075, type: 'pharma-eu',   color: '#06B6D4', desc: 'Biologics and pharmaceutical manufacturing.' },
+  { id: 'jnj-schaffhausen',     name: 'Cilag AG',                       lat:  47.6959, lng:    8.6380, type: 'pharma-eu',   color: '#2563EB', desc: 'Pharmaceutical manufacturing and packaging.' },
+  { id: 'jnj-leiden',           name: 'Janssen Vaccines',               lat:  52.1601, lng:    4.4970, type: 'vaccine',     color: '#059669', desc: 'Vaccine development and manufacturing.' },
+  { id: 'jnj-gurabo',           name: 'J&J Manufacturing',              lat:  18.2544, lng:  -65.9729, type: 'pharma-pr',   color: '#D97706', desc: 'High-volume pharmaceutical production.' },
+  { id: 'jnj-manati',           name: 'Janssen Manufacturing',          lat:  18.4275, lng:  -66.4741, type: 'pharma-pr',   color: '#CA8A04', desc: 'Pharmaceutical manufacturing and packaging.' },
+  { id: 'jnj-singapore',        name: 'Janssen Supply Chain',           lat:   1.3236, lng:  103.6441, type: 'pharma-asia', color: '#7C3AED', desc: 'Biologics and pharmaceutical production.' },
+  { id: 'jnj-xian',             name: 'J&J Manufacturing',              lat:  34.3416, lng:  108.9398, type: 'pharma-asia', color: '#9333EA', desc: 'Pharmaceutical manufacturing for Asia.' },
+  { id: 'jnj-hyderabad',        name: 'API Suppliers',                  lat:  17.3850, lng:   78.4867, type: 'api',         color: '#16A34A', desc: 'Active pharmaceutical ingredients and contract manufacturing.' },
+];
+
+const JNJ_ARC_DEFS: InternalArcDef[] = [
+  // Raw API sourcing → manufacturing sites
+  { from: 'jnj-hyderabad',        to: 'jnj-beerse',           arcType: 'rawmaterial' },
+  { from: 'jnj-hyderabad',        to: 'jnj-cork',             arcType: 'rawmaterial' },
+  { from: 'jnj-hyderabad',        to: 'jnj-gurabo',           arcType: 'rawmaterial' },
+  // Vaccine / biologics labs → manufacturing hubs
+  { from: 'jnj-leiden',           to: 'jnj-cork',             arcType: 'upstream' },
+  { from: 'jnj-leiden',           to: 'jnj-raritan-dist',     arcType: 'upstream' },
+  { from: 'jnj-singapore',        to: 'jnj-gurabo',           arcType: 'upstream' },
+  // EU internal manufacturing flows
+  { from: 'jnj-beerse',           to: 'jnj-titusville',       arcType: 'upstream' },
+  { from: 'jnj-beerse',           to: 'jnj-schaffhausen',     arcType: 'upstream' },
+  { from: 'jnj-ringaskiddy',      to: 'jnj-cork',             arcType: 'upstream' },
+  // Manufacturing → distribution (downstream)
+  { from: 'jnj-gurabo',           to: 'jnj-raritan-dist',     arcType: 'downstream' },
+  { from: 'jnj-manati',           to: 'jnj-raritan-dist',     arcType: 'downstream' },
+  { from: 'jnj-cork',             to: 'jnj-raritan-dist',     arcType: 'downstream' },
+  { from: 'jnj-titusville',       to: 'jnj-raritan-dist',     arcType: 'downstream' },
+  { from: 'jnj-horsham',          to: 'jnj-raritan-dist',     arcType: 'downstream' },
+  { from: 'jnj-xian',             to: 'jnj-raritan-dist',     arcType: 'downstream' },
+  // Strategic: HQ → key global sites
+  { from: 'jnj-new-brunswick-hq', to: 'jnj-beerse',           arcType: 'downstream' },
+  { from: 'jnj-new-brunswick-hq', to: 'jnj-singapore',        arcType: 'downstream' },
+  { from: 'jnj-new-brunswick-hq', to: 'jnj-leiden',           arcType: 'downstream' },
+];
+
+
 // ── Arc color palettes (per company × theme) ──────────────────────────────────
 const ARC_COLORS = {
   apple: {
@@ -140,23 +194,46 @@ const ARC_COLORS = {
     light: { rawmaterial: '#c8943e66', upstream: '#8c623977', downstream: '#7a523055' },
     dark:  { rawmaterial: '#e6a83388', upstream: '#b5844eAA', downstream: '#8c6239AA' },
   },
+  jnj: {
+    light: { rawmaterial: '#F4748855', upstream: '#12708277', downstream: '#DC262666' },
+    dark:  { rawmaterial: '#FB718888', upstream: '#22D3EECC', downstream: '#F87171BB' },
+  },
 } as const;
 
 // ── Arc animation timing (ms) ─────────────────────────────────────────────────
 const ARC_TIMING = {
-  apple:  { rawmaterial: 12000, upstream: 8000, downstream: 6000 },
-  nestle: { rawmaterial: 15000, upstream: 10000, downstream: 7000 },
+  apple:  { rawmaterial: 12000, upstream:  8000, downstream:  6000 },
+  nestle: { rawmaterial: 15000, upstream: 10000, downstream:  7000 },
+  jnj:    { rawmaterial: 13000, upstream:  9000, downstream:  6500 },
 } as const;
 
+// ── Company lookup tables ─────────────────────────────────────────────────────
+type CompanyId = 'apple' | 'nestle' | 'jnj';
+
+const COMPANY_META: Record<CompanyId, { companyName: string; subtitle: string }> = {
+  apple:  { companyName: 'Apple Inc.',        subtitle: 'Global Hardware Supply Chain' },
+  nestle: { companyName: 'Nestlé',            subtitle: 'Global Food & Beverage Supply Matrix' },
+  jnj:    { companyName: 'Johnson & Johnson', subtitle: 'Global Pharmaceutical Supply Network' },
+};
+
+const COMPANY_NODES: Record<CompanyId, SupplyChainNetwork['nodes']> = {
+  apple:  APPLE_NODES,
+  nestle: NESTLE_NODES,
+  jnj:    JNJ_NODES,
+};
+
+const COMPANY_ARC_DEFS: Record<CompanyId, InternalArcDef[]> = {
+  apple:  APPLE_ARC_DEFS,
+  nestle: NESTLE_ARC_DEFS,
+  jnj:    JNJ_ARC_DEFS,
+};
+
 // ── Build a fully-resolved SupplyChainNetwork ─────────────────────────────────
-function buildNetwork(
-  companyId: 'apple' | 'nestle',
-  isLight: boolean,
-): SupplyChainNetwork {
-  const nodes    = companyId === 'apple' ? APPLE_NODES  : NESTLE_NODES;
-  const arcDefs  = companyId === 'apple' ? APPLE_ARC_DEFS : NESTLE_ARC_DEFS;
-  const palette  = ARC_COLORS[companyId][isLight ? 'light' : 'dark'];
-  const nodeMap  = new Map(nodes.map(n => [n.id, n]));
+function buildNetwork(companyId: CompanyId, isLight: boolean): SupplyChainNetwork {
+  const nodes   = COMPANY_NODES[companyId];
+  const arcDefs = COMPANY_ARC_DEFS[companyId];
+  const palette = ARC_COLORS[companyId][isLight ? 'light' : 'dark'];
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
   const arcs: SupplyChainNetwork['arcs'] = arcDefs.flatMap(def => {
     const src = nodeMap.get(def.from);
@@ -170,11 +247,7 @@ function buildNetwork(
     }];
   });
 
-  const meta = companyId === 'apple'
-    ? { companyName: 'Apple Inc.', subtitle: 'Global Hardware Supply Chain' }
-    : { companyName: 'Nestlé',     subtitle: 'Global Food & Beverage Supply Matrix' };
-
-  return { companyId, ...meta, nodes, arcs };
+  return { companyId, ...COMPANY_META[companyId], nodes, arcs };
 }
 
 // ── Camera-distance label opacity ─────────────────────────────────────────────
@@ -293,25 +366,28 @@ function injectPinStyles() {
 
 // ── Dot size by node type ─────────────────────────────────────────────────────
 function dotSizeForType(type: string): number {
-  if (type === 'hq')                                          return 14;
-  if (type === 'research')                                    return 12;
-  if (type === 'assembly' || type.startsWith('mfg-'))        return 10;
-  if (type === 'silicon'  || type === 'display')             return  9;
-  if (type === 'dairy'    || type.startsWith('sourcing'))    return  8;
+  if (type === 'hq')                                              return 14;
+  if (type === 'research' || type === 'vaccine')                  return 12;
+  if (type === 'assembly' || type.startsWith('mfg-') ||
+      type.startsWith('pharma-'))                                  return 10;
+  if (type === 'silicon'  || type === 'display' || type === 'dist') return  9;
+  if (type === 'dairy'    || type.startsWith('sourcing') ||
+      type === 'api')                                              return  8;
   return 7;
 }
 
 // ── Initial point-of-view per company ────────────────────────────────────────
-const INITIAL_POV = {
-  apple:  { lat: 28,  lng: 108, altitude: 1.65 },
-  nestle: { lat: 20,  lng:  15, altitude: 1.80 },
+const INITIAL_POV: Record<CompanyId, { lat: number; lng: number; altitude: number }> = {
+  apple:  { lat: 28, lng: 108, altitude: 1.65 },
+  nestle: { lat: 20, lng:  15, altitude: 1.80 },
+  jnj:    { lat: 38, lng: -50, altitude: 1.75 },
 };
 
 // ── GlobeView ─────────────────────────────────────────────────────────────────
 export default function GlobeView({
   activeCompanyId = 'apple',
 }: {
-  activeCompanyId?: 'apple' | 'nestle';
+  activeCompanyId?: CompanyId;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initialized  = useRef(false);
@@ -326,7 +402,7 @@ export default function GlobeView({
 
     const el      = containerRef.current;
     const network = buildNetwork(activeCompanyId, isLight);
-    const timing  = ARC_TIMING[activeCompanyId as 'apple' | 'nestle'];
+    const timing  = ARC_TIMING[activeCompanyId];
 
     // Label element refs for per-frame opacity fade
     const labelEls = new Map<string, HTMLElement>();
@@ -427,7 +503,7 @@ export default function GlobeView({
       controls.minPolarAngle   = Math.PI / 5;
       controls.maxPolarAngle   = (4 * Math.PI) / 5;
 
-      globe.pointOfView(INITIAL_POV[activeCompanyId as 'apple' | 'nestle']);
+      globe.pointOfView(INITIAL_POV[activeCompanyId]);
 
       // Camera-distance label opacity: fires on every rotation frame
       controls.addEventListener('change', () =>
