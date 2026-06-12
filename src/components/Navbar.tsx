@@ -53,11 +53,11 @@ function ThemeToggle() {
       className="theme-toggle-btn"
       style={{
         position: 'relative', width: '48px', height: '26px', borderRadius: '999px',
-        border: '1px solid rgba(255,255,255,0.10)', padding: 0, cursor: 'pointer',
-        flexShrink: 0, overflow: 'hidden',
-        background: 'rgba(255,255,255,0.05)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
-        transition: 'border-color 0.3s ease',
+        border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(0,0,0,0.10)',
+        padding: 0, cursor: 'pointer', flexShrink: 0, overflow: 'hidden',
+        background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+        boxShadow: dark ? 'inset 0 1px 0 rgba(255,255,255,0.04)' : 'inset 0 1px 0 rgba(255,255,255,0.6)',
+        transition: 'border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease',
       }}
     >
       {STARS.map((s, i) => (
@@ -91,13 +91,13 @@ function ThemeToggle() {
       <span style={{
         position: 'absolute', top: '2px', left: '2px', width: '20px', height: '20px',
         borderRadius: '50%', willChange: 'transform',
-        background: 'rgba(255,255,255,0.14)',
+        background: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.9)',
         boxShadow: dark
           ? '0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.08)'
-          : '0 0 0 1px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6)',
+          : '0 0 0 1px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transform: dark ? `translateX(${KNOB_TRAVEL}px)` : 'translateX(0px)',
-        transition: 'transform 0.4s cubic-bezier(0.3,1.2,0.4,1), box-shadow 0.35s ease',
+        transition: 'transform 0.4s cubic-bezier(0.3,1.2,0.4,1), background 0.35s ease, box-shadow 0.35s ease',
       }}>
         <span style={{
           position: 'absolute', opacity: dark ? 1 : 0,
@@ -114,7 +114,7 @@ function ThemeToggle() {
           transition: 'opacity 0.25s ease 0.05s, transform 0.35s cubic-bezier(0.3,1.2,0.4,1) 0.05s',
         }}>
           <svg viewBox="0 0 12 12" width="10" height="10" fill="none">
-            <circle cx="6" cy="6" r="3" fill="rgba(155,139,120,0.6)" />
+            <circle cx="6" cy="6" r="3" fill="rgba(100,80,60,0.55)" />
           </svg>
         </span>
       </span>
@@ -126,13 +126,17 @@ function ThemeToggle() {
 
 function LangToggle() {
   const { lang, setLang, ts } = useLang();
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
   const isJa = lang === 'ja';
+
   return (
     <div style={{
       position: 'relative', display: 'flex', height: '26px',
-      background: 'rgba(255,255,255,0.05)',
-      border: '1px solid rgba(255,255,255,0.10)',
+      background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+      border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(0,0,0,0.09)',
       borderRadius: '999px', padding: '2px',
+      transition: 'background 0.3s ease, border-color 0.3s ease',
     }}>
       <span style={{
         position: 'absolute', top: '2px', left: '2px',
@@ -140,7 +144,7 @@ function LangToggle() {
         borderRadius: '999px',
         background: 'linear-gradient(135deg, rgba(61,126,255,0.22) 0%, rgba(99,102,241,0.14) 100%)',
         border: '1px solid rgba(61,126,255,0.30)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+        boxShadow: dark ? '0 1px 4px rgba(0,0,0,0.2)' : '0 1px 4px rgba(0,0,0,0.08)',
         willChange: 'transform',
         transform: isJa ? 'translateX(100%)' : 'translateX(0)',
         transition: 'transform 0.38s cubic-bezier(0.34,1.56,0.64,1)',
@@ -148,6 +152,7 @@ function LangToggle() {
       }} />
       {(['en', 'ja'] as const).map((l, idx) => {
         const label = l === 'en' ? ts('English') : ts('Japanese');
+        const active = lang === l;
         return (
           <button
             key={l}
@@ -158,7 +163,9 @@ function LangToggle() {
               position: 'relative', zIndex: 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
               padding: '0 9px', flex: 1, background: 'none', border: 'none',
-              color: lang === l ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+              color: active
+                ? (dark ? 'rgba(255,255,255,0.92)' : '#0f172a')
+                : (dark ? 'rgba(255,255,255,0.35)' : '#94a3b8'),
               cursor: 'pointer', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em',
               transition: 'color 0.25s ease',
             }}
@@ -203,16 +210,16 @@ const IconClose = () => (
 // ── Nav items ──────────────────────────────────────────────────────────────────
 
 const navItems = [
-  { to: '/',                labelKey: 'nav_dashboard'      as const },
-  { to: '/mindmap',         labelKey: 'nav_mindmap'        as const },
-  { to: '/flashcards',      labelKey: 'nav_flashcards'     as const },
-  { to: '/notes',           labelKey: 'nav_notes'          as const },
-  { to: '/quiz',            labelKey: 'nav_quiz'           as const },
-  { to: '/dictionary',      labelKey: 'nav_dictionary'     as const },
+  { to: '/',                labelKey: 'nav_dashboard'       as const },
+  { to: '/mindmap',         labelKey: 'nav_mindmap'         as const },
+  { to: '/flashcards',      labelKey: 'nav_flashcards'      as const },
+  { to: '/notes',           labelKey: 'nav_notes'           as const },
+  { to: '/quiz',            labelKey: 'nav_quiz'            as const },
+  { to: '/dictionary',      labelKey: 'nav_dictionary'      as const },
   { to: '/knowledge-graph', labelKey: 'nav_knowledge_graph' as const },
-  { to: '/blind-spots',     labelKey: 'nav_blind_spots'   as const },
-  { to: '/pkg',             labelKey: 'nav_pkg'            as const },
-  { to: '/companies',       labelKey: 'nav_companies'      as const },
+  { to: '/blind-spots',     labelKey: 'nav_blind_spots'     as const },
+  { to: '/pkg',             labelKey: 'nav_pkg'             as const },
+  { to: '/companies',       labelKey: 'nav_companies'       as const },
 ];
 
 // ── Sliding nav links with kinetic indicator ──────────────────────────────────
@@ -220,6 +227,8 @@ const navItems = [
 function NavLinks() {
   const { pathname } = useLocation();
   const { t, lang } = useLang();
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
 
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
@@ -246,16 +255,30 @@ function NavLinks() {
     if (pos) setIndicatorPos(pos);
   }, [pathname, activeIdx, lang, measure]);
 
+  // Recompute on theme switch (text weight/width may not change, but colours do)
+  useLayoutEffect(() => {
+    if (activeIdx < 0) return;
+    const pos = measure(activeIdx);
+    if (pos) setIndicatorPos(pos);
+  }, [dark, activeIdx, measure]);
+
+  // Indicator colours: hover pill vs active pill differ per theme
+  const indicatorBg = isHovering
+    ? (dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)')
+    : 'linear-gradient(135deg, rgba(61,126,255,0.18) 0%, rgba(99,102,241,0.11) 100%)';
+
+  const indicatorBorder = isHovering
+    ? (dark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)')
+    : 'rgba(61,126,255,0.30)';
+
+  const indicatorShadow = isHovering
+    ? 'none'
+    : '0 0 12px rgba(61,126,255,0.14), inset 0 1px 0 rgba(255,255,255,0.06)';
+
   return (
     <div
       ref={containerRef}
-      style={{
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '3px',
-        gap: 0,
-      }}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '3px', gap: 0 }}
     >
       {/* Kinetic sliding indicator */}
       {indicatorPos && (
@@ -268,15 +291,9 @@ function NavLinks() {
             width: indicatorPos.width,
             height: 'calc(100% - 6px)',
             borderRadius: '999px',
-            background: isHovering
-              ? 'rgba(255,255,255,0.07)'
-              : 'linear-gradient(135deg, rgba(61,126,255,0.18) 0%, rgba(99,102,241,0.11) 100%)',
-            border: isHovering
-              ? '1px solid rgba(255,255,255,0.09)'
-              : '1px solid rgba(61,126,255,0.30)',
-            boxShadow: isHovering
-              ? 'none'
-              : '0 0 12px rgba(61,126,255,0.14), inset 0 1px 0 rgba(255,255,255,0.06)',
+            background: indicatorBg,
+            border: `1px solid ${indicatorBorder}`,
+            boxShadow: indicatorShadow,
             pointerEvents: 'none',
             transition: [
               'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -310,19 +327,15 @@ function NavLinks() {
               }
             }}
             style={{
-              position: 'relative',
-              zIndex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 11px',
-              borderRadius: '999px',
+              position: 'relative', zIndex: 1,
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '5px 11px', borderRadius: '999px',
               fontFamily: "'Inter', sans-serif",
               fontSize: '12px',
               fontWeight: active ? 600 : 400,
               color: active
-                ? 'rgba(255,255,255,0.93)'
-                : 'rgba(255,255,255,0.42)',
+                ? (dark ? 'rgba(255,255,255,0.93)' : '#0f172a')
+                : (dark ? 'rgba(255,255,255,0.42)' : '#64748b'),
               textDecoration: 'none',
               whiteSpace: 'nowrap',
               letterSpacing: active ? '-0.01em' : '0.01em',
@@ -350,8 +363,17 @@ function NavLinks() {
 
 function GenerateButton() {
   const { ts } = useLang();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [pressed, setPressed] = useState(false);
+  const dark = theme === 'dark';
+
+  const defaultBg     = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const defaultBorder = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)';
+  const defaultColor  = dark ? 'rgba(255,255,255,0.85)' : '#1e293b';
+  const defaultShadow = dark
+    ? '0 0 0 1px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.06)'
+    : '0 0 0 1px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.8)';
 
   return (
     <button
@@ -361,19 +383,19 @@ function GenerateButton() {
         el.style.transform = 'scale(1.03)';
         el.style.boxShadow = [
           '0 0 0 1px rgba(61,126,255,0.50)',
-          '0 0 16px rgba(61,126,255,0.30)',
-          '0 0 32px rgba(61,126,255,0.12)',
+          '0 0 16px rgba(61,126,255,0.28)',
+          '0 0 32px rgba(61,126,255,0.10)',
           'inset 0 1px 0 rgba(255,255,255,0.12)',
         ].join(', ');
         el.style.borderColor = 'rgba(61,126,255,0.55)';
-        el.style.background = 'rgba(61,126,255,0.12)';
+        el.style.background = 'rgba(61,126,255,0.10)';
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLElement;
         el.style.transform = '';
-        el.style.boxShadow = BTN_SHADOW_DEFAULT;
-        el.style.borderColor = 'rgba(255,255,255,0.12)';
-        el.style.background = 'rgba(255,255,255,0.06)';
+        el.style.boxShadow = defaultShadow;
+        el.style.borderColor = defaultBorder;
+        el.style.background = defaultBg;
         setPressed(false);
       }}
       onMouseDown={e => {
@@ -390,24 +412,21 @@ function GenerateButton() {
       style={{
         position: 'relative',
         display: 'flex', alignItems: 'center', gap: '5px',
-        padding: '0 13px 0 10px',
-        height: '28px',
-        borderRadius: '999px',
-        background: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.12)',
-        color: 'rgba(255,255,255,0.85)',
+        padding: '0 13px 0 10px', height: '28px', borderRadius: '999px',
+        background: defaultBg,
+        border: `1px solid ${defaultBorder}`,
+        color: defaultColor,
         cursor: 'pointer',
         fontSize: '12px', fontWeight: 600, letterSpacing: '0.02em',
         overflow: 'hidden',
-        boxShadow: BTN_SHADOW_DEFAULT,
-        transition: 'transform 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease',
+        boxShadow: defaultShadow,
+        transition: 'transform 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease',
         flexShrink: 0,
       }}
     >
-      {/* Shimmer sweep */}
       <span className="generate-btn-shimmer" style={{
         position: 'absolute', top: 0, left: 0, bottom: 0, width: '45%',
-        background: 'linear-gradient(90deg, transparent 0%, rgba(61,126,255,0.18) 50%, transparent 100%)',
+        background: 'linear-gradient(90deg, transparent 0%, rgba(61,126,255,0.15) 50%, transparent 100%)',
         transform: pressed ? 'translateX(250%) skewX(-12deg)' : 'translateX(-120%) skewX(-12deg)',
         pointerEvents: 'none',
         transition: 'transform 0.55s ease',
@@ -421,62 +440,66 @@ function GenerateButton() {
   );
 }
 
-const BTN_SHADOW_DEFAULT = [
-  '0 0 0 1px rgba(255,255,255,0.06)',
-  'inset 0 1px 0 rgba(255,255,255,0.06)',
-].join(', ');
+// ── HUD glass style ────────────────────────────────────────────────────────────
 
-// ── HUD glass style (shared constant) ────────────────────────────────────────
-
-const GLASS_STYLE: React.CSSProperties = {
-  background: 'rgba(10, 17, 34, 0.45)',
-  backdropFilter: 'blur(12px) saturate(140%)',
-  WebkitBackdropFilter: 'blur(12px) saturate(140%)',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
-  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
-};
+function glassStyle(dark: boolean): React.CSSProperties {
+  return dark ? {
+    background:              'rgba(10, 17, 34, 0.45)',
+    backdropFilter:          'blur(12px) saturate(140%)',
+    WebkitBackdropFilter:    'blur(12px) saturate(140%)',
+    border:                  '1px solid rgba(255, 255, 255, 0.06)',
+    boxShadow:               '0 4px 30px rgba(0, 0, 0, 0.40), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
+  } : {
+    background:              'rgba(245, 243, 238, 0.60)',
+    backdropFilter:          'blur(14px) saturate(160%)',
+    WebkitBackdropFilter:    'blur(14px) saturate(160%)',
+    border:                  '1px solid rgba(0, 0, 0, 0.06)',
+    boxShadow:               '0 4px 30px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.80)',
+  };
+}
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
   const { pathname } = useLocation();
   const { t, ts } = useLang();
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Close mobile menu on route change
   const prevPath = useRef(pathname);
   if (prevPath.current !== pathname) {
     prevPath.current = pathname;
     if (menuOpen) setMenuOpen(false);
   }
 
+  const separatorColor = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+  const hamburgerBg    = menuOpen
+    ? 'rgba(61,126,255,0.15)'
+    : (dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)');
+  const hamburgerBorder = menuOpen
+    ? 'rgba(61,126,255,0.35)'
+    : (dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.09)');
+  const hamburgerColor  = dark ? 'rgba(255,255,255,0.70)' : '#64748b';
+
   return (
     <>
       {/*
-        Outer nav: sticky wrapper — keeps the 76px height so page-height
-        calculations (calc(100vh - 76px)) remain intact. The visual glass
-        pill is the inner div with top/side padding creating the float gap.
+        Outer nav: sticky wrapper keeps 76px so calc(100vh - 76px) pages
+        remain intact. The visual glass pill sits inside with 10px breathing
+        room top + bottom, 16px left + right.
       */}
       <nav style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        height: '76px',
-        background: 'transparent',
-        padding: '10px 16px',
-        boxSizing: 'border-box',
+        position: 'sticky', top: 0, zIndex: 50, height: '76px',
+        background: 'transparent', padding: '10px 16px', boxSizing: 'border-box',
       }}>
         {/* Glass HUD pill */}
         <div style={{
-          ...GLASS_STYLE,
-          maxWidth: '1400px',
-          margin: '0 auto',
-          height: '100%',
-          borderRadius: '9999px',
-          padding: '0 14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
+          ...glassStyle(dark),
+          maxWidth: '1400px', margin: '0 auto', height: '100%',
+          borderRadius: '9999px', padding: '0 14px',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          transition: 'background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease',
         }}>
 
           {/* Logo */}
@@ -504,9 +527,12 @@ export default function Navbar() {
           </Link>
 
           {/* Separator */}
-          <div className="hidden md:block" style={{ width: '1px', height: '22px', background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
+          <div
+            className="hidden md:block"
+            style={{ width: '1px', height: '22px', background: separatorColor, flexShrink: 0, transition: 'background 0.3s ease' }}
+          />
 
-          {/* Desktop nav — scrollable container */}
+          {/* Desktop nav — scrollable */}
           <div className="hidden md:flex" style={{ flex: 1, minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
             <NavLinks />
           </div>
@@ -525,9 +551,9 @@ export default function Navbar() {
             aria-label={menuOpen ? ts('Close menu') : ts('Open menu')}
             style={{
               borderRadius: '999px',
-              background: menuOpen ? 'rgba(61,126,255,0.15)' : 'rgba(255,255,255,0.07)',
-              border: `1px solid ${menuOpen ? 'rgba(61,126,255,0.35)' : 'rgba(255,255,255,0.10)'}`,
-              color: 'rgba(255,255,255,0.7)',
+              background: hamburgerBg,
+              border: `1px solid ${hamburgerBorder}`,
+              color: hamburgerColor,
               transition: 'all 0.2s ease',
             }}
           >
@@ -540,12 +566,10 @@ export default function Navbar() {
       {/* Mobile menu overlay */}
       {menuOpen && (
         <div style={{
-          position: 'fixed', top: '76px', left: 0, right: 0, bottom: 0,
-          zIndex: 49,
-          background: 'rgba(8, 11, 16, 0.96)',
+          position: 'fixed', top: '76px', left: 0, right: 0, bottom: 0, zIndex: 49,
+          background: dark ? 'rgba(8,11,16,0.97)' : 'rgba(245,243,238,0.97)',
           backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-          display: 'flex', flexDirection: 'column', padding: '16px',
-          overflowY: 'auto',
+          display: 'flex', flexDirection: 'column', padding: '16px', overflowY: 'auto',
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             {navItems.map(({ to, labelKey }) => {
@@ -558,16 +582,16 @@ export default function Navbar() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '13px 16px', borderRadius: '12px', textDecoration: 'none',
-                    color: active ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.45)',
-                    background: active ? 'rgba(61,126,255,0.12)' : 'transparent',
+                    color: active ? (dark ? 'rgba(255,255,255,0.95)' : '#0f172a') : (dark ? 'rgba(255,255,255,0.45)' : '#64748b'),
+                    background: active ? 'rgba(61,126,255,0.10)' : 'transparent',
                     fontSize: '15px', fontWeight: active ? 600 : 400,
-                    border: active ? '1px solid rgba(61,126,255,0.25)' : '1px solid transparent',
+                    border: active ? '1px solid rgba(61,126,255,0.22)' : '1px solid transparent',
                     transition: 'background 0.15s ease, color 0.15s ease',
                   }}
                 >
                   <span style={{
                     width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
-                    background: active ? '#3D7EFF' : 'rgba(255,255,255,0.15)',
+                    background: active ? '#3D7EFF' : (dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'),
                     boxShadow: active ? '0 0 8px rgba(61,126,255,0.8)' : 'none',
                     transition: 'background 0.15s, box-shadow 0.15s',
                   }} />
@@ -577,16 +601,16 @@ export default function Navbar() {
             })}
           </div>
 
-          <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '10px' }}>
+                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,0.25)' : '#94a3b8', marginBottom: '10px' }}>
                   {ts('Theme')}
                 </div>
                 <ThemeToggle />
               </div>
               <div>
-                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '10px' }}>
+                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,0.25)' : '#94a3b8', marginBottom: '10px' }}>
                   {ts('Language')}
                 </div>
                 <LangToggle />
