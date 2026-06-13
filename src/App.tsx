@@ -45,7 +45,7 @@ function AppContent() {
   useTheme();
 
   return (
-    <div style={{ transition: 'background-color 0.3s ease, color 0.3s ease' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%', background: 'var(--bg-page)', transition: 'background-color 0.3s ease, color 0.3s ease' }}>
       <Navbar />
       <AnimatedRoutes />
       <CloudStatusBadge />

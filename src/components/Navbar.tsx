@@ -264,15 +264,17 @@ function NavLinks() {
   // Indicator colours: hover pill vs active pill differ per theme
   const indicatorBg = isHovering
     ? (dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)')
-    : 'linear-gradient(135deg, rgba(61,126,255,0.18) 0%, rgba(99,102,241,0.11) 100%)';
+    : (dark
+        ? 'linear-gradient(135deg, rgba(61,126,255,0.18) 0%, rgba(99,102,241,0.11) 100%)'
+        : 'rgba(15,23,42,0.08)');
 
   const indicatorBorder = isHovering
     ? (dark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)')
-    : 'rgba(61,126,255,0.30)';
+    : (dark ? 'rgba(61,126,255,0.30)' : 'rgba(0,0,0,0.18)');
 
   const indicatorShadow = isHovering
     ? 'none'
-    : '0 0 12px rgba(61,126,255,0.14), inset 0 1px 0 rgba(255,255,255,0.06)';
+    : (dark ? '0 0 12px rgba(61,126,255,0.14), inset 0 1px 0 rgba(255,255,255,0.06)' : 'none');
 
   return (
     <div
