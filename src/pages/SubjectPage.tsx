@@ -334,29 +334,33 @@ function SubjectBanner({
 
   return (
     <div style={{
-      background: `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, var(--bg-page) 100%)`,
-      border: `1.5px solid ${subject.color}28`,
+      background: isLight
+        ? '#ffffff'
+        : `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, var(--bg-page) 100%)`,
+      border: isLight ? '1px solid #cbd5e1' : `1.5px solid ${subject.color}28`,
+      boxShadow: isLight ? '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)' : 'none',
       borderRadius: '24px',
       padding: '32px 36px',
       marginBottom: '32px',
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Decorative circles */}
-      <div style={{
-        position: 'absolute', top: -80, right: -80,
-        width: 260, height: 260, borderRadius: '50%',
-        background: `radial-gradient(circle, ${subject.color}18 0%, transparent 65%)`,
-        pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'absolute', bottom: -60, left: -60,
-        width: 160, height: 160, borderRadius: '50%',
-        background: `radial-gradient(circle, ${subject.color}10 0%, transparent 65%)`,
-        pointerEvents: 'none',
-      }} />
-      {/* Dot grid */}
-      {dotGridSvg()}
+      {/* Decorative circles — dark mode only */}
+      {!isLight && <>
+        <div style={{
+          position: 'absolute', top: -80, right: -80,
+          width: 260, height: 260, borderRadius: '50%',
+          background: `radial-gradient(circle, ${subject.color}18 0%, transparent 65%)`,
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -60, left: -60,
+          width: 160, height: 160, borderRadius: '50%',
+          background: `radial-gradient(circle, ${subject.color}10 0%, transparent 65%)`,
+          pointerEvents: 'none',
+        }} />
+        {dotGridSvg()}
+      </>}
 
       {/* Content */}
       <div style={{ position: 'relative', zIndex: 1 }}>
@@ -364,18 +368,12 @@ function SubjectBanner({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
           {/* LEFT: title */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <div style={{
-                width: 10, height: 10, borderRadius: '50%',
-                background: subject.color,
-                boxShadow: `0 0 14px ${subject.color}`,
-                flexShrink: 0,
-              }} />
-              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, color: 'var(--text-1)' }}>
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, color: isLight ? '#0f172a' : 'var(--text-1)' }}>
                 {subject.title}
               </div>
             </div>
-            <div style={{ fontSize: 13, color: 'var(--text-2)', paddingLeft: 20 }}>
+            <div style={{ fontSize: 13, color: isLight ? '#334155' : 'var(--text-2)' }}>
               {subject.description}
             </div>
           </div>
@@ -434,8 +432,8 @@ function SubjectBanner({
             <span key={p.label} style={{
               padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
               color: isLight ? '#334155' : 'var(--text-2)',
-              background: isLight ? 'rgba(255,255,255,0.55)' : 'var(--bg-surface)',
-              border: isLight ? '1px solid rgba(0,0,0,0.12)' : '1px solid var(--border-base)',
+              background: isLight ? '#f8fafc' : 'var(--bg-surface)',
+              border: isLight ? '1px solid #cbd5e1' : '1px solid var(--border-base)',
             }}>
               {p.label}
             </span>
@@ -459,12 +457,24 @@ function SectionCard({
   stat: string | number; subtext?: string; secondary?: string;
   onClick: () => void; index: number; inactive?: boolean; progress?: number | null;
 }) {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
+  const baseBg = isLight
+    ? '#ffffff'
+    : `linear-gradient(135deg, ${inactive ? 'var(--bg-surface)' : color + '10'} 0%, var(--bg-surface) 100%)`;
+  const baseBorder = isLight ? '#cbd5e1' : (inactive ? 'var(--border-base)' : color + '30');
+  const baseShadow = isLight
+    ? '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)'
+    : 'none';
+
   return (
     <div
       onClick={onClick}
       style={{
-        background: `linear-gradient(135deg, ${inactive ? 'var(--bg-surface)' : color + '10'} 0%, 'var(--bg-surface)' 100%)`,
-        border: `1.5px solid ${inactive ? 'var(--border-base)' : color + '30'}`,
+        background: baseBg,
+        border: `1px solid ${baseBorder}`,
+        boxShadow: baseShadow,
         borderRadius: 20,
         padding: 22,
         minHeight: 170,
@@ -479,29 +489,33 @@ function SectionCard({
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLElement;
         el.style.transform = 'translateY(-5px)';
-        el.style.boxShadow = `0 16px 40px ${color}20, 0 0 0 1.5px ${color}40`;
+        el.style.boxShadow = isLight
+          ? `0 12px 28px rgba(0,0,0,0.10), 0 0 0 1.5px ${color}55`
+          : `0 16px 40px ${color}20, 0 0 0 1.5px ${color}40`;
         el.style.borderColor = color + '55';
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLElement;
         el.style.transform = '';
-        el.style.boxShadow = '';
-        el.style.borderColor = inactive ? 'var(--border-light)' : color + '30';
+        el.style.boxShadow = baseShadow;
+        el.style.borderColor = baseBorder;
       }}
     >
-      {/* Decorative glow */}
-      <div style={{
-        position: 'absolute', top: '-70%', right: '-30%',
-        width: 200, height: 200, borderRadius: '50%',
-        background: `radial-gradient(circle, ${color}08 0%, transparent 60%)`,
-        pointerEvents: 'none',
-      }} />
+      {/* Decorative glow — dark mode only */}
+      {!isLight && (
+        <div style={{
+          position: 'absolute', top: '-70%', right: '-30%',
+          width: 200, height: 200, borderRadius: '50%',
+          background: `radial-gradient(circle, ${color}08 0%, transparent 60%)`,
+          pointerEvents: 'none',
+        }} />
+      )}
 
       {/* Icon */}
       <div style={{
         width: 40, height: 40, borderRadius: 12,
-        background: color + '18', color,
-        border: `1px solid ${color}22`,
+        background: isLight ? color + '14' : color + '18', color,
+        border: `1px solid ${color}${isLight ? '33' : '22'}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', zIndex: 1,
       }}>
@@ -511,29 +525,37 @@ function SectionCard({
       {/* Bottom content */}
       <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{
-          fontSize: 38, fontWeight: 800, color: inactive ? 'var(--text-3)' : 'var(--accent-primary)',
+          fontSize: 38, fontWeight: 800,
+          color: isLight
+            ? (inactive ? '#94a3b8' : '#0f172a')
+            : (inactive ? 'var(--text-3)' : 'var(--accent-primary)'),
           fontFamily: "'Sora',sans-serif", lineHeight: 1, marginBottom: 4,
-          textShadow: inactive ? 'none' : `0 0 25px ${color}35`,
+          textShadow: (!isLight && !inactive) ? `0 0 25px ${color}35` : 'none',
         }}>
           {stat}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: inactive ? 'var(--text-2)' : 'var(--text-1)', marginBottom: 3 }}>
+        <div style={{
+          fontSize: 13, fontWeight: 700, marginBottom: 3,
+          color: isLight
+            ? (inactive ? '#64748b' : '#0f172a')
+            : (inactive ? 'var(--text-2)' : 'var(--text-1)'),
+        }}>
           {label}
         </div>
         {subtext && (
-          <div style={{ fontSize: 11, color: inactive ? 'var(--text-3)' : color + 'BB', fontWeight: 500 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: isLight ? '#475569' : (inactive ? 'var(--text-3)' : color + 'BB') }}>
             {subtext}
           </div>
         )}
         {secondary && (
-          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
+          <div style={{ fontSize: 10, color: isLight ? '#475569' : 'var(--text-3)', marginTop: 4 }}>
             {secondary}
           </div>
         )}
         {progress !== null && progress !== undefined && !inactive && (
           <div style={{
             marginTop: 10, height: '3px', borderRadius: '2px', overflow: 'hidden',
-            background: 'var(--border-base)',
+            background: isLight ? '#e2e8f0' : 'var(--border-base)',
           }}>
             <div style={{
               width: `${Math.min(100, Math.max(0, progress))}%`,
