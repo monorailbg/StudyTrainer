@@ -51,7 +51,7 @@ type Part            = TextPart | InlineDataPart | FileDataPart;
  */
 async function callProxy(
   parts: Part[],
-  options?: { temperature?: number; systemInstruction?: string },
+  options?: { temperature?: number; systemInstruction?: string; maxOutputTokens?: number },
 ): Promise<string> {
   const body = JSON.stringify({ parts, ...options });
 
@@ -109,7 +109,68 @@ function parseJSON(raw: string): unknown {
     const start = text.search(/[{[]/);
     if (start > 0) text = text.slice(start);
   }
-  return JSON.parse(text);
+
+  // Happy path
+  try {
+    return JSON.parse(text);
+  } catch (firstErr) {
+    // Attempt to repair a truncated response by closing any open structure.
+    // This handles the common case where the model ran out of output tokens
+    // mid-string, mid-array, or mid-object.
+    const repaired = repairTruncatedJSON(text);
+    if (repaired !== text) {
+      try {
+        return JSON.parse(repaired);
+      } catch {
+        // Fall through to throw the original error with helpful context.
+      }
+    }
+    throw firstErr;
+  }
+}
+
+/**
+ * Best-effort repair of JSON that was cut off before the closing delimiter.
+ * Strategy:
+ *  1. If the last character is mid-string (odd number of unescaped quotes),
+ *     close the string first.
+ *  2. Walk a bracket/brace stack to close any open arrays / objects.
+ */
+function repairTruncatedJSON(text: string): string {
+  // Find the last position that is safe to truncate to (avoid mid-escape sequences)
+  // by trimming trailing incomplete escape like  \  or  \"
+  let s = text.replace(/\\+$/, '').trimEnd();
+  // Remove a trailing comma before a closing delimiter (common truncation artifact)
+  s = s.replace(/,\s*$/, '');
+
+  // Determine if we're currently inside a string by counting unescaped quotes
+  let inString = false;
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === '"' && (i === 0 || s[i - 1] !== '\\')) inString = !inString;
+    i++;
+  }
+  if (inString) s += '"'; // close the open string
+
+  // Remove a trailing comma again (may now be exposed after closing the string)
+  s = s.replace(/,\s*$/, '');
+
+  // Count open braces/brackets and close them in reverse order
+  const stack: string[] = [];
+  inString = false;
+  for (let j = 0; j < s.length; j++) {
+    const ch = s[j];
+    if (ch === '"' && (j === 0 || s[j - 1] !== '\\')) {
+      inString = !inString;
+    } else if (!inString) {
+      if (ch === '{') stack.push('}');
+      else if (ch === '[') stack.push(']');
+      else if (ch === '}' || ch === ']') stack.pop();
+    }
+  }
+  while (stack.length) s += stack.pop()!;
+
+  return s;
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -575,7 +636,13 @@ export async function generateFromFile(
     parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
   }
 
-  const text = await callProxy(parts);
+  // Notes now generate rich markdown (tables, Mermaid, callouts) which is far
+  // longer than plain prose. Request a large output budget to avoid mid-JSON
+  // truncation, and lower temperature for more deterministic structured output.
+  const proxyOptions = type === 'notes'
+    ? { temperature: 0.4, maxOutputTokens: 8192 }
+    : undefined;
+  const text = await callProxy(parts, proxyOptions);
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
 }
@@ -588,7 +655,10 @@ export async function generateFromTopic(
   language?: 'english' | 'japanese' | 'both',
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level, language);
-  const text   = await callProxy([{ text: prompt }]);
+  const proxyOptions = type === 'notes'
+    ? { temperature: 0.4, maxOutputTokens: 8192 }
+    : undefined;
+  const text   = await callProxy([{ text: prompt }], proxyOptions);
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, topic);
 }

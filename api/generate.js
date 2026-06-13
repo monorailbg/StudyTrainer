@@ -211,7 +211,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
-  const { parts, temperature } = req.body ?? {};
+  const { parts, temperature, maxOutputTokens } = req.body ?? {};
 
   if (!Array.isArray(parts) || parts.length === 0) {
     return res.status(400).json({ error: 'Request body must include a non-empty "parts" array.' });
@@ -223,10 +223,12 @@ export default async function handler(req, res) {
     }
   }
 
-  const genConfig = typeof temperature === 'number' ? { temperature } : undefined;
+  const genConfig = {};
+  if (typeof temperature === 'number') genConfig.temperature = temperature;
+  if (typeof maxOutputTokens === 'number' && maxOutputTokens > 0) genConfig.maxOutputTokens = maxOutputTokens;
 
   try {
-    const text = await generateWithFailover(parts, temperature, genConfig);
+    const text = await generateWithFailover(parts, temperature, Object.keys(genConfig).length ? genConfig : undefined);
     return res.json({ text });
   } catch (err) {
     console.error('[generate] Fatal error:', err);
