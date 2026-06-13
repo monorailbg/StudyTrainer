@@ -908,6 +908,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
 export default function SubjectPage() {
   const { id } = useParams<{ id: string }>();
   const { t, ts } = useLang();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const { allSubjects } = useResolvedSubjects();
   const { toast } = useToast();
   const visitSubject = useStore(s => s.visitSubject);
@@ -2587,18 +2589,36 @@ export default function SubjectPage() {
       {/* ── Floating Generate button + popover ──────────────────────────────── */}
       {levelFiles.length > 0 && (
         <div className="hidden md:flex" style={{ position: 'fixed', right: '24px', bottom: '24px', zIndex: 200, flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
-          {showGenPanel && (
+          {showGenPanel && (() => {
+            // ── Per-type category colors ──────────────────────────────────────
+            const TYPE_THEME = {
+              flashcards: { bg: '#eef2ff', text: '#4338ca', border: '#c7d2fe' },
+              notes:      { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+              quiz:       { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+            } as const;
+
+            // Active pill — high-contrast ink style for secondary toggles
+            const activePill  = { background: isLight ? '#ffffff' : 'rgba(255,255,255,0.13)', color: isLight ? '#0f172a' : '#ffffff', border: `2px solid ${isLight ? '#0f172a' : 'rgba(255,255,255,0.55)'}`, fontWeight: 700 } as const;
+            const inactivePill = { background: isLight ? '#ffffff' : 'transparent', color: isLight ? '#334155' : 'var(--text-2)', border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`, fontWeight: 600 } as const;
+
+            // Text input style
+            const inputStyle = { width: '100%', background: isLight ? '#ffffff' : 'var(--bg-page)', border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`, borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: isLight ? '#0f172a' : 'var(--text-1)', outline: 'none', boxSizing: 'border-box' as const };
+
+            return (
             <div
               style={{
                 width: 'min(92vw, 340px)', maxHeight: '70vh', overflowY: 'auto',
-                background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderRadius: '20px',
-                boxShadow: '0 18px 50px rgba(0,0,0,0.55)', padding: '16px',
+                background: isLight ? '#ffffff' : 'var(--bg-surface)',
+                border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
+                borderRadius: '20px',
+                boxShadow: isLight ? '0 18px 50px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.07)' : '0 18px 50px rgba(0,0,0,0.55)',
+                padding: '16px',
               }}
               className="anim-rise"
             >
               <div className="flex items-center justify-between mb-3">
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: 'var(--text-1)' }}>{ts('Generate')}</div>
-                <div style={{ fontSize: '10px', color: selectedLevelFileIds.length > 0 ? subject.color : 'var(--text-3)', fontWeight: 600 }}>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: isLight ? '#0f172a' : 'var(--text-1)' }}>{ts('Generate')}</div>
+                <div style={{ fontSize: '10px', color: selectedLevelFileIds.length > 0 ? subject.color : (isLight ? '#94a3b8' : 'var(--text-3)'), fontWeight: 600 }}>
                   {ts('{n}/{total} selected', { n: selectedLevelFileIds.length, total: levelFiles.length })}
                 </div>
               </div>
@@ -2609,75 +2629,75 @@ export default function SubjectPage() {
                 </div>
               )}
 
-              {/* Type selector */}
+              {/* Type selector — category-matched colors */}
               <div className="flex gap-1.5 flex-wrap mb-3">
-                {(['flashcards', 'notes', 'quiz'] as GenerationType[]).map(type => (
-                  <button
-                    key={type}
-                    onClick={() => setSelectedType(type)}
-                    className="h-8 px-3 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
-                    style={{
-                      borderRadius: '999px',
-                      background:   selectedType === type ? subject.color + '20' : 'transparent',
-                      color:        selectedType === type ? subject.color          : 'var(--text-2)',
-                      borderColor:  selectedType === type ? subject.color + '50'   : 'var(--border-base)',
-                    }}
-                  >
-                    {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Language selector */}
-              <div className="mb-3">
-                <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Language</div>
-                <div className="flex gap-1.5">
-                  {(['english', 'japanese', 'both'] as const).map(lang => (
+                {(['flashcards', 'notes', 'quiz'] as GenerationType[]).map(type => {
+                  const active = selectedType === type;
+                  const tt = TYPE_THEME[type];
+                  return (
                     <button
-                      key={lang}
-                      onClick={() => setGenLanguage(lang)}
-                      className="h-8 px-3 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                      key={type}
+                      onClick={() => setSelectedType(type)}
+                      className="h-8 px-3 text-[11px] cursor-pointer transition-all duration-200"
                       style={{
                         borderRadius: '999px',
-                        background:  genLanguage === lang ? subject.color + '20' : 'transparent',
-                        color:       genLanguage === lang ? subject.color         : 'var(--text-2)',
-                        borderColor: genLanguage === lang ? subject.color + '50'  : 'var(--border-base)',
+                        background:  active ? tt.bg  : (isLight ? '#f8fafc' : 'transparent'),
+                        color:       active ? tt.text : (isLight ? '#334155' : 'var(--text-2)'),
+                        border:      active ? `1px solid ${tt.border}` : `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
+                        fontWeight:  active ? 700 : 600,
                       }}
                     >
-                      {lang === 'english' ? 'EN' : lang === 'japanese' ? 'JA' : 'EN + JA'}
+                      {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+
+              {/* Language selector — ink active style */}
+              <div className="mb-3">
+                <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Language</div>
+                <div className="flex gap-1.5">
+                  {(['english', 'japanese', 'both'] as const).map(lang => {
+                    const active = genLanguage === lang;
+                    return (
+                      <button
+                        key={lang}
+                        onClick={() => setGenLanguage(lang)}
+                        className="h-8 px-3 text-[11px] cursor-pointer transition-all duration-200"
+                        style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}
+                      >
+                        {lang === 'english' ? 'EN' : lang === 'japanese' ? 'JA' : 'EN + JA'}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Flashcard options */}
               {selectedType === 'flashcards' && (
                 <div className="mb-3 flex flex-col gap-2.5">
-                  {/* Mode: standard vs vocabulary */}
                   <div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
                     <div className="flex gap-1.5">
                       {([
                         { key: 'standard',   label: 'Study' },
                         { key: 'vocabulary', label: 'Vocabulary' },
-                      ] as const).map(({ key, label }) => (
-                        <button
-                          key={key}
-                          onClick={() => setFlashcardMode(key)}
-                          className="h-8 flex-1 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{
-                            borderRadius: '999px',
-                            background:  flashcardMode === key ? subject.color + '20' : 'transparent',
-                            color:       flashcardMode === key ? subject.color         : 'var(--text-2)',
-                            borderColor: flashcardMode === key ? subject.color + '50'  : 'var(--border-base)',
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                      ] as const).map(({ key, label }) => {
+                        const active = flashcardMode === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setFlashcardMode(key)}
+                            className="h-8 flex-1 text-[11px] cursor-pointer transition-all duration-200"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
                     </div>
                     {flashcardMode === 'vocabulary' && (
-                      <div style={{ fontSize: '10px', color: 'var(--text-3)', marginTop: '5px', lineHeight: 1.5 }}>
+                      <div style={{ fontSize: '10px', color: isLight ? '#64748b' : 'var(--text-3)', marginTop: '5px', lineHeight: 1.5 }}>
                         Front: word in source language. Back: reading, meaning, example sentence + translation.
                       </div>
                     )}
@@ -2685,10 +2705,10 @@ export default function SubjectPage() {
 
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '10px', color: 'var(--text-2)', fontWeight: 600 }}>{flashcardMode === 'vocabulary' ? 'Words per file' : 'Cards per file'}</div>
+                      <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', fontWeight: 600 }}>{flashcardMode === 'vocabulary' ? 'Words per file' : 'Cards per file'}</div>
                       <div style={{
                         fontSize: '14px', fontWeight: 700, fontFamily: "'Sora', sans-serif",
-                        color: cardCount === 0 ? 'var(--text-3)' : subject.color,
+                        color: cardCount === 0 ? (isLight ? '#94a3b8' : 'var(--text-3)') : '#2563eb',
                         transition: 'color 0.15s ease',
                       }}>
                         {cardCount === 0 ? 'Undecided' : cardCount}
@@ -2699,18 +2719,17 @@ export default function SubjectPage() {
                       min={0} max={10} step={1}
                       value={cardCount / 5}
                       onChange={e => setCardCount(Number(e.target.value) * 5)}
-                      style={{ width: '100%', accentColor: subject.color, cursor: 'pointer', display: 'block' }}
+                      style={{ width: '100%', accentColor: '#2563eb', cursor: 'pointer', display: 'block' }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: 'var(--text-3)', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: isLight ? '#94a3b8' : 'var(--text-3)', userSelect: 'none' }}>
                       <span>Any</span>
                       <span>25</span>
                       <span>50</span>
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
-                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Supply & demand"
-                      style={{ width: '100%', background: 'var(--bg-page)', border: '1px solid var(--border-base)', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: 'var(--text-1)', outline: 'none', boxSizing: 'border-box' }} />
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Supply & demand" style={inputStyle} />
                   </div>
                 </div>
               )}
@@ -2719,25 +2738,28 @@ export default function SubjectPage() {
               {selectedType === 'notes' && (
                 <div className="mb-3 flex flex-col gap-2.5">
                   <div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
                     <div className="flex gap-1.5">
-                      {(['concise', 'standard', 'comprehensive'] as const).map(d => (
-                        <button key={d} onClick={() => setNotesDetail(d)}
-                          className="h-8 px-2.5 text-[10px] border cursor-pointer transition-all duration-200 font-semibold capitalize"
-                          style={{ borderRadius: '999px', background: notesDetail === d ? subject.color + '20' : 'transparent', color: notesDetail === d ? subject.color : 'var(--text-2)', borderColor: notesDetail === d ? subject.color + '50' : 'var(--border-base)' }}>
-                          {d === 'comprehensive' ? 'Deep' : d.charAt(0).toUpperCase() + d.slice(1)}
-                        </button>
-                      ))}
+                      {(['concise', 'standard', 'comprehensive'] as const).map(d => {
+                        const active = notesDetail === d;
+                        return (
+                          <button key={d} onClick={() => setNotesDetail(d)}
+                            className="h-8 px-2.5 text-[10px] cursor-pointer transition-all duration-200 capitalize"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
+                            {d === 'comprehensive' ? 'Deep' : d.charAt(0).toUpperCase() + d.slice(1)}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Include</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Include</div>
                     <div className="flex flex-col gap-1.5">
                       {(['formulas', 'diagrams', 'mindmap'] as const).map(item => (
                         <label key={item} className="flex items-center gap-2 cursor-pointer">
                           <input type="checkbox" checked={notesIncludes.includes(item)} onChange={() => toggleInclude(item)}
-                            style={{ accentColor: subject.color, width: '13px', height: '13px', cursor: 'pointer' }} />
-                          <span style={{ fontSize: '11px', color: notesIncludes.includes(item) ? 'var(--text-1)' : 'var(--text-2)' }}>
+                            style={{ accentColor: '#15803d', width: '13px', height: '13px', cursor: 'pointer' }} />
+                          <span style={{ fontSize: '11px', color: notesIncludes.includes(item) ? (isLight ? '#0f172a' : 'var(--text-1)') : (isLight ? '#475569' : 'var(--text-2)') }}>
                             {item === 'formulas' ? '∑ Formulas' : item === 'diagrams' ? '→ Diagrams' : '⊞ Mind-map style'}
                           </span>
                         </label>
@@ -2751,45 +2773,57 @@ export default function SubjectPage() {
               {selectedType === 'quiz' && (
                 <div className="mb-3 flex flex-col gap-2.5">
                   <div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
                     <div className="flex gap-1.5">
                       {([
                         { key: 'generated', label: 'AI Generated' },
                         { key: 'extraction', label: 'Extraction Only' },
-                      ] as const).map(m => (
-                        <button key={m.key} onClick={() => setQuizMode(m.key)}
-                          className="h-8 flex-1 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{ borderRadius: '999px', background: quizMode === m.key ? subject.color + '20' : 'transparent', color: quizMode === m.key ? subject.color : 'var(--text-2)', borderColor: quizMode === m.key ? subject.color + '50' : 'var(--border-base)' }}>
-                          {m.label}
-                        </button>
-                      ))}
+                      ] as const).map(m => {
+                        const active = quizMode === m.key;
+                        return (
+                          <button key={m.key} onClick={() => setQuizMode(m.key)}
+                            className="h-8 flex-1 text-[11px] cursor-pointer transition-all duration-200"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
+                            {m.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
                     <div className="flex gap-1.5 flex-wrap">
-                      {[5, 10, 15, 20].map(n => (
-                        <button key={n} onClick={() => setQuizCount(n)}
-                          className="h-8 w-10 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{ borderRadius: '999px', background: quizCount === n ? subject.color + '20' : 'transparent', color: quizCount === n ? subject.color : 'var(--text-2)', borderColor: quizCount === n ? subject.color + '50' : 'var(--border-base)' }}>
-                          {n}
-                        </button>
-                      ))}
+                      {[5, 10, 15, 20].map(n => {
+                        const active = quizCount === n;
+                        return (
+                          <button key={n} onClick={() => setQuizCount(n)}
+                            className="h-8 w-10 text-[12px] cursor-pointer transition-all duration-200"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
+                            {n}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
                     <div className="flex gap-1.5">
                       {([
-                        { key: 'easy', label: 'Easy', tint: '#48C78E' },
-                        { key: 'medium', label: 'Medium', tint: '#F6AD55' },
-                        { key: 'hard', label: 'Hard', tint: '#F87171' },
+                        { key: 'easy',   label: 'Easy',   activeBg: '#f0fdf4', activeText: '#15803d', activeBorder: '#bbf7d0' },
+                        { key: 'medium', label: 'Medium', activeBg: '#fffbeb', activeText: '#b45309', activeBorder: '#fde68a' },
+                        { key: 'hard',   label: 'Hard',   activeBg: '#fef2f2', activeText: '#b91c1c', activeBorder: '#fecaca' },
                       ] as const).map(d => {
                         const active = quizDifficulty === d.key;
                         return (
                           <button key={d.key} onClick={() => setQuizDifficulty(d.key)}
-                            className="h-8 flex-1 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
-                            style={{ borderRadius: '999px', background: active ? d.tint + '20' : 'transparent', color: active ? d.tint : 'var(--text-2)', borderColor: active ? d.tint + '60' : 'var(--border-base)' }}>
+                            className="h-8 flex-1 text-[12px] cursor-pointer transition-all duration-200"
+                            style={{
+                              borderRadius: '999px',
+                              background:  active ? d.activeBg   : (isLight ? '#ffffff' : 'transparent'),
+                              color:       active ? d.activeText : (isLight ? '#334155' : 'var(--text-2)'),
+                              border:      active ? `1px solid ${d.activeBorder}` : `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
+                              fontWeight:  active ? 700 : 600,
+                            }}>
                             {d.label}
                           </button>
                         );
@@ -2797,9 +2831,8 @@ export default function SubjectPage() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
-                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy"
-                      style={{ width: '100%', background: 'var(--bg-page)', border: '1px solid var(--border-base)', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: 'var(--text-1)', outline: 'none', boxSizing: 'border-box' }} />
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy" style={inputStyle} />
                   </div>
                 </div>
               )}
@@ -2807,36 +2840,40 @@ export default function SubjectPage() {
               {/* Custom prompt */}
               <div className="mb-3">
                 <button onClick={() => setShowAdvanced(v => !v)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '10px', fontWeight: 600, color: showAdvanced ? subject.color : 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '10px', fontWeight: 600, color: showAdvanced ? (isLight ? '#0f172a' : subject.color) : (isLight ? '#64748b' : 'var(--text-3)'), display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
                   <span style={{ fontSize: '11px' }}>✦</span> Custom instructions {showAdvanced ? '▴' : '▾'}
                 </button>
                 {showAdvanced && (
                   <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
                     placeholder={`E.g. "Focus on exam definitions", "Use simple language"`}
                     rows={3}
-                    style={{ marginTop: '7px', width: '100%', background: 'var(--bg-page)', border: `1px solid ${subject.color}30`, borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: 'var(--text-1)', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
+                    style={{ marginTop: '7px', width: '100%', background: isLight ? '#ffffff' : 'var(--bg-page)', border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`, borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: isLight ? '#0f172a' : 'var(--text-1)', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
                 )}
               </div>
 
+              {/* Primary Generate CTA */}
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || selectedLevelFileIds.length === 0}
-                className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-300"
+                className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-300"
                 style={{
                   borderRadius: '999px',
-                  background:   isGenerating ? 'var(--bg-elevated)' : subject.color + '18',
-                  color:        isGenerating ? 'var(--text-2)' : subject.color,
-                  borderColor:  isGenerating ? 'var(--border-base)' : subject.color + '45',
+                  border: 'none',
+                  background:  isGenerating ? (isLight ? '#334155' : 'var(--bg-elevated)') : '#0f172a',
+                  color:       isGenerating ? (isLight ? '#94a3b8' : 'var(--text-2)') : '#ffffff',
+                  fontFamily:  "'Sora',sans-serif",
+                  letterSpacing: '0.01em',
+                  boxShadow:   isGenerating ? 'none' : (isLight ? '0 4px 14px rgba(15,23,42,0.28)' : '0 4px 14px rgba(0,0,0,0.5)'),
                 }}
               >
                 {isGenerating
-                  ? <><Spinner color={subject.color} /> Generating…</>
+                  ? <><Spinner color="#94a3b8" /> Generating…</>
                   : <><IconSparkle /> Generate {selectedType === 'flashcards' ? (cardCount === 0 ? 'Cards' : `${cardCount} Cards`) : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
                 }
               </button>
 
               {isGenerating && genProgress && genProgress.total > 1 && (
-                <div className="mt-2 text-center text-[11px]" style={{ color: 'var(--text-2)' }}>
+                <div className="mt-2 text-center text-[11px]" style={{ color: isLight ? '#64748b' : 'var(--text-2)' }}>
                   File {genProgress.current} of {genProgress.total}…
                 </div>
               )}
@@ -2847,20 +2884,24 @@ export default function SubjectPage() {
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
 
+          {/* Floating toggle button */}
           <button
             onClick={() => setShowGenPanel(v => !v)}
             aria-label="Generate study material"
             className="flex items-center gap-2 cursor-pointer transition-all duration-300"
             style={{
-              height: '54px', padding: showGenPanel ? '0 18px' : '0 22px',
+              height: '54px', padding: showGenPanel ? '0 20px' : '0 22px',
               borderRadius: '999px',
-              background: subject.color,
-              color: '#0D1117',
+              background:  showGenPanel ? '#334155' : subject.color,
+              color:       showGenPanel ? '#f8fafc'  : '#0D1117',
               border: 'none',
               fontWeight: 700, fontSize: '14px',
-              boxShadow: `0 10px 30px ${subject.color}55, 0 2px 8px rgba(0,0,0,0.4)`,
+              boxShadow: showGenPanel
+                ? '0 6px 20px rgba(51,65,85,0.40)'
+                : `0 10px 30px ${subject.color}55, 0 2px 8px rgba(0,0,0,0.4)`,
               fontFamily: "'Sora',sans-serif",
             }}
           >
