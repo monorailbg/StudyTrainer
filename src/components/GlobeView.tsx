@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
 
-const GLOBE_NIGHT  = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg';
-const GLOBE_DAY    = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-day.jpg';
-const GLOBE_BUMP   = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png';
-const GLOBE_WATER  = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-water.png';
+const GLOBE_NIGHT = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg';
+const GLOBE_DAY   = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-day.jpg';
+const GLOBE_BUMP  = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png';
 
 // ── Shared network interface ──────────────────────────────────────────────────
 interface SupplyChainNetwork {
@@ -288,19 +287,19 @@ const JNJ_ARC_DEFS: InternalArcDef[] = [
 // ── Arc color palettes (per company × theme) ──────────────────────────────────
 const ARC_COLORS = {
   apple: {
-    light: { rawmaterial: '#6366f1BB', upstream: '#3b82f6CC', downstream: '#06b6d4BB' },
+    light: { rawmaterial: '#8B9DC355', upstream: '#5B8DBF77', downstream: '#7BA5D088' },
     dark:  { rawmaterial: '#7DD3C0AA', upstream: '#00E5FFCC', downstream: '#A5F0E0BB' },
   },
   nestle: {
-    light: { rawmaterial: '#d97706BB', upstream: '#92400eCC', downstream: '#15803dBB' },
+    light: { rawmaterial: '#c8943e66', upstream: '#8c623977', downstream: '#7a523055' },
     dark:  { rawmaterial: '#e6a83388', upstream: '#b5844eAA', downstream: '#8c6239AA' },
   },
   jnj: {
-    light: { rawmaterial: '#ef4444BB', upstream: '#0891b2CC', downstream: '#dc2626CC' },
+    light: { rawmaterial: '#F4748855', upstream: '#12708277', downstream: '#DC262666' },
     dark:  { rawmaterial: '#FB718888', upstream: '#22D3EECC', downstream: '#F87171BB' },
   },
   walmart: {
-    light: { rawmaterial: '#16a34aBC', upstream: '#0284c7CC', downstream: '#0057b8CC' },
+    light: { rawmaterial: '#4caf5066', upstream: '#0288d177', downstream: '#0071dc88' },
     dark:  { rawmaterial: '#81c78499', upstream: '#29b6f6BB', downstream: '#40c4ffCC' },
   },
 } as const;
@@ -432,15 +431,14 @@ const PIN_STYLES = `
   }
 
   body.theme-light .gpin-label {
-    background:rgba(255,255,255,0.97);
-    color:var(--gpin-color);
-    border:1px solid var(--gpin-border);
+    background:rgba(255,252,247,0.95);
+    color:#2C2A25;
+    border:0.5px solid rgba(0,0,0,0.08);
     text-shadow:none;
-    box-shadow:0 2px 8px rgba(0,0,0,0.13), 0 0 0 1px rgba(255,255,255,0.9);
-    font-weight:800;
+    box-shadow:0 1px 3px rgba(0,0,0,0.10);
   }
   body.theme-light .gpin-label .gpin-label-dot {
-    box-shadow:0 0 4px var(--gpin-color);
+    box-shadow:0 0 2px var(--gpin-color);
   }
 
   body.theme-dark .gpin-label {
@@ -456,8 +454,8 @@ const PIN_STYLES = `
   }
 
   body.theme-light .gpin-dot {
-    box-shadow:0 1px 4px rgba(0,0,0,0.22),0 0 8px var(--gpin-color),0 0 16px var(--gpin-color)66 !important;
-    border-color:rgba(255,255,255,0.85) !important;
+    box-shadow:0 1px 3px rgba(0,0,0,0.18),0 0 4px var(--gpin-color) !important;
+    border-color:rgba(255,255,255,0.5) !important;
   }
   body.theme-dark .gpin-dot {
     box-shadow:0 0 6px var(--gpin-color),0 0 12px var(--gpin-color)44 !important;
@@ -533,8 +531,8 @@ export default function GlobeView({
         .height(el.clientHeight)
         .globeImageUrl(isLight ? GLOBE_DAY : GLOBE_NIGHT)
         .bumpImageUrl(GLOBE_BUMP)
-        .atmosphereColor(isLight ? '#60b8ff' : '#1a3a52')
-        .atmosphereAltitude(isLight ? 0.30 : 0.20)
+        .atmosphereColor(isLight ? '#C4956A' : '#1a3a52')
+        .atmosphereAltitude(isLight ? 0.08 : 0.20)
         .backgroundColor('rgba(0,0,0,0)')
         // ── Thin, semi-translucent supply arcs ──────────────────────────────
         .arcsData(network.arcs)
@@ -608,33 +606,6 @@ export default function GlobeView({
         });
 
       globe(el);
-
-      // Ocean specularity — adds wet-ocean shimmer in light mode.
-      // Three.js is already bundled inside globe.gl; pull it from the renderer.
-      if (isLight) {
-        setTimeout(() => {
-          if (cancelled) return;
-          try {
-            const renderer = globe.renderer();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const THREE = (renderer as any).__THREE ?? (window as any).THREE;
-            if (!THREE) return;
-            const scene = globe.scene();
-            const loader = new THREE.TextureLoader();
-            loader.load(GLOBE_WATER, (waterTex: any) => {
-              scene.traverse((obj: any) => {
-                if (obj.isMesh && obj.material && obj.material.map &&
-                    !obj.material.specularMap) {
-                  obj.material.specularMap = waterTex;
-                  obj.material.specular    = new THREE.Color(0x448899);
-                  obj.material.shininess   = 30;
-                  obj.material.needsUpdate = true;
-                }
-              });
-            });
-          } catch { /* THREE not accessible — silently skip */ }
-        }, 800);
-      }
 
       const controls = globe.controls();
       controls.autoRotate      = true;
