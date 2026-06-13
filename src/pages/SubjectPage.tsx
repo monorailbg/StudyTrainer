@@ -335,10 +335,10 @@ function SubjectBanner({
   return (
     <div style={{
       background: isLight
-        ? '#ffffff'
+        ? 'linear-gradient(135deg, #fffdf5 0%, #f0f7ff 55%, #faf5ff 100%)'
         : `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, var(--bg-page) 100%)`,
-      border: isLight ? '1px solid #cbd5e1' : `1.5px solid ${subject.color}28`,
-      boxShadow: isLight ? '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)' : 'none',
+      border: isLight ? '1px solid #e2d9f3' : `1.5px solid ${subject.color}28`,
+      boxShadow: isLight ? '0 4px 16px rgba(0,0,0,0.06)' : 'none',
       borderRadius: '24px',
       padding: '32px 36px',
       marginBottom: '32px',
@@ -451,22 +451,23 @@ function SubjectBanner({
 // ── Section Card ───────────────────────────────────────────────────────────────
 
 function SectionCard({
-  icon, label, color, stat, subtext, secondary, onClick, index, inactive, progress,
+  icon, label, color, stat, subtext, secondary, onClick, index, inactive, progress, lightBg, lightBorder,
 }: {
   icon: React.ReactNode; label: string; color: string;
   stat: string | number; subtext?: string; secondary?: string;
   onClick: () => void; index: number; inactive?: boolean; progress?: number | null;
+  lightBg?: string; lightBorder?: string;
 }) {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
   const baseBg = isLight
-    ? '#ffffff'
+    ? (inactive ? '#f8fafc' : (lightBg ?? '#ffffff'))
     : `linear-gradient(135deg, ${inactive ? 'var(--bg-surface)' : color + '10'} 0%, var(--bg-surface) 100%)`;
-  const baseBorder = isLight ? '#cbd5e1' : (inactive ? 'var(--border-base)' : color + '30');
-  const baseShadow = isLight
-    ? '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)'
-    : 'none';
+  const baseBorder = isLight
+    ? (inactive ? '#e2e8f0' : (lightBorder ?? '#cbd5e1'))
+    : (inactive ? 'var(--border-base)' : color + '30');
+  const baseShadow = isLight ? '0 4px 12px rgba(0,0,0,0.03)' : 'none';
 
   return (
     <div
@@ -514,8 +515,8 @@ function SectionCard({
       {/* Icon */}
       <div style={{
         width: 40, height: 40, borderRadius: 12,
-        background: isLight ? color + '14' : color + '18', color,
-        border: `1px solid ${color}${isLight ? '33' : '22'}`,
+        background: isLight ? color + '20' : color + '18', color,
+        border: `1px solid ${color}${isLight ? '44' : '22'}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', zIndex: 1,
       }}>
@@ -1538,7 +1539,6 @@ export default function SubjectPage() {
           {t('nav_dashboard')}
         </Link>
         <span className="flex-shrink-0" style={{ color: 'var(--text-3)', fontSize: '11px' }}>›</span>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: subject.color, boxShadow: `0 0 8px ${subject.color}`, flexShrink: 0 }} />
         <div className="flex-1 min-w-0 flex items-baseline gap-2.5">
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: 'var(--text-1)' }}>
             {subject.title}
@@ -1799,8 +1799,6 @@ export default function SubjectPage() {
               label={t('nav_flashcards')}
               sublabel={savedFlashcardSets.length > 0 ? ts('{n} saved', { n: savedFlashcardSets.length }) : ts('None yet')}
               active={view === 'flashcards' && !activeSetId}
-              dot={savedFlashcardSets.length > 0}
-              dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setActiveSetId(null); setView('flashcards'); setFullFocus(false); }}
             />
             <SidebarItem
@@ -1808,8 +1806,6 @@ export default function SubjectPage() {
               label={t('nav_notes')}
               sublabel={savedNotes.length > 0 ? ts('{n} saved', { n: savedNotes.length }) : ts('None yet')}
               active={view === 'notes' && !activeNoteId}
-              dot={savedNotes.length > 0}
-              dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(null); setView('notes'); setFullFocus(false); }}
             />
             <SidebarItem
@@ -1817,8 +1813,6 @@ export default function SubjectPage() {
               label={ts('Dictionary')}
               sublabel={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : ts('None yet')}
               active={view === 'dictionary'}
-              dot={dictEntries.length > 0}
-              dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setView('dictionary'); setFullFocus(false); }}
             />
             <SidebarItem
@@ -1826,8 +1820,6 @@ export default function SubjectPage() {
               label={ts('Quizzes')}
               sublabel={savedQuizzes.length > 0 ? ts('{n} saved', { n: savedQuizzes.length }) : ts('None yet')}
               active={view === 'quiz' && !activeQuizId}
-              dot={savedQuizzes.length > 0}
-              dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setView('quiz'); setFullFocus(false); }}
             />
           </div>
@@ -1871,7 +1863,8 @@ export default function SubjectPage() {
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(190px, 100%), 1fr))', gap: '14px' }}>
                     <SectionCard
-                      index={0} icon={<IconFile />} label={ts('Files')} color="#4FA8E8"
+                      index={0} icon={<IconFile />} label={ts('Files')} color="#3b82f6"
+                      lightBg="#eff6ff" lightBorder="#bfdbfe"
                       stat={levelFiles.length}
                       subtext={levelFiles.length > 0 ? fileParts : undefined}
                       secondary={levelFiles.length > 0 ? `${totalMB.toFixed(1)} MB total` : ts('Upload PDFs or images to begin')}
@@ -1879,7 +1872,8 @@ export default function SubjectPage() {
                       onClick={() => setView('upload')}
                     />
                     <SectionCard
-                      index={1} icon={<IconNote />} label={ts('Notes')} color="#3FBA74"
+                      index={1} icon={<IconNote />} label={ts('Notes')} color="#16a34a"
+                      lightBg="#f0fdf4" lightBorder="#bbf7d0"
                       stat={savedNotes.length}
                       subtext={savedNotes.length > 0 ? ts('{n} sections', { n: totalSections }) : undefined}
                       secondary={savedNotes.length > 0 ? ts('updated {time}', { time: timeAgo(savedNotes[0].createdAt) }) : ts('Generate structured notes from files')}
@@ -1887,7 +1881,8 @@ export default function SubjectPage() {
                       onClick={() => { setActiveNoteId(null); setView('notes'); }}
                     />
                     <SectionCard
-                      index={2} icon={<IconCards />} label={ts('Flashcards')} color="#5C8AFF"
+                      index={2} icon={<IconCards />} label={ts('Flashcards')} color="#4f46e5"
+                      lightBg="#eef2ff" lightBorder="#c7d2fe"
                       stat={totalCards}
                       subtext={savedFlashcardSets.length > 0 ? ts('in {n} sets', { n: savedFlashcardSets.length }) : undefined}
                       secondary={masteryPct !== null ? `${masteryPct}% mastered` : savedFlashcardSets.length > 0 ? ts('updated {time}', { time: timeAgo(savedFlashcardSets[0].createdAt) }) : ts('Generate a deck from files')}
@@ -1896,7 +1891,8 @@ export default function SubjectPage() {
                       onClick={() => { setActiveSetId(null); setView('flashcards'); }}
                     />
                     <SectionCard
-                      index={3} icon={<IconQuiz />} label={ts('Quizzes')} color="#FF8C42"
+                      index={3} icon={<IconQuiz />} label={ts('Quizzes')} color="#d97706"
+                      lightBg="#fffbeb" lightBorder="#fde68a"
                       stat={savedQuizzes.length > 0 ? totalQs : 0}
                       subtext={savedQuizzes.length > 0 ? ts('{n} quizzes', { n: savedQuizzes.length }) : undefined}
                       secondary={avgQuizPct !== null ? `avg ${avgQuizPct}%` : savedQuizzes.length > 0 ? ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) }) : ts('Generate a quiz from files')}
@@ -1905,7 +1901,8 @@ export default function SubjectPage() {
                       onClick={() => { setActiveQuizId(null); setView('quiz'); }}
                     />
                     <SectionCard
-                      index={4} icon={<IconDict />} label={ts('Dictionary')} color="#A78BFA"
+                      index={4} icon={<IconDict />} label={ts('Dictionary')} color="#7c3aed"
+                      lightBg="#faf5ff" lightBorder="#e9d5ff"
                       stat={dictEntries.length}
                       subtext={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : undefined}
                       secondary={dictEntries.length > 0 ? ts('updated {time}', { time: timeAgo(dictEntries[dictEntries.length - 1].createdAt) }) : ts('Select text in notes to define')}
