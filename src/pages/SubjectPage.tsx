@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useStore } from '../store/useStore';
 import { useActivity } from '../store/useActivity';
@@ -301,6 +302,8 @@ function SubjectBanner({
   onExamDateClear: () => void;
 }) {
   const { ts } = useLang();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const totalCards = savedFlashcardSets.reduce((a, s) => a + s.cards.length, 0);
 
   const pills: { label: string; count: number }[] = [
@@ -405,9 +408,13 @@ function SubjectBanner({
                 type="text"
                 placeholder={ts('Set exam date')}
                 maxLength={10}
+                className="outline-interactive"
                 style={{
-                  background: 'transparent', border: '1px solid var(--border-base)', borderRadius: 8,
-                  color: 'var(--text-2)', padding: '7px 12px', fontSize: 12, outline: 'none',
+                  background: isLight ? 'rgba(255,255,255,0.5)' : 'transparent',
+                  border: isLight ? '1.5px solid rgba(0,0,0,0.15)' : '1px solid var(--border-base)',
+                  borderRadius: 8,
+                  color: isLight ? '#334155' : 'var(--text-2)',
+                  padding: '7px 12px', fontSize: 12, outline: 'none',
                   fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '136px',
                 }}
                 onChange={e => {
@@ -426,7 +433,9 @@ function SubjectBanner({
           {pills.length > 0 ? pills.map(p => (
             <span key={p.label} style={{
               padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-              color: 'var(--text-2)', background: 'var(--bg-surface)', border: '1px solid var(--border-base)',
+              color: isLight ? '#334155' : 'var(--text-2)',
+              background: isLight ? 'rgba(255,255,255,0.55)' : 'var(--bg-surface)',
+              border: isLight ? '1px solid rgba(0,0,0,0.12)' : '1px solid var(--border-base)',
             }}>
               {p.label}
             </span>
@@ -444,11 +453,11 @@ function SubjectBanner({
 // ── Section Card ───────────────────────────────────────────────────────────────
 
 function SectionCard({
-  icon, label, color, stat, subtext, secondary, onClick, index, inactive,
+  icon, label, color, stat, subtext, secondary, onClick, index, inactive, progress,
 }: {
   icon: React.ReactNode; label: string; color: string;
   stat: string | number; subtext?: string; secondary?: string;
-  onClick: () => void; index: number; inactive?: boolean;
+  onClick: () => void; index: number; inactive?: boolean; progress?: number | null;
 }) {
   return (
     <div
@@ -519,6 +528,18 @@ function SectionCard({
         {secondary && (
           <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
             {secondary}
+          </div>
+        )}
+        {progress !== null && progress !== undefined && !inactive && (
+          <div style={{
+            marginTop: 10, height: '3px', borderRadius: '2px', overflow: 'hidden',
+            background: 'var(--border-base)',
+          }}>
+            <div style={{
+              width: `${Math.min(100, Math.max(0, progress))}%`,
+              height: '100%', background: color, borderRadius: '2px',
+              transition: 'width 900ms cubic-bezier(0,0,0.2,1)',
+            }} />
           </div>
         )}
       </div>
@@ -1747,7 +1768,7 @@ export default function SubjectPage() {
 
           {/* Generated content section */}
           <div style={{ marginTop: '8px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '4px', fontFamily: "'Sora',sans-serif" }}>
+            <div className="section-header-label" style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '4px', fontFamily: "'Sora',sans-serif" }}>
               {ts('Content')}
             </div>
 
@@ -1849,6 +1870,7 @@ export default function SubjectPage() {
                       subtext={savedFlashcardSets.length > 0 ? ts('in {n} sets', { n: savedFlashcardSets.length }) : undefined}
                       secondary={masteryPct !== null ? `${masteryPct}% mastered` : savedFlashcardSets.length > 0 ? ts('updated {time}', { time: timeAgo(savedFlashcardSets[0].createdAt) }) : ts('Generate a deck from files')}
                       inactive={savedFlashcardSets.length === 0}
+                      progress={masteryPct}
                       onClick={() => { setActiveSetId(null); setView('flashcards'); }}
                     />
                     <SectionCard
@@ -1857,6 +1879,7 @@ export default function SubjectPage() {
                       subtext={savedQuizzes.length > 0 ? ts('{n} quizzes', { n: savedQuizzes.length }) : undefined}
                       secondary={avgQuizPct !== null ? `avg ${avgQuizPct}%` : savedQuizzes.length > 0 ? ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) }) : ts('Generate a quiz from files')}
                       inactive={savedQuizzes.length === 0}
+                      progress={avgQuizPct}
                       onClick={() => { setActiveQuizId(null); setView('quiz'); }}
                     />
                     <SectionCard

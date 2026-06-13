@@ -106,9 +106,9 @@ body.theme-light {
   --bg-elevated: #D6CCBA;
   --border-light: #C9C0AD;
   --border-base:  #B8AE9C;
-  --text-1: #3D3428;
-  --text-2: #4A3A2E;
-  --text-3: #9B8B78;
+  --text-1: #1e1a14;
+  --text-2: #334155;
+  --text-3: #5C4A38;
   --accent-primary: #8B6F47;
   --accent-orange: #D97706;
 
@@ -274,6 +274,27 @@ body.theme-light .subject-badge {
 }
 body.theme-light .explore-link {
   filter: saturate(1.4) brightness(0.72);
+}
+
+/* ── Interactive outline components (capsules, ghost inputs) ─────────
+   In light mode, hairline borders on pale cream disappear.
+   .outline-interactive marks any clickable ghost outline element.     */
+body.theme-light .outline-interactive {
+  border-color: rgba(0, 0, 0, 0.14) !important;
+}
+body.theme-light .outline-interactive:hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.20) !important;
+}
+
+/* ── Micro stat-pill labels — secondary text on cards ────────────── */
+body.theme-light .stat-meta {
+  color: #334155 !important;
+}
+
+/* ── Section header labels ────────────────────────────────────────── */
+body.theme-light .section-header-label {
+  color: #334155 !important;
 }
 
 /* ── Generate page: extra light-mode polish ─────────────────────── */

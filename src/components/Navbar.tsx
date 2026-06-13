@@ -364,28 +364,21 @@ function GenerateButton() {
   const { ts } = useLang();
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const [pressed, setPressed] = useState(false);
   const dark = theme === 'dark';
 
-  const defaultBg     = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const defaultBg     = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
   const defaultBorder = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)';
-  const defaultColor  = dark ? 'rgba(255,255,255,0.85)' : '#1e293b';
   const defaultShadow = dark
-    ? '0 0 0 1px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.06)'
-    : '0 0 0 1px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.8)';
+    ? 'inset 0 1px 0 rgba(255,255,255,0.06)'
+    : 'inset 0 1px 0 rgba(255,255,255,0.8)';
 
   return (
     <button
       onClick={() => navigate('/generate')}
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLElement;
-        el.style.transform = 'scale(1.03)';
-        el.style.boxShadow = [
-          '0 0 0 1px rgba(61,126,255,0.50)',
-          '0 0 16px rgba(61,126,255,0.28)',
-          '0 0 32px rgba(61,126,255,0.10)',
-          'inset 0 1px 0 rgba(255,255,255,0.12)',
-        ].join(', ');
+        el.style.transform = 'scale(1.08)';
+        el.style.boxShadow = '0 0 0 1px rgba(61,126,255,0.5), 0 0 14px rgba(61,126,255,0.22)';
         el.style.borderColor = 'rgba(61,126,255,0.55)';
         el.style.background = 'rgba(61,126,255,0.10)';
       }}
@@ -395,46 +388,26 @@ function GenerateButton() {
         el.style.boxShadow = defaultShadow;
         el.style.borderColor = defaultBorder;
         el.style.background = defaultBg;
-        setPressed(false);
       }}
-      onMouseDown={e => {
-        (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)';
-        setPressed(true);
-      }}
-      onMouseUp={e => {
-        (e.currentTarget as HTMLElement).style.transform = 'scale(1.03)';
-        setPressed(false);
-      }}
+      onMouseDown={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'; }}
+      onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.08)'; }}
       title={ts('Generate content')}
       aria-label={ts('Generate content')}
-      className="generate-btn"
       style={{
-        position: 'relative',
-        display: 'flex', alignItems: 'center', gap: '5px',
-        padding: '0 13px 0 10px', height: '28px', borderRadius: '999px',
+        width: '30px', height: '30px', borderRadius: '999px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: defaultBg,
         border: `1px solid ${defaultBorder}`,
-        color: defaultColor,
         cursor: 'pointer',
-        fontSize: '12px', fontWeight: 600, letterSpacing: '0.02em',
-        overflow: 'hidden',
         boxShadow: defaultShadow,
-        transition: 'transform 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+        transition: 'transform 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease',
         flexShrink: 0,
       }}
     >
-      <span className="generate-btn-shimmer" style={{
-        position: 'absolute', top: 0, left: 0, bottom: 0, width: '45%',
-        background: 'linear-gradient(90deg, transparent 0%, rgba(61,126,255,0.15) 50%, transparent 100%)',
-        transform: pressed ? 'translateX(250%) skewX(-12deg)' : 'translateX(-120%) skewX(-12deg)',
-        pointerEvents: 'none',
-        transition: 'transform 0.55s ease',
-      }} />
-      <svg viewBox="0 0 13 13" width="11" height="11" fill="none" style={{ flexShrink: 0 }}>
+      <svg viewBox="0 0 13 13" width="12" height="12" fill="none">
         <path d="M6.5 1L7.4 5.1 11.5 6 7.4 6.9 6.5 11 5.6 6.9 1.5 6 5.6 5.1Z" fill="#3D7EFF" fillOpacity="0.9"/>
         <path d="M10.5 1L11 3 13 3.5 11 4 10.5 6 10 4 8 3.5 10 3Z" fill="#3D7EFF" fillOpacity="0.55"/>
       </svg>
-      {ts('Generate')}
     </button>
   );
 }
