@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect, useCallback } from 'react';
+import { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -457,6 +457,19 @@ function glassStyle(dark: boolean): React.CSSProperties {
   };
 }
 
+// ── Narrow-screen detection ───────────────────────────────────────────────────
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
@@ -465,6 +478,7 @@ export default function Navbar() {
   const { theme } = useTheme();
   const dark = theme === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const prevPath = useRef(pathname);
   if (prevPath.current !== pathname) {
@@ -489,14 +503,18 @@ export default function Navbar() {
         room top + bottom, 16px left + right.
       */}
       <nav style={{
-        position: 'sticky', top: 0, zIndex: 50, height: '76px',
-        background: 'transparent', padding: '10px 16px', boxSizing: 'border-box',
+        position: 'sticky', top: 0, zIndex: 50,
+        height: isMobile ? '60px' : '76px',
+        background: 'transparent',
+        padding: isMobile ? '6px 10px' : '10px 16px',
+        boxSizing: 'border-box',
       }}>
         {/* Glass HUD pill */}
         <div style={{
           ...glassStyle(dark),
           maxWidth: '1400px', margin: '0 auto', height: '100%',
-          borderRadius: '9999px', padding: '0 14px',
+          borderRadius: isMobile ? '16px' : '9999px',
+          padding: isMobile ? '0 10px' : '0 14px',
           display: 'flex', alignItems: 'center', gap: '10px',
           transition: 'background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease',
         }}>
@@ -565,11 +583,34 @@ export default function Navbar() {
       {/* Mobile menu overlay */}
       {menuOpen && (
         <div style={{
-          position: 'fixed', top: '76px', left: 0, right: 0, bottom: 0, zIndex: 49,
+          position: 'fixed', top: isMobile ? '60px' : '76px', left: 0, right: 0, bottom: 0, zIndex: 49,
           background: dark ? 'rgba(8,11,16,0.97)' : 'rgba(245,243,238,0.97)',
           backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-          display: 'flex', flexDirection: 'column', padding: '16px', overflowY: 'auto',
+          display: 'flex', flexDirection: 'column', padding: '12px 12px 20px', overflowY: 'auto',
         }}>
+
+          {/* Generate CTA */}
+          <div style={{ marginBottom: '8px' }}>
+            <Link
+              to="/generate"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                padding: '13px 16px', borderRadius: '14px', textDecoration: 'none',
+                background: 'rgba(61,126,255,0.12)',
+                border: '1px solid rgba(61,126,255,0.30)',
+                color: '#3D7EFF', fontSize: '14px', fontWeight: 700,
+              }}
+            >
+              <svg viewBox="0 0 13 13" width="13" height="13" fill="none">
+                <path d="M6.5 1L7.4 5.1 11.5 6 7.4 6.9 6.5 11 5.6 6.9 1.5 6 5.6 5.1Z" fill="#3D7EFF" fillOpacity="0.9"/>
+                <path d="M10.5 1L11 3 13 3.5 11 4 10.5 6 10 4 8 3.5 10 3Z" fill="#3D7EFF" fillOpacity="0.55"/>
+              </svg>
+              {ts('Generate')}
+            </Link>
+          </div>
+
+          {/* Nav items */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             {navItems.map(({ to, labelKey }) => {
               const active = pathname === to || (to !== '/' && pathname.startsWith(to));
@@ -580,7 +621,7 @@ export default function Navbar() {
                   onClick={() => setMenuOpen(false)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '13px 16px', borderRadius: '12px', textDecoration: 'none',
+                    padding: '12px 16px', borderRadius: '12px', textDecoration: 'none',
                     color: active ? (dark ? 'rgba(255,255,255,0.95)' : '#0f172a') : (dark ? 'rgba(255,255,255,0.45)' : '#64748b'),
                     background: active ? 'rgba(61,126,255,0.10)' : 'transparent',
                     fontSize: '15px', fontWeight: active ? 600 : 400,
@@ -600,16 +641,30 @@ export default function Navbar() {
             })}
           </div>
 
-          <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Bottom controls */}
+          <div style={{
+            marginTop: 'auto', paddingTop: '20px',
+            borderTop: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
               <div>
-                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,0.25)' : '#94a3b8', marginBottom: '10px' }}>
+                <div style={{
+                  fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: dark ? 'rgba(255,255,255,0.25)' : '#94a3b8',
+                  marginBottom: '8px',
+                }}>
                   {ts('Theme')}
                 </div>
                 <ThemeToggle />
               </div>
               <div>
-                <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,0.25)' : '#94a3b8', marginBottom: '10px' }}>
+                <div style={{
+                  fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: dark ? 'rgba(255,255,255,0.25)' : '#94a3b8',
+                  marginBottom: '8px',
+                }}>
                   {ts('Language')}
                 </div>
                 <LangToggle />
