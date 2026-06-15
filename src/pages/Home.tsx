@@ -48,8 +48,8 @@ function TiltCard({ children, className, style }: {
     const r = el.getBoundingClientRect();
     const x = ((e.clientX - r.left) / r.width  - 0.5) * 9;
     const y = ((e.clientY - r.top)  / r.height - 0.5) * -7;
-    el.style.transform = `perspective(900px) rotateX(${y}deg) rotateY(${x}deg) translateY(-6px) scale(1.01)`;
-    el.style.boxShadow = '0 1px 0 rgba(255,255,255,0.09) inset,0 12px 32px rgba(0,0,0,0.55),0 28px 60px rgba(0,0,0,0.38),0 0 0 1px rgba(61,126,255,0.3)';
+    el.style.transform = `perspective(900px) rotateX(${y}deg) rotateY(${x}deg) translateY(-3px)`;
+    el.style.boxShadow = '0 10px 20px -5px rgba(15,23,42,0.06),0 4px 6px -2px rgba(15,23,42,0.04)';
     el.style.borderColor = 'rgba(61,126,255,0.4)';
   }
 
@@ -61,7 +61,7 @@ function TiltCard({ children, className, style }: {
   }
 
   return (
-    <div ref={ref} className={className} style={{ ...style, transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.45s cubic-bezier(0.34,1.56,0.64,1),border-color 0.45s cubic-bezier(0.34,1.56,0.64,1)' }}
+    <div ref={ref} className={className} style={{ ...style, transition: 'transform 0.2s ease-out,box-shadow 0.2s ease-out,border-color 0.2s ease-out' }}
       onMouseMove={onMove} onMouseLeave={onLeave}>
       {children}
     </div>
