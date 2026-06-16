@@ -929,7 +929,7 @@ export default function SubjectPage() {
   const [quizCount, setQuizCount] = useState(10);
   const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [quizMode, setQuizMode] = useState<'generated' | 'extraction'>('generated');
-  const [cardCount, setCardCount] = useState(0); // 0 = undecided; multiples of 5 up to 50
+  const [cardCount, setCardCount] = useState<number | 'all'>('all'); // 'all' = no limit; otherwise multiples of 5 up to 50
   const [flashcardMode, setFlashcardMode] = useState<'standard' | 'vocabulary'>('standard');
   const [focusTopic, setFocusTopic] = useState('');
   const [notesDetail, setNotesDetail] = useState<'concise' | 'standard' | 'comprehensive'>('standard');
@@ -1421,7 +1421,7 @@ export default function SubjectPage() {
           }
         }
         const result = await generateFromFile(fileForGen, selectedType, subject!.title, {
-          cardCount: cardCount === 0 ? undefined : cardCount,
+          cardCount,
           questionCount: quizCount,
           difficulty: quizDifficulty,
           quizMode: selectedType === 'quiz' ? quizMode : undefined,
@@ -2708,21 +2708,25 @@ export default function SubjectPage() {
                       <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', fontWeight: 600 }}>{flashcardMode === 'vocabulary' ? 'Words per file' : 'Cards per file'}</div>
                       <div style={{
                         fontSize: '14px', fontWeight: 700, fontFamily: "'Sora', sans-serif",
-                        color: cardCount === 0 ? (isLight ? '#94a3b8' : 'var(--text-3)') : '#2563eb',
+                        color: cardCount === 'all' ? (isLight ? '#94a3b8' : 'var(--text-3)') : '#2563eb',
                         transition: 'color 0.15s ease',
                       }}>
-                        {cardCount === 0 ? 'Undecided' : cardCount}
+                        {cardCount === 'all' ? 'All' : cardCount}
                       </div>
                     </div>
                     <input
                       type="range"
                       min={0} max={10} step={1}
-                      value={cardCount / 5}
-                      onChange={e => setCardCount(Number(e.target.value) * 5)}
+                      value={cardCount === 'all' ? 0 : cardCount / 5}
+                      onChange={e => {
+                        const v = Number(e.target.value);
+                        setCardCount(v === 0 ? 'all' : v * 5);
+                      }}
                       style={{ width: '100%', accentColor: '#2563eb', cursor: 'pointer', display: 'block' }}
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: isLight ? '#94a3b8' : 'var(--text-3)', userSelect: 'none' }}>
-                      <span>Any</span>
+                      <span>All</span>
+                      <span>5</span>
                       <span>25</span>
                       <span>50</span>
                     </div>
@@ -2868,7 +2872,7 @@ export default function SubjectPage() {
               >
                 {isGenerating
                   ? <><Spinner color="#94a3b8" /> Generating…</>
-                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? (cardCount === 0 ? 'Cards' : `${cardCount} Cards`) : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
+                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? (cardCount === 'all' ? 'Cards' : `${cardCount} Cards`) : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
                 }
               </button>
 

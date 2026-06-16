@@ -243,7 +243,7 @@ function processResult(
 // ── Generation options (same public interface as geminiGenerator.ts) ────────
 
 export interface GenerateOptions {
-  cardCount?:      number;
+  cardCount?:      number | 'all';
   questionCount?:  number;
   focusTopic?:     string;
   notesDetail?:    'concise' | 'standard' | 'comprehensive';
@@ -265,12 +265,15 @@ function languageInstruction(language?: 'english' | 'japanese' | 'both'): string
 // ── Prompt builders (identical to geminiGenerator.ts) ──────────────────────
 
 function flashcardVocabPrompt(subject: string, opts: GenerateOptions): string {
-  const count  = opts.cardCount ?? 15;
+  const isAll = opts.cardCount === 'all';
+  const count = isAll ? undefined : (opts.cardCount ?? 15);
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
   return `You are an expert vocabulary flashcard creator for students studying ${subject}.
 
-Analyse the provided content and extract exactly ${count} key vocabulary items from it.
+${isAll
+    ? 'Analyse the provided content and extract every single unique vocabulary word or expression it contains — do not cap or limit the count, no upper restriction, include all of them even if there are dozens.'
+    : `Analyse the provided content and extract exactly ${count} key vocabulary items from it.`}
 ${focus ? `Focus on vocabulary related to: "${focus}".` : ''}
 ${custom ? `Additional instructions: ${custom}` : ''}
 
@@ -299,12 +302,15 @@ Return ONLY valid JSON — no markdown, no commentary:
 
 function flashcardFilePrompt(subject: string, opts: GenerateOptions): string {
   if (opts.flashcardMode === 'vocabulary') return flashcardVocabPrompt(subject, opts);
-  const count  = opts.cardCount ?? 12;
+  const isAll = opts.cardCount === 'all';
+  const count = isAll ? undefined : (opts.cardCount ?? 12);
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
   return `You are an expert study material creator for university-level ${subject} students.
 
-Analyse the content in this file and create exactly ${count} high-quality flashcards.
+${isAll
+    ? 'Analyse the content in this file and create a flashcard for every distinct concept, term or fact it contains — do not cap or limit the count, no upper restriction.'
+    : `Analyse the content in this file and create exactly ${count} high-quality flashcards.`}
 ${focus ? `Focus specifically on the topic: "${focus}".` : 'Cover the most important concepts, definitions, and relationships.'}
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
