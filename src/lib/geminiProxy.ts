@@ -268,7 +268,6 @@ function flashcardVocabPrompt(subject: string, opts: GenerateOptions): string {
   const count  = opts.cardCount ?? 15;
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
-  const meaningLang = (!opts.language || opts.language === 'english') ? 'English' : 'Japanese';
   return `You are an expert vocabulary flashcard creator for students studying ${subject}.
 
 Analyse the provided content and extract exactly ${count} key vocabulary items from it.
@@ -277,10 +276,10 @@ ${custom ? `Additional instructions: ${custom}` : ''}
 
 For each vocabulary item provide:
 - "front": the word or expression in its native script only (characters/script — no reading, no translation)
-- "reading": pronunciation guide appropriate to the language (pinyin for Chinese, romaji for Japanese, IPA or romanisation for others)
-- "meaning": concise ${meaningLang} translation or meaning
-- "example": a short, natural example sentence in the source language that uses this word in context
-- "translation": ${meaningLang} translation of that example sentence
+- "reading": pronunciation guide appropriate to the language (furigana/romaji for Japanese, pinyin for Chinese, IPA or romanisation for others)
+- "meaning": concise English meaning of the word
+- "example": a short, natural example sentence in the source language (native script) that uses this exact word in context
+- "translation": the English translation of that exact example sentence — no other sentence
 - "topic": grammatical category or subject area (e.g. "Noun", "Verb", "Business", "Greetings")
 
 Return ONLY valid JSON — no markdown, no commentary:
@@ -289,9 +288,9 @@ Return ONLY valid JSON — no markdown, no commentary:
     {
       "front": "経済",
       "reading": "けいざい (keizai)",
-      "meaning": "${meaningLang === 'Japanese' ? '経済、経済学' : 'economy, economics'}",
+      "meaning": "economy, economics",
       "example": "日本の経済は急速に発展してきた。",
-      "translation": "${meaningLang === 'Japanese' ? '日本の経済は急速に発展してきた。' : "Japan's economy has developed rapidly."}",
+      "translation": "Japan's economy has developed rapidly.",
       "topic": "Noun"
     }
   ]

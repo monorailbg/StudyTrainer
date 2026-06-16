@@ -267,6 +267,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   const [index, setIndex] = useState(0);
 
   const [flipped,       setFlipped]      = useState(false);
+  const [suppressFlipAnim, setSuppressFlipAnim] = useState(false);
   const [reviewed,      setReviewed]     = useState(0);
   const [showSettings,  setShowSettings] = useState(false);
   const [confirmReset,  setConfirmReset] = useState(false);
@@ -305,6 +306,21 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
 
   const flip = () => setFlipped(f => !f);
 
+  // When the next/prev card or the next item in the SRS queue loads, the
+  // flip state resets to "front" — but without this, the CSS rotation
+  // animation plays with the *new* card's content already in place, so its
+  // back face is briefly visible mid-rotation. Suppressing the transition
+  // for one frame makes the reset instantaneous instead of animated.
+  const resetToFrontInstantly = () => {
+    setSuppressFlipAnim(true);
+    setFlipped(false);
+  };
+  useEffect(() => {
+    if (!suppressFlipAnim) return;
+    const id = requestAnimationFrame(() => setSuppressFlipAnim(false));
+    return () => cancelAnimationFrame(id);
+  }, [suppressFlipAnim]);
+
   function startCardEdit() {
     if (!displayCard) return;
     const v = parseVocab(displayCard.back);
@@ -322,8 +338,8 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   }
   const isEditingCard = editingCardId === card?.id;
 
-  const prev = () => { setIndex(i => Math.max(0, i - 1)); setFlipped(false); };
-  const next = () => { setIndex(i => Math.min(cards.length - 1, i + 1)); setFlipped(false); };
+  const prev = () => { setIndex(i => Math.max(0, i - 1)); resetToFrontInstantly(); };
+  const next = () => { setIndex(i => Math.min(cards.length - 1, i + 1)); resetToFrontInstantly(); };
 
   const handleRate = useCallback((rating: Rating) => {
     if (!card) return;
@@ -331,7 +347,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
     // Always persist the rating immediately (updates SRS schedule even on Again)
     if (subjectId) rate(card.id, subjectId, rating);
 
-    setFlipped(false);
+    resetToFrontInstantly();
 
     if (rating === 'again') {
       // Anki behavior: re-insert after the next few cards so the user gets
@@ -669,7 +685,10 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           aria-label={flipped ? ts('Showing answer — click to flip back') : ts('Showing question — click to reveal answer')}
           onKeyDown={e => (e.key === 'Enter') && flip()}
         >
-          <div className={`flip-card-inner${flipped ? ' flipped' : ''}`}>
+          <div
+            className={`flip-card-inner${flipped ? ' flipped' : ''}`}
+            style={suppressFlipAnim ? { transition: 'none' } : undefined}
+          >
             {/* Front */}
             <div
               className="flip-card-front flex flex-col items-center justify-center gap-4"
