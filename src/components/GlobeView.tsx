@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 
 const GLOBE_NIGHT = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg';
@@ -6,14 +6,17 @@ const GLOBE_DAY   = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-
 const GLOBE_BUMP  = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png';
 
 // ── Shared network interface ──────────────────────────────────────────────────
+interface SupplyChainNode {
+  id: string; name: string; lat: number; lng: number;
+  type: string; color: string; desc: string;
+  country: string; url: string;
+}
+
 interface SupplyChainNetwork {
   companyId: string;
   companyName: string;
   subtitle: string;
-  nodes: Array<{
-    id: string; name: string; lat: number; lng: number;
-    type: string; color: string; desc: string;
-  }>;
+  nodes: SupplyChainNode[];
   arcs: Array<{
     startLat: number; startLng: number; endLat: number; endLng: number;
     color: string; arcType?: 'rawmaterial' | 'upstream' | 'downstream';
@@ -28,24 +31,24 @@ interface InternalArcDef {
 
 // ── Apple supply chain — full node dataset ────────────────────────────────────
 const APPLE_NODES: SupplyChainNetwork['nodes'] = [
-  { id: 'tsmc-hsinchu',  name: 'Advanced Silicon (TSMC)',     lat: 24.81, lng: 120.97, type: 'silicon',  color: '#60A5FA', desc: "World's most advanced chip fabrication for Apple Silicon processors." },
-  { id: 'tsmc-tainan',   name: 'Leading-Edge Fabs (TSMC)',    lat: 22.99, lng: 120.21, type: 'silicon',  color: '#3B82F6', desc: 'Cutting-edge leading-edge process fabs for A-series chips.' },
-  { id: 'samsung-seoul', name: 'OLED & Memory Hub',           lat: 37.57, lng: 126.98, type: 'display',  color: '#A78BFA', desc: 'OLED display panels and DRAM/LPDDR memory for iPhone and iPad.' },
-  { id: 'lg-gumi',       name: 'OLED Display (LG)',           lat: 36.12, lng: 128.34, type: 'display',  color: '#8B5CF6', desc: 'ProMotion OLED panels for iPhone Pro and MacBook Pro displays.' },
-  { id: 'kioxia-jp',     name: 'NAND Flash (Kioxia)',         lat: 34.97, lng: 136.62, type: 'memory',   color: '#F472B6', desc: 'NAND flash storage for iPhone, iPad, and MacBook.' },
-  { id: 'sony-sensors',  name: 'Camera Sensor Labs (Sony)',   lat: 35.44, lng: 139.38, type: 'sensor',   color: '#EC4899', desc: 'Custom camera image sensors for all iPhone camera systems.' },
-  { id: 'baotou',        name: 'Rare Earth Mining',           lat: 40.66, lng: 109.82, type: 'rawmat',   color: '#D4A574', desc: 'Primary source of rare earth elements for magnets and electronics.' },
-  { id: 'ganzhou',       name: 'Battery Materials',           lat: 25.83, lng: 114.93, type: 'rawmat',   color: '#C9A876', desc: 'Lithium and battery-grade minerals for Apple device batteries.' },
-  { id: 'zhengzhou',     name: 'iPhone Assembly (Foxconn)',   lat: 34.75, lng: 113.63, type: 'assembly', color: '#4FB3D9', desc: 'Primary iPhone assembly facility, capacity 300M+ units per year.' },
-  { id: 'shenzhen',      name: 'PCB & Electronics Hub',       lat: 22.54, lng: 114.06, type: 'assembly', color: '#6FC4E5', desc: 'PCB fabrication, component integration, and testing hub.' },
-  { id: 'chengdu',       name: 'iPad Assembly (Foxconn)',     lat: 30.57, lng: 104.07, type: 'assembly', color: '#8FD5F0', desc: 'iPad and Mac assembly operations.' },
-  { id: 'chennai',       name: 'India iPhone Assembly',       lat: 13.08, lng:  80.27, type: 'assembly', color: '#4DCCBD', desc: 'iPhone assembly for Indian market and export, Foxconn and Pegatron.' },
-  { id: 'bengaluru',     name: 'India Assembly Hub',          lat: 12.97, lng:  77.59, type: 'assembly', color: '#6DD9CA', desc: 'Secondary India assembly hub and component logistics.' },
-  { id: 'bacninh',       name: 'AirPods Assembly (Luxshare)', lat: 21.12, lng: 106.06, type: 'assembly', color: '#8BE6D7', desc: 'AirPods and accessories assembly, Luxshare operations.' },
-  { id: 'danang',        name: 'Watch & AirPods (Goertek)',   lat: 16.05, lng: 108.21, type: 'assembly', color: '#A5F0E0', desc: 'Apple Watch and AirPods production, Goertek facility.' },
-  { id: 'cupertino',     name: 'Apple HQ',                    lat: 37.33, lng: -122.03, type: 'hq',     color: '#A78BFA', desc: 'Apple world headquarters and global distribution coordination.' },
-  { id: 'cork',          name: 'European Operations',         lat: 51.90, lng:   -8.47, type: 'dist',   color: '#C4B5FD', desc: 'European operations center and distribution hub.' },
-  { id: 'munich',        name: 'Silicon Design Center',       lat: 48.14, lng:   11.58, type: 'design', color: '#DDD6FE', desc: 'Apple Silicon design center, modem and chip architecture.' },
+  { id: 'tsmc-hsinchu',  name: 'Advanced Silicon (TSMC)',     lat: 24.81, lng: 120.97, type: 'silicon',  color: '#60A5FA', desc: "World's most advanced chip fabrication for Apple Silicon processors.", country: 'Taiwan',      url: 'https://en.wikipedia.org/wiki/Hsinchu' },
+  { id: 'tsmc-tainan',   name: 'Leading-Edge Fabs (TSMC)',    lat: 22.99, lng: 120.21, type: 'silicon',  color: '#3B82F6', desc: 'Cutting-edge leading-edge process fabs for A-series chips.', country: 'Taiwan',      url: 'https://en.wikipedia.org/wiki/Tainan' },
+  { id: 'samsung-seoul', name: 'OLED & Memory Hub',           lat: 37.57, lng: 126.98, type: 'display',  color: '#A78BFA', desc: 'OLED display panels and DRAM/LPDDR memory for iPhone and iPad.', country: 'South Korea', url: 'https://en.wikipedia.org/wiki/Seoul' },
+  { id: 'lg-gumi',       name: 'OLED Display (LG)',           lat: 36.12, lng: 128.34, type: 'display',  color: '#8B5CF6', desc: 'ProMotion OLED panels for iPhone Pro and MacBook Pro displays.', country: 'South Korea', url: 'https://en.wikipedia.org/wiki/Gumi' },
+  { id: 'kioxia-jp',     name: 'NAND Flash (Kioxia)',         lat: 34.97, lng: 136.62, type: 'memory',   color: '#F472B6', desc: 'NAND flash storage for iPhone, iPad, and MacBook.', country: 'Japan',       url: 'https://en.wikipedia.org/wiki/Yokkaichi' },
+  { id: 'sony-sensors',  name: 'Camera Sensor Labs (Sony)',   lat: 35.44, lng: 139.38, type: 'sensor',   color: '#EC4899', desc: 'Custom camera image sensors for all iPhone camera systems.', country: 'Japan',       url: 'https://en.wikipedia.org/wiki/Yokohama' },
+  { id: 'baotou',        name: 'Rare Earth Mining',           lat: 40.66, lng: 109.82, type: 'rawmat',   color: '#D4A574', desc: 'Primary source of rare earth elements for magnets and electronics.', country: 'China',       url: 'https://en.wikipedia.org/wiki/Baotou' },
+  { id: 'ganzhou',       name: 'Battery Materials',           lat: 25.83, lng: 114.93, type: 'rawmat',   color: '#C9A876', desc: 'Lithium and battery-grade minerals for Apple device batteries.', country: 'China',       url: 'https://en.wikipedia.org/wiki/Ganzhou' },
+  { id: 'zhengzhou',     name: 'iPhone Assembly (Foxconn)',   lat: 34.75, lng: 113.63, type: 'assembly', color: '#4FB3D9', desc: 'Primary iPhone assembly facility, capacity 300M+ units per year.', country: 'China',       url: 'https://en.wikipedia.org/wiki/Zhengzhou' },
+  { id: 'shenzhen',      name: 'PCB & Electronics Hub',       lat: 22.54, lng: 114.06, type: 'assembly', color: '#6FC4E5', desc: 'PCB fabrication, component integration, and testing hub.', country: 'China',       url: 'https://en.wikipedia.org/wiki/Shenzhen' },
+  { id: 'chengdu',       name: 'iPad Assembly (Foxconn)',     lat: 30.57, lng: 104.07, type: 'assembly', color: '#8FD5F0', desc: 'iPad and Mac assembly operations.', country: 'China',       url: 'https://en.wikipedia.org/wiki/Chengdu' },
+  { id: 'chennai',       name: 'India iPhone Assembly',       lat: 13.08, lng:  80.27, type: 'assembly', color: '#4DCCBD', desc: 'iPhone assembly for Indian market and export, Foxconn and Pegatron.', country: 'India',       url: 'https://en.wikipedia.org/wiki/Chennai' },
+  { id: 'bengaluru',     name: 'India Assembly Hub',          lat: 12.97, lng:  77.59, type: 'assembly', color: '#6DD9CA', desc: 'Secondary India assembly hub and component logistics.', country: 'India',       url: 'https://en.wikipedia.org/wiki/Bangalore' },
+  { id: 'bacninh',       name: 'AirPods Assembly (Luxshare)', lat: 21.12, lng: 106.06, type: 'assembly', color: '#8BE6D7', desc: 'AirPods and accessories assembly, Luxshare operations.', country: 'Vietnam',     url: 'https://en.wikipedia.org/wiki/B%E1%BA%AFc_Ninh_province' },
+  { id: 'danang',        name: 'Watch & AirPods (Goertek)',   lat: 16.05, lng: 108.21, type: 'assembly', color: '#A5F0E0', desc: 'Apple Watch and AirPods production, Goertek facility.', country: 'Vietnam',     url: 'https://en.wikipedia.org/wiki/Da_Nang' },
+  { id: 'cupertino',     name: 'Apple HQ',                    lat: 37.33, lng: -122.03, type: 'hq',     color: '#A78BFA', desc: 'Apple world headquarters and global distribution coordination.', country: 'USA',         url: 'https://en.wikipedia.org/wiki/Cupertino,_California' },
+  { id: 'cork',          name: 'European Operations',         lat: 51.90, lng:   -8.47, type: 'dist',   color: '#C4B5FD', desc: 'European operations center and distribution hub.', country: 'Ireland',     url: 'https://en.wikipedia.org/wiki/Cork_(city)' },
+  { id: 'munich',        name: 'Silicon Design Center',       lat: 48.14, lng:   11.58, type: 'design', color: '#DDD6FE', desc: 'Apple Silicon design center, modem and chip architecture.', country: 'Germany',     url: 'https://en.wikipedia.org/wiki/Munich' },
 ];
 
 const APPLE_ARC_DEFS: InternalArcDef[] = [
@@ -89,22 +92,22 @@ const APPLE_ARC_DEFS: InternalArcDef[] = [
 //   Mfg Asia     → violet-purple     (#7C3AED / #6D28D9)
 //   Mfg Europe   → teal-green        (#0F766E / #0D9488)
 const NESTLE_NODES: SupplyChainNetwork['nodes'] = [
-  { id: 'nestle-vevey-hq',             name: 'Nestlé Headquarters',          lat:  46.4628, lng:   6.8426, type: 'hq',            color: '#D97706', desc: 'Global management, procurement strategy, product development.' },
-  { id: 'nestle-lausanne-research',     name: 'Nestlé Research',              lat:  46.5197, lng:   6.6323, type: 'research',       color: '#FBBF24', desc: 'Largest research center; nutrition, food science, product innovation.' },
-  { id: 'nestle-brazil-coffee',         name: 'Coffee Sourcing Network',      lat: -18.5122, lng: -44.5550, type: 'sourcing-coffee', color: '#16A34A', desc: 'Major source of coffee for Nescafé products.' },
-  { id: 'nestle-vietnam-coffee',        name: 'Coffee Sourcing Network',      lat:  12.6667, lng: 108.0500, type: 'sourcing-coffee', color: '#15803D', desc: "One of Nestlé's largest coffee sourcing regions." },
-  { id: 'nestle-cotedivoire-cocoa',     name: 'Cocoa Sourcing Network',       lat:   7.5400, lng:  -5.5471, type: 'sourcing-cocoa',  color: '#92400E', desc: 'Largest cocoa source for chocolate products.' },
-  { id: 'nestle-ghana-cocoa',           name: 'Cocoa Sourcing Network',       lat:   7.9465, lng:  -1.0232, type: 'sourcing-cocoa',  color: '#78350F', desc: 'Major cocoa supplier.' },
-  { id: 'nestle-indonesia-agri',        name: 'Coffee & Dairy Sourcing',      lat:  -7.5360, lng: 112.2384, type: 'sourcing-agri',   color: '#A16207', desc: 'Coffee beans and agricultural ingredients.' },
-  { id: 'nestle-nz-dairy',              name: 'Dairy Suppliers',              lat: -37.6878, lng: 175.4430, type: 'dairy',           color: '#0EA5E9', desc: 'Milk powder and dairy ingredients.' },
-  { id: 'nestle-usa-solon',             name: 'Coffee Production Facilities', lat:  41.3898, lng:  -81.4412, type: 'mfg-americas',  color: '#EA580C', desc: 'Production of coffee brands and products.' },
-  { id: 'nestle-usa-glendale',          name: 'Beverage Manufacturing',       lat:  33.5387, lng: -112.1860, type: 'mfg-americas',  color: '#DC4F0B', desc: 'Creamers and beverage products.' },
-  { id: 'nestle-mexico-toluca',         name: 'Food Manufacturing Hub',       lat:  19.2826, lng:  -99.6557, type: 'mfg-americas',  color: '#C2410C', desc: 'Food and beverage production for North America.' },
-  { id: 'nestle-china-tianjin',         name: 'Manufacturing Hub',            lat:  39.3434, lng:  117.3616, type: 'mfg-asia',      color: '#7C3AED', desc: 'Food and beverage production for China.' },
-  { id: 'nestle-india-moga',            name: 'Dairy Collection Network',     lat:  30.8175, lng:   75.1730, type: 'dairy',          color: '#38BDF8', desc: "One of Nestlé's largest milk procurement centers." },
-  { id: 'nestle-india-nanjangud',       name: 'Manufacturing Plant',          lat:  12.1200, lng:   76.6800, type: 'mfg-asia',      color: '#6D28D9', desc: 'Foods, beverages, and confectionery.' },
-  { id: 'nestle-germany-biessenhofen',  name: 'Dairy Production',             lat:  47.7667, lng:   10.6333, type: 'mfg-europe',    color: '#0F766E', desc: 'Milk-based products and ingredients.' },
-  { id: 'nestle-france-dieppe',         name: 'Coffee Manufacturing',         lat:  49.9230, lng:    1.0747, type: 'mfg-europe',    color: '#0D9488', desc: 'Coffee processing and production.' },
+  { id: 'nestle-vevey-hq',             name: 'Nestlé Headquarters',          lat:  46.4628, lng:   6.8426, type: 'hq',            color: '#D97706', desc: 'Global management, procurement strategy, product development.', country: 'Switzerland', url: 'https://en.wikipedia.org/wiki/Vevey' },
+  { id: 'nestle-lausanne-research',     name: 'Nestlé Research',              lat:  46.5197, lng:   6.6323, type: 'research',       color: '#FBBF24', desc: 'Largest research center; nutrition, food science, product innovation.', country: 'Switzerland', url: 'https://en.wikipedia.org/wiki/Lausanne' },
+  { id: 'nestle-brazil-coffee',         name: 'Coffee Sourcing Network',      lat: -18.5122, lng: -44.5550, type: 'sourcing-coffee', color: '#16A34A', desc: 'Major source of coffee for Nescafé products.', country: 'Brazil', url: 'https://en.wikipedia.org/wiki/Minas_Gerais' },
+  { id: 'nestle-vietnam-coffee',        name: 'Coffee Sourcing Network',      lat:  12.6667, lng: 108.0500, type: 'sourcing-coffee', color: '#15803D', desc: "One of Nestlé's largest coffee sourcing regions.", country: 'Vietnam', url: 'https://en.wikipedia.org/wiki/Central_Highlands_(Vietnam)' },
+  { id: 'nestle-cotedivoire-cocoa',     name: 'Cocoa Sourcing Network',       lat:   7.5400, lng:  -5.5471, type: 'sourcing-cocoa',  color: '#92400E', desc: 'Largest cocoa source for chocolate products.', country: "Côte d'Ivoire", url: 'https://en.wikipedia.org/wiki/Ivory_Coast' },
+  { id: 'nestle-ghana-cocoa',           name: 'Cocoa Sourcing Network',       lat:   7.9465, lng:  -1.0232, type: 'sourcing-cocoa',  color: '#78350F', desc: 'Major cocoa supplier.', country: 'Ghana', url: 'https://en.wikipedia.org/wiki/Ghana' },
+  { id: 'nestle-indonesia-agri',        name: 'Coffee & Dairy Sourcing',      lat:  -7.5360, lng: 112.2384, type: 'sourcing-agri',   color: '#A16207', desc: 'Coffee beans and agricultural ingredients.', country: 'Indonesia', url: 'https://en.wikipedia.org/wiki/East_Java' },
+  { id: 'nestle-nz-dairy',              name: 'Dairy Suppliers',              lat: -37.6878, lng: 175.4430, type: 'dairy',           color: '#0EA5E9', desc: 'Milk powder and dairy ingredients.', country: 'New Zealand', url: 'https://en.wikipedia.org/wiki/Waikato' },
+  { id: 'nestle-usa-solon',             name: 'Coffee Production Facilities', lat:  41.3898, lng:  -81.4412, type: 'mfg-americas',  color: '#EA580C', desc: 'Production of coffee brands and products.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Solon,_Ohio' },
+  { id: 'nestle-usa-glendale',          name: 'Beverage Manufacturing',       lat:  33.5387, lng: -112.1860, type: 'mfg-americas',  color: '#DC4F0B', desc: 'Creamers and beverage products.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Glendale,_Arizona' },
+  { id: 'nestle-mexico-toluca',         name: 'Food Manufacturing Hub',       lat:  19.2826, lng:  -99.6557, type: 'mfg-americas',  color: '#C2410C', desc: 'Food and beverage production for North America.', country: 'Mexico', url: 'https://en.wikipedia.org/wiki/Toluca' },
+  { id: 'nestle-china-tianjin',         name: 'Manufacturing Hub',            lat:  39.3434, lng:  117.3616, type: 'mfg-asia',      color: '#7C3AED', desc: 'Food and beverage production for China.', country: 'China', url: 'https://en.wikipedia.org/wiki/Tianjin' },
+  { id: 'nestle-india-moga',            name: 'Dairy Collection Network',     lat:  30.8175, lng:   75.1730, type: 'dairy',          color: '#38BDF8', desc: "One of Nestlé's largest milk procurement centers.", country: 'India', url: 'https://en.wikipedia.org/wiki/Moga,_Punjab' },
+  { id: 'nestle-india-nanjangud',       name: 'Manufacturing Plant',          lat:  12.1200, lng:   76.6800, type: 'mfg-asia',      color: '#6D28D9', desc: 'Foods, beverages, and confectionery.', country: 'India', url: 'https://en.wikipedia.org/wiki/Nanjangud' },
+  { id: 'nestle-germany-biessenhofen',  name: 'Dairy Production',             lat:  47.7667, lng:   10.6333, type: 'mfg-europe',    color: '#0F766E', desc: 'Milk-based products and ingredients.', country: 'Germany', url: 'https://en.wikipedia.org/wiki/Biessenhofen' },
+  { id: 'nestle-france-dieppe',         name: 'Coffee Manufacturing',         lat:  49.9230, lng:    1.0747, type: 'mfg-europe',    color: '#0D9488', desc: 'Coffee processing and production.', country: 'France', url: 'https://en.wikipedia.org/wiki/Dieppe,_Seine-Maritime' },
 ];
 
 const NESTLE_ARC_DEFS: InternalArcDef[] = [
@@ -148,47 +151,47 @@ const NESTLE_ARC_DEFS: InternalArcDef[] = [
 
 const WALMART_NODES: SupplyChainNetwork['nodes'] = [
   // ── United States ────────────────────────────────────────────────────────
-  { id: 'wmt-bentonville',  name: 'Walmart HQ',              lat:  36.3729, lng:  -94.2088, type: 'hq',       color: '#0071dc', desc: 'Global headquarters, supply chain management, sourcing strategy.' },
-  { id: 'wmt-dallas',       name: 'Dallas–Fort Worth Hub',   lat:  32.7767, lng:  -96.7970, type: 'dist',     color: '#0277bd', desc: 'Major distribution and logistics hub for the central US.' },
-  { id: 'wmt-los-angeles',  name: 'Los Angeles Gateway',     lat:  34.0522, lng: -118.2437, type: 'port',     color: '#0288d1', desc: 'Main import gateway for Asian goods entering the US.' },
-  { id: 'wmt-long-beach',   name: 'Long Beach Port',         lat:  33.7701, lng: -118.1937, type: 'port',     color: '#039be5', desc: 'Major container port receiving bulk Asian imports.' },
-  { id: 'wmt-savannah',     name: 'Savannah Gateway',        lat:  32.0809, lng:  -81.0912, type: 'port',     color: '#0288d1', desc: 'Key East Coast logistics and distribution gateway.' },
-  { id: 'wmt-houston',      name: 'Houston Logistics Hub',   lat:  29.7604, lng:  -95.3698, type: 'dist',     color: '#0277bd', desc: 'Gulf Coast logistics, import hub, and agricultural receiving center.' },
+  { id: 'wmt-bentonville',  name: 'Walmart HQ',              lat:  36.3729, lng:  -94.2088, type: 'hq',       color: '#0071dc', desc: 'Global headquarters, supply chain management, sourcing strategy.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Bentonville,_Arkansas' },
+  { id: 'wmt-dallas',       name: 'Dallas–Fort Worth Hub',   lat:  32.7767, lng:  -96.7970, type: 'dist',     color: '#0277bd', desc: 'Major distribution and logistics hub for the central US.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Dallas%E2%80%93Fort_Worth_metroplex' },
+  { id: 'wmt-los-angeles',  name: 'Los Angeles Gateway',     lat:  34.0522, lng: -118.2437, type: 'port',     color: '#0288d1', desc: 'Main import gateway for Asian goods entering the US.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Los_Angeles' },
+  { id: 'wmt-long-beach',   name: 'Long Beach Port',         lat:  33.7701, lng: -118.1937, type: 'port',     color: '#039be5', desc: 'Major container port receiving bulk Asian imports.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Port_of_Long_Beach' },
+  { id: 'wmt-savannah',     name: 'Savannah Gateway',        lat:  32.0809, lng:  -81.0912, type: 'port',     color: '#0288d1', desc: 'Key East Coast logistics and distribution gateway.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Port_of_Savannah' },
+  { id: 'wmt-houston',      name: 'Houston Logistics Hub',   lat:  29.7604, lng:  -95.3698, type: 'dist',     color: '#0277bd', desc: 'Gulf Coast logistics, import hub, and agricultural receiving center.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Port_of_Houston' },
   // ── China ────────────────────────────────────────────────────────────────
-  { id: 'wmt-shenzhen',     name: 'Shenzhen Sourcing',       lat:  22.5431, lng:  114.0579, type: 'mfg',      color: '#4a90d9', desc: 'Largest sourcing hub for electronics, toys, and household goods.' },
-  { id: 'wmt-dongguan',     name: 'Dongguan Manufacturing',  lat:  23.0210, lng:  113.7518, type: 'mfg',      color: '#5b9de0', desc: 'Manufacturing and export production center.' },
-  { id: 'wmt-guangzhou',    name: 'Guangzhou Goods Hub',     lat:  23.1291, lng:  113.2644, type: 'mfg',      color: '#6aaae7', desc: 'Consumer goods manufacturing and export coordination.' },
-  { id: 'wmt-shanghai',     name: 'Shanghai Sourcing Office',lat:  31.2304, lng:  121.4737, type: 'mfg',      color: '#79b7ee', desc: 'Major sourcing office and primary export gateway.' },
-  { id: 'wmt-ningbo',       name: 'Ningbo Shipping Hub',     lat:  29.8683, lng:  121.5440, type: 'mfg',      color: '#88c4f5', desc: 'High-volume manufacturing and container shipping hub.' },
+  { id: 'wmt-shenzhen',     name: 'Shenzhen Sourcing',       lat:  22.5431, lng:  114.0579, type: 'mfg',      color: '#4a90d9', desc: 'Largest sourcing hub for electronics, toys, and household goods.', country: 'China', url: 'https://en.wikipedia.org/wiki/Shenzhen' },
+  { id: 'wmt-dongguan',     name: 'Dongguan Manufacturing',  lat:  23.0210, lng:  113.7518, type: 'mfg',      color: '#5b9de0', desc: 'Manufacturing and export production center.', country: 'China', url: 'https://en.wikipedia.org/wiki/Dongguan' },
+  { id: 'wmt-guangzhou',    name: 'Guangzhou Goods Hub',     lat:  23.1291, lng:  113.2644, type: 'mfg',      color: '#6aaae7', desc: 'Consumer goods manufacturing and export coordination.', country: 'China', url: 'https://en.wikipedia.org/wiki/Guangzhou' },
+  { id: 'wmt-shanghai',     name: 'Shanghai Sourcing Office',lat:  31.2304, lng:  121.4737, type: 'mfg',      color: '#79b7ee', desc: 'Major sourcing office and primary export gateway.', country: 'China', url: 'https://en.wikipedia.org/wiki/Shanghai' },
+  { id: 'wmt-ningbo',       name: 'Ningbo Shipping Hub',     lat:  29.8683, lng:  121.5440, type: 'mfg',      color: '#88c4f5', desc: 'High-volume manufacturing and container shipping hub.', country: 'China', url: 'https://en.wikipedia.org/wiki/Ningbo' },
   // ── Vietnam ──────────────────────────────────────────────────────────────
-  { id: 'wmt-hcmc',         name: 'Ho Chi Minh City Mfg',   lat:  10.8231, lng:  106.6297, type: 'mfg',      color: '#00acc1', desc: 'Major alternative manufacturing hub to China.' },
-  { id: 'wmt-haiphong',     name: 'Hai Phong Export Port',   lat:  20.8449, lng:  106.6881, type: 'port',     color: '#00b8cc', desc: 'Export manufacturing and primary shipping port.' },
-  { id: 'wmt-hanoi',        name: 'Hanoi Supplier Mgmt',     lat:  21.0285, lng:  105.8542, type: 'mfg',      color: '#00c4d8', desc: 'Supplier management and northern Vietnam manufacturing.' },
+  { id: 'wmt-hcmc',         name: 'Ho Chi Minh City Mfg',   lat:  10.8231, lng:  106.6297, type: 'mfg',      color: '#00acc1', desc: 'Major alternative manufacturing hub to China.', country: 'Vietnam', url: 'https://en.wikipedia.org/wiki/Ho_Chi_Minh_City' },
+  { id: 'wmt-haiphong',     name: 'Hai Phong Export Port',   lat:  20.8449, lng:  106.6881, type: 'port',     color: '#00b8cc', desc: 'Export manufacturing and primary shipping port.', country: 'Vietnam', url: 'https://en.wikipedia.org/wiki/Haiphong' },
+  { id: 'wmt-hanoi',        name: 'Hanoi Supplier Mgmt',     lat:  21.0285, lng:  105.8542, type: 'mfg',      color: '#00c4d8', desc: 'Supplier management and northern Vietnam manufacturing.', country: 'Vietnam', url: 'https://en.wikipedia.org/wiki/Hanoi' },
   // ── India ────────────────────────────────────────────────────────────────
-  { id: 'wmt-bengaluru',    name: 'Bengaluru Sourcing Ctr',  lat:  12.9716, lng:   77.5946, type: 'mfg',      color: '#5c6bc0', desc: 'Major sourcing office and supplier development center.' },
-  { id: 'wmt-delhi',        name: 'Delhi NCR Sourcing',      lat:  28.6139, lng:   77.2090, type: 'mfg',      color: '#7986cb', desc: 'Textiles and consumer goods sourcing for global stores.' },
-  { id: 'wmt-mumbai',       name: 'Mumbai Export Coord.',    lat:  19.0760, lng:   72.8777, type: 'port',     color: '#9fa8da', desc: 'Export coordination and supplier logistics gateway.' },
+  { id: 'wmt-bengaluru',    name: 'Bengaluru Sourcing Ctr',  lat:  12.9716, lng:   77.5946, type: 'mfg',      color: '#5c6bc0', desc: 'Major sourcing office and supplier development center.', country: 'India', url: 'https://en.wikipedia.org/wiki/Bangalore' },
+  { id: 'wmt-delhi',        name: 'Delhi NCR Sourcing',      lat:  28.6139, lng:   77.2090, type: 'mfg',      color: '#7986cb', desc: 'Textiles and consumer goods sourcing for global stores.', country: 'India', url: 'https://en.wikipedia.org/wiki/National_Capital_Region_(India)' },
+  { id: 'wmt-mumbai',       name: 'Mumbai Export Coord.',    lat:  19.0760, lng:   72.8777, type: 'port',     color: '#9fa8da', desc: 'Export coordination and supplier logistics gateway.', country: 'India', url: 'https://en.wikipedia.org/wiki/Mumbai' },
   // ── Bangladesh ───────────────────────────────────────────────────────────
-  { id: 'wmt-dhaka',        name: 'Dhaka Apparel Mfg',       lat:  23.8103, lng:   90.4125, type: 'mfg',      color: '#e57373', desc: 'Large-scale apparel manufacturing for Walmart private labels.' },
-  { id: 'wmt-chattogram',   name: 'Chattogram Garment Port', lat:  22.3569, lng:   91.7832, type: 'port',     color: '#ef9a9a', desc: 'Garment exports and primary sea logistics gateway.' },
+  { id: 'wmt-dhaka',        name: 'Dhaka Apparel Mfg',       lat:  23.8103, lng:   90.4125, type: 'mfg',      color: '#e57373', desc: 'Large-scale apparel manufacturing for Walmart private labels.', country: 'Bangladesh', url: 'https://en.wikipedia.org/wiki/Dhaka' },
+  { id: 'wmt-chattogram',   name: 'Chattogram Garment Port', lat:  22.3569, lng:   91.7832, type: 'port',     color: '#ef9a9a', desc: 'Garment exports and primary sea logistics gateway.', country: 'Bangladesh', url: 'https://en.wikipedia.org/wiki/Chittagong' },
   // ── Cambodia ─────────────────────────────────────────────────────────────
-  { id: 'wmt-phnom-penh',   name: 'Phnom Penh Apparel',      lat:  11.5564, lng:  104.9282, type: 'mfg',      color: '#ba68c8', desc: 'Apparel manufacturing, growing alternative to Bangladesh.' },
+  { id: 'wmt-phnom-penh',   name: 'Phnom Penh Apparel',      lat:  11.5564, lng:  104.9282, type: 'mfg',      color: '#ba68c8', desc: 'Apparel manufacturing, growing alternative to Bangladesh.', country: 'Cambodia', url: 'https://en.wikipedia.org/wiki/Phnom_Penh' },
   // ── Mexico ───────────────────────────────────────────────────────────────
-  { id: 'wmt-monterrey',    name: 'Monterrey Nearshore',      lat:  25.6866, lng: -100.3161, type: 'mfg',      color: '#26c6da', desc: 'Nearshoring manufacturing hub serving US stores directly.' },
-  { id: 'wmt-guadalajara',  name: 'Guadalajara Mfg',          lat:  20.6597, lng: -103.3496, type: 'mfg',      color: '#29d6ea', desc: 'Consumer goods and electronics manufacturing.' },
-  { id: 'wmt-mexico-city',  name: 'Mexico City Dist.',        lat:  19.4326, lng:  -99.1332, type: 'dist',     color: '#2ce6fa', desc: 'Distribution and supplier coordination for Latin America.' },
+  { id: 'wmt-monterrey',    name: 'Monterrey Nearshore',      lat:  25.6866, lng: -100.3161, type: 'mfg',      color: '#26c6da', desc: 'Nearshoring manufacturing hub serving US stores directly.', country: 'Mexico', url: 'https://en.wikipedia.org/wiki/Monterrey' },
+  { id: 'wmt-guadalajara',  name: 'Guadalajara Mfg',          lat:  20.6597, lng: -103.3496, type: 'mfg',      color: '#29d6ea', desc: 'Consumer goods and electronics manufacturing.', country: 'Mexico', url: 'https://en.wikipedia.org/wiki/Guadalajara' },
+  { id: 'wmt-mexico-city',  name: 'Mexico City Dist.',        lat:  19.4326, lng:  -99.1332, type: 'dist',     color: '#2ce6fa', desc: 'Distribution and supplier coordination for Latin America.', country: 'Mexico', url: 'https://en.wikipedia.org/wiki/Mexico_City' },
   // ── Canada ───────────────────────────────────────────────────────────────
-  { id: 'wmt-mississauga',  name: 'Mississauga Canadian Ops', lat:  43.5890, lng:  -79.6441, type: 'dist',     color: '#1a4fa0', desc: 'Canadian distribution operations center.' },
+  { id: 'wmt-mississauga',  name: 'Mississauga Canadian Ops', lat:  43.5890, lng:  -79.6441, type: 'dist',     color: '#1a4fa0', desc: 'Canadian distribution operations center.', country: 'Canada', url: 'https://en.wikipedia.org/wiki/Mississauga' },
   // ── South America (agricultural) ─────────────────────────────────────────
-  { id: 'wmt-santiago',     name: 'Santiago Produce Hub',     lat: -33.4489, lng:  -70.6693, type: 'agri',     color: '#4caf50', desc: 'Fruit, produce, and fresh seafood sourcing for US stores.' },
-  { id: 'wmt-lima',         name: 'Lima Fresh Produce',       lat: -12.0464, lng:  -77.0428, type: 'agri',     color: '#66bb6a', desc: 'Fresh produce, asparagus, and agricultural goods sourcing.' },
-  { id: 'wmt-san-jose',     name: 'San José Agri Exports',    lat:   9.9281, lng:  -84.0907, type: 'agri',     color: '#81c784', desc: 'Pineapples, bananas, and tropical agricultural exports.' },
+  { id: 'wmt-santiago',     name: 'Santiago Produce Hub',     lat: -33.4489, lng:  -70.6693, type: 'agri',     color: '#4caf50', desc: 'Fruit, produce, and fresh seafood sourcing for US stores.', country: 'Chile', url: 'https://en.wikipedia.org/wiki/Santiago' },
+  { id: 'wmt-lima',         name: 'Lima Fresh Produce',       lat: -12.0464, lng:  -77.0428, type: 'agri',     color: '#66bb6a', desc: 'Fresh produce, asparagus, and agricultural goods sourcing.', country: 'Peru', url: 'https://en.wikipedia.org/wiki/Lima' },
+  { id: 'wmt-san-jose',     name: 'San José Agri Exports',    lat:   9.9281, lng:  -84.0907, type: 'agri',     color: '#81c784', desc: 'Pineapples, bananas, and tropical agricultural exports.', country: 'Costa Rica', url: 'https://en.wikipedia.org/wiki/San_Jos%C3%A9,_Costa_Rica' },
   // ── South Africa ─────────────────────────────────────────────────────────
-  { id: 'wmt-johannesburg', name: 'Johannesburg Retail Hub',  lat: -26.2041, lng:   28.0473, type: 'dist',     color: '#ffa726', desc: 'African distribution and retail operations hub.' },
+  { id: 'wmt-johannesburg', name: 'Johannesburg Retail Hub',  lat: -26.2041, lng:   28.0473, type: 'dist',     color: '#ffa726', desc: 'African distribution and retail operations hub.', country: 'South Africa', url: 'https://en.wikipedia.org/wiki/Johannesburg' },
   // ── Thailand ─────────────────────────────────────────────────────────────
-  { id: 'wmt-bangkok',      name: 'Bangkok Goods Mfg',        lat:  13.7563, lng:  100.5018, type: 'mfg',      color: '#ab47bc', desc: 'Consumer goods and home-goods manufacturing.' },
+  { id: 'wmt-bangkok',      name: 'Bangkok Goods Mfg',        lat:  13.7563, lng:  100.5018, type: 'mfg',      color: '#ab47bc', desc: 'Consumer goods and home-goods manufacturing.', country: 'Thailand', url: 'https://en.wikipedia.org/wiki/Bangkok' },
   // ── Indonesia ────────────────────────────────────────────────────────────
-  { id: 'wmt-jakarta',      name: 'Jakarta Apparel Sourcing', lat:  -6.2088, lng:  106.8456, type: 'mfg',      color: '#8d6e63', desc: 'Apparel and consumer goods sourcing hub.' },
+  { id: 'wmt-jakarta',      name: 'Jakarta Apparel Sourcing', lat:  -6.2088, lng:  106.8456, type: 'mfg',      color: '#8d6e63', desc: 'Apparel and consumer goods sourcing hub.', country: 'Indonesia', url: 'https://en.wikipedia.org/wiki/Jakarta' },
 ];
 
 const WALMART_ARC_DEFS: InternalArcDef[] = [
@@ -241,20 +244,20 @@ const WALMART_ARC_DEFS: InternalArcDef[] = [
 //   Pharma mfg Asia       → violet          #7C3AED / #9333EA
 //   API sourcing (India)  → green           #16A34A
 const JNJ_NODES: SupplyChainNetwork['nodes'] = [
-  { id: 'jnj-new-brunswick-hq', name: 'J&J Headquarters',              lat:  40.4934, lng:  -74.4447, type: 'hq',          color: '#DC2626', desc: 'Global management, R&D, supply-chain oversight.' },
-  { id: 'jnj-raritan-dist',     name: 'J&J Distribution Network',      lat:  40.5695, lng:  -74.6343, type: 'dist',         color: '#E11D48', desc: 'Major pharmaceutical distribution hub.' },
-  { id: 'jnj-titusville',       name: 'Janssen Operations',             lat:  40.3168, lng:  -74.8818, type: 'pharma-usa',  color: '#EA580C', desc: 'Pharmaceutical manufacturing and commercialization.' },
-  { id: 'jnj-horsham',          name: 'Janssen Biotech',                lat:  40.1779, lng:  -75.1235, type: 'pharma-usa',  color: '#F97316', desc: 'Drug development and operations.' },
-  { id: 'jnj-beerse',           name: 'Janssen Pharmaceuticals',        lat:  51.3194, lng:    4.8561, type: 'pharma-eu',   color: '#0891B2', desc: "One of J&J's most important pharmaceutical manufacturing and R&D sites." },
-  { id: 'jnj-cork',             name: 'J&J Manufacturing',              lat:  51.8985, lng:   -8.4756, type: 'pharma-eu',   color: '#0E7490', desc: 'Pharmaceutical production for global markets.' },
-  { id: 'jnj-ringaskiddy',      name: 'Janssen Sciences Ireland',       lat:  51.8315, lng:   -8.3075, type: 'pharma-eu',   color: '#06B6D4', desc: 'Biologics and pharmaceutical manufacturing.' },
-  { id: 'jnj-schaffhausen',     name: 'Cilag AG',                       lat:  47.6959, lng:    8.6380, type: 'pharma-eu',   color: '#2563EB', desc: 'Pharmaceutical manufacturing and packaging.' },
-  { id: 'jnj-leiden',           name: 'Janssen Vaccines',               lat:  52.1601, lng:    4.4970, type: 'vaccine',     color: '#059669', desc: 'Vaccine development and manufacturing.' },
-  { id: 'jnj-gurabo',           name: 'J&J Manufacturing',              lat:  18.2544, lng:  -65.9729, type: 'pharma-pr',   color: '#D97706', desc: 'High-volume pharmaceutical production.' },
-  { id: 'jnj-manati',           name: 'Janssen Manufacturing',          lat:  18.4275, lng:  -66.4741, type: 'pharma-pr',   color: '#CA8A04', desc: 'Pharmaceutical manufacturing and packaging.' },
-  { id: 'jnj-singapore',        name: 'Janssen Supply Chain',           lat:   1.3236, lng:  103.6441, type: 'pharma-asia', color: '#7C3AED', desc: 'Biologics and pharmaceutical production.' },
-  { id: 'jnj-xian',             name: 'J&J Manufacturing',              lat:  34.3416, lng:  108.9398, type: 'pharma-asia', color: '#9333EA', desc: 'Pharmaceutical manufacturing for Asia.' },
-  { id: 'jnj-hyderabad',        name: 'API Suppliers',                  lat:  17.3850, lng:   78.4867, type: 'api',         color: '#16A34A', desc: 'Active pharmaceutical ingredients and contract manufacturing.' },
+  { id: 'jnj-new-brunswick-hq', name: 'J&J Headquarters',              lat:  40.4934, lng:  -74.4447, type: 'hq',          color: '#DC2626', desc: 'Global management, R&D, supply-chain oversight.', country: 'USA', url: 'https://en.wikipedia.org/wiki/New_Brunswick,_New_Jersey' },
+  { id: 'jnj-raritan-dist',     name: 'J&J Distribution Network',      lat:  40.5695, lng:  -74.6343, type: 'dist',         color: '#E11D48', desc: 'Major pharmaceutical distribution hub.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Raritan,_New_Jersey' },
+  { id: 'jnj-titusville',       name: 'Janssen Operations',             lat:  40.3168, lng:  -74.8818, type: 'pharma-usa',  color: '#EA580C', desc: 'Pharmaceutical manufacturing and commercialization.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Titusville,_New_Jersey' },
+  { id: 'jnj-horsham',          name: 'Janssen Biotech',                lat:  40.1779, lng:  -75.1235, type: 'pharma-usa',  color: '#F97316', desc: 'Drug development and operations.', country: 'USA', url: 'https://en.wikipedia.org/wiki/Horsham,_Pennsylvania' },
+  { id: 'jnj-beerse',           name: 'Janssen Pharmaceuticals',        lat:  51.3194, lng:    4.8561, type: 'pharma-eu',   color: '#0891B2', desc: "One of J&J's most important pharmaceutical manufacturing and R&D sites.", country: 'Belgium', url: 'https://en.wikipedia.org/wiki/Beerse' },
+  { id: 'jnj-cork',             name: 'J&J Manufacturing',              lat:  51.8985, lng:   -8.4756, type: 'pharma-eu',   color: '#0E7490', desc: 'Pharmaceutical production for global markets.', country: 'Ireland', url: 'https://en.wikipedia.org/wiki/Cork_(city)' },
+  { id: 'jnj-ringaskiddy',      name: 'Janssen Sciences Ireland',       lat:  51.8315, lng:   -8.3075, type: 'pharma-eu',   color: '#06B6D4', desc: 'Biologics and pharmaceutical manufacturing.', country: 'Ireland', url: 'https://en.wikipedia.org/wiki/Ringaskiddy' },
+  { id: 'jnj-schaffhausen',     name: 'Cilag AG',                       lat:  47.6959, lng:    8.6380, type: 'pharma-eu',   color: '#2563EB', desc: 'Pharmaceutical manufacturing and packaging.', country: 'Switzerland', url: 'https://en.wikipedia.org/wiki/Schaffhausen' },
+  { id: 'jnj-leiden',           name: 'Janssen Vaccines',               lat:  52.1601, lng:    4.4970, type: 'vaccine',     color: '#059669', desc: 'Vaccine development and manufacturing.', country: 'Netherlands', url: 'https://en.wikipedia.org/wiki/Leiden' },
+  { id: 'jnj-gurabo',           name: 'J&J Manufacturing',              lat:  18.2544, lng:  -65.9729, type: 'pharma-pr',   color: '#D97706', desc: 'High-volume pharmaceutical production.', country: 'Puerto Rico', url: 'https://en.wikipedia.org/wiki/Gurabo,_Puerto_Rico' },
+  { id: 'jnj-manati',           name: 'Janssen Manufacturing',          lat:  18.4275, lng:  -66.4741, type: 'pharma-pr',   color: '#CA8A04', desc: 'Pharmaceutical manufacturing and packaging.', country: 'Puerto Rico', url: 'https://en.wikipedia.org/wiki/Manat%C3%AD,_Puerto_Rico' },
+  { id: 'jnj-singapore',        name: 'Janssen Supply Chain',           lat:   1.3236, lng:  103.6441, type: 'pharma-asia', color: '#7C3AED', desc: 'Biologics and pharmaceutical production.', country: 'Singapore', url: 'https://en.wikipedia.org/wiki/Tuas' },
+  { id: 'jnj-xian',             name: 'J&J Manufacturing',              lat:  34.3416, lng:  108.9398, type: 'pharma-asia', color: '#9333EA', desc: 'Pharmaceutical manufacturing for Asia.', country: 'China', url: 'https://en.wikipedia.org/wiki/Xi%27an' },
+  { id: 'jnj-hyderabad',        name: 'API Suppliers',                  lat:  17.3850, lng:   78.4867, type: 'api',         color: '#16A34A', desc: 'Active pharmaceutical ingredients and contract manufacturing.', country: 'India', url: 'https://en.wikipedia.org/wiki/Hyderabad' },
 ];
 
 const JNJ_ARC_DEFS: InternalArcDef[] = [
@@ -462,6 +465,14 @@ const PIN_STYLES = `
     border-color:rgba(255,255,255,0.25) !important;
     animation: gpin-glow-pulse 3s ease-in-out infinite;
   }
+
+  @keyframes ginfo-in {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .ginfo-panel {
+    animation: ginfo-in 0.2s ease-out;
+  }
 `;
 
 function injectPinStyles() {
@@ -504,8 +515,10 @@ export default function GlobeView({
   const initialized  = useRef(false);
   const { theme }    = useTheme();
   const isLight      = theme === 'light';
+  const [selectedNode, setSelectedNode] = useState<SupplyChainNode | null>(null);
 
   useEffect(() => {
+    setSelectedNode(null);
     if (initialized.current || !containerRef.current) return;
     initialized.current = true;
 
@@ -600,6 +613,20 @@ export default function GlobeView({
             </div>
           `;
 
+          wrapper.setAttribute('role', 'button');
+          wrapper.setAttribute('tabindex', '0');
+          wrapper.setAttribute('aria-label', `${d.name}, ${d.country}`);
+          wrapper.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setSelectedNode(d);
+          });
+          wrapper.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setSelectedNode(d);
+            }
+          });
+
           labelEls.set(d.id, wrapper);
           anchor.appendChild(wrapper);
           return anchor;
@@ -643,10 +670,73 @@ export default function GlobeView({
   }, [theme, activeCompanyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div
-      ref={containerRef}
-      className="globe-canvas-container"
-      style={{ position: 'absolute', inset: 0 }}
-    />
+    <div style={{ position: 'absolute', inset: 0 }}>
+      <div
+        ref={containerRef}
+        className="globe-canvas-container"
+        style={{ position: 'absolute', inset: 0 }}
+      />
+      {selectedNode && (
+        <div
+          className="ginfo-panel"
+          role="dialog"
+          aria-label={selectedNode.name}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            bottom: '24px',
+            transform: 'translateX(-50%)',
+            width: 'min(360px, calc(100% - 32px))',
+            background: isLight ? '#f6f3ea' : '#0b0e14',
+            color: isLight ? '#2C2A25' : '#E8F4F8',
+            border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)'}`,
+            borderRadius: '12px',
+            padding: '14px 16px',
+            boxShadow: isLight ? '0 6px 20px rgba(0,0,0,0.12)' : '0 8px 28px rgba(0,0,0,0.5)',
+            zIndex: 10,
+          }}
+        >
+          <button
+            onClick={() => setSelectedNode(null)}
+            aria-label="Close"
+            style={{
+              position: 'absolute', top: '8px', right: '10px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: isLight ? '#8a8675' : '#7d8590', padding: '2px', lineHeight: 0,
+            }}
+          >
+            <svg viewBox="0 0 14 14" width="13" height="13" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: selectedNode.color, flexShrink: 0, boxShadow: `0 0 6px ${selectedNode.color}` }} />
+            <span style={{ fontWeight: 700, fontSize: '14px', paddingRight: '16px' }}>{selectedNode.name}</span>
+          </div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', opacity: 0.65, marginBottom: '8px' }}>
+            {selectedNode.country}
+          </div>
+          <div style={{ fontSize: '12.5px', lineHeight: 1.5, opacity: 0.9, marginBottom: '12px' }}>
+            {selectedNode.desc}
+          </div>
+          <a
+            href={selectedNode.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              fontSize: '12.5px', fontWeight: 600,
+              color: isLight ? '#0a5fc2' : '#5eb3ff',
+              textDecoration: 'none',
+            }}
+          >
+            Learn more
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </a>
+        </div>
+      )}
+    </div>
   );
 }
