@@ -82,7 +82,7 @@ const PDF_COMPRESS_THRESHOLD = 3 * 1024 * 1024; // 3 MB
 
 type GenStatus = 'idle' | 'generating' | 'done' | 'error';
 interface GenState { status: GenStatus; type?: GenerationType; error?: string; }
-interface GenProgress { current: number; total: number; }
+interface GenProgress { current: number; total: number; chunk?: { current: number; total: number } }
 
 type View = 'dashboard' | 'upload' | 'flashcards' | 'notes' | 'quiz' | 'dictionary';
 
@@ -1431,6 +1431,8 @@ export default function SubjectPage() {
           customPrompt: customPrompt.trim() || undefined,
           language: genLanguage,
           flashcardMode: selectedType === 'flashcards' ? flashcardMode : undefined,
+        }, (chunkCurrent, chunkTotal) => {
+          setGenProgress({ current: i + 1, total: selectedFiles.length, chunk: { current: chunkCurrent, total: chunkTotal } });
         });
         results.push(result);
       }
@@ -2876,9 +2878,11 @@ export default function SubjectPage() {
                 }
               </button>
 
-              {isGenerating && genProgress && genProgress.total > 1 && (
+              {isGenerating && genProgress && (genProgress.total > 1 || genProgress.chunk) && (
                 <div className="mt-2 text-center text-[11px]" style={{ color: isLight ? '#64748b' : 'var(--text-2)' }}>
-                  File {genProgress.current} of {genProgress.total}…
+                  {genProgress.total > 1 ? `File ${genProgress.current} of ${genProgress.total}` : 'Processing file'}
+                  {genProgress.chunk && genProgress.chunk.total > 1 && ` — batch ${genProgress.chunk.current} of ${genProgress.chunk.total}`}
+                  …
                 </div>
               )}
 

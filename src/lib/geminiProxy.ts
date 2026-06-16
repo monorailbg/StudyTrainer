@@ -49,11 +49,19 @@ type Part            = TextPart | InlineDataPart | FileDataPart;
  *
  * @throws {Error} with a user-facing message on 4xx/5xx responses.
  */
+// Client-side ceiling for a single proxy call. Kept comfortably below the
+// gateway/serverless function's own timeout so a hung request fails with a
+// clear, actionable message instead of the browser waiting on a 504.
+const REQUEST_TIMEOUT_MS = 55_000;
+
 async function callProxy(
   parts: Part[],
   options?: { temperature?: number; systemInstruction?: string; maxOutputTokens?: number },
 ): Promise<string> {
   const body = JSON.stringify({ parts, ...options });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   let response: Response;
   try {
@@ -61,18 +69,28 @@ async function callProxy(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,
+      signal: controller.signal,
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error('The request took too long and timed out. Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
+    }
     // Network-level failure (server down, CORS, no internet).
     throw new Error(
       'Could not reach the proxy server. In development, run: cd server && npm run dev',
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (response.ok) {
     const data = await response.json() as { text: string };
     if (!data.text) throw new Error('Empty response from proxy.');
     return data.text;
+  }
+
+  if (response.status === 504 || response.status === 502 || response.status === 503) {
+    throw new Error('The server took too long to respond (gateway timeout). Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
   }
 
   // Parse the structured error the proxy always returns.
@@ -264,8 +282,8 @@ function languageInstruction(language?: 'english' | 'japanese' | 'both'): string
 
 // ── Prompt builders (identical to geminiGenerator.ts) ──────────────────────
 
-function flashcardVocabPrompt(subject: string, opts: GenerateOptions): string {
-  const isAll = opts.cardCount === 'all';
+function flashcardVocabPrompt(subject: string, opts: GenerateOptions, forceAll = false): string {
+  const isAll = forceAll || opts.cardCount === 'all';
   const count = isAll ? undefined : (opts.cardCount ?? 15);
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
@@ -300,9 +318,9 @@ Return ONLY valid JSON — no markdown, no commentary:
 }`;
 }
 
-function flashcardFilePrompt(subject: string, opts: GenerateOptions): string {
-  if (opts.flashcardMode === 'vocabulary') return flashcardVocabPrompt(subject, opts);
-  const isAll = opts.cardCount === 'all';
+function flashcardFilePrompt(subject: string, opts: GenerateOptions, forceAll = false): string {
+  if (opts.flashcardMode === 'vocabulary') return flashcardVocabPrompt(subject, opts, forceAll);
+  const isAll = forceAll || opts.cardCount === 'all';
   const count = isAll ? undefined : (opts.cardCount ?? 12);
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
@@ -517,6 +535,33 @@ Return ONLY valid JSON — no markdown, no preamble:
 
 const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024; // 3 MB
 
+// Cap any single proxy request's page images to this base64 budget — stays
+// under Vercel's 4.5 MB body limit and keeps Gemini's response time bounded
+// well under the function's maxDuration.
+const MAX_CHUNK_B64 = 3_000_000;
+
+// Multi-page flashcard sources are split into batches this large so each
+// proxy call finishes quickly instead of risking a gateway timeout on one
+// huge request that covers the whole document.
+const PAGES_PER_CHUNK = 6;
+
+function chunkPages<T extends { base64: string }>(pages: T[], maxPerChunk: number, maxBytesPerChunk: number): T[][] {
+  const chunks: T[][] = [];
+  let current: T[] = [];
+  let bytes = 0;
+  for (const p of pages) {
+    if (current.length > 0 && (current.length >= maxPerChunk || bytes + p.base64.length > maxBytesPerChunk)) {
+      chunks.push(current);
+      current = [];
+      bytes = 0;
+    }
+    current.push(p);
+    bytes += p.base64.length;
+  }
+  if (current.length) chunks.push(current);
+  return chunks;
+}
+
 // ── Large-image compression ─────────────────────────────────────────────────
 
 const COMPRESS_TARGET = 2.5 * 1024 * 1024; // 2.5 MB binary (→ ~3.3 MB base64)
@@ -579,27 +624,19 @@ export async function generateFromFile(
   type: GenerationType,
   subjectTitle: string,
   options: GenerateOptions = {},
+  onProgress?: (current: number, total: number) => void,
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   const prompt =
     type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) :
     type === 'notes'      ? notesFilePrompt(subjectTitle, options) :
                             quizFilePrompt(subjectTitle, options);
 
-  let parts: Part[];
+  let parts: Part[] | null = null;
+  let pageImages: Array<{ base64: string; mimeType: 'image/jpeg' }> | null = null;
 
   if (file.type === 'application/x-studytrainer-pages') {
     // Pre-compressed format: JSON array of JPEG page images, created at upload time.
-    const pages = JSON.parse(await file.text()) as Array<{ base64: string; mimeType: 'image/jpeg' }>;
-    const pageImages: InlineDataPart[] = [];
-    let totalB64 = 0;
-    const B64_CAP = 3_500_000;
-    for (const p of pages) {
-      if (totalB64 + p.base64.length > B64_CAP) break;
-      pageImages.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } });
-      totalB64 += p.base64.length;
-    }
-    if (pageImages.length === 0) throw new Error('Could not read pre-compressed PDF pages.');
-    parts = [...pageImages, { text: prompt }];
+    pageImages = JSON.parse(await file.text()) as Array<{ base64: string; mimeType: 'image/jpeg' }>;
   } else if (file.type === 'application/pdf') {
     const extracted = await extractTextFromFile(file);
     if (extracted.trim()) {
@@ -607,18 +644,10 @@ export async function generateFromFile(
       parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
     } else if (file.size > LARGE_FILE_THRESHOLD) {
       // Large scanned PDF: render pages as JPEG images client-side and send
-      // as inline_data parts. Bypasses the Files API entirely.
-      const pages = await renderPdfPagesAsJpeg(file, 15, 0.65);
-      const pageImages: InlineDataPart[] = [];
-      let totalB64 = 0;
-      const B64_CAP = 3_500_000; // cap at ~3.5 MB base64 to stay under Vercel's 4.5 MB body limit
-      for (const p of pages) {
-        if (totalB64 + p.base64.length > B64_CAP) break;
-        pageImages.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } });
-        totalB64 += p.base64.length;
-      }
-      if (pageImages.length === 0) throw new Error('Could not render any pages from this PDF.');
-      parts = [...pageImages, { text: prompt }];
+      // as inline_data parts. Bypasses the Files API entirely. Flashcard
+      // generation renders far more pages since it chunks them into several
+      // bounded requests below instead of sending them all in one call.
+      pageImages = await renderPdfPagesAsJpeg(file, type === 'flashcards' ? 60 : 15, 0.65);
     } else {
       // Small scanned PDF: inline base64.
       const base64 = await fileToBase64(file);
@@ -647,6 +676,47 @@ export async function generateFromFile(
   const proxyOptions = type === 'notes'
     ? { temperature: 0.4, maxOutputTokens: 8192 }
     : undefined;
+
+  if (pageImages) {
+    if (pageImages.length === 0) throw new Error('Could not read any pages from this file.');
+
+    if (type === 'flashcards' && pageImages.length > PAGES_PER_CHUNK) {
+      // Split the document into several bounded requests instead of one call
+      // covering every page — each chunk finishes well within the gateway's
+      // timeout, and results are merged as each chunk completes. Every chunk
+      // is asked to extract everything it sees; if the user requested a
+      // specific count (rather than "all"), the merged results are trimmed
+      // to that count afterwards.
+      const chunks = chunkPages(pageImages, PAGES_PER_CHUNK, MAX_CHUNK_B64);
+      const chunkPrompt = flashcardFilePrompt(subjectTitle, options, true);
+      const merged: GeneratedFlashcard[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        onProgress?.(i + 1, chunks.length);
+        const chunkParts: Part[] = [
+          ...chunks[i].map((p): InlineDataPart => ({ inline_data: { mime_type: p.mimeType, data: p.base64 } })),
+          { text: chunkPrompt },
+        ];
+        const text = await callProxy(chunkParts, proxyOptions);
+        const parsed = parseJSON(text) as Record<string, unknown>;
+        merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
+      }
+      return (options.cardCount && options.cardCount !== 'all') ? merged.slice(0, options.cardCount) : merged;
+    }
+
+    // Small enough to fit in one request — cap by base64 budget just in case.
+    const pageImageParts: InlineDataPart[] = [];
+    let totalB64 = 0;
+    for (const p of pageImages) {
+      if (totalB64 + p.base64.length > MAX_CHUNK_B64) break;
+      pageImageParts.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } });
+      totalB64 += p.base64.length;
+    }
+    if (pageImageParts.length === 0) throw new Error('Could not render any pages from this PDF.');
+    parts = [...pageImageParts, { text: prompt }];
+  }
+
+  if (!parts) throw new Error('Could not prepare file content for generation.');
+
   const text = await callProxy(parts, proxyOptions);
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
