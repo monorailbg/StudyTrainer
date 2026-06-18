@@ -582,7 +582,7 @@ const IconFolderPlus = () => (<svg viewBox="0 0 18 18" width="14" height="14" fi
 
 function FolderBoard<T extends { id: string; folderId?: string | null }>({
   kind, label, color, folders, items, draggedId, cols = 2, headerExtra,
-  onDragStart, onDragEnd, onDropToFolder, onCreateFolder, onDeleteFolder, renderItem, onReorder,
+  onDragStart, onDragEnd, onDropToFolder, onCreateFolder, onDeleteFolder, onRenameFolder, renderItem, onReorder,
   sortAccessors,
 }: {
   kind: FolderKind;
@@ -598,6 +598,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   onDropToFolder: (folderId: string | null) => void;
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (folderId: string) => void;
+  onRenameFolder: (folderId: string, name: string) => void;
   renderItem: (item: T) => React.ReactNode;
   onReorder?: (reordered: T[]) => void;
   sortAccessors?: { name: (item: T) => string; date?: (item: T) => number };
@@ -607,6 +608,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const [newName, setNewName] = useState('');
   const [hoverFolder, setHoverFolder] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
   // Per-zone enter-count counters fix the "dragLeave fires on child-enter" bug.
   const enterCounts = useRef<Map<string, number>>(new Map());
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
@@ -626,6 +629,23 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
     const n = newName.trim();
     if (n) onCreateFolder(n);
     setNewName(''); setCreating(false);
+  };
+
+  const startRenaming = (folder: Folder) => {
+    setEditingFolderId(folder.id);
+    setEditName(folder.name);
+  };
+
+  const commitRename = (folderId: string) => {
+    if (editingFolderId !== folderId) return;
+    const n = editName.trim();
+    if (n) onRenameFolder(folderId, n);
+    setEditingFolderId(null);
+  };
+
+  const cancelRename = () => {
+    setEditingFolderId(null);
+    setEditName('');
   };
 
   const kindFolders = folders.filter(f => f.kind === kind);
@@ -852,18 +872,53 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
         return (
           <div key={folder.id} style={{ marginBottom: '18px' }}>
             {zone(folder.id, <>
-              <div className="flex items-center gap-2 mb-2.5 px-1">
-                <button
-                  onClick={() => toggleFolder(folder.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flex: 1, minWidth: 0 }}
-                >
-                  <span style={{ color }}><IconFolder /></span>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', flex: 1, textAlign: 'left' }}>{folder.name}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>{folderItems.length}</span>
-                  <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: 'var(--text-3)' }}>
-                    <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
+              <div className="flex items-center gap-2 mb-2.5 px-1 group">
+                {editingFolderId === folder.id ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
+                    <span style={{ color }}><IconFolder /></span>
+                    <input
+                      autoFocus
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      onFocus={e => e.currentTarget.select()}
+                      onBlur={() => commitRename(folder.id)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') commitRename(folder.id);
+                        if (e.key === 'Escape') cancelRename();
+                      }}
+                      style={{
+                        flex: 1, minWidth: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-1)',
+                        background: 'var(--bg-page)', border: `1px solid ${color}55`, borderRadius: '6px',
+                        padding: '2px 6px', outline: 'none',
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => toggleFolder(folder.id)}
+                    onDoubleClick={e => { e.stopPropagation(); startRenaming(folder); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flex: 1, minWidth: 0 }}
+                  >
+                    <span style={{ color }}><IconFolder /></span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>{folderItems.length}</span>
+                    <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: 'var(--text-3)' }}>
+                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
+                {editingFolderId !== folder.id && (
+                  <button
+                    onClick={e => { e.stopPropagation(); startRenaming(folder); }}
+                    aria-label={ts('Rename folder')}
+                    className="cursor-pointer opacity-0 group-hover:opacity-100"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', padding: '2px', lineHeight: 0, flexShrink: 0, transition: 'opacity 0.15s, color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = color)}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                  >
+                    <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M11.4 2.4a1.4 1.4 0 012 2L5.5 12.3l-3 .8.8-3L11.4 2.4z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                )}
                 <button
                   onClick={() => onDeleteFolder(folder.id)}
                   aria-label={ts('Delete folder')}
@@ -1265,6 +1320,17 @@ export default function SubjectPage() {
     moveAllOutOfFolder(folderId);
     if (isFirebaseConfigured) deleteCloudFolder(folderId).catch(() => {});
     else deleteFolder(folderId).catch(() => {});
+  };
+
+  const renameFolder = (folderId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: trimmed } : f));
+    const updated = folders.find(f => f.id === folderId);
+    if (!updated) return;
+    const next = { ...updated, name: trimmed };
+    if (isFirebaseConfigured) saveCloudFolder(next).catch(() => {});
+    else saveFolder(next).catch(() => {});
   };
 
   const persistFileFolder = (file: UploadedFile, folderId: string | null) => {
@@ -1981,6 +2047,7 @@ export default function SubjectPage() {
                   onDropToFolder={fid => handleItemDrop('file', fid)}
                   onCreateFolder={name => createFolder('file', name)}
                   onDeleteFolder={removeFolder}
+                  onRenameFolder={renameFolder}
                   onReorder={reordered => setFiles(prev => {
                     const ids = new Set(reordered.map(f => f.id));
                     return [...prev.filter(f => !ids.has(f.id)), ...reordered];
@@ -2176,6 +2243,7 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('card', fid)}
                 onCreateFolder={name => createFolder('card', name)}
                 onDeleteFolder={removeFolder}
+                onRenameFolder={renameFolder}
                 onReorder={reordered => setSavedFlashcardSets(reordered)}
                 sortAccessors={{ name: s => s.name, date: s => s.createdAt }}
                 renderItem={(set) => {
@@ -2323,6 +2391,7 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('note', fid)}
                 onCreateFolder={name => createFolder('note', name)}
                 onDeleteFolder={removeFolder}
+                onRenameFolder={renameFolder}
                 onReorder={reordered => setSavedNotes(reordered)}
                 sortAccessors={{ name: n => n.name, date: n => n.createdAt }}
                 renderItem={(n) => {
@@ -2497,6 +2566,7 @@ export default function SubjectPage() {
                 onDropToFolder={fid => handleItemDrop('quiz', fid)}
                 onCreateFolder={name => createFolder('quiz', name)}
                 onDeleteFolder={removeFolder}
+                onRenameFolder={renameFolder}
                 onReorder={reordered => setSavedQuizzes(reordered)}
                 sortAccessors={{ name: q => q.name, date: q => q.createdAt }}
                 renderItem={(quiz) => {
