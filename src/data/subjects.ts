@@ -107,7 +107,7 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
   {
     id: 'accounting-advanced',
     title: 'Accounting Advanced',
-    description: 'Advanced financial reporting, consolidation, IFRS standards.',
+    description: 'Advanced financial reporting, consolidation, US GAAP standards.',
     color: '#34d399',
     lat: -33.87, lng: 151.21,  // Sydney — Pacific financial hub, Oceania
   },

@@ -99,8 +99,8 @@ export const ja: Record<string, string> = {
     '応用経済学：景気循環、財政政策、為替レート。',
   'Academic writing, research skills, presentation and citation.':
     'アカデミックライティング、研究スキル、プレゼンテーション、引用。',
-  'Advanced financial reporting, consolidation, IFRS standards.':
-    '上級財務報告、連結、IFRS基準。',
+  'Advanced financial reporting, consolidation, US GAAP standards.':
+    '上級財務報告、連結、米国会計基準（US GAAP）。',
   'Managerial theory, organisational behaviour, leadership and change.':
     '経営理論、組織行動、リーダーシップと変革。',
   'Level 1': 'レベル1',
