@@ -335,10 +335,10 @@ function SubjectBanner({
   return (
     <div style={{
       background: isLight
-        ? 'linear-gradient(135deg, #fffdf5 0%, #f0f7ff 55%, #faf5ff 100%)'
+        ? '#E8E2DA'
         : `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, var(--bg-page) 100%)`,
-      border: isLight ? '1px solid #e2d9f3' : `1.5px solid ${subject.color}28`,
-      boxShadow: isLight ? '0 4px 16px rgba(0,0,0,0.06)' : 'none',
+      border: isLight ? '1px solid #DAD2C5' : `1.5px solid ${subject.color}28`,
+      boxShadow: 'none',
       borderRadius: '24px',
       padding: '32px 36px',
       marginBottom: '32px',
@@ -431,9 +431,9 @@ function SubjectBanner({
           {pills.length > 0 ? pills.map(p => (
             <span key={p.label} style={{
               padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-              color: isLight ? '#334155' : 'var(--text-2)',
-              background: isLight ? '#f8fafc' : 'var(--bg-surface)',
-              border: isLight ? '1px solid #cbd5e1' : '1px solid var(--border-base)',
+              color: isLight ? '#1e293b' : 'var(--text-2)',
+              background: isLight ? '#ffffff' : 'var(--bg-surface)',
+              border: isLight ? '1px solid #DAD2C5' : '1px solid var(--border-base)',
             }}>
               {p.label}
             </span>
