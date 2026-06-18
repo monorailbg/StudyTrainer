@@ -191,9 +191,9 @@ function SubjectNode({ data }: NodeProps) {
         ['--mm-delay' as string]: `${80 + d.idx * 45}ms`,
         position: 'relative',
         display: 'flex', alignItems: 'center', gap: '10px',
-        width: '204px', padding: '11px 13px',
+        width: '224px', padding: '11px 13px',
         borderRadius: '16px',
-        background: light ? 'var(--bg-surface)' : 'rgba(22,27,34,0.96)',
+        background: light ? '#FFFFFF' : 'rgba(22,27,34,0.96)',
         border: `1.5px solid ${d.highlight ? s.color : s.color + (light ? '70' : '55')}`,
         boxShadow: light
           ? (d.highlight
@@ -216,10 +216,14 @@ function SubjectNode({ data }: NodeProps) {
         <SubjectIcon id={s.id} icon={s.icon} color={s.color} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 700, color: light ? 'var(--text-1)' : '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{
+          fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 700, color: light ? 'var(--text-1)' : '#E6EDF3',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis',
+          whiteSpace: 'normal', lineHeight: 1.25, wordBreak: 'break-word',
+        }}>
           {s.title}
         </div>
-        <div style={{ fontSize: '10px', color: light ? 'var(--text-3)' : '#8B949E', marginTop: '1px' }}>
+        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-2)', marginTop: '2px' }}>
           {d.topicCount > 0
             ? (d.topicCount > 1 ? ts('{count} topics', { count: d.topicCount }) : ts('{count} topic', { count: d.topicCount }))
             : ts('No notes yet')}
@@ -265,9 +269,9 @@ function TopicNode({ data }: NodeProps) {
       style={{
         ['--mm-delay' as string]: `${d.idx * 30}ms`,
         position: 'relative',
-        maxWidth: '184px', padding: '7px 12px',
+        width: 'max-content', minWidth: '120px', maxWidth: '210px', padding: '7px 12px',
         borderRadius: '12px',
-        background: light ? 'var(--bg-surface)' : 'rgba(13,17,23,0.94)',
+        background: light ? '#FFFFFF' : 'rgba(13,17,23,0.94)',
         border: `1px solid ${d.highlight ? d.color : (d.empty ? (light ? 'var(--border-base)' : '#30363D') : d.color + (light ? '60' : '40'))}`,
         boxShadow: light
           ? (d.highlight ? `0 0 0 2px ${d.color}35` : `0 1px 4px rgba(0,0,0,0.07)`)
@@ -279,9 +283,11 @@ function TopicNode({ data }: NodeProps) {
     >
       <Handles />
       <div style={{
-        fontSize: '11px', fontWeight: d.empty ? 600 : 500,
+        fontSize: '11px', fontWeight: d.empty ? 700 : 600,
         color: d.empty ? d.color : (light ? 'var(--text-1)' : '#C9D1D9'),
-        lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        lineHeight: 1.3,
+        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis',
+        whiteSpace: 'normal', wordBreak: 'break-word',
       }}>
         {d.empty ? ts('No notes yet — Generate →') : d.label}
       </div>
@@ -466,11 +472,13 @@ function MindMapInner() {
   const { fitView } = useReactFlow();
   const { allSubjects } = useResolvedSubjects();
   const { theme } = useTheme();
+  const { ts } = useLang();
   const light = theme === 'light';
 
   const [topicsMap, setTopicsMap] = useState<Record<string, string[]>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -486,6 +494,7 @@ function MindMapInner() {
   );
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    setSelectedNodeId(node.id);
     if (node.type === 'subjectNode') {
       const id = (node.id.split(':')[1]);
       setExpanded(prev => {
@@ -501,9 +510,36 @@ function MindMapInner() {
     }
   }, [navigate, fitView]);
 
+  const onPaneClick = useCallback(() => setSelectedNodeId(null), []);
+
   const expandAll = useCallback(() => setExpanded(new Set(allSubjects.map(s => s.id))), [allSubjects]);
   const collapseAll = useCallback(() => setExpanded(new Set()), []);
   const reset = useCallback(() => fitView({ duration: 500, padding: 0.18 }), [fitView]);
+
+  // Details for the bottom-right preview panel — derived from the currently
+  // selected node so the panel can be hidden outright when nothing is picked.
+  const selectedDetail = useMemo(() => {
+    if (!selectedNodeId) return null;
+    const node = nodes.find(n => n.id === selectedNodeId);
+    if (!node) return null;
+
+    if (node.type === 'rootNode') {
+      return { title: ROOT_LABEL, subtitle: ts('{count} subjects', { count: allSubjects.length }), color: ROOT_COLOR };
+    }
+    if (node.type === 'subjectNode') {
+      const d = node.data as { subject: SubjectDef; topicCount: number };
+      const subtitle = d.topicCount > 0
+        ? (d.topicCount > 1 ? ts('{count} topics', { count: d.topicCount }) : ts('{count} topic', { count: d.topicCount }))
+        : ts('No notes yet');
+      return { title: d.subject.title, subtitle, color: d.subject.color };
+    }
+    if (node.type === 'topicNode') {
+      const d = node.data as { label: string; color: string; empty?: boolean; subjectId?: string };
+      const subj = allSubjects.find(s => s.id === d.subjectId);
+      return { title: d.empty ? ts('No notes yet') : d.label, subtitle: subj?.title ?? '', color: d.color };
+    }
+    return null;
+  }, [selectedNodeId, nodes, allSubjects, ts]);
 
   return (
     <div className="mm-root" style={{ position: 'absolute', inset: 0 }}>
@@ -522,6 +558,7 @@ function MindMapInner() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.25}
@@ -534,6 +571,7 @@ function MindMapInner() {
       >
         <Background variant={BackgroundVariant.Dots} gap={30} size={1} color={light ? 'var(--border-light)' : '#1b212b'} />
         <MiniMap
+          position="bottom-left"
           pannable
           zoomable
           nodeColor={(n) => {
@@ -554,6 +592,31 @@ function MindMapInner() {
         onExpandAll={expandAll} onCollapseAll={collapseAll} onReset={reset}
         anyExpanded={expanded.size > 0}
       />
+      {selectedDetail && (
+        <div
+          className="mm-enter"
+          style={{
+            position: 'absolute', bottom: '16px', right: '16px', zIndex: 6,
+            width: '220px', padding: '12px 14px', borderRadius: '14px',
+            background: light ? '#FFFFFF' : 'rgba(22,27,34,0.96)',
+            border: `1px solid ${selectedDetail.color}55`,
+            borderLeft: `3px solid ${selectedDetail.color}`,
+            boxShadow: light ? '0 4px 16px rgba(0,0,0,0.10)' : '0 8px 24px rgba(0,0,0,0.45)',
+          }}
+        >
+          <div style={{
+            fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 700,
+            color: light ? 'var(--text-1)' : '#E6EDF3', lineHeight: 1.3,
+          }}>
+            {selectedDetail.title}
+          </div>
+          {selectedDetail.subtitle && (
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)', marginTop: '3px' }}>
+              {selectedDetail.subtitle}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
