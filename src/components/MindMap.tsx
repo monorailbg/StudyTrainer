@@ -443,8 +443,8 @@ function Toolbar({
         </div>
       </div>
 
-      {/* Actions — top right */}
-      <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 6, display: 'flex', gap: '8px' }}>
+      {/* Actions — top right (offset below the Globe/Mind Map view toggle rendered by the parent) */}
+      <div style={{ position: 'absolute', top: 'calc(clamp(16px, 4vw, 32px) + 44px)', right: 'clamp(16px, 4vw, 32px)', zIndex: 6, display: 'flex', gap: '8px' }}>
         <button style={pill} onClick={anyExpanded ? onCollapseAll : onExpandAll}>
           {anyExpanded
             ? <><svg viewBox="0 0 14 14" width="12" height="12" fill="none"><path d="M3 8.5L7 5l4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg> {ts('Collapse all')}</>
