@@ -607,7 +607,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [hoverFolder, setHoverFolder] = useState<string | null>(null);
-  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(() => new Set(folders.map(f => f.id)));
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   // Per-zone enter-count counters fix the "dragLeave fires on child-enter" bug.
@@ -624,6 +624,21 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
     if (next.has(folderId)) next.delete(folderId); else next.add(folderId);
     return next;
   });
+
+  const knownFolderIds = useRef<Set<string>>(new Set(folders.map(f => f.id)));
+  useEffect(() => {
+    const newIds = folders.map(f => f.id).filter(id => !knownFolderIds.current.has(id));
+    if (newIds.length) {
+      knownFolderIds.current = new Set(folders.map(f => f.id));
+      setCollapsedFolders(prev => {
+        const next = new Set(prev);
+        newIds.forEach(id => next.add(id));
+        return next;
+      });
+    } else {
+      knownFolderIds.current = new Set(folders.map(f => f.id));
+    }
+  }, [folders]);
 
   const submit = () => {
     const n = newName.trim();
