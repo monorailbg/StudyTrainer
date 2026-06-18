@@ -670,11 +670,14 @@ export async function generateFromFile(
     parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
   }
 
-  // Notes now generate rich markdown (tables, Mermaid, callouts) which is far
-  // longer than plain prose. Request a large output budget to avoid mid-JSON
-  // truncation, and lower temperature for more deterministic structured output.
+  // Notes now generate rich markdown (tables, Mermaid, callouts) across many
+  // sections, which is far longer than plain prose. 8192 tokens was enough to
+  // cover only the first section before hitting the ceiling, so the
+  // truncation-repair logic silently closed the JSON after just one section.
+  // Raise the budget so a full 4-12 section note can be generated, and lower
+  // temperature for more deterministic structured output.
   const proxyOptions = type === 'notes'
-    ? { temperature: 0.4, maxOutputTokens: 8192 }
+    ? { temperature: 0.4, maxOutputTokens: 32768 }
     : undefined;
 
   if (pageImages) {
@@ -731,7 +734,7 @@ export async function generateFromTopic(
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level, language);
   const proxyOptions = type === 'notes'
-    ? { temperature: 0.4, maxOutputTokens: 8192 }
+    ? { temperature: 0.4, maxOutputTokens: 32768 }
     : undefined;
   const text   = await callProxy([{ text: prompt }], proxyOptions);
   const parsed = parseJSON(text) as Record<string, unknown>;
