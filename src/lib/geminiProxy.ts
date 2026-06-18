@@ -55,9 +55,21 @@ type Part            = TextPart | InlineDataPart | FileDataPart;
 // clear, actionable message instead of the browser waiting on a 504.
 const REQUEST_TIMEOUT_MS = 55_000;
 
+interface CallProxyOptions {
+  temperature?: number;
+  systemInstruction?: string;
+  maxOutputTokens?: number;
+  // Forces Gemini to return application/json instead of free-form text —
+  // paired with responseSchema this eliminates prose preambles, markdown
+  // fences, and malformed/missing fields in structured-output calls (e.g.
+  // the notes outline step).
+  responseMimeType?: string;
+  responseSchema?: Record<string, unknown>;
+}
+
 async function callProxy(
   parts: Part[],
-  options?: { temperature?: number; systemInstruction?: string; maxOutputTokens?: number },
+  options?: CallProxyOptions,
 ): Promise<string> {
   const body = JSON.stringify({ parts, ...options });
 
@@ -117,9 +129,16 @@ async function callProxy(
 
 // ── Shared helpers (identical to geminiGenerator.ts) ───────────────────────
 
-function parseJSON(raw: string): unknown {
+/**
+ * Strips a markdown code fence (```json ... ``` or ``` ... ```) and any
+ * leading/trailing whitespace or prose around it, leaving just the raw JSON
+ * text. Gemini is supposed to return clean JSON when responseMimeType is
+ * set, but it (and the Groq fallback, which has no such option) sometimes
+ * still wraps the payload in a fence or adds a preamble — this protects
+ * every JSON.parse() call site against that.
+ */
+function stripCodeFence(raw: string): string {
   let text = raw.trim();
-  // Strip code fence anywhere in the response (Gemini sometimes adds prose before/after)
   const fence = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
   if (fence) {
     text = fence[1].trim();
@@ -128,6 +147,11 @@ function parseJSON(raw: string): unknown {
     const start = text.search(/[{[]/);
     if (start > 0) text = text.slice(start);
   }
+  return text;
+}
+
+function parseJSON(raw: string): unknown {
+  const text = stripCodeFence(raw);
 
   // Happy path
   try {
@@ -370,6 +394,32 @@ interface NotesSectionResult {
   content: string;
   keyPoints?: string[];
 }
+
+// Gemini structured-output schema for the outline step. Forcing
+// responseMimeType: "application/json" + this schema means Gemini returns
+// exactly this shape — no markdown fence, no missing "sections" key, no
+// prose preamble — which was the actual cause of "Gemini returned no
+// sections" (the plain-text outline prompt was occasionally answered with
+// commentary instead of, or in addition to, the JSON object).
+const NOTES_OUTLINE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    title: { type: 'STRING' },
+    summary: { type: 'STRING' },
+    sections: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          heading: { type: 'STRING' },
+          brief: { type: 'STRING' },
+        },
+        required: ['heading', 'brief'],
+      },
+    },
+  },
+  required: ['title', 'summary', 'sections'],
+};
 
 const SECTION_FORMAT_RULES = `MANDATORY FORMAT RULES — every rule must be followed:
 1. Wall-of-text is FORBIDDEN. The "content" field MUST use rich markdown, never plain prose paragraphs.
@@ -720,7 +770,12 @@ async function generateNotesSequentially(
 ): Promise<GeneratedNote> {
   const outlineText = await callProxy(
     [...groundingParts, { text: outlinePrompt }],
-    { temperature: 0.4, maxOutputTokens: NOTES_OUTLINE_TOKENS },
+    {
+      temperature: 0.4,
+      maxOutputTokens: NOTES_OUTLINE_TOKENS,
+      responseMimeType: 'application/json',
+      responseSchema: NOTES_OUTLINE_SCHEMA,
+    },
   );
   const outline = parseJSON(outlineText) as NotesOutline;
   const outlinedSections = outline.sections;

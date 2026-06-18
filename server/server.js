@@ -369,7 +369,7 @@ app.post('/api/upload-chunk', async (req, res) => {
 // ── 11. Route: POST /api/generate ─────────────────────────────────────────
 
 app.post('/api/generate', generateLimiter, async (req, res) => {
-  const { parts, temperature, systemInstruction, maxOutputTokens } = req.body ?? {};
+  const { parts, temperature, systemInstruction, maxOutputTokens, responseMimeType, responseSchema } = req.body ?? {};
 
   if (!Array.isArray(parts) || parts.length === 0) {
     return res.status(400).json({ error: 'Request body must include a non-empty "parts" array.' });
@@ -384,6 +384,8 @@ app.post('/api/generate', generateLimiter, async (req, res) => {
   const config = {};
   if (typeof temperature === 'number') config.temperature = temperature;
   if (typeof maxOutputTokens === 'number' && maxOutputTokens > 0) config.maxOutputTokens = maxOutputTokens;
+  if (typeof responseMimeType === 'string' && responseMimeType.trim()) config.responseMimeType = responseMimeType.trim();
+  if (responseSchema && typeof responseSchema === 'object') config.responseSchema = responseSchema;
   if (typeof systemInstruction === 'string' && systemInstruction.trim()) {
     config.systemInstruction = systemInstruction.trim();
   }
