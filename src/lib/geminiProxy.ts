@@ -299,6 +299,7 @@ export interface GenerateOptions {
   focusTopic?:     string;
   notesDetail?:    'concise' | 'standard' | 'comprehensive';
   notesIncludes?:  string[];
+  detailedNotes?:  boolean;
   customPrompt?:   string;
   language?:       'english' | 'japanese' | 'both';
   difficulty?:     'easy' | 'medium' | 'hard';
@@ -405,6 +406,71 @@ Return ONLY a valid JSON object — no markdown wrapper, no commentary:
     {
       "heading": "Section heading",
       "content": "Main explanation in clean markdown (2-4 sentences plus bullet points)",
+      "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
+    }
+  ]
+}`;
+}
+
+// ── Notes: detailed "dashboard" mode (opt-in, single call) ─────────────────
+//
+// Same JSON contract as the fast prompt (title/summary/sections[]) so no
+// downstream parsing change is needed — only the instructions for what goes
+// into each section's "content" field change, asking for maximum
+// information density (tables, flowcharts, decision trees, etc.) instead of
+// plain markdown. Still a single request, just a heavier one — expect a
+// noticeably longer generation time than the default fast mode.
+const DASHBOARD_FORMAT_RULES = `You are an expert instructional designer. Transform the material into the highest-information-density notes possible, not prose summaries.
+
+RULES:
+- Prefer visual structures over text: comparison tables > flowcharts > decision trees > hierarchical trees > timelines > cause-effect diagrams > checklists > formula cards > structured bullets > paragraphs (last resort).
+- Eliminate filler, introductions, transitions, conversational language, and motivational language.
+- Preserve all important information — do not just shorten the source.
+- Every section must be scannable and understandable in under 30 seconds.
+
+Use these plain-text diagram conventions inside "content" (as markdown code blocks or plain text — no images):
+- Flowcharts: A ↓ B ↓ C
+- Decision trees: Condition? ├─ Yes → Outcome A  └─ No → Outcome B
+- Cause-effect: ↑ Inflation ↓ ↑ Interest Rates ↓ ↓ Borrowing
+- Definitions/characteristics/examples/exceptions as markdown tables.
+- Formulas as a labelled block: Formula, Variables table, Interpretation, Increase/Decrease effects table.
+- Comparable concepts as side-by-side comparison tables.
+
+Structure the "sections" array using whichever of these apply to the material (skip ones with no content to put in them):
+1. Topic Overview — concise hierarchical topic map of the whole material.
+2. Core Concepts — one section per concept: definition table, key-characteristics table, examples table, exceptions table if applicable.
+3. Comparisons — side-by-side tables for any comparable concepts.
+4. Processes — flowcharts for sequences, workflows, cycles, procedures.
+5. Decision Logic — decision trees for rules/conditions/classification.
+6. Relationships — cause-effect diagrams for economic/scientific/business relationships.
+7. Formulas — formula card per formula (formula, variables table, interpretation, increase/decrease table).
+8. Key Facts — compact tables or checklists only.
+9. Common Mistakes — frequently confused concepts, misconceptions, important distinctions, typical errors.
+10. Chapter Summary — single-screen recap: core idea, most important concepts, key relationships, critical rules, essential formulas.`;
+
+function notesDashboardFilePrompt(subject: string, opts: GenerateOptions): string {
+  const includes = opts.notesIncludes ?? [];
+  const custom   = opts.customPrompt?.trim();
+
+  const mindmapInstruction = includes.includes('mindmap')
+    ? 'Organise the Topic Overview and Core Concepts sections hierarchically: top-level concept first, subsequent sections each explore one branch.'
+    : '';
+
+  return `${DASHBOARD_FORMAT_RULES}
+
+Subject: university-level ${subject}.
+Based on the content in this file, cover everything important in the material — do not skip topics to save space.
+${mindmapInstruction}
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+
+Return ONLY a valid JSON object — no markdown wrapper, no commentary:
+{
+  "title": "Descriptive title of the material",
+  "summary": "2–3 sentence executive summary",
+  "sections": [
+    {
+      "heading": "Section heading (e.g. 'Topic Overview', 'Core Concepts: <name>', 'Comparisons', 'Processes', 'Decision Logic', 'Relationships', 'Formulas', 'Key Facts', 'Common Mistakes', 'Chapter Summary')",
+      "content": "Dense markdown — tables/flowcharts/decision trees/checklists per the rules above. Minimal prose.",
       "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
     }
   ]
@@ -542,6 +608,32 @@ Return ONLY valid JSON — no markdown wrapper, no preamble:
 }`;
 }
 
+function notesDashboardTopicPrompt(
+  topic: string,
+  context: string,
+  level: string,
+  language?: 'english' | 'japanese' | 'both',
+): string {
+  return `${DASHBOARD_FORMAT_RULES}
+
+Topic: "${topic}"${context ? ` for a ${context} course` : ''}.
+Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
+Cover everything important about this topic — do not skip aspects to save space.
+
+Return ONLY valid JSON — no markdown wrapper, no preamble:
+{
+  "title": "Descriptive title",
+  "summary": "2–3 sentence overview",
+  "sections": [
+    {
+      "heading": "Section heading (e.g. 'Topic Overview', 'Core Concepts: <name>', 'Comparisons', 'Processes', 'Decision Logic', 'Relationships', 'Formulas', 'Key Facts', 'Common Mistakes', 'Chapter Summary')",
+      "content": "Dense markdown — tables/flowcharts/decision trees/checklists per the rules above. Minimal prose.",
+      "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
+    }
+  ]
+}`;
+}
+
 // ── Size thresholds ────────────────────────────────────────────────────────
 
 const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024; // 3 MB
@@ -629,6 +721,9 @@ async function compressImageToFit(file: File): Promise<{ base64: string; mimeTyp
 }
 
 const NOTES_TOKENS = 8192;
+// Dashboard mode packs many tables/diagrams per section, so it needs a much
+// larger budget than the default fast prompt to avoid truncating mid-note.
+const NOTES_DASHBOARD_TOKENS = 16384;
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -641,7 +736,7 @@ export async function generateFromFile(
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   const prompt =
     type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) :
-    type === 'notes'      ? notesFilePrompt(subjectTitle, options) :
+    type === 'notes'      ? (options.detailedNotes ? notesDashboardFilePrompt(subjectTitle, options) : notesFilePrompt(subjectTitle, options)) :
                             quizFilePrompt(subjectTitle, options);
 
   let parts: Part[] | null = null;
@@ -730,7 +825,10 @@ export async function generateFromFile(
 
   if (!parts) throw new Error('Could not prepare file content for generation.');
 
-  const text = await callProxy(parts, type === 'notes' ? { maxOutputTokens: NOTES_TOKENS } : undefined);
+  const text = await callProxy(
+    parts,
+    type === 'notes' ? { maxOutputTokens: options.detailedNotes ? NOTES_DASHBOARD_TOKENS : NOTES_TOKENS } : undefined,
+  );
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
 }
@@ -741,10 +839,13 @@ export async function generateFromTopic(
   subjectContext = '',
   level = 'intermediate',
   language?: 'english' | 'japanese' | 'both',
+  detailedNotes = false,
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   if (type === 'notes') {
-    const prompt = notesTopicPrompt(topic, subjectContext, level, language);
-    const text   = await callProxy([{ text: prompt }], { maxOutputTokens: NOTES_TOKENS });
+    const prompt = detailedNotes
+      ? notesDashboardTopicPrompt(topic, subjectContext, level, language)
+      : notesTopicPrompt(topic, subjectContext, level, language);
+    const text   = await callProxy([{ text: prompt }], { maxOutputTokens: detailedNotes ? NOTES_DASHBOARD_TOKENS : NOTES_TOKENS });
     const parsed = parseJSON(text) as Record<string, unknown>;
     return processResult(parsed, type, topic);
   }

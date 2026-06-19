@@ -1004,6 +1004,7 @@ export default function SubjectPage() {
   const [focusTopic, setFocusTopic] = useState('');
   const [notesDetail, setNotesDetail] = useState<'concise' | 'standard' | 'comprehensive'>('standard');
   const [notesIncludes, setNotesIncludes] = useState<string[]>([]);
+  const [detailedNotes, setDetailedNotes] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [savedQuizzes, setSavedQuizzes] = useState<StoredQuiz[]>([]);
@@ -1509,6 +1510,7 @@ export default function SubjectPage() {
           focusTopic: focusTopic.trim() || undefined,
           notesDetail,
           notesIncludes,
+          detailedNotes: selectedType === 'notes' ? detailedNotes : undefined,
           customPrompt: customPrompt.trim() || undefined,
           language: genLanguage,
           flashcardMode: selectedType === 'flashcards' ? flashcardMode : undefined,
@@ -2828,6 +2830,24 @@ export default function SubjectPage() {
               {/* Notes options */}
               {selectedType === 'notes' && (
                 <div className="mb-3 flex flex-col gap-2.5">
+                  <div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Generation mode</div>
+                    <div className="flex gap-1.5">
+                      {([
+                        { key: false, label: 'Fast', hint: 'Quick single-pass notes' },
+                        { key: true, label: 'Detailed', hint: 'Dense tables, flowcharts & decision trees — slower' },
+                      ] as const).map(m => {
+                        const active = detailedNotes === m.key;
+                        return (
+                          <button key={String(m.key)} onClick={() => setDetailedNotes(m.key)} title={m.hint}
+                            className="h-8 px-2.5 text-[10px] cursor-pointer transition-all duration-200"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div>
                     <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
                     <div className="flex gap-1.5">
