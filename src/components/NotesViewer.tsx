@@ -471,60 +471,6 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
   );
 });
 
-// ── Smooth scroll ────────────────────────────────────────────────────────────
-// Intercepts wheel events on the container and lerps scrollTop toward the
-// target each frame (ease-out). Works alongside the existing scroll listener
-// since scrollTop changes trigger the same 'scroll' event.
-
-function useSmoothScroll(ref: React.RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    const el = ref?.current;
-    if (!el) return;
-
-    let targetY = el.scrollTop;
-    let rafId = 0;
-    let animating = false;
-
-    const tick = () => {
-      const current = el.scrollTop;
-      const dist = targetY - current;
-      if (Math.abs(dist) < 0.5) {
-        el.scrollTop = targetY;
-        animating = false;
-        return;
-      }
-      el.scrollTop = current + dist * 0.11;
-      rafId = requestAnimationFrame(tick);
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      let delta = e.deltaY;
-      if (e.deltaMode === 1) delta *= 32;
-      else if (e.deltaMode === 2) delta *= el.clientHeight;
-      const max = el.scrollHeight - el.clientHeight;
-      targetY = Math.max(0, Math.min(max, targetY + delta));
-      if (!animating) {
-        animating = true;
-        rafId = requestAnimationFrame(tick);
-      }
-    };
-
-    // Keep targetY in sync when scroll moves programmatically (section jumps, back-to-top)
-    const onScroll = () => {
-      if (!animating) targetY = el.scrollTop;
-    };
-
-    el.addEventListener('wheel', onWheel, { passive: false });
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      el.removeEventListener('wheel', onWheel);
-      el.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(rafId);
-    };
-  }, [ref]);
-}
-
 // ── NotesViewer ───────────────────────────────────────────────────────────────
 
 export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrollElRef, onRead, onGoToFlashcards, onAddToDictionary, onAddToJapaneseDictionary, fullFocus, onToggleFullFocus }: {
@@ -551,8 +497,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
   const prevScrollTopRef = useRef(0);
   const [activeSection, setActiveSection] = useState(0);
   const [showToc, setShowToc] = useState(false);
-
-  useSmoothScroll(scrollElRef ?? { current: null });
 
   // Fire `onRead` once when the reader scrolls past 80% (or when the note is
   // short enough to fit without scrolling). Refs reset on remount per note.
