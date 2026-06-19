@@ -13,7 +13,6 @@
 import type {
   GeneratedFlashcard,
   GeneratedNote,
-  GeneratedNoteSection,
   GeneratedQuizQuestion,
   GenerationType,
 } from './generator';
@@ -374,83 +373,13 @@ Return ONLY valid JSON — no markdown, no commentary:
 }`;
 }
 
-// ── Notes: two-step sequential generation ───────────────────────────────────
-//
-// A single monolithic call asking for a full multi-section, rich-markdown
-// note (tables + Mermaid + callouts per section) reliably blows through the
-// upstream model's per-response output-token ceiling — Gemini 2.5 Flash caps
-// well short of what 8-12 such sections require, so the response gets cut
-// off mid-JSON and the truncation-repair logic in parseJSON() silently
-// closes it after whatever sections happened to fit (often just one).
-// Bumping maxOutputTokens further doesn't help once the request is already
-// past the model's hard ceiling.
-//
-// Instead, notes are generated in two steps:
-//   1. A cheap "outline" call returns just the title, summary, and a list of
-//      section headings + one-line briefs — small enough to never truncate.
-//   2. One call per section, sequentially, asking for ONLY that section's
-//      rich-markdown content + key points — small enough to comfortably fit
-//      within a single response even with a table and a Mermaid diagram.
-// The results are stitched together into the final GeneratedNote.
-
-interface NotesSectionResult {
-  content: string;
-  keyPoints?: string[];
-}
-
-// Gemini structured-output schema for the outline step. Forcing
-// responseMimeType: "application/json" + this schema means Gemini returns
-// exactly this shape — no markdown fence, no missing "sections" key, no
-// prose preamble — which was the actual cause of "Gemini returned no
-// sections" (the plain-text outline prompt was occasionally answered with
-// commentary instead of, or in addition to, the JSON object).
-const NOTES_OUTLINE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    title: { type: 'STRING' },
-    summary: { type: 'STRING' },
-    sections: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        properties: {
-          heading: { type: 'STRING' },
-          brief: { type: 'STRING' },
-        },
-        required: ['heading', 'brief'],
-      },
-    },
-  },
-  required: ['title', 'summary', 'sections'],
-};
-
-const SECTION_FORMAT_RULES = `MANDATORY FORMAT RULES — every rule must be followed:
-1. Wall-of-text is FORBIDDEN. The "content" field MUST use rich markdown, never plain prose paragraphs.
-2. If this section introduces terminology, include a markdown table labelled "Key Terms Matrix":
-   | Term | Definition | Example / Context |
-   |------|-----------|-------------------|
-3. Use a Mermaid.js code block (\`\`\`mermaid ... \`\`\`) if this section describes a process flow, hierarchy, timeline, or relationship diagram.
-4. Use a GitHub-style callout for the section's key insight — pick the appropriate type:
-   > [!NOTE] Supplementary context or background
-   > [!TIP] Practical advice or study hacks
-   > [!WARNING] Common mistakes or important caveats
-5. Bold the first term of every bullet point using **bold**.
-6. Meta-commentary is FORBIDDEN — never write "In this section", "Here we explore", "Now we will", "Let's look at", "This section covers", etc.
-7. Each "keyPoints" item: max 15 words, starts with a **bolded term**.`;
+// ── Notes: single-call generation ───────────────────────────────────────────
 
 function notesSectionCountRange(detail: 'concise' | 'standard' | 'comprehensive'): string {
   return detail === 'concise' ? '3–4' : detail === 'comprehensive' ? '8–12' : '4–7';
 }
 
-function notesDepthNote(detail: 'concise' | 'standard' | 'comprehensive'): string {
-  return detail === 'concise'
-    ? 'Keep each section focused — 1 table + 1 callout max, 2-3 key points.'
-    : detail === 'comprehensive'
-      ? 'Each section must be thorough — include a table, at least one Mermaid block where applicable, 4-6 key points.'
-      : 'Each section should include a table and a callout, 3-5 key points.';
-}
-
-function notesOutlineFilePrompt(subject: string, opts: GenerateOptions): string {
+function notesFilePrompt(subject: string, opts: GenerateOptions): string {
   const detail   = opts.notesDetail ?? 'standard';
   const includes = opts.notesIncludes ?? [];
   const custom   = opts.customPrompt?.trim();
@@ -462,50 +391,23 @@ function notesOutlineFilePrompt(subject: string, opts: GenerateOptions): string 
 
   return `You are an expert academic note-taker for university-level ${subject}.
 
-Analyse the content in this file and plan ${detail} structured notes with ${sectionCount} sections covering everything important in the material — do not skip topics to save space.
+Based on the content in this file, create ${detail} structured notes with ${sectionCount} sections covering everything important in the material. Extract all key concepts, definitions, frameworks, and relationships.
 ${mindmapInstruction}
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
-This is a PLANNING step only — do not write the section content yet, just the outline.
+Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms.
 
-Return ONLY valid JSON — no markdown wrapper, no commentary:
+Return ONLY a valid JSON object — no markdown wrapper, no commentary:
 {
   "title": "Descriptive title of the material",
-  "summary": "2–3 sentence executive summary (plain text, no markdown)",
+  "summary": "2–3 sentence executive summary",
   "sections": [
-    { "heading": "Section heading", "brief": "One sentence describing exactly what this section must cover" }
+    {
+      "heading": "Section heading",
+      "content": "Main explanation in clean markdown (2-4 sentences plus bullet points)",
+      "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
+    }
   ]
-}`;
-}
-
-function notesSectionFilePrompt(
-  subject: string,
-  opts: GenerateOptions,
-  heading: string,
-  brief: string,
-  index: number,
-  total: number,
-  priorHeadings: string[],
-): string {
-  const detail = opts.notesDetail ?? 'standard';
-  const custom = opts.customPrompt?.trim();
-
-  return `You are an expert academic note-taker for university-level ${subject}.
-
-You are writing section ${index + 1} of ${total} of a larger set of structured notes based on the content in this file.
-
-Section heading: "${heading}"
-What this section must cover: ${brief}
-${priorHeadings.length ? `Other sections already cover: ${priorHeadings.join('; ')}. Do not repeat their content.` : ''}
-${notesDepthNote(detail)}
-${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
-
-${SECTION_FORMAT_RULES}
-
-Return ONLY valid JSON for THIS SECTION ONLY — no markdown wrapper, no commentary:
-{
-  "content": "RICH MARKDOWN — tables, Mermaid blocks, callouts, bullet lists. NO plain paragraphs.",
-  "keyPoints": ["**Term**: brief definition or fact (max 15 words)"]
 }`;
 }
 
@@ -613,7 +515,7 @@ Return ONLY valid JSON — no markdown, no preamble:
 }`,
 };
 
-function notesOutlineTopicPrompt(
+function notesTopicPrompt(
   topic: string,
   context: string,
   level: string,
@@ -621,48 +523,22 @@ function notesOutlineTopicPrompt(
 ): string {
   return `You are an expert academic note-taker for university students.
 
-Plan structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
+Create structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
 Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
 
-Plan 4–7 sections covering everything important about this topic — do not skip aspects to save space.
-This is a PLANNING step only — do not write the section content yet, just the outline.
+Create 4–7 sections covering everything important about this topic. Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms.
 
 Return ONLY valid JSON — no markdown wrapper, no preamble:
 {
   "title": "Descriptive title",
-  "summary": "2–3 sentence overview (plain text, no markdown)",
+  "summary": "2–3 sentence overview",
   "sections": [
-    { "heading": "Section heading", "brief": "One sentence describing exactly what this section must cover" }
+    {
+      "heading": "Section heading",
+      "content": "Main explanation in clean markdown (2-4 sentences plus bullet points)",
+      "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
+    }
   ]
-}`;
-}
-
-function notesSectionTopicPrompt(
-  topic: string,
-  context: string,
-  level: string,
-  language: 'english' | 'japanese' | 'both' | undefined,
-  heading: string,
-  brief: string,
-  index: number,
-  total: number,
-  priorHeadings: string[],
-): string {
-  return `You are an expert academic note-taker for university students.
-
-You are writing section ${index + 1} of ${total} of a larger set of structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
-Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
-
-Section heading: "${heading}"
-What this section must cover: ${brief}
-${priorHeadings.length ? `Other sections already cover: ${priorHeadings.join('; ')}. Do not repeat their content.` : ''}
-
-${SECTION_FORMAT_RULES}
-
-Return ONLY valid JSON for THIS SECTION ONLY — no markdown wrapper, no preamble:
-{
-  "content": "RICH MARKDOWN — tables, Mermaid blocks, callouts, bullet lists. NO plain paragraphs.",
-  "keyPoints": ["**Term**: brief definition or fact (max 15 words)"]
 }`;
 }
 
@@ -752,87 +628,7 @@ async function compressImageToFit(file: File): Promise<{ base64: string; mimeTyp
   });
 }
 
-// Outline calls are tiny (just headings) — never need a big budget.
-const NOTES_OUTLINE_TOKENS = 2048;
-// Per-section calls only ever produce ONE section's markdown (table +
-// Mermaid + callout + key points), which comfortably fits well inside a
-// single response — unlike the old monolithic call asking for all sections
-// at once.
-const NOTES_SECTION_TOKENS = 8192;
-
-/**
- * Runs the outline call, then one sequential call per outlined section,
- * stitching the results into a complete GeneratedNote. Used for both
- * file-grounded and topic-only notes generation.
- */
-async function generateNotesSequentially(
-  groundingParts: Part[],
-  outlinePrompt: string,
-  sectionPromptFor: (heading: string, brief: string, index: number, total: number, priorHeadings: string[]) => string,
-  onProgress?: (current: number, total: number) => void,
-): Promise<GeneratedNote> {
-  const outlineText = await callProxy(
-    [...groundingParts, { text: outlinePrompt }],
-    {
-      temperature: 0.4,
-      maxOutputTokens: NOTES_OUTLINE_TOKENS,
-      responseMimeType: 'application/json',
-      responseSchema: NOTES_OUTLINE_SCHEMA,
-    },
-  );
-  const outline = parseJSON(outlineText) as Record<string, unknown>;
-  const outlinedSections = extractOutlineSections(outline);
-  if (!outlinedSections || outlinedSections.length === 0) {
-    throw new Error('Gemini returned no sections for the notes outline.');
-  }
-
-  const sections: GeneratedNoteSection[] = [];
-  const priorHeadings: string[] = [];
-  for (let i = 0; i < outlinedSections.length; i++) {
-    onProgress?.(i + 1, outlinedSections.length);
-    const { heading, brief } = outlinedSections[i];
-    const sectionPrompt = sectionPromptFor(heading, brief, i, outlinedSections.length, priorHeadings);
-    const sectionText = await callProxy(
-      [...groundingParts, { text: sectionPrompt }],
-      { temperature: 0.4, maxOutputTokens: NOTES_SECTION_TOKENS },
-    );
-    const parsedSection = parseJSON(sectionText) as NotesSectionResult;
-    sections.push({ heading, content: parsedSection.content, keyPoints: parsedSection.keyPoints });
-    priorHeadings.push(heading);
-  }
-
-  return {
-    title: String(outline['title'] ?? 'Untitled'),
-    summary: String(outline['summary'] ?? ''),
-    sections,
-  };
-}
-
-// Gemini occasionally names the outline's array field something other than
-// "sections" (e.g. "topics", "outline") or omits the schema-mandated key
-// entirely under load, which previously surfaced as a hard "Gemini returned
-// no sections" failure even though a perfectly usable array was present
-// under a different name. Falls back to scanning for the first array-typed
-// property, then normalizes each item's heading/brief regardless of the
-// exact key names used (heading/title/name, brief/description/summary).
-function extractOutlineSections(
-  outline: Record<string, unknown>,
-): Array<{ heading: string; brief: string }> | null {
-  let raw =
-    outline['sections'] ?? outline['topics'] ?? outline['outline'];
-
-  if (!Array.isArray(raw)) {
-    const fallbackKey = Object.keys(outline).find((key) => Array.isArray(outline[key]));
-    raw = fallbackKey ? outline[fallbackKey] : null;
-  }
-
-  if (!Array.isArray(raw) || raw.length === 0) return null;
-
-  return (raw as Array<Record<string, unknown>>).map((item, i) => ({
-    heading: String(item['heading'] ?? item['title'] ?? item['name'] ?? `Section ${i + 1}`),
-    brief: String(item['brief'] ?? item['description'] ?? item['summary'] ?? ''),
-  }));
-}
+const NOTES_TOKENS = 8192;
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -843,11 +639,9 @@ export async function generateFromFile(
   options: GenerateOptions = {},
   onProgress?: (current: number, total: number) => void,
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
-  // For notes, document content ("grounding") is sent with every outline/
-  // section call separately, so it must NOT have a prompt baked into it yet.
   const prompt =
     type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) :
-    type === 'notes'      ? '' :
+    type === 'notes'      ? notesFilePrompt(subjectTitle, options) :
                             quizFilePrompt(subjectTitle, options);
 
   let parts: Part[] | null = null;
@@ -928,18 +722,6 @@ export async function generateFromFile(
     parts = pageImageParts;
   }
 
-  if (type === 'notes') {
-    const groundingParts: Part[] = extractedText !== null ? [{ text: extractedText }] : (parts ?? []);
-    if (groundingParts.length === 0) throw new Error('Could not prepare file content for generation.');
-    return generateNotesSequentially(
-      groundingParts,
-      notesOutlineFilePrompt(subjectTitle, options),
-      (heading, brief, index, total, priorHeadings) =>
-        notesSectionFilePrompt(subjectTitle, options, heading, brief, index, total, priorHeadings),
-      onProgress,
-    );
-  }
-
   if (extractedText !== null) {
     parts = [{ text: `${prompt}\n\nDocument content:\n${extractedText}` }];
   } else if (parts) {
@@ -948,7 +730,7 @@ export async function generateFromFile(
 
   if (!parts) throw new Error('Could not prepare file content for generation.');
 
-  const text = await callProxy(parts);
+  const text = await callProxy(parts, type === 'notes' ? { maxOutputTokens: NOTES_TOKENS } : undefined);
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
 }
@@ -961,12 +743,10 @@ export async function generateFromTopic(
   language?: 'english' | 'japanese' | 'both',
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
   if (type === 'notes') {
-    return generateNotesSequentially(
-      [],
-      notesOutlineTopicPrompt(topic, subjectContext, level, language),
-      (heading, brief, index, total, priorHeadings) =>
-        notesSectionTopicPrompt(topic, subjectContext, level, language, heading, brief, index, total, priorHeadings),
-    );
+    const prompt = notesTopicPrompt(topic, subjectContext, level, language);
+    const text   = await callProxy([{ text: prompt }], { maxOutputTokens: NOTES_TOKENS });
+    const parsed = parseJSON(text) as Record<string, unknown>;
+    return processResult(parsed, type, topic);
   }
 
   const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level, language);
