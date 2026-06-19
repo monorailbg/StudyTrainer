@@ -393,12 +393,6 @@ Return ONLY valid JSON — no markdown, no commentary:
 //      within a single response even with a table and a Mermaid diagram.
 // The results are stitched together into the final GeneratedNote.
 
-interface NotesOutline {
-  title: string;
-  summary: string;
-  sections: Array<{ heading: string; brief: string }>;
-}
-
 interface NotesSectionResult {
   content: string;
   keyPoints?: string[];
@@ -786,9 +780,9 @@ async function generateNotesSequentially(
       responseSchema: NOTES_OUTLINE_SCHEMA,
     },
   );
-  const outline = parseJSON(outlineText) as NotesOutline;
-  const outlinedSections = outline.sections;
-  if (!Array.isArray(outlinedSections) || outlinedSections.length === 0) {
+  const outline = parseJSON(outlineText) as Record<string, unknown>;
+  const outlinedSections = extractOutlineSections(outline);
+  if (!outlinedSections || outlinedSections.length === 0) {
     throw new Error('Gemini returned no sections for the notes outline.');
   }
 
@@ -807,7 +801,37 @@ async function generateNotesSequentially(
     priorHeadings.push(heading);
   }
 
-  return { title: outline.title, summary: outline.summary, sections };
+  return {
+    title: String(outline['title'] ?? 'Untitled'),
+    summary: String(outline['summary'] ?? ''),
+    sections,
+  };
+}
+
+// Gemini occasionally names the outline's array field something other than
+// "sections" (e.g. "topics", "outline") or omits the schema-mandated key
+// entirely under load, which previously surfaced as a hard "Gemini returned
+// no sections" failure even though a perfectly usable array was present
+// under a different name. Falls back to scanning for the first array-typed
+// property, then normalizes each item's heading/brief regardless of the
+// exact key names used (heading/title/name, brief/description/summary).
+function extractOutlineSections(
+  outline: Record<string, unknown>,
+): Array<{ heading: string; brief: string }> | null {
+  let raw =
+    outline['sections'] ?? outline['topics'] ?? outline['outline'];
+
+  if (!Array.isArray(raw)) {
+    const fallbackKey = Object.keys(outline).find((key) => Array.isArray(outline[key]));
+    raw = fallbackKey ? outline[fallbackKey] : null;
+  }
+
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+
+  return (raw as Array<Record<string, unknown>>).map((item, i) => ({
+    heading: String(item['heading'] ?? item['title'] ?? item['name'] ?? `Section ${i + 1}`),
+    brief: String(item['brief'] ?? item['description'] ?? item['summary'] ?? ''),
+  }));
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────
