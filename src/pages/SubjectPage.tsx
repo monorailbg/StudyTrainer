@@ -1915,7 +1915,7 @@ export default function SubjectPage() {
         </aside>
 
         {/* Main content area */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: 'var(--bg-page)' }}>
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8 notes-scroll-container" style={{ background: 'var(--bg-page)' }}>
 
           {/* Dashboard view */}
           {view === 'dashboard' && (

@@ -818,10 +818,8 @@ body.notes-reading.notes-scrolling-down .notes-reading-fade-top { top: 0; }
 }
 .page-notes-reading .notes-section-card {
   background: rgba(255, 255, 255, 0.035) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-  box-shadow:
-    0 4px 32px rgba(0, 0, 0, 0.60),
-    0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
 }
 .page-notes-reading .notes-title {
   color: rgba(255, 255, 255, 1.0) !important;
@@ -836,9 +834,7 @@ body.theme-light .page-notes-reading .notes-content-main {
 body.theme-light .page-notes-reading .notes-section-card {
   background: var(--bg-surface) !important;
   border: 1px solid var(--border-light) !important;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset !important;
+  box-shadow: none !important;
 }
 body.theme-light .page-notes-reading .notes-title {
   color: var(--text-1) !important;
@@ -880,8 +876,8 @@ body.notes-focus-active .subject-sidebar:hover {
 }
 body.notes-focus-active .notes-content-main .notes-section-card {
   background: rgba(255, 255, 255, 0.038) !important;
-  border-color: rgba(255, 255, 255, 0.11) !important;
-  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  box-shadow: none !important;
 }
 body.notes-focus-active .notes-content-main .notes-title {
   color: rgba(255, 255, 255, 1.0) !important;
@@ -893,7 +889,7 @@ body.notes-focus-active .notes-content-main .notes-section-body {
 body.theme-light.notes-focus-active .notes-content-main .notes-section-card {
   background: var(--bg-surface) !important;
   border-color: var(--border-light) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.6) inset !important;
+  box-shadow: none !important;
 }
 body.theme-light.notes-focus-active .notes-content-main .notes-title {
   color: var(--text-1) !important;
@@ -949,10 +945,8 @@ body.theme-light .notes-toc-panel {
   padding: 14px 8px;
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 8px;
-  background: rgba(15, 15, 25, 0.80);
+  background: rgba(15, 15, 25, 0.92);
   color: rgba(255, 255, 255, 0.70);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 .notes-toc-toggle:hover { opacity: 0.80; }
 .notes-toc-toggle.panel-open {
@@ -1017,6 +1011,19 @@ body.flashcards-session nav:hover {
 
 body.theme-light .page-flashcards-session {
   background: var(--bg-page) !important;
+}
+
+/* ── Notes scroll container: GPU-accelerated scrolling layer ─────────── */
+.notes-scroll-container {
+  will-change: transform;
+  transform: translateZ(0);
+  scroll-behavior: smooth;
+}
+
+/* ── Notes section cards: skip layout/paint while off-screen ─────────── */
+.notes-section-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 100px 500px;
 }
 
 /* ── Responsive: notes section cards ────────────────────────────────── */

@@ -308,8 +308,9 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
         background: understood ? 'rgba(72,199,142,0.04)' : 'var(--bg-surface)',
         transition: 'border-color 0.2s ease, background 0.2s ease',
         scrollMarginTop: '16px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.6) inset',
-      }}
+        contentVisibility: 'auto',
+        containIntrinsicSize: '100px 500px',
+      } as React.CSSProperties}
     >
       {/* Section header */}
       <div style={{
