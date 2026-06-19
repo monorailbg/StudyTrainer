@@ -277,12 +277,23 @@ function processResult(
       `Got keys: ${Object.keys(parsed).join(', ') || '(none)'}`,
     );
   }
-  return (raw as Array<{
+  // The model occasionally repeats the final question verbatim (e.g. when it
+  // pads out to hit the requested count) — drop exact repeats of a prior
+  // question's text before assigning ids, so duplicates never reach the UI.
+  const seen = new Set<string>();
+  const deduped = (raw as Array<{
     question: string;
     options: [string, string, string, string];
     correct: number;
     explanation: string;
-  }>).map((q, i) => ({
+  }>).filter(q => {
+    const key = String(q.question ?? '').trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return deduped.map((q, i) => ({
     id: `gem-${Date.now()}-${i}`,
     question: q.question,
     options:  q.options,
