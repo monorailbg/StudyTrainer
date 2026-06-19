@@ -498,16 +498,19 @@ ${focus ? `Focus on passages related to: "${focus}".` : ''}
 
 For each question:
 1. Find a meaningful sentence or short passage in the document that contains a key term, figure, or fact.
-2. Use that sentence verbatim as the question stem, replacing one key term or number with "___________".
-3. The correct answer (option at index "correct") must be the exact word(s) you blanked out, copied verbatim from the document.
-4. The three distractors must be plausible alternatives drawn from elsewhere in the document or closely related concepts — never invented.
-5. The explanation must cite the exact sentence from the document where the answer appears.
+2. Quote that sentence or passage VERBATIM, character-for-character exactly as it appears in the document, as the "question" field — do NOT alter, blank out, redact, or replace any word with "___" or any placeholder. The full original sentence must appear intact, unmodified.
+3. Turn it into a question by appending a separate, short instruction after the quoted passage, e.g. ending with "What is the key term/figure described here?" — but the quoted text itself stays 100% unchanged.
+4. The correct answer (option at index "correct") must be the term, figure, or fact from that passage, copied verbatim from the document.
+5. The three distractors must be plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented.
+6. The explanation must cite the exact sentence from the document where the answer appears.
+
+Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full.
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
   "questions": [
     {
-      "question": "The company reported revenue of ___________ in fiscal year 2023.",
+      "question": "The document states: \\"The company reported revenue of $512 billion in fiscal year 2023.\\" What figure does the document report as the company's fiscal year 2023 revenue?",
       "options": ["$512 billion", "$480 billion", "$390 billion", "$620 billion"],
       "correct": 0,
       "explanation": "The document states verbatim: 'The company reported revenue of $512 billion in fiscal year 2023.'"
