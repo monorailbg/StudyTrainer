@@ -335,9 +335,9 @@ function SubjectBanner({
   return (
     <div style={{
       background: isLight
-        ? `${subject.color}14`
-        : `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, var(--bg-page) 100%)`,
-      border: isLight ? `1px solid ${subject.color}40` : `1.5px solid ${subject.color}28`,
+        ? `${subject.color}30`
+        : `linear-gradient(135deg, ${subject.color}45 0%, ${subject.color}18 55%, var(--bg-page) 100%)`,
+      border: isLight ? `1.5px solid ${subject.color}80` : `1.5px solid ${subject.color}60`,
       boxShadow: 'none',
       borderRadius: '24px',
       padding: '32px 36px',
@@ -350,13 +350,13 @@ function SubjectBanner({
         <div style={{
           position: 'absolute', top: -80, right: -80,
           width: 260, height: 260, borderRadius: '50%',
-          background: `radial-gradient(circle, ${subject.color}18 0%, transparent 65%)`,
+          background: `radial-gradient(circle, ${subject.color}35 0%, transparent 65%)`,
           pointerEvents: 'none',
         }} />
         <div style={{
           position: 'absolute', bottom: -60, left: -60,
           width: 160, height: 160, borderRadius: '50%',
-          background: `radial-gradient(circle, ${subject.color}10 0%, transparent 65%)`,
+          background: `radial-gradient(circle, ${subject.color}25 0%, transparent 65%)`,
           pointerEvents: 'none',
         }} />
         {dotGridSvg()}
@@ -433,7 +433,7 @@ function SubjectBanner({
               padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
               color: isLight ? '#1e293b' : 'var(--text-2)',
               background: isLight ? '#ffffff' : 'var(--bg-surface)',
-              border: `1px solid ${subject.color}${isLight ? '45' : '30'}`,
+              border: `1.5px solid ${subject.color}${isLight ? '90' : '60'}`,
             }}>
               {p.label}
             </span>
