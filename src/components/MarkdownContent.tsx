@@ -79,11 +79,24 @@ function getFirstTextValue(node: HastNode): string {
   return '';
 }
 
+function getFullText(node: HastNode): string {
+  if (node.type === 'text') return node.value ?? '';
+  return (node.children ?? []).map(getFullText).join('');
+}
+
+// Detects ASCII/Unicode tree-drawing characters (├──, └──, │) so they can be
+// rendered as a preformatted monospace block instead of a collapsed paragraph.
+const TREE_CHARS_RE = /[├└│]/;
+
+const TLDR_RE = /^TL;?DR\s*:?/i;
+const KEY_PRINCIPLE_RE = /^Key Principle\s*:/i;
+
 export function MarkdownContent({ content, accent }: MarkdownContentProps) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
+    <div className="prose-notes">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
         // ── Code blocks ──────────────────────────────────────────────────────
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         code({ className, children, ref: _ref, ...props }) {
@@ -160,7 +173,7 @@ export function MarkdownContent({ content, accent }: MarkdownContentProps) {
         // ── Tables ────────────────────────────────────────────────────────
         table({ children }) {
           return (
-            <div style={{ overflowX: 'auto', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border-base)' }}>
+            <div className="notes-table-wrapper" style={{ borderRadius: '8px', border: '1px solid var(--border-base)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', color: 'var(--text-1)' }}>
                 {children}
               </table>
@@ -173,7 +186,7 @@ export function MarkdownContent({ content, accent }: MarkdownContentProps) {
         th({ children }) {
           return (
             <th style={{
-              padding: '9px 14px', textAlign: 'left', fontWeight: 700,
+              padding: '12px 16px', textAlign: 'left', fontWeight: 700,
               fontSize: '11px', letterSpacing: '0.06em', color: accent,
               borderBottom: `2px solid ${accent}40`, whiteSpace: 'nowrap',
             }}>
@@ -184,7 +197,7 @@ export function MarkdownContent({ content, accent }: MarkdownContentProps) {
         td({ children }) {
           return (
             <td style={{
-              padding: '9px 14px',
+              padding: '12px 16px',
               borderBottom: '1px solid var(--border-light)',
               color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.5,
             }}>
@@ -208,7 +221,35 @@ export function MarkdownContent({ content, accent }: MarkdownContentProps) {
         },
 
         // ── Paragraphs ────────────────────────────────────────────────────
-        p({ children }) {
+        p({ children, node }) {
+          const text = node ? getFullText(node as HastNode) : '';
+
+          if (TREE_CHARS_RE.test(text)) {
+            return <pre className="notes-tree-block">{text}</pre>;
+          }
+
+          if (TLDR_RE.test(text.trim())) {
+            return (
+              <p className="notes-tldr-block">
+                <span className="notes-tldr-badge">TL;DR</span>
+                <span style={{ fontSize: '14.5px', lineHeight: 1.7, color: 'var(--text-1)' }}>
+                  {text.replace(TLDR_RE, '').trim()}
+                </span>
+              </p>
+            );
+          }
+
+          if (KEY_PRINCIPLE_RE.test(text.trim())) {
+            return (
+              <p className="notes-keyprinciple-block">
+                <strong style={{ color: 'var(--accent-orange)' }}>Key Principle:</strong>{' '}
+                <span style={{ fontSize: '14.5px', lineHeight: 1.7, color: 'var(--text-1)' }}>
+                  {text.replace(KEY_PRINCIPLE_RE, '').trim()}
+                </span>
+              </p>
+            );
+          }
+
           return (
             <p style={{
               margin: '0 0 12px', fontSize: '15px', lineHeight: 1.80,
@@ -275,9 +316,10 @@ export function MarkdownContent({ content, accent }: MarkdownContentProps) {
           return <hr style={{ margin: '18px 0', border: 'none', borderTop: '1px solid var(--border-light)' }} />;
         },
       }}
-    >
-      {content}
-    </ReactMarkdown>
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   );
 }
 

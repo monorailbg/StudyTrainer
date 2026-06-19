@@ -1020,6 +1020,101 @@ body.theme-light .page-flashcards-session {
   scroll-behavior: smooth;
 }
 
+/* ── Notes viewer container: isolated layout/scroll box ───────────────
+   Strict structural rules so the column never collapses or expands with
+   its content, which is what breaks scroll position and momentum. */
+.notes-viewer-container {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Prose-notes: unified markdown typography ──────────────────────────
+   Wraps every rendered note section so headings/paragraphs share one
+   vertical rhythm regardless of which component emitted them. */
+.prose-notes h1,
+.prose-notes h2,
+.prose-notes h3 {
+  margin-bottom: 1rem;
+}
+.prose-notes p {
+  margin-bottom: 1rem;
+}
+
+/* Text-based tree diagrams (├──, └──, │) — preserve structure verbatim */
+.prose-notes .notes-tree-block {
+  display: block;
+  margin: 1rem 0;
+  padding: 14px 18px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* Tables: collapse cleanly and never force the page to widen */
+.prose-notes .notes-table-wrapper {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+.prose-notes table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  text-align: left;
+}
+.prose-notes th,
+.prose-notes td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.prose-notes thead {
+  background-color: var(--bg-elevated);
+  font-weight: 600;
+}
+
+/* "TL;DR" badge callout */
+.prose-notes .notes-tldr-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 1rem 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(72, 199, 142, 0.08);
+  border-left: 3px solid rgba(72, 199, 142, 0.55);
+}
+.prose-notes .notes-tldr-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(72, 199, 142, 0.95);
+  background: rgba(72, 199, 142, 0.16);
+  border-radius: 999px;
+  padding: 3px 9px;
+  margin-top: 1px;
+}
+
+/* "Key Principle:" callout */
+.prose-notes .notes-keyprinciple-block {
+  margin: 1rem 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--accent-orange-soft, rgba(217, 119, 6, 0.08));
+  border-left: 3px solid var(--accent-orange);
+}
+
 /* ── Notes section cards: skip layout/paint while off-screen ─────────── */
 .notes-section-card {
   content-visibility: auto;
