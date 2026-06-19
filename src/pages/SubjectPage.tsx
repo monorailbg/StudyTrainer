@@ -90,18 +90,15 @@ const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'i
 
 // ── Mini icons ─────────────────────────────────────────────────────────────────
 
-// Uniform duotone icon set: 1.5px stroke, 16% currentColor fill on the primary shape, no fill on accent strokes.
-const IconDash   = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/><rect x="2" y="10" width="6" height="6" rx="1.5" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/><rect x="10" y="10" width="6" height="6" rx="1.5" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/></svg>);
-const IconPencil = () => (<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M11 2.5l2.5 2.5-7.5 7.5H3.5v-2.5L11 2.5z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9.5 4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>);
-const IconFile  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M4 2h7l4 4v10H4V2z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M11 2v4h4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>);
-const IconCards = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="1" y="4" width="13" height="9" rx="2" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5"/><rect x="4" y="2" width="13" height="9" rx="2" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/></svg>);
-const IconNote  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M3 2h9l4 4v10H3V2z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M12 2v4h4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M5 9h8M5 12h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>);
-const IconQuiz  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><circle cx="9" cy="9" r="7" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/><path d="M6.5 7c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0 1.25-1.25 1.75-2.5 2.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="9" cy="13" r=".9" fill="currentColor"/></svg>);
-const IconPlus  = () => (<svg viewBox="0 0 18 18" width="14" height="14" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>);
-const IconSparkle = () => (<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 1v4M8 11v4M1 8h4M11 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M3.22 3.22l2.83 2.83M9.95 9.95l2.83 2.83M3.22 12.78l2.83-2.83M9.95 6.05l2.83-2.83" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>);
-const IconDict  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M2 2.5A1.5 1.5 0 013.5 1h11A1.5 1.5 0 0116 2.5v13a1.5 1.5 0 01-1.5 1.5H3.5A1.5 1.5 0 012 15.5v-13z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/><path d="M5 5.5h8M5 8.5h8M5 11.5h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>);
-const IconShare = () => (<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><circle cx="12.5" cy="3.5" r="1.8" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/><circle cx="3.5" cy="8" r="1.8" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/><circle cx="12.5" cy="12.5" r="1.8" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5"/><path d="M5.1 7l5.8-3M5.1 9l5.8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>);
-const IconExport = () => (<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M2.5 11v1.5A1.5 1.5 0 004 14h8a1.5 1.5 0 001.5-1.5V11" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 1.5v8M5 6.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+const IconDash   = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>);
+const IconPencil = () => (<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M11 2.5l2.5 2.5-7.5 7.5H3.5v-2.5L11 2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M9.5 4l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>);
+const IconFile  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M4 2h7l4 4v10H4V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M11 2v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>);
+const IconCards = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><rect x="1" y="4" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/><rect x="4" y="2" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>);
+const IconNote  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M3 2h9l4 4v10H3V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M12 2v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M5 9h8M5 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>);
+const IconQuiz  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.3"/><path d="M6.5 7c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0 1.25-1.25 1.75-2.5 2.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="9" cy="13" r=".9" fill="currentColor"/></svg>);
+const IconPlus  = () => (<svg viewBox="0 0 18 18" width="14" height="14" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>);
+const IconSparkle = () => (<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 1v4M8 11v4M1 8h4M11 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M3.22 3.22l2.83 2.83M9.95 9.95l2.83 2.83M3.22 12.78l2.83-2.83M9.95 6.05l2.83-2.83" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>);
+const IconDict  = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M2 2.5A1.5 1.5 0 013.5 1h11A1.5 1.5 0 0116 2.5v13a1.5 1.5 0 01-1.5 1.5H3.5A1.5 1.5 0 012 15.5v-13z" stroke="currentColor" strokeWidth="1.3"/><path d="M5 5.5h8M5 8.5h8M5 11.5h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>);
 
 const Spinner = ({ color }: { color: string }) => (
   <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ animation: 'spin 0.8s linear infinite' }}>
@@ -317,95 +314,136 @@ function SubjectBanner({
     { label: `${dictEntries.length} terms`, count: dictEntries.length },
   ].filter(p => p.count > 0);
 
+  // Dot grid SVG: 8 rows × 12 cols
+  const dotGridSvg = () => {
+    const dots = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 12; c++) {
+        dots.push(<circle key={`${r}-${c}`} cx={c * 18 + 9} cy={r * 18 + 9} r={1.5} fill={subject.color} />);
+      }
+    }
+    return (
+      <svg
+        width={12 * 18} height={8 * 18}
+        style={{ position: 'absolute', top: 0, right: 0, opacity: 0.07, pointerEvents: 'none' }}
+      >
+        {dots}
+      </svg>
+    );
+  };
+
   return (
     <div style={{
-      background: isLight ? '#E8E2DA' : 'var(--bg-surface)',
-      border: isLight ? '1px solid #DAD2C5' : '1px solid var(--border-base)',
+      background: isLight
+        ? '#E8E2DA'
+        : `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, var(--bg-page) 100%)`,
+      border: isLight ? '1px solid #DAD2C5' : `1.5px solid ${subject.color}28`,
       boxShadow: 'none',
-      borderRadius: '16px',
-      padding: '16px 20px',
-      marginBottom: '20px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 16,
-      flexWrap: 'wrap',
+      borderRadius: '24px',
+      padding: '32px 36px',
+      marginBottom: '32px',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
-      {/* Title + description */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
-        <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 700, color: isLight ? '#0f172a' : 'var(--text-1)', whiteSpace: 'nowrap' }}>
-          {subject.title}
-        </span>
-        <span style={{ fontSize: 12, color: isLight ? '#334155' : 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {subject.description}
-        </span>
-      </div>
+      {/* Decorative circles — dark mode only */}
+      {!isLight && <>
+        <div style={{
+          position: 'absolute', top: -80, right: -80,
+          width: 260, height: 260, borderRadius: '50%',
+          background: `radial-gradient(circle, ${subject.color}18 0%, transparent 65%)`,
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -60, left: -60,
+          width: 160, height: 160, borderRadius: '50%',
+          background: `radial-gradient(circle, ${subject.color}10 0%, transparent 65%)`,
+          pointerEvents: 'none',
+        }} />
+        {dotGridSvg()}
+      </>}
 
-      <div style={{ flex: 1 }} />
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* Row 1: title + exam date */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+          {/* LEFT: title */}
+          <div>
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, color: isLight ? '#0f172a' : 'var(--text-1)' }}>
+                {subject.title}
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: isLight ? '#334155' : 'var(--text-2)' }}>
+              {subject.description}
+            </div>
+          </div>
 
-      {/* Stat pills */}
-      {pills.length > 0 ? (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          {pills.map(p => (
+          {/* RIGHT: exam date */}
+          <div>
+            {examDate ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 16px', borderRadius: 999,
+                background: subject.color + '18',
+                border: `1.5px solid ${subject.color}40`,
+              }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: subject.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: subject.color }}>
+                  {ts('{n} days left', { n: daysLeft })}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
+                  {examDate.date.replace(/-/g, '/')}
+                </span>
+                <button
+                  onClick={onExamDateClear}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, padding: '0 0 0 4px', lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <input
+                type="text"
+                placeholder={ts('Set exam date')}
+                maxLength={10}
+                className="outline-interactive"
+                style={{
+                  background: isLight ? 'rgba(255,255,255,0.5)' : 'transparent',
+                  border: isLight ? '1.5px solid rgba(0,0,0,0.15)' : '1px solid var(--border-base)',
+                  borderRadius: 8,
+                  color: isLight ? '#334155' : 'var(--text-2)',
+                  padding: '7px 12px', fontSize: 12, outline: 'none',
+                  fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '136px',
+                }}
+                onChange={e => {
+                  const raw = e.target.value;
+                  if (raw === '') return;
+                  const iso = raw.replace(/\//g, '-');
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) onExamDateChange(iso);
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: quick stat pills */}
+        <div style={{ marginTop: 20, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {pills.length > 0 ? pills.map(p => (
             <span key={p.label} style={{
-              padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+              padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
               color: isLight ? '#1e293b' : 'var(--text-2)',
-              background: isLight ? '#ffffff' : 'var(--bg-page)',
+              background: isLight ? '#ffffff' : 'var(--bg-surface)',
               border: isLight ? '1px solid #DAD2C5' : '1px solid var(--border-base)',
             }}>
               {p.label}
             </span>
-          ))}
+          )) : (
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              {ts('No content yet — upload files to begin')}
+            </span>
+          )}
         </div>
-      ) : (
-        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-          {ts('No content yet — upload files to begin')}
-        </span>
-      )}
-
-      {/* Exam date */}
-      {examDate ? (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '5px 12px', borderRadius: 999,
-          background: subject.color + '18',
-          border: `1px solid ${subject.color}40`,
-        }}>
-          <div style={{ width: 5, height: 5, borderRadius: '50%', background: subject.color, flexShrink: 0 }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: subject.color, whiteSpace: 'nowrap' }}>
-            {ts('{n} days left', { n: daysLeft })}
-          </span>
-          <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
-            {examDate.date.replace(/-/g, '/')}
-          </span>
-          <button
-            onClick={onExamDateClear}
-            style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, padding: '0 0 0 4px', lineHeight: 1 }}
-          >
-            ×
-          </button>
-        </div>
-      ) : (
-        <input
-          type="text"
-          placeholder={ts('Set exam date')}
-          maxLength={10}
-          className="outline-interactive"
-          style={{
-            background: isLight ? 'rgba(255,255,255,0.5)' : 'transparent',
-            border: isLight ? '1.5px solid rgba(0,0,0,0.15)' : '1px solid var(--border-base)',
-            borderRadius: 8,
-            color: isLight ? '#334155' : 'var(--text-2)',
-            padding: '5px 10px', fontSize: 12, outline: 'none',
-            fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '120px',
-          }}
-          onChange={e => {
-            const raw = e.target.value;
-            if (raw === '') return;
-            const iso = raw.replace(/\//g, '-');
-            if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) onExamDateChange(iso);
-          }}
-        />
-      )}
+      </div>
     </div>
   );
 }
@@ -425,10 +463,11 @@ function SectionCard({
 
   const baseBg = isLight
     ? (inactive ? '#f8fafc' : (lightBg ?? '#ffffff'))
-    : (inactive ? 'var(--bg-surface)' : 'var(--bg-surface)');
+    : `linear-gradient(135deg, ${inactive ? 'var(--bg-surface)' : color + '10'} 0%, var(--bg-surface) 100%)`;
   const baseBorder = isLight
     ? (inactive ? '#e2e8f0' : (lightBorder ?? '#cbd5e1'))
     : (inactive ? 'var(--border-base)' : color + '30');
+  const baseShadow = isLight ? '0 4px 12px rgba(0,0,0,0.03)' : 'none';
 
   return (
     <div
@@ -436,8 +475,8 @@ function SectionCard({
       style={{
         background: baseBg,
         border: `1px solid ${baseBorder}`,
-        boxShadow: 'none',
-        borderRadius: 16,
+        boxShadow: baseShadow,
+        borderRadius: 20,
         padding: 22,
         minHeight: 170,
         display: 'flex',
@@ -445,16 +484,34 @@ function SectionCard({
         cursor: 'pointer',
         position: 'relative',
         overflow: 'hidden',
-        transition: 'border-color 0.15s ease',
+        transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease, border-color 0.25s ease',
         ['--idx' as string]: index,
       }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.borderColor = color + '55';
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = 'translateY(-5px)';
+        el.style.boxShadow = isLight
+          ? `0 12px 28px rgba(0,0,0,0.10), 0 0 0 1.5px ${color}55`
+          : `0 16px 40px ${color}20, 0 0 0 1.5px ${color}40`;
+        el.style.borderColor = color + '55';
       }}
       onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.borderColor = baseBorder;
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = '';
+        el.style.boxShadow = baseShadow;
+        el.style.borderColor = baseBorder;
       }}
     >
+      {/* Decorative glow — dark mode only */}
+      {!isLight && (
+        <div style={{
+          position: 'absolute', top: '-70%', right: '-30%',
+          width: 200, height: 200, borderRadius: '50%',
+          background: `radial-gradient(circle, ${color}08 0%, transparent 60%)`,
+          pointerEvents: 'none',
+        }} />
+      )}
+
       {/* Icon */}
       <div style={{
         width: 40, height: 40, borderRadius: 12,
@@ -474,6 +531,7 @@ function SectionCard({
             ? (inactive ? '#94a3b8' : '#0f172a')
             : (inactive ? 'var(--text-3)' : 'var(--accent-primary)'),
           fontFamily: "'Sora',sans-serif", lineHeight: 1, marginBottom: 4,
+          textShadow: (!isLight && !inactive) ? `0 0 25px ${color}35` : 'none',
         }}>
           {stat}
         </div>
@@ -514,8 +572,8 @@ function SectionCard({
 
 // ── Folder icons ─────────────────────────────────────────────────────────────
 
-const IconFolder = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M2 5a1.5 1.5 0 011.5-1.5h3l1.5 2H14.5A1.5 1.5 0 0116 7v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 012 13.5V5z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>);
-const IconFolderPlus = () => (<svg viewBox="0 0 18 18" width="14" height="14" fill="none"><path d="M2 5a1.5 1.5 0 011.5-1.5h3l1.5 2H14.5A1.5 1.5 0 0116 7v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 012 13.5V5z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 8.5v3M7.5 10h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>);
+const IconFolder = () => (<svg viewBox="0 0 18 18" width="15" height="15" fill="none"><path d="M2 5a1.5 1.5 0 011.5-1.5h3l1.5 2H14.5A1.5 1.5 0 0116 7v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 012 13.5V5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>);
+const IconFolderPlus = () => (<svg viewBox="0 0 18 18" width="14" height="14" fill="none"><path d="M2 5a1.5 1.5 0 011.5-1.5h3l1.5 2H14.5A1.5 1.5 0 0116 7v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 012 13.5V5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M9 8.5v3M7.5 10h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>);
 
 // ── Folder board ─────────────────────────────────────────────────────────────
 // Generic drag-and-drop organiser used by every content type. Items carry an
@@ -1407,52 +1465,6 @@ export default function SubjectPage() {
       toast('error', `翻訳に失敗しました "${trimmed}"`, friendlyError(String(err)));
     } finally {
       setDictPending(p => p.filter(x => x.id !== pendingId));
-    }
-  };
-
-  // ── Export / Share ────────────────────────────────────────────────────────
-  const buildSubjectExport = () => ({
-    subject: subject?.title,
-    exportedAt: new Date().toISOString(),
-    files: levelFiles.map(f => ({ name: f.name, type: f.type, size: f.size })),
-    notes: savedNotes.map(n => ({ name: n.name, note: n.note, createdAt: n.createdAt })),
-    flashcardSets: savedFlashcardSets.map(s => ({ name: s.name, cards: s.cards, createdAt: s.createdAt })),
-    quizzes: savedQuizzes.map(q => ({ name: q.name, questions: q.questions, createdAt: q.createdAt })),
-    dictionary: dictEntries.map(d => ({ term: d.term, definition: d.definition })),
-  });
-
-  const handleExportSubject = () => {
-    if (!subject) return;
-    const data = buildSubjectExport();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${subject.id}-export.json`;
-    a.click();
-    toast('success', ts('Export ready'), ts('Downloaded {file}', { file: a.download }));
-  };
-
-  const handleShareSubject = async () => {
-    if (!subject) return;
-    const data = buildSubjectExport();
-    const summary = ts('{subject} — {files} files, {notes} notes, {cards} cards, {quizzes} quizzes', {
-      subject: subject.title, files: data.files.length, notes: data.notes.length,
-      cards: data.flashcardSets.reduce((a, s) => a + s.cards.length, 0), quizzes: data.quizzes.length,
-    });
-    try {
-      if (navigator.share) {
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const file = new File([blob], `${subject.id}-export.json`, { type: 'application/json' });
-        const shareData: ShareData & { files?: File[] } = { title: subject.title, text: summary };
-        if (navigator.canShare?.({ files: [file] })) shareData.files = [file];
-        await navigator.share(shareData);
-        return;
-      }
-      await navigator.clipboard.writeText(summary);
-      toast('success', ts('Copied to clipboard'), summary);
-    } catch (err) {
-      if (String(err).includes('AbortError')) return;
-      toast('error', ts('Share failed'), friendlyError(String(err)));
     }
   };
 
@@ -2686,7 +2698,7 @@ export default function SubjectPage() {
                 background: isLight ? '#ffffff' : 'var(--bg-surface)',
                 border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
                 borderRadius: '20px',
-                boxShadow: 'none',
+                boxShadow: isLight ? '0 18px 50px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.07)' : '0 18px 50px rgba(0,0,0,0.55)',
                 padding: '16px',
               }}
               className="anim-rise"
@@ -2942,7 +2954,7 @@ export default function SubjectPage() {
                   color:       isGenerating ? (isLight ? '#94a3b8' : 'var(--text-2)') : '#ffffff',
                   fontFamily:  "'Sora',sans-serif",
                   letterSpacing: '0.01em',
-                  boxShadow: 'none',
+                  boxShadow:   isGenerating ? 'none' : (isLight ? '0 4px 14px rgba(15,23,42,0.28)' : '0 4px 14px rgba(0,0,0,0.5)'),
                 }}
               >
                 {isGenerating
@@ -2968,64 +2980,28 @@ export default function SubjectPage() {
             );
           })()}
 
-          {/* Low-profile action dock: Share / Export / Generate */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '2px',
-            background: isLight ? '#ffffff' : 'var(--bg-surface)',
-            border: `1px solid ${isLight ? '#DAD2C5' : 'var(--border-base)'}`,
-            borderRadius: '999px',
-            padding: '4px',
-            boxShadow: 'none',
-          }}>
-            <button
-              onClick={handleShareSubject}
-              aria-label={ts('Share')}
-              title={ts('Share')}
-              className="cursor-pointer transition-colors duration-150"
-              style={{
-                height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: '999px', background: 'transparent', border: 'none', color: 'var(--text-2)',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = isLight ? '#f1f5f9' : 'var(--bg-elevated)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              <IconShare />
-            </button>
-            <button
-              onClick={handleExportSubject}
-              aria-label={ts('Export')}
-              title={ts('Export')}
-              className="cursor-pointer transition-colors duration-150"
-              style={{
-                height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: '999px', background: 'transparent', border: 'none', color: 'var(--text-2)',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = isLight ? '#f1f5f9' : 'var(--bg-elevated)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              <IconExport />
-            </button>
-            <div style={{ width: '1px', height: '20px', background: isLight ? '#DAD2C5' : 'var(--border-base)', margin: '0 2px' }} />
-            <button
-              onClick={() => setShowGenPanel(v => !v)}
-              aria-label="Generate study material"
-              className="flex items-center gap-2 cursor-pointer transition-colors duration-150"
-              style={{
-                height: '38px', padding: '0 16px',
-                borderRadius: '999px',
-                background:  showGenPanel ? (isLight ? '#0f172a' : 'var(--bg-elevated)') : subject.color + (isLight ? '22' : '20'),
-                color:       showGenPanel ? '#ffffff' : subject.color,
-                border: `1px solid ${showGenPanel ? 'transparent' : subject.color + '40'}`,
-                fontWeight: 600, fontSize: '13px',
-                boxShadow: 'none',
-                fontFamily: "'Sora',sans-serif",
-              }}
-            >
-              {showGenPanel
-                ? <><svg viewBox="0 0 14 14" width="14" height="14" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> {ts('Close')}</>
-                : <><IconSparkle /> {ts('Generate')}</>}
-            </button>
-          </div>
+          {/* Floating toggle button */}
+          <button
+            onClick={() => setShowGenPanel(v => !v)}
+            aria-label="Generate study material"
+            className="flex items-center gap-2 cursor-pointer transition-all duration-300"
+            style={{
+              height: '54px', padding: showGenPanel ? '0 20px' : '0 22px',
+              borderRadius: '999px',
+              background:  showGenPanel ? '#334155' : subject.color,
+              color:       showGenPanel ? '#f8fafc'  : '#0D1117',
+              border: 'none',
+              fontWeight: 700, fontSize: '14px',
+              boxShadow: showGenPanel
+                ? '0 6px 20px rgba(51,65,85,0.40)'
+                : `0 10px 30px ${subject.color}55, 0 2px 8px rgba(0,0,0,0.4)`,
+              fontFamily: "'Sora',sans-serif",
+            }}
+          >
+            {showGenPanel
+              ? <><svg viewBox="0 0 14 14" width="14" height="14" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> Close</>
+              : <><IconSparkle /> Generate</>}
+          </button>
         </div>
       )}
     </div>
