@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { useStore } from '../store/useStore';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
@@ -11,6 +12,7 @@ import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
 import notesData from '../data/notes-config.json';
 import { getAllFlashcardSets, getAllNotes, getAllQuizResults, type StoredFlashcardSet, type StoredNote, type QuizResult } from '../lib/db';
+import { useBlindSpots } from '../store/useBlindSpots';
 import { isFirebaseConfigured, getAllCloudFlashcardSets, getAllCloudNotes } from '../lib/cloudDb';
 import GlobeView from '../components/GlobeView';
 import MindMap from '../components/MindMap';
@@ -25,21 +27,14 @@ interface SubjectStats {
 }
 
 
-// ── Greeting ───────────────────────────────────────────────────────────────────
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning.';
-  if (h < 17) return 'Good afternoon.';
-  return 'Good evening.';
-}
-
 // ── Tilt card ──────────────────────────────────────────────────────────────────
 
-function TiltCard({ children, className, style }: {
+function TiltCard({ children, className, style, hoverBorderColor = 'rgba(61,126,255,0.4)', hoverBackground }: {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  hoverBorderColor?: string;
+  hoverBackground?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -48,9 +43,10 @@ function TiltCard({ children, className, style }: {
     const r = el.getBoundingClientRect();
     const x = ((e.clientX - r.left) / r.width  - 0.5) * 9;
     const y = ((e.clientY - r.top)  / r.height - 0.5) * -7;
-    el.style.transform = `perspective(900px) rotateX(${y}deg) rotateY(${x}deg) translateY(-6px) scale(1.01)`;
-    el.style.boxShadow = '0 1px 0 rgba(255,255,255,0.09) inset,0 12px 32px rgba(0,0,0,0.55),0 28px 60px rgba(0,0,0,0.38),0 0 0 1px rgba(61,126,255,0.3)';
-    el.style.borderColor = 'rgba(61,126,255,0.4)';
+    el.style.transform = `perspective(900px) rotateX(${y}deg) rotateY(${x}deg) translateY(-3px)`;
+    el.style.boxShadow = '0 10px 20px -5px rgba(15,23,42,0.06),0 4px 6px -2px rgba(15,23,42,0.04)';
+    el.style.borderColor = hoverBorderColor;
+    if (hoverBackground) el.style.background = hoverBackground;
   }
 
   function onLeave() {
@@ -58,10 +54,11 @@ function TiltCard({ children, className, style }: {
     el.style.transform = '';
     el.style.boxShadow = '';
     el.style.borderColor = '';
+    el.style.background = '';
   }
 
   return (
-    <div ref={ref} className={className} style={{ ...style, transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.45s cubic-bezier(0.34,1.56,0.64,1),border-color 0.45s cubic-bezier(0.34,1.56,0.64,1)' }}
+    <div ref={ref} className={className} style={{ ...style, transition: 'transform 0.2s ease-out,box-shadow 0.2s ease-out,border-color 0.2s ease-out,background 0.2s ease-out' }}
       onMouseMove={onMove} onMouseLeave={onLeave}>
       {children}
     </div>
@@ -101,12 +98,12 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
       style={{
         ['--d' as string]: `${index * 60}ms`,
         padding: '16px 18px',
-        background: `radial-gradient(120% 120% at 100% 0%, ${color}0E 0%, #161B22 55%)`,
+        background: `radial-gradient(120% 120% at 100% 0%, ${color}0E 0%, var(--bg-surface) 55%)`,
         position: 'relative', overflow: 'hidden',
       }}
     >
       <div className="flex items-start justify-between mb-2">
-        <div className="text-[9px] font-semibold uppercase tracking-[0.13em]" style={{ color: '#8B949E' }}>
+        <div className="text-[9px] font-semibold uppercase tracking-[0.13em]" style={{ color: 'var(--text-2)' }}>
           {label}
         </div>
         {icon && (
@@ -116,11 +113,11 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
         )}
       </div>
       <div className="flex items-end justify-between gap-2">
-        <div className="mono text-2xl leading-none" style={{ color: '#E6EDF3' }}>{value}</div>
+        <div className="mono text-2xl leading-none" style={{ color: 'var(--text-1)' }}>{value}</div>
         {spark && spark.length >= 2 && <Sparkline points={spark} color={color} />}
       </div>
       {progress !== undefined && (
-        <div className="mt-2.5 overflow-hidden" style={{ height: '3px', background: '#30363D', borderRadius: '2px' }}>
+        <div className="mt-2.5 overflow-hidden" style={{ height: '3px', background: 'var(--border-base)', borderRadius: '2px' }}>
           <div style={{ width: `${Math.max(0, Math.min(100, progress))}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
         </div>
       )}
@@ -136,15 +133,15 @@ function ProgressRow({ label, read, total, color, delay, mounted }: {
   const pct = total > 0 ? Math.round((read / total) * 100) : 0;
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] flex-shrink-0" style={{ color: '#8B949E', width: '34px' }}>{label}</span>
-      <div className="flex-1 overflow-hidden" style={{ height: '4px', background: '#0D1117', borderRadius: '999px' }}>
+      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] flex-shrink-0" style={{ color: 'var(--text-2)', width: '34px' }}>{label}</span>
+      <div className="flex-1 overflow-hidden" style={{ height: '4px', background: 'var(--border-base)', borderRadius: '999px' }}>
         <div style={{
           height: '100%', width: mounted && total > 0 ? `${pct}%` : '0%',
-          background: color, borderRadius: '999px',
+          background: 'var(--accent-primary)', borderRadius: '999px',
           transition: `width 600ms cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
         }} />
       </div>
-      <span className="text-[10px] font-semibold flex-shrink-0 mono" style={{ color: total > 0 ? color : '#484F58', minWidth: '40px', textAlign: 'right' }}>
+      <span className="text-[10px] font-semibold flex-shrink-0 mono" style={{ color: total > 0 ? color : 'var(--text-3)', minWidth: '40px', textAlign: 'right' }}>
         {total > 0 ? `${read} / ${total}` : '—'}
       </span>
     </div>
@@ -153,6 +150,7 @@ function ProgressRow({ label, read, total, color, delay, mounted }: {
 
 function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDef; isCore: boolean; index?: number; stats?: SubjectStats }) {
   const { t, ts } = useLang();
+  const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const id = setTimeout(() => setMounted(true), 60); return () => clearTimeout(id); }, []);
 
@@ -162,11 +160,31 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
     ? quizData.filter(q => q.topic === subject.quizTopic).length : 0;
 
   const hasProgress = stats && (stats.notesTotal > 0 || stats.cardsTotal > 0);
+  const due = stats?.cardsDue ?? 0;
   const barDelay = index * 60;
+
+  // Theme-aware hover colors: navy in dark, warm orange/brown in light
+  const hoverBorder = theme === 'light' ? 'rgba(217,119,6,0.7)' : 'rgba(30,58,138,0.8)';
+  const hoverBg = theme === 'light' ? 'rgba(217,119,6,0.08)' : 'rgba(30,58,138,0.06)';
 
   return (
     <Link to={`/subject/${subject.id}`} className="no-underline block h-full anim-rise" style={{ ['--d' as string]: `${index * 50}ms`, position: 'relative' }}>
-      <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}>
+      {/* Due-for-review badge — overlaps the top-right corner */}
+      {due > 0 && (
+        <span style={{
+          position: 'absolute', top: '-7px', right: '-6px', zIndex: 3,
+          padding: '2px 9px', borderRadius: '999px',
+          background: 'linear-gradient(135deg, #F85149, #d2391f)', color: '#fff',
+          fontSize: '10px', fontWeight: 700, letterSpacing: '0.02em',
+          boxShadow: '0 4px 12px rgba(248,81,73,0.45)', whiteSpace: 'nowrap',
+        }}>
+          {ts('{n} due', { n: due })}
+        </span>
+      )}
+      <TiltCard className="card-panel h-full" style={{ minHeight: '160px' }}
+        hoverBorderColor={hoverBorder}
+        hoverBackground={hoverBg}
+      >
         <div className="p-5 flex flex-col h-full gap-3">
           {/* Icon + color accent */}
           <div className="flex items-start justify-between">
@@ -179,10 +197,10 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
 
           {/* Text */}
           <div className="flex-1">
-            <div className="text-sm font-semibold leading-snug mb-1" style={{ fontFamily: "'Sora',sans-serif", color: '#E6EDF3' }}>
+            <div className="text-sm font-semibold leading-snug mb-1" style={{ fontFamily: "'Sora',sans-serif", color: 'var(--text-1)' }}>
               {subject.title}
             </div>
-            <div className="text-[11px] leading-relaxed" style={{ color: '#8B949E' }}>
+            <div className="text-[11px] leading-relaxed" style={{ color: 'var(--text-2)' }}>
               {subject.description}
             </div>
           </div>
@@ -200,12 +218,12 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
             {isCore && fcCount > 0 ? (
               <div className="flex gap-1.5 flex-wrap">
                 {fcCount > 0 && (
-                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '18', color: subject.color, border: `1px solid ${subject.color}30` }}>
+                  <span className="subject-badge text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '18', color: subject.color, border: `1px solid ${subject.color}30` }}>
                     {fcCount} {t('cards')}
                   </span>
                 )}
                 {qCount > 0 && (
-                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '18', color: subject.color, border: `1px solid ${subject.color}30` }}>
+                  <span className="subject-badge text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '18', color: subject.color, border: `1px solid ${subject.color}30` }}>
                     {qCount} Q
                   </span>
                 )}
@@ -213,13 +231,13 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
             ) : subject.levels ? (
               <div className="flex gap-1 flex-wrap">
                 {subject.levels.map(l => (
-                  <span key={l} className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '15', color: subject.color, border: `1px solid ${subject.color}25` }}>
+                  <span key={l} className="subject-badge text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: subject.color + '15', color: subject.color, border: `1px solid ${subject.color}25` }}>
                     {l}
                   </span>
                 ))}
               </div>
             ) : (
-              <span className="text-[10px] font-semibold" style={{ color: subject.color }}>{ts('Explore')} →</span>
+              <span className="explore-link text-[10px] font-semibold" style={{ color: subject.color }}>{ts('Explore')} →</span>
             )}
           </div>
         </div>
@@ -233,15 +251,15 @@ function SubjectCard({ subject, isCore, index = 0, stats }: { subject: SubjectDe
 function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
     <div className="flex items-center gap-3 mb-5">
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#8B949E' }}>
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--text-2)' }}>
         {children}
       </span>
       {count !== undefined && (
-        <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: '#1F2937', color: '#8B949E', border: '1px solid #30363D' }}>
+        <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: 'var(--bg-elevated)', color: 'var(--text-2)', border: '1px solid var(--border-base)' }}>
           {count}
         </span>
       )}
-      <div className="flex-1 h-px" style={{ background: '#30363D' }} />
+      <div className="flex-1 h-px" style={{ background: 'var(--border-base)' }} />
     </div>
   );
 }
@@ -250,14 +268,16 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
 
 export default function Home() {
   const { t, ts } = useLang();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const { flashcardsStudied, flashcardsKnown, quizScores, notesRead, recentSubjects, removeRecentSubject } = useStore();
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
+  const [activeCompany, setActiveCompany] = useState<'apple' | 'nestle' | 'jnj' | 'walmart'>('apple');
   const { dates: examDates } = useExamDates();
   const activityEvents = useActivity(s => s.events);
-  // Force the globe to rebuild when the set of subjects changes.
-  const globeKey = allSubjects.map(s => s.id).join(',');
+  const blindSpots = useBlindSpots();
 
   // Generated content across subjects — drives the per-subject progress bars,
   // due badges and the global due count.
@@ -274,6 +294,12 @@ export default function Home() {
     getAllQuizResults()
       .then(d => setQuizResults(d as QuizResult[])).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const titles: Record<string, string> = {};
+    for (const s of allSubjects) titles[s.id] = s.title;
+    blindSpots.load(titles);
+  }, [allSubjects.map(s => s.id).join(',')]);
 
   const statsBySubject = useMemo(() => {
     const map: Record<string, SubjectStats> = {};
@@ -333,7 +359,7 @@ export default function Home() {
     quizScores.length > 0;
 
   return (
-    <div style={{ background: '#0D1117' }}>
+    <div style={{ background: 'var(--bg-page)' }}>
 
       {/* ── GLOBE HERO ─────────────────────────────────────────────────────── */}
       <section
@@ -347,14 +373,14 @@ export default function Home() {
       >
         {/* Globe / mind map canvas */}
         {heroView === 'globe'
-          ? <GlobeView key={globeKey} subjects={allSubjects} />
+          ? <GlobeView activeCompanyId={activeCompany} />
           : <MindMap />}
 
         {/* View toggle — top right */}
         <div style={{
           position: 'absolute', top: 'clamp(16px, 4vw, 32px)', right: 'clamp(16px, 4vw, 32px)',
           zIndex: 11, display: 'flex', gap: '3px', padding: '3px',
-          background: 'rgba(22,27,34,0.82)', border: '1px solid #30363D', borderRadius: '12px',
+          background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderRadius: '12px',
           backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
         }}>
           {([['globe', 'Globe'], ['mindmap', 'Mind Map']] as const).map(([key, label]) => (
@@ -365,7 +391,7 @@ export default function Home() {
                 height: '30px', padding: '0 12px', borderRadius: '9px', cursor: 'pointer', border: 'none',
                 fontSize: '12px', fontWeight: 600, fontFamily: "'Inter',sans-serif",
                 background: heroView === key ? 'rgba(61,126,255,0.18)' : 'transparent',
-                color: heroView === key ? '#93B8FF' : '#8B949E',
+                color: heroView === key ? 'var(--text-1)' : 'var(--text-2)',
                 transition: 'background 0.2s ease, color 0.2s ease',
               }}
             >
@@ -375,50 +401,112 @@ export default function Home() {
         </div>
 
         {/* Title overlay — top left (globe only; the mind map has its own search here) */}
-        {heroView === 'globe' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'clamp(16px, 4vw, 32px)',
-            left: 'clamp(16px, 4vw, 32px)',
-            zIndex: 10,
-            pointerEvents: 'none',
-            maxWidth: 'min(55vw, 400px)',
-          }}
-        >
-          <div style={{
-            fontFamily: "'Inter',sans-serif",
-            fontWeight: 600,
-            fontSize: '9px',
-            color: '#3D7EFF',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            marginBottom: '8px',
-          }}>
-            {ts('Global Business Studies')}
-          </div>
-          <h1 style={{
-            fontFamily: "'Sora',sans-serif",
-            fontWeight: 800,
-            fontSize: 'clamp(1.9rem,3.5vw,2.8rem)',
-            color: '#E6EDF3',
-            letterSpacing: '-0.03em',
-            lineHeight: 1.1,
-            margin: 0,
-          }}>
-            {ts(getGreeting())}
-          </h1>
-          <p style={{
-            fontFamily: "'Inter',sans-serif",
-            fontSize: '13px',
-            color: '#8B949E',
-            margin: '8px 0 0',
-            lineHeight: 1.5,
-          }}>
-            {ts('Click a subject on the globe to dive in.')}
-          </p>
-        </div>
-        )}
+        {heroView === 'globe' && (() => {
+          const COMPANY = {
+            apple: {
+              label: 'Apple Inc.',
+              accentLight: '#B45309',
+              accentDark:  '#60A5FA',
+              title: 'Global Supply Chain',
+              desc:  'Tracking raw materials, advanced semiconductors, display modules, and final assembly logistics.',
+            },
+            nestle: {
+              label: 'Nestlé',
+              accentLight: '#7a5230',
+              accentDark:  '#c8943e',
+              title: 'Global Food & Beverage',
+              desc:  'Tracking coffee & cocoa sourcing, dairy networks, and regional manufacturing across 50+ countries.',
+            },
+            jnj: {
+              label: 'J&J',
+              accentLight: '#991B1B',
+              accentDark:  '#EF4444',
+              title: 'Global Pharmaceutical Network',
+              desc:  'Tracking API sourcing, vaccine & biologics labs, high-volume manufacturing, and distribution across 14 strategic sites.',
+            },
+            walmart: {
+              label: 'Walmart',
+              accentLight: '#0051a8',
+              accentDark:  '#40c4ff',
+              title: 'Global Retail Supply Network',
+              desc:  'Tracking 30 nodes across Asia, the Americas, and Africa — from factory floors to port gateways and Bentonville HQ.',
+            },
+          } as const;
+          const meta = COMPANY[activeCompany];
+          const accent = isLight ? meta.accentLight : meta.accentDark;
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'clamp(16px, 4vw, 32px)',
+                left: 'clamp(16px, 4vw, 32px)',
+                zIndex: 10,
+                maxWidth: 'min(55vw, 400px)',
+              }}
+            >
+              {/* Company selector pills */}
+              <div style={{ display: 'flex', gap: '3px', marginBottom: '10px' }}>
+                {(['apple', 'nestle', 'jnj', 'walmart'] as const).map(id => {
+                  const c = COMPANY[id];
+                  const isActive = activeCompany === id;
+                  const col = isLight ? c.accentLight : c.accentDark;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setActiveCompany(id)}
+                      style={{
+                        padding: '3px 11px', borderRadius: '999px', border: 'none',
+                        fontSize: '9px', fontWeight: 700, letterSpacing: '0.15em',
+                        textTransform: 'uppercase', cursor: 'pointer',
+                        fontFamily: "'Inter',sans-serif",
+                        background: isActive
+                          ? (isLight ? col + '18' : col + '25')
+                          : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)'),
+                        color: isActive ? col : 'var(--text-3)',
+                        boxShadow: isActive ? `inset 0 0 0 1px ${col}50` : `inset 0 0 0 1px transparent`,
+                        transition: 'all 0.18s ease',
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <h1 style={{
+                fontFamily: "'Sora',sans-serif",
+                fontWeight: 800,
+                fontSize: 'clamp(1.9rem,3.5vw,2.8rem)',
+                color: 'var(--text-1)',
+                letterSpacing: '-0.03em',
+                lineHeight: 1.1,
+                margin: 0,
+                pointerEvents: 'none',
+              }}>
+                {meta.title}
+              </h1>
+              <p style={{
+                fontFamily: "'Inter',sans-serif",
+                fontSize: '13px',
+                color: 'var(--text-2)',
+                margin: '8px 0 0',
+                lineHeight: 1.5,
+                maxWidth: 340,
+                pointerEvents: 'none',
+              }}>
+                {meta.desc}
+              </p>
+
+              {/* Active company accent line */}
+              <div style={{
+                marginTop: '14px', height: '2px', width: '32px',
+                background: accent, borderRadius: '999px',
+                opacity: 0.7, pointerEvents: 'none',
+                transition: 'background 0.3s ease',
+              }} />
+            </div>
+          );
+        })()}
 
         {/* Scroll hint */}
         {heroView === 'globe' && (
@@ -450,7 +538,7 @@ export default function Home() {
           left: 0,
           right: 0,
           height: '100px',
-          background: 'linear-gradient(to bottom, transparent, #0D1117)',
+          background: 'linear-gradient(to bottom, transparent, var(--bg-page))',
           zIndex: 5,
           pointerEvents: 'none',
         }} />
@@ -478,6 +566,92 @@ export default function Home() {
         )}
 
 
+        {/* Blind Spot widget */}
+        {blindSpots.loaded && (() => {
+          const { overallStats, subjectBlindSpots } = blindSpots;
+          if (overallStats.totalRated === 0) {
+            return (
+              <div className="mb-10 anim-rise">
+                <SectionLabel>{ts('Exam Intelligence')}</SectionLabel>
+                <Link
+                  to="/blind-spots"
+                  className="no-underline block"
+                  style={{
+                    padding: '16px 20px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 16,
+                    background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+                    transition: 'border-color 0.2s ease, transform 0.2s ease',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.4)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; (e.currentTarget as HTMLElement).style.transform = ''; }}
+                >
+                  <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
+                      <circle cx="10" cy="10" r="7.5" stroke="#EF4444" strokeWidth="1.3"/>
+                      <circle cx="10" cy="10" r="2.5" fill="#EF4444" fillOpacity="0.4"/>
+                      <circle cx="10" cy="10" r="1" fill="#EF4444"/>
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'Sora',sans-serif", marginBottom: 4 }}>
+                      {ts('Activate Blind Spot Detection')}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>
+                      {ts('Rate your confidence before each quiz answer to discover the illusion of competence before your exams do.')}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 12, color: '#EF4444', fontWeight: 600, flexShrink: 0 }}>{ts('Learn more')} →</span>
+                </Link>
+              </div>
+            );
+          }
+          const topSpots = subjectBlindSpots.filter(s => s.isBlindSpot).slice(0, 3);
+          const rc = overallStats.overallExamRisk >= 65 ? '#EF4444' : overallStats.overallExamRisk >= 35 ? '#F59E0B' : '#10B981';
+          return (
+            <div className="mb-10">
+              <SectionLabel>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {ts('Exam Blind Spots')}
+                  {overallStats.totalBlindSpots > 0 && (
+                    <span style={{ padding: '1px 7px', borderRadius: 999, background: '#EF44441A', color: '#EF4444', fontSize: 9, fontWeight: 700, border: '1px solid #EF444430' }}>
+                      {overallStats.totalBlindSpots} {ts('detected')}
+                    </span>
+                  )}
+                </span>
+              </SectionLabel>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+                <Link
+                  to="/blind-spots"
+                  className="no-underline"
+                  style={{ padding: '14px 16px', borderRadius: 14, background: `radial-gradient(120% 120% at 0% 0%, ${rc}0D 0%, var(--bg-surface) 55%)`, border: `1px solid ${rc}22`, display: 'flex', flexDirection: 'column', gap: 8, transition: 'transform 0.2s ease' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+                >
+                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-3)' }}>{ts('Exam Risk Score')}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: rc, fontFamily: "'Sora',sans-serif", lineHeight: 1 }}>{overallStats.overallExamRisk}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{overallStats.totalRated} {ts('questions rated')} · {ts('View details')} →</div>
+                </Link>
+                {topSpots.map(s => (
+                  <Link
+                    key={s.subjectId}
+                    to="/blind-spots"
+                    className="no-underline"
+                    style={{ padding: '14px 16px', borderRadius: 14, background: '#EF44440A', border: '1px solid #EF444420', display: 'flex', flexDirection: 'column', gap: 6, transition: 'transform 0.2s ease' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
+                      <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#EF4444' }}>{ts('Blind Spot')}</span>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'Sora',sans-serif" }}>{s.subjectTitle}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{s.accuracy}% {ts('accuracy')} · {s.avgConfidence}/5 {ts('confidence')}</div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Upcoming Exams */}
         {examDates.length > 0 && (() => {
           const upcoming = examDates
@@ -501,7 +675,7 @@ export default function Home() {
                         ['--d' as string]: `${i * 50}ms`,
                         display: 'flex', alignItems: 'center', gap: '11px',
                         padding: '11px 16px', borderRadius: '14px',
-                        background: '#161B22', border: `1px solid ${color}30`,
+                        background: 'var(--bg-surface)', border: `1px solid ${color}30`,
                         transition: 'transform 0.2s ease, border-color 0.2s ease',
                       }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '60'; }}
@@ -509,8 +683,8 @@ export default function Home() {
                     >
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{d.subject!.title}</div>
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{d.subject!.title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px' }}>
                           {d.date.replace(/-/g, '/')} · <span style={{ color, fontWeight: 600 }}>{diff > 0 ? ts('{n} days left', { n: diff }) : diff === 0 ? ts('Today') : ts('{n} days ago', { n: -diff })}</span>
                         </div>
                       </div>
@@ -544,17 +718,17 @@ export default function Home() {
                         position: 'relative',
                         display: 'flex', alignItems: 'center', gap: '11px',
                         padding: '11px 30px 11px 12px', borderRadius: '14px',
-                        background: '#161B22', border: '1px solid #21262D',
+                        background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
                         transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s ease',
                       }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = s.color + '45'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = '#21262D'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
                     >
                       <span className="[&>svg]:w-[18px] [&>svg]:h-[18px]" style={{ width: '36px', height: '36px', borderRadius: '11px', background: s.color + '1F', border: `1px solid ${s.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <SubjectIcon id={s.id} icon={s.icon} color={s.color} />
                       </span>
                       <div className="min-w-0">
-                        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 600, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
+                        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
                           {s.title}
                         </div>
                         <div style={{ fontSize: '11px', color: s.color, fontWeight: 600 }}>{ts('Resume')} →</div>
@@ -568,11 +742,11 @@ export default function Home() {
                           position: 'absolute', top: '7px', right: '7px',
                           width: '18px', height: '18px', borderRadius: '50%', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: 'rgba(255,255,255,0.04)', border: '1px solid #30363D', color: '#8B949E',
+                          background: 'var(--bg-elevated)', border: '1px solid var(--border-base)', color: 'var(--text-2)',
                           transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
                         }}
                         onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(248,81,73,0.16)'; el.style.color = '#F97979'; el.style.borderColor = 'rgba(248,81,73,0.45)'; }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(255,255,255,0.04)'; el.style.color = '#8B949E'; el.style.borderColor = '#30363D'; }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'var(--bg-elevated)'; el.style.color = 'var(--text-2)'; el.style.borderColor = 'var(--border-base)'; }}
                       >
                         <svg viewBox="0 0 12 12" width="9" height="9" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
                       </button>
@@ -588,19 +762,19 @@ export default function Home() {
         <div className="mb-10">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#8B949E' }}>
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--text-2)' }}>
                 {t('core_subjects')}
               </span>
-              <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: '#1F2937', color: '#8B949E', border: '1px solid #30363D' }}>
+              <span className="mono text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: 'var(--bg-elevated)', color: 'var(--text-2)', border: '1px solid var(--border-base)' }}>
                 {coreSubjects.length}
               </span>
-              <div className="flex-1 h-px" style={{ background: '#30363D' }} />
+              <div className="flex-1 h-px" style={{ background: 'var(--border-base)' }} />
             </div>
             <button
               onClick={() => setManaging(true)}
               className="flex items-center gap-1.5 ml-3 h-8 px-3.5 text-xs font-semibold cursor-pointer transition-all duration-300"
-              style={{ borderRadius: '999px', background: '#3D7EFF18', color: '#3D7EFF', border: '1px solid #3D7EFF35' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px #3D7EFF33'; }}
+              style={{ borderRadius: '999px', background: 'rgba(61, 126, 255, 0.09)', color: 'var(--accent-primary)', border: '1px solid rgba(61, 126, 255, 0.21)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px rgba(61, 126, 255, 0.2)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
             >
               <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
@@ -612,8 +786,8 @@ export default function Home() {
               {coreSubjects.map((s, i) => <SubjectCard key={s.id} subject={s} isCore={true} index={i} stats={statsBySubject[s.id]} />)}
             </div>
           ) : (
-            <div className="text-xs" style={{ color: '#8B949E' }}>
-              {ts('No core subjects. Star one in')} <button onClick={() => setManaging(true)} className="underline cursor-pointer bg-transparent border-none p-0" style={{ color: '#3D7EFF' }}>{ts('Manage')}</button>.
+            <div className="text-xs" style={{ color: 'var(--text-2)' }}>
+              {ts('No core subjects. Star one in')} <button onClick={() => setManaging(true)} className="underline cursor-pointer bg-transparent border-none p-0" style={{ color: 'var(--accent-primary)' }}>{ts('Manage')}</button>.
             </div>
           )}
         </div>

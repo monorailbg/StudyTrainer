@@ -1,6 +1,6 @@
-import { Component, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { LanguageProvider } from './context/LanguageContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
 import { CloudStatusBadge } from './components/CloudStatusBadge';
@@ -12,50 +12,11 @@ import Quiz from './pages/Quiz';
 import SubjectPage from './pages/SubjectPage';
 import Generate from './pages/Generate';
 import Dictionary from './pages/Dictionary';
-
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { error: null };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  render() {
-    if (this.state.error) {
-      return (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          minHeight: '60vh', padding: '32px', textAlign: 'center', gap: '16px',
-        }}>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>
-            Something went wrong
-          </div>
-          <pre style={{
-            maxWidth: '600px', fontSize: '11px', color: '#f87171', background: '#161B22',
-            border: '1px solid #30363D', borderRadius: '8px', padding: '12px 16px',
-            textAlign: 'left', overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          }}>
-            {this.state.error.message}
-            {'\n'}
-            {this.state.error.stack?.split('\n').slice(0, 6).join('\n')}
-          </pre>
-          <button
-            onClick={() => { this.setState({ error: null }); window.location.href = '/'; }}
-            style={{
-              padding: '8px 20px', borderRadius: '999px', background: '#3D7EFF18',
-              color: '#3D7EFF', border: '1px solid #3D7EFF40', cursor: 'pointer',
-              fontSize: '13px', fontWeight: 600,
-            }}
-          >
-            Go to dashboard
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import KnowledgeGraphPage from './pages/KnowledgeGraph';
+import BlindSpots from './pages/BlindSpots';
+import PersonalKnowledgeGraph from './pages/PersonalKnowledgeGraph';
+import Companies from './pages/Companies';
+import CompanyPage from './pages/CompanyPage';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -69,8 +30,25 @@ function AnimatedRoutes() {
         <Route path="/quiz" element={<Quiz />} />
         <Route path="/generate" element={<Generate />} />
         <Route path="/dictionary" element={<Dictionary />} />
+        <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
+        <Route path="/blind-spots" element={<BlindSpots />} />
+        <Route path="/pkg" element={<PersonalKnowledgeGraph />} />
         <Route path="/subject/:id" element={<SubjectPage />} />
+        <Route path="/companies" element={<Companies />} />
+        <Route path="/company/:id" element={<CompanyPage />} />
       </Routes>
+    </div>
+  );
+}
+
+function AppContent() {
+  useTheme();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%', background: 'var(--bg-page)', transition: 'background-color 0.3s ease, color 0.3s ease' }}>
+      <Navbar />
+      <AnimatedRoutes />
+      <CloudStatusBadge />
     </div>
   );
 }
@@ -78,15 +56,13 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <LanguageProvider>
-      <ToastProvider>
-        <BrowserRouter>
-          <Navbar />
-          <ErrorBoundary>
-            <AnimatedRoutes />
-          </ErrorBoundary>
-          <CloudStatusBadge />
-        </BrowserRouter>
-      </ToastProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </ToastProvider>
+      </ThemeProvider>
     </LanguageProvider>
   );
 }

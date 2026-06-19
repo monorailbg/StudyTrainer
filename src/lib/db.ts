@@ -7,7 +7,7 @@
 import type { GeneratedFlashcard, GeneratedNote, GeneratedQuizQuestion } from './generator';
 
 const DB_NAME = 'StudyTrainerDB';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 let _db: Promise<IDBDatabase> | null = null;
 
@@ -48,6 +48,9 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('dictionaryEntries')) {
         const store = db.createObjectStore('dictionaryEntries', { keyPath: 'id' });
         store.createIndex('bySubject', 'subjectId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('companyIntelligence')) {
+        db.createObjectStore('companyIntelligence', { keyPath: 'id' });
       }
     };
     req.onsuccess  = () => resolve(req.result);
@@ -324,13 +327,14 @@ export async function deleteFolder(folderId: string): Promise<void> {
 // ── Quiz results ─────────────────────────────────────────────────────────────
 
 export interface QuizResultQuestion {
-  questionId:    string;
-  questionText:  string;
-  userAnswer:    string;   // text of the chosen option
-  correctAnswer: string;   // text of the correct option
-  wasCorrect:    boolean;
-  options:       string[];
-  explanation?:  string;
+  questionId:      string;
+  questionText:    string;
+  userAnswer:      string;   // text of the chosen option
+  correctAnswer:   string;   // text of the correct option
+  wasCorrect:      boolean;
+  options:         string[];
+  explanation?:    string;
+  confidenceRating?: number; // 1-5 self-assessed confidence before answering
 }
 
 export interface QuizResult {
@@ -432,5 +436,52 @@ export async function getAllDictionaryEntries(): Promise<DictionaryEntry[]> {
     const req = tx.objectStore('dictionaryEntries').getAll();
     req.onsuccess = () => resolve(req.result ?? []);
     req.onerror   = () => reject(req.error);
+  });
+}
+
+// ── Company Intelligence ──────────────────────────────────────────────────────
+
+export interface CompanyEvent {
+  headline: string;
+  date: string;
+  summary: string;
+  linkedConceptIds: string[];
+  impact: 'positive' | 'negative' | 'neutral';
+}
+
+export interface StoredCompanyIntelligence {
+  id: string;        // companyId
+  generatedAt: number;
+  events: CompanyEvent[];
+  learningLinks: string[];  // extra concept IDs surfaced by AI
+}
+
+export async function saveCompanyIntelligence(intel: StoredCompanyIntelligence): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('companyIntelligence', 'readwrite');
+    tx.objectStore('companyIntelligence').put(intel);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+export async function getCompanyIntelligence(companyId: string): Promise<StoredCompanyIntelligence | undefined> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('companyIntelligence', 'readonly');
+    const req = tx.objectStore('companyIntelligence').get(companyId);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function deleteCompanyIntelligence(companyId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('companyIntelligence', 'readwrite');
+    tx.objectStore('companyIntelligence').delete(companyId);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
   });
 }

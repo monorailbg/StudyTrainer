@@ -13,6 +13,7 @@
 import type {
   GeneratedFlashcard,
   GeneratedNote,
+  GeneratedNoteSection,
   GeneratedQuizQuestion,
   GenerationType,
 } from './generator';
@@ -49,11 +50,31 @@ type Part            = TextPart | InlineDataPart | FileDataPart;
  *
  * @throws {Error} with a user-facing message on 4xx/5xx responses.
  */
+// Client-side ceiling for a single proxy call. Kept comfortably below the
+// gateway/serverless function's own timeout so a hung request fails with a
+// clear, actionable message instead of the browser waiting on a 504.
+const REQUEST_TIMEOUT_MS = 55_000;
+
+interface CallProxyOptions {
+  temperature?: number;
+  systemInstruction?: string;
+  maxOutputTokens?: number;
+  // Forces Gemini to return application/json instead of free-form text —
+  // paired with responseSchema this eliminates prose preambles, markdown
+  // fences, and malformed/missing fields in structured-output calls (e.g.
+  // the notes outline step).
+  responseMimeType?: string;
+  responseSchema?: Record<string, unknown>;
+}
+
 async function callProxy(
   parts: Part[],
-  options?: { temperature?: number; systemInstruction?: string },
+  options?: CallProxyOptions,
 ): Promise<string> {
   const body = JSON.stringify({ parts, ...options });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   let response: Response;
   try {
@@ -61,18 +82,28 @@ async function callProxy(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,
+      signal: controller.signal,
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error('The request took too long and timed out. Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
+    }
     // Network-level failure (server down, CORS, no internet).
     throw new Error(
       'Could not reach the proxy server. In development, run: cd server && npm run dev',
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (response.ok) {
     const data = await response.json() as { text: string };
     if (!data.text) throw new Error('Empty response from proxy.');
     return data.text;
+  }
+
+  if (response.status === 504 || response.status === 502 || response.status === 503) {
+    throw new Error('The server took too long to respond (gateway timeout). Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
   }
 
   // Parse the structured error the proxy always returns.
@@ -98,9 +129,16 @@ async function callProxy(
 
 // ── Shared helpers (identical to geminiGenerator.ts) ───────────────────────
 
-function parseJSON(raw: string): unknown {
+/**
+ * Strips a markdown code fence (```json ... ``` or ``` ... ```) and any
+ * leading/trailing whitespace or prose around it, leaving just the raw JSON
+ * text. Gemini is supposed to return clean JSON when responseMimeType is
+ * set, but it (and the Groq fallback, which has no such option) sometimes
+ * still wraps the payload in a fence or adds a preamble — this protects
+ * every JSON.parse() call site against that.
+ */
+function stripCodeFence(raw: string): string {
   let text = raw.trim();
-  // Strip code fence anywhere in the response (Gemini sometimes adds prose before/after)
   const fence = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
   if (fence) {
     text = fence[1].trim();
@@ -109,7 +147,73 @@ function parseJSON(raw: string): unknown {
     const start = text.search(/[{[]/);
     if (start > 0) text = text.slice(start);
   }
-  return JSON.parse(text);
+  return text;
+}
+
+function parseJSON(raw: string): unknown {
+  const text = stripCodeFence(raw);
+
+  // Happy path
+  try {
+    return JSON.parse(text);
+  } catch (firstErr) {
+    // Attempt to repair a truncated response by closing any open structure.
+    // This handles the common case where the model ran out of output tokens
+    // mid-string, mid-array, or mid-object.
+    const repaired = repairTruncatedJSON(text);
+    if (repaired !== text) {
+      try {
+        return JSON.parse(repaired);
+      } catch {
+        // Fall through to throw the original error with helpful context.
+      }
+    }
+    throw firstErr;
+  }
+}
+
+/**
+ * Best-effort repair of JSON that was cut off before the closing delimiter.
+ * Strategy:
+ *  1. If the last character is mid-string (odd number of unescaped quotes),
+ *     close the string first.
+ *  2. Walk a bracket/brace stack to close any open arrays / objects.
+ */
+function repairTruncatedJSON(text: string): string {
+  // Find the last position that is safe to truncate to (avoid mid-escape sequences)
+  // by trimming trailing incomplete escape like  \  or  \"
+  let s = text.replace(/\\+$/, '').trimEnd();
+  // Remove a trailing comma before a closing delimiter (common truncation artifact)
+  s = s.replace(/,\s*$/, '');
+
+  // Determine if we're currently inside a string by counting unescaped quotes
+  let inString = false;
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === '"' && (i === 0 || s[i - 1] !== '\\')) inString = !inString;
+    i++;
+  }
+  if (inString) s += '"'; // close the open string
+
+  // Remove a trailing comma again (may now be exposed after closing the string)
+  s = s.replace(/,\s*$/, '');
+
+  // Count open braces/brackets and close them in reverse order
+  const stack: string[] = [];
+  inString = false;
+  for (let j = 0; j < s.length; j++) {
+    const ch = s[j];
+    if (ch === '"' && (j === 0 || s[j - 1] !== '\\')) {
+      inString = !inString;
+    } else if (!inString) {
+      if (ch === '{') stack.push('}');
+      else if (ch === '[') stack.push(']');
+      else if (ch === '}' || ch === ']') stack.pop();
+    }
+  }
+  while (stack.length) s += stack.pop()!;
+
+  return s;
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -182,7 +286,7 @@ function processResult(
 // ── Generation options (same public interface as geminiGenerator.ts) ────────
 
 export interface GenerateOptions {
-  cardCount?:      number;
+  cardCount?:      number | 'all';
   questionCount?:  number;
   focusTopic?:     string;
   notesDetail?:    'concise' | 'standard' | 'comprehensive';
@@ -191,6 +295,7 @@ export interface GenerateOptions {
   language?:       'english' | 'japanese' | 'both';
   difficulty?:     'easy' | 'medium' | 'hard';
   flashcardMode?:  'standard' | 'vocabulary';
+  quizMode?:       'generated' | 'extraction';
 }
 
 function languageInstruction(language?: 'english' | 'japanese' | 'both'): string {
@@ -202,23 +307,25 @@ function languageInstruction(language?: 'english' | 'japanese' | 'both'): string
 
 // ── Prompt builders (identical to geminiGenerator.ts) ──────────────────────
 
-function flashcardVocabPrompt(subject: string, opts: GenerateOptions): string {
-  const count  = opts.cardCount ?? 15;
+function flashcardVocabPrompt(subject: string, opts: GenerateOptions, forceAll = false): string {
+  const isAll = forceAll || opts.cardCount === 'all';
+  const count = isAll ? undefined : (opts.cardCount ?? 15);
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
-  const meaningLang = (!opts.language || opts.language === 'english') ? 'English' : 'Japanese';
   return `You are an expert vocabulary flashcard creator for students studying ${subject}.
 
-Analyse the provided content and extract exactly ${count} key vocabulary items from it.
+${isAll
+    ? 'Analyse the provided content and extract every single unique vocabulary word or expression it contains — do not cap or limit the count, no upper restriction, include all of them even if there are dozens.'
+    : `Analyse the provided content and extract exactly ${count} key vocabulary items from it.`}
 ${focus ? `Focus on vocabulary related to: "${focus}".` : ''}
 ${custom ? `Additional instructions: ${custom}` : ''}
 
 For each vocabulary item provide:
 - "front": the word or expression in its native script only (characters/script — no reading, no translation)
-- "reading": pronunciation guide appropriate to the language (pinyin for Chinese, romaji for Japanese, IPA or romanisation for others)
-- "meaning": concise ${meaningLang} translation or meaning
-- "example": a short, natural example sentence in the source language that uses this word in context
-- "translation": ${meaningLang} translation of that example sentence
+- "reading": pronunciation guide appropriate to the language (furigana/romaji for Japanese, pinyin for Chinese, IPA or romanisation for others)
+- "meaning": concise English meaning of the word
+- "example": a short, natural example sentence in the source language (native script) that uses this exact word in context
+- "translation": the English translation of that exact example sentence — no other sentence
 - "topic": grammatical category or subject area (e.g. "Noun", "Verb", "Business", "Greetings")
 
 Return ONLY valid JSON — no markdown, no commentary:
@@ -227,23 +334,26 @@ Return ONLY valid JSON — no markdown, no commentary:
     {
       "front": "経済",
       "reading": "けいざい (keizai)",
-      "meaning": "${meaningLang === 'Japanese' ? '経済、経済学' : 'economy, economics'}",
+      "meaning": "economy, economics",
       "example": "日本の経済は急速に発展してきた。",
-      "translation": "${meaningLang === 'Japanese' ? '日本の経済は急速に発展してきた。' : "Japan's economy has developed rapidly."}",
+      "translation": "Japan's economy has developed rapidly.",
       "topic": "Noun"
     }
   ]
 }`;
 }
 
-function flashcardFilePrompt(subject: string, opts: GenerateOptions): string {
-  if (opts.flashcardMode === 'vocabulary') return flashcardVocabPrompt(subject, opts);
-  const count  = opts.cardCount ?? 12;
+function flashcardFilePrompt(subject: string, opts: GenerateOptions, forceAll = false): string {
+  if (opts.flashcardMode === 'vocabulary') return flashcardVocabPrompt(subject, opts, forceAll);
+  const isAll = forceAll || opts.cardCount === 'all';
+  const count = isAll ? undefined : (opts.cardCount ?? 12);
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
   return `You are an expert study material creator for university-level ${subject} students.
 
-Analyse the content in this file and create exactly ${count} high-quality flashcards.
+${isAll
+    ? 'Analyse the content in this file and create a flashcard for every distinct concept, term or fact it contains — do not cap or limit the count, no upper restriction.'
+    : `Analyse the content in this file and create exactly ${count} high-quality flashcards.`}
 ${focus ? `Focus specifically on the topic: "${focus}".` : 'Cover the most important concepts, definitions, and relationships.'}
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
@@ -255,55 +365,144 @@ Return ONLY valid JSON — no markdown, no commentary:
 }`;
 }
 
-function notesFilePrompt(subject: string, opts: GenerateOptions): string {
+// ── Notes: two-step sequential generation ───────────────────────────────────
+//
+// A single monolithic call asking for a full multi-section, rich-markdown
+// note (tables + Mermaid + callouts per section) reliably blows through the
+// upstream model's per-response output-token ceiling — Gemini 2.5 Flash caps
+// well short of what 8-12 such sections require, so the response gets cut
+// off mid-JSON and the truncation-repair logic in parseJSON() silently
+// closes it after whatever sections happened to fit (often just one).
+// Bumping maxOutputTokens further doesn't help once the request is already
+// past the model's hard ceiling.
+//
+// Instead, notes are generated in two steps:
+//   1. A cheap "outline" call returns just the title, summary, and a list of
+//      section headings + one-line briefs — small enough to never truncate.
+//   2. One call per section, sequentially, asking for ONLY that section's
+//      rich-markdown content + key points — small enough to comfortably fit
+//      within a single response even with a table and a Mermaid diagram.
+// The results are stitched together into the final GeneratedNote.
+
+interface NotesOutline {
+  title: string;
+  summary: string;
+  sections: Array<{ heading: string; brief: string }>;
+}
+
+interface NotesSectionResult {
+  content: string;
+  keyPoints?: string[];
+}
+
+// Gemini structured-output schema for the outline step. Forcing
+// responseMimeType: "application/json" + this schema means Gemini returns
+// exactly this shape — no markdown fence, no missing "sections" key, no
+// prose preamble — which was the actual cause of "Gemini returned no
+// sections" (the plain-text outline prompt was occasionally answered with
+// commentary instead of, or in addition to, the JSON object).
+const NOTES_OUTLINE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    title: { type: 'STRING' },
+    summary: { type: 'STRING' },
+    sections: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          heading: { type: 'STRING' },
+          brief: { type: 'STRING' },
+        },
+        required: ['heading', 'brief'],
+      },
+    },
+  },
+  required: ['title', 'summary', 'sections'],
+};
+
+const SECTION_FORMAT_RULES = `MANDATORY FORMAT RULES — every rule must be followed:
+1. Wall-of-text is FORBIDDEN. The "content" field MUST use rich markdown, never plain prose paragraphs.
+2. If this section introduces terminology, include a markdown table labelled "Key Terms Matrix":
+   | Term | Definition | Example / Context |
+   |------|-----------|-------------------|
+3. Use a Mermaid.js code block (\`\`\`mermaid ... \`\`\`) if this section describes a process flow, hierarchy, timeline, or relationship diagram.
+4. Use a GitHub-style callout for the section's key insight — pick the appropriate type:
+   > [!NOTE] Supplementary context or background
+   > [!TIP] Practical advice or study hacks
+   > [!WARNING] Common mistakes or important caveats
+5. Bold the first term of every bullet point using **bold**.
+6. Meta-commentary is FORBIDDEN — never write "In this section", "Here we explore", "Now we will", "Let's look at", "This section covers", etc.
+7. Each "keyPoints" item: max 15 words, starts with a **bolded term**.`;
+
+function notesSectionCountRange(detail: 'concise' | 'standard' | 'comprehensive'): string {
+  return detail === 'concise' ? '3–4' : detail === 'comprehensive' ? '8–12' : '4–7';
+}
+
+function notesDepthNote(detail: 'concise' | 'standard' | 'comprehensive'): string {
+  return detail === 'concise'
+    ? 'Keep each section focused — 1 table + 1 callout max, 2-3 key points.'
+    : detail === 'comprehensive'
+      ? 'Each section must be thorough — include a table, at least one Mermaid block where applicable, 4-6 key points.'
+      : 'Each section should include a table and a callout, 3-5 key points.';
+}
+
+function notesOutlineFilePrompt(subject: string, opts: GenerateOptions): string {
   const detail   = opts.notesDetail ?? 'standard';
   const includes = opts.notesIncludes ?? [];
   const custom   = opts.customPrompt?.trim();
+  const sectionCount = notesSectionCountRange(detail);
 
-  const sectionCount = detail === 'concise' ? '3–4' : detail === 'comprehensive' ? '8–12' : '4–7';
-  const contentDepth =
-    detail === 'concise'
-      ? 'Keep each section brief — 1-2 sentences of content, 2-3 key points.'
-      : detail === 'comprehensive'
-        ? 'Each section should have a thorough explanation (4-6 sentences) and 4-6 key points.'
-        : 'Each section should have a clear explanation (2-4 sentences) and 3-5 key points.';
-
-  const formulaInstruction = includes.includes('formulas')
-    ? 'If a section involves mathematics, physics, chemistry, or economics formulae, add a "formula" field with the key equation(s) in plain-text notation (e.g., "F = ma").'
-    : '';
-  const diagramInstruction = includes.includes('diagrams')
-    ? 'Where a process, flow, or structure is best shown visually, add a "diagram" field with a concise text diagram.'
-    : '';
   const mindmapInstruction = includes.includes('mindmap')
     ? 'Organise sections hierarchically: the first section introduces the top-level concept, subsequent sections each explore one branch.'
     : '';
 
-  const schemaExtras = (includes.includes('formulas') || includes.includes('diagrams'))
-    ? `      "formula": "optional — key equation or formula for this section",
-      "diagram": "optional — short text diagram or flow for this section",`
-    : '';
-
   return `You are an expert academic note-taker for university-level ${subject}.
 
-Analyse the content in this file and create ${detail} structured notes with ${sectionCount} sections.
-${contentDepth}
-${formulaInstruction}
-${diagramInstruction}
+Analyse the content in this file and plan ${detail} structured notes with ${sectionCount} sections covering everything important in the material — do not skip topics to save space.
 ${mindmapInstruction}
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
-Return ONLY valid JSON — no markdown, no commentary:
+This is a PLANNING step only — do not write the section content yet, just the outline.
+
+Return ONLY valid JSON — no markdown wrapper, no commentary:
 {
   "title": "Descriptive title of the material",
-  "summary": "2-3 sentence executive summary",
+  "summary": "2–3 sentence executive summary (plain text, no markdown)",
   "sections": [
-    {
-      "heading": "Section heading",
-      "content": "Main explanation paragraph",
-      ${schemaExtras}
-      "keyPoints": ["Key point 1", "Key point 2", "Key point 3"]
-    }
+    { "heading": "Section heading", "brief": "One sentence describing exactly what this section must cover" }
   ]
+}`;
+}
+
+function notesSectionFilePrompt(
+  subject: string,
+  opts: GenerateOptions,
+  heading: string,
+  brief: string,
+  index: number,
+  total: number,
+  priorHeadings: string[],
+): string {
+  const detail = opts.notesDetail ?? 'standard';
+  const custom = opts.customPrompt?.trim();
+
+  return `You are an expert academic note-taker for university-level ${subject}.
+
+You are writing section ${index + 1} of ${total} of a larger set of structured notes based on the content in this file.
+
+Section heading: "${heading}"
+What this section must cover: ${brief}
+${priorHeadings.length ? `Other sections already cover: ${priorHeadings.join('; ')}. Do not repeat their content.` : ''}
+${notesDepthNote(detail)}
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+
+${SECTION_FORMAT_RULES}
+
+Return ONLY valid JSON for THIS SECTION ONLY — no markdown wrapper, no commentary:
+{
+  "content": "RICH MARKDOWN — tables, Mermaid blocks, callouts, bullet lists. NO plain paragraphs.",
+  "keyPoints": ["**Term**: brief definition or fact (max 15 words)"]
 }`;
 }
 
@@ -318,7 +517,35 @@ function difficultyInstruction(difficulty?: 'easy' | 'medium' | 'hard'): string 
   return `\nDifficulty level: ${DIFFICULTY_MAP[difficulty]}`;
 }
 
+function quizExtractionPrompt(subject: string, opts: GenerateOptions): string {
+  const count  = opts.questionCount ?? 10;
+  const focus  = opts.focusTopic?.trim();
+  return `You are a verbatim content extractor for a ${subject} study tool.
+
+Your task is to create exactly ${count} multiple-choice questions by lifting sentences and phrases WORD FOR WORD from the provided document — do NOT paraphrase, summarise, or invent content.
+${focus ? `Focus on passages related to: "${focus}".` : ''}
+
+For each question:
+1. Find a meaningful sentence or short passage in the document that contains a key term, figure, or fact.
+2. Use that sentence verbatim as the question stem, replacing one key term or number with "___________".
+3. The correct answer (option at index "correct") must be the exact word(s) you blanked out, copied verbatim from the document.
+4. The three distractors must be plausible alternatives drawn from elsewhere in the document or closely related concepts — never invented.
+5. The explanation must cite the exact sentence from the document where the answer appears.
+
+Return ONLY valid JSON — no markdown, no commentary:
+{
+  "questions": [
+    {
+      "question": "The company reported revenue of ___________ in fiscal year 2023.",
+      "options": ["$512 billion", "$480 billion", "$390 billion", "$620 billion"],
+      "correct": 0,
+      "explanation": "The document states verbatim: 'The company reported revenue of $512 billion in fiscal year 2023.'"
+    }
+  ]
+}`;}
+
 function quizFilePrompt(subject: string, opts: GenerateOptions): string {
+  if (opts.quizMode === 'extraction') return quizExtractionPrompt(subject, opts);
   const count  = opts.questionCount ?? 10;
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
@@ -348,7 +575,7 @@ const LEVEL_MAP: Record<string, string> = {
 };
 
 const TOPIC_PROMPTS: Record<
-  GenerationType,
+  'flashcards' | 'quiz',
   (topic: string, context: string, level: string, language?: 'english' | 'japanese' | 'both') => string
 > = {
   flashcards: (topic, context, level, language) =>
@@ -363,27 +590,6 @@ Return ONLY valid JSON — no markdown, no preamble:
     { "front": "Concise question or term", "back": "Clear answer or explanation", "topic": "Sub-topic category" }
   ]
 }`,
-
-  notes: (topic, context, level, language) =>
-    `You are an expert academic note-taker for university students.
-
-Create comprehensive structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
-Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
-
-Return ONLY valid JSON — no markdown, no preamble:
-{
-  "title": "Descriptive title",
-  "summary": "2-3 sentence overview",
-  "sections": [
-    {
-      "heading": "Section heading",
-      "content": "Explanation paragraph (2-4 sentences)",
-      "keyPoints": ["Key point 1", "Key point 2", "Key point 3"]
-    }
-  ]
-}
-
-Create 4-7 sections.`,
 
   quiz: (topic, context, level, language) =>
     `You are an expert exam question writer for university students.
@@ -404,9 +610,89 @@ Return ONLY valid JSON — no markdown, no preamble:
 }`,
 };
 
+function notesOutlineTopicPrompt(
+  topic: string,
+  context: string,
+  level: string,
+  language?: 'english' | 'japanese' | 'both',
+): string {
+  return `You are an expert academic note-taker for university students.
+
+Plan structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
+Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
+
+Plan 4–7 sections covering everything important about this topic — do not skip aspects to save space.
+This is a PLANNING step only — do not write the section content yet, just the outline.
+
+Return ONLY valid JSON — no markdown wrapper, no preamble:
+{
+  "title": "Descriptive title",
+  "summary": "2–3 sentence overview (plain text, no markdown)",
+  "sections": [
+    { "heading": "Section heading", "brief": "One sentence describing exactly what this section must cover" }
+  ]
+}`;
+}
+
+function notesSectionTopicPrompt(
+  topic: string,
+  context: string,
+  level: string,
+  language: 'english' | 'japanese' | 'both' | undefined,
+  heading: string,
+  brief: string,
+  index: number,
+  total: number,
+  priorHeadings: string[],
+): string {
+  return `You are an expert academic note-taker for university students.
+
+You are writing section ${index + 1} of ${total} of a larger set of structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
+Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
+
+Section heading: "${heading}"
+What this section must cover: ${brief}
+${priorHeadings.length ? `Other sections already cover: ${priorHeadings.join('; ')}. Do not repeat their content.` : ''}
+
+${SECTION_FORMAT_RULES}
+
+Return ONLY valid JSON for THIS SECTION ONLY — no markdown wrapper, no preamble:
+{
+  "content": "RICH MARKDOWN — tables, Mermaid blocks, callouts, bullet lists. NO plain paragraphs.",
+  "keyPoints": ["**Term**: brief definition or fact (max 15 words)"]
+}`;
+}
+
 // ── Size thresholds ────────────────────────────────────────────────────────
 
 const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024; // 3 MB
+
+// Cap any single proxy request's page images to this base64 budget — stays
+// under Vercel's 4.5 MB body limit and keeps Gemini's response time bounded
+// well under the function's maxDuration.
+const MAX_CHUNK_B64 = 3_000_000;
+
+// Multi-page flashcard sources are split into batches this large so each
+// proxy call finishes quickly instead of risking a gateway timeout on one
+// huge request that covers the whole document.
+const PAGES_PER_CHUNK = 6;
+
+function chunkPages<T extends { base64: string }>(pages: T[], maxPerChunk: number, maxBytesPerChunk: number): T[][] {
+  const chunks: T[][] = [];
+  let current: T[] = [];
+  let bytes = 0;
+  for (const p of pages) {
+    if (current.length > 0 && (current.length >= maxPerChunk || bytes + p.base64.length > maxBytesPerChunk)) {
+      chunks.push(current);
+      current = [];
+      bytes = 0;
+    }
+    current.push(p);
+    bytes += p.base64.length;
+  }
+  if (current.length) chunks.push(current);
+  return chunks;
+}
 
 // ── Large-image compression ─────────────────────────────────────────────────
 
@@ -463,6 +749,58 @@ async function compressImageToFit(file: File): Promise<{ base64: string; mimeTyp
   });
 }
 
+// Outline calls are tiny (just headings) — never need a big budget.
+const NOTES_OUTLINE_TOKENS = 2048;
+// Per-section calls only ever produce ONE section's markdown (table +
+// Mermaid + callout + key points), which comfortably fits well inside a
+// single response — unlike the old monolithic call asking for all sections
+// at once.
+const NOTES_SECTION_TOKENS = 8192;
+
+/**
+ * Runs the outline call, then one sequential call per outlined section,
+ * stitching the results into a complete GeneratedNote. Used for both
+ * file-grounded and topic-only notes generation.
+ */
+async function generateNotesSequentially(
+  groundingParts: Part[],
+  outlinePrompt: string,
+  sectionPromptFor: (heading: string, brief: string, index: number, total: number, priorHeadings: string[]) => string,
+  onProgress?: (current: number, total: number) => void,
+): Promise<GeneratedNote> {
+  const outlineText = await callProxy(
+    [...groundingParts, { text: outlinePrompt }],
+    {
+      temperature: 0.4,
+      maxOutputTokens: NOTES_OUTLINE_TOKENS,
+      responseMimeType: 'application/json',
+      responseSchema: NOTES_OUTLINE_SCHEMA,
+    },
+  );
+  const outline = parseJSON(outlineText) as NotesOutline;
+  const outlinedSections = outline.sections;
+  if (!Array.isArray(outlinedSections) || outlinedSections.length === 0) {
+    throw new Error('Gemini returned no sections for the notes outline.');
+  }
+
+  const sections: GeneratedNoteSection[] = [];
+  const priorHeadings: string[] = [];
+  for (let i = 0; i < outlinedSections.length; i++) {
+    onProgress?.(i + 1, outlinedSections.length);
+    const { heading, brief } = outlinedSections[i];
+    const sectionPrompt = sectionPromptFor(heading, brief, i, outlinedSections.length, priorHeadings);
+    const sectionText = await callProxy(
+      [...groundingParts, { text: sectionPrompt }],
+      { temperature: 0.4, maxOutputTokens: NOTES_SECTION_TOKENS },
+    );
+    const parsedSection = parseJSON(sectionText) as NotesSectionResult;
+    sections.push({ heading, content: parsedSection.content, keyPoints: parsedSection.keyPoints });
+    priorHeadings.push(heading);
+  }
+
+  return { title: outline.title, summary: outline.summary, sections };
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export async function generateFromFile(
@@ -470,67 +808,112 @@ export async function generateFromFile(
   type: GenerationType,
   subjectTitle: string,
   options: GenerateOptions = {},
+  onProgress?: (current: number, total: number) => void,
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
+  // For notes, document content ("grounding") is sent with every outline/
+  // section call separately, so it must NOT have a prompt baked into it yet.
   const prompt =
     type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) :
-    type === 'notes'      ? notesFilePrompt(subjectTitle, options) :
+    type === 'notes'      ? '' :
                             quizFilePrompt(subjectTitle, options);
 
-  let parts: Part[];
+  let parts: Part[] | null = null;
+  let pageImages: Array<{ base64: string; mimeType: 'image/jpeg' }> | null = null;
+  let extractedText: string | null = null;
 
   if (file.type === 'application/x-studytrainer-pages') {
     // Pre-compressed format: JSON array of JPEG page images, created at upload time.
-    const pages = JSON.parse(await file.text()) as Array<{ base64: string; mimeType: 'image/jpeg' }>;
-    const pageImages: InlineDataPart[] = [];
-    let totalB64 = 0;
-    const B64_CAP = 3_500_000;
-    for (const p of pages) {
-      if (totalB64 + p.base64.length > B64_CAP) break;
-      pageImages.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } });
-      totalB64 += p.base64.length;
-    }
-    if (pageImages.length === 0) throw new Error('Could not read pre-compressed PDF pages.');
-    parts = [...pageImages, { text: prompt }];
+    pageImages = JSON.parse(await file.text()) as Array<{ base64: string; mimeType: 'image/jpeg' }>;
   } else if (file.type === 'application/pdf') {
     const extracted = await extractTextFromFile(file);
     if (extracted.trim()) {
       // Text-based PDF: embed extracted text — works for any file size.
-      parts = [{ text: `${prompt}\n\nDocument content:\n${extracted}` }];
+      extractedText = extracted;
     } else if (file.size > LARGE_FILE_THRESHOLD) {
       // Large scanned PDF: render pages as JPEG images client-side and send
-      // as inline_data parts. Bypasses the Files API entirely.
-      const pages = await renderPdfPagesAsJpeg(file, 15, 0.65);
-      const pageImages: InlineDataPart[] = [];
-      let totalB64 = 0;
-      const B64_CAP = 3_500_000; // cap at ~3.5 MB base64 to stay under Vercel's 4.5 MB body limit
-      for (const p of pages) {
-        if (totalB64 + p.base64.length > B64_CAP) break;
-        pageImages.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } });
-        totalB64 += p.base64.length;
-      }
-      if (pageImages.length === 0) throw new Error('Could not render any pages from this PDF.');
-      parts = [...pageImages, { text: prompt }];
+      // as inline_data parts. Bypasses the Files API entirely. Flashcard
+      // generation renders far more pages since it chunks them into several
+      // bounded requests below instead of sending them all in one call.
+      pageImages = await renderPdfPagesAsJpeg(file, type === 'flashcards' ? 60 : 15, 0.65);
     } else {
       // Small scanned PDF: inline base64.
       const base64 = await fileToBase64(file);
-      parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
+      parts = [{ inline_data: { mime_type: file.type, data: base64 } }];
     }
   } else if (file.type.startsWith('image/')) {
     if (file.size > LARGE_FILE_THRESHOLD) {
       // Large image: compress client-side to fit Vercel's 4.5 MB body limit.
       const { base64, mimeType } = await compressImageToFit(file);
-      parts = [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }];
+      parts = [{ inline_data: { mime_type: mimeType, data: base64 } }];
     } else {
       const base64 = await fileToBase64(file);
-      parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
+      parts = [{ inline_data: { mime_type: file.type, data: base64 } }];
     }
   } else {
     if (file.size > LARGE_FILE_THRESHOLD) {
       throw new Error('File too large. Use a text-based PDF (any size) or an image file.');
     }
     const base64 = await fileToBase64(file);
-    parts = [{ inline_data: { mime_type: file.type, data: base64 } }, { text: prompt }];
+    parts = [{ inline_data: { mime_type: file.type, data: base64 } }];
   }
+
+  if (pageImages) {
+    if (pageImages.length === 0) throw new Error('Could not read any pages from this file.');
+
+    if (type === 'flashcards' && pageImages.length > PAGES_PER_CHUNK) {
+      // Split the document into several bounded requests instead of one call
+      // covering every page — each chunk finishes well within the gateway's
+      // timeout, and results are merged as each chunk completes. Every chunk
+      // is asked to extract everything it sees; if the user requested a
+      // specific count (rather than "all"), the merged results are trimmed
+      // to that count afterwards.
+      const chunks = chunkPages(pageImages, PAGES_PER_CHUNK, MAX_CHUNK_B64);
+      const chunkPrompt = flashcardFilePrompt(subjectTitle, options, true);
+      const merged: GeneratedFlashcard[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        onProgress?.(i + 1, chunks.length);
+        const chunkParts: Part[] = [
+          ...chunks[i].map((p): InlineDataPart => ({ inline_data: { mime_type: p.mimeType, data: p.base64 } })),
+          { text: chunkPrompt },
+        ];
+        const text = await callProxy(chunkParts);
+        const parsed = parseJSON(text) as Record<string, unknown>;
+        merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
+      }
+      return (options.cardCount && options.cardCount !== 'all') ? merged.slice(0, options.cardCount) : merged;
+    }
+
+    // Small enough to fit in one request — cap by base64 budget just in case.
+    const pageImageParts: InlineDataPart[] = [];
+    let totalB64 = 0;
+    for (const p of pageImages) {
+      if (totalB64 + p.base64.length > MAX_CHUNK_B64) break;
+      pageImageParts.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } });
+      totalB64 += p.base64.length;
+    }
+    if (pageImageParts.length === 0) throw new Error('Could not render any pages from this PDF.');
+    parts = pageImageParts;
+  }
+
+  if (type === 'notes') {
+    const groundingParts: Part[] = extractedText !== null ? [{ text: extractedText }] : (parts ?? []);
+    if (groundingParts.length === 0) throw new Error('Could not prepare file content for generation.');
+    return generateNotesSequentially(
+      groundingParts,
+      notesOutlineFilePrompt(subjectTitle, options),
+      (heading, brief, index, total, priorHeadings) =>
+        notesSectionFilePrompt(subjectTitle, options, heading, brief, index, total, priorHeadings),
+      onProgress,
+    );
+  }
+
+  if (extractedText !== null) {
+    parts = [{ text: `${prompt}\n\nDocument content:\n${extractedText}` }];
+  } else if (parts) {
+    parts = [...parts, { text: prompt }];
+  }
+
+  if (!parts) throw new Error('Could not prepare file content for generation.');
 
   const text = await callProxy(parts);
   const parsed = parseJSON(text) as Record<string, unknown>;
@@ -544,6 +927,15 @@ export async function generateFromTopic(
   level = 'intermediate',
   language?: 'english' | 'japanese' | 'both',
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
+  if (type === 'notes') {
+    return generateNotesSequentially(
+      [],
+      notesOutlineTopicPrompt(topic, subjectContext, level, language),
+      (heading, brief, index, total, priorHeadings) =>
+        notesSectionTopicPrompt(topic, subjectContext, level, language, heading, brief, index, total, priorHeadings),
+    );
+  }
+
   const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level, language);
   const text   = await callProxy([{ text: prompt }]);
   const parsed = parseJSON(text) as Record<string, unknown>;

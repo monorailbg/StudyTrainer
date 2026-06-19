@@ -15,11 +15,15 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { GoogleGenAI } from '@google/genai';
 
-// ── 1. Fail fast if the API key is missing ─────────────────────────────────
+// ── 1. Key resolution ──────────────────────────────────────────────────────
+//
+// Multi-provider failover:  GEMINI_PRIMARY → GEMINI_BACKUP → GROQ_BACKUP
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
+const GEMINI_PRIMARY_KEY = process.env.GEMINI_API_KEY?.trim();
+const GEMINI_BACKUP_KEY  = process.env.BACKUP_GEMINI_API_KEY?.trim() || null;
+const GROQ_KEY           = process.env.GROQ_API_KEY?.trim() || null;
 
-if (!GEMINI_API_KEY) {
+if (!GEMINI_PRIMARY_KEY) {
   console.error(
     '\n[FATAL] GEMINI_API_KEY is not set.\n' +
     'Copy server/.env.example → server/.env and add your key.\n',
@@ -27,20 +31,19 @@ if (!GEMINI_API_KEY) {
   process.exit(1);
 }
 
-// ── 2. Gemini client (server-side only) ────────────────────────────────────
+// ── 2. Gemini clients ──────────────────────────────────────────────────────
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const aiPrimary = new GoogleGenAI({ apiKey: GEMINI_PRIMARY_KEY });
+const aiBackup  = GEMINI_BACKUP_KEY ? new GoogleGenAI({ apiKey: GEMINI_BACKUP_KEY }) : null;
 
-/**
- * Priority-ordered list of models to attempt.
- * Falls through to the next when a model returns 404 (retired) or
- * RESOURCE_EXHAUSTED on a daily quota (not a per-minute rate limit).
- */
-const MODELS = [
+const GEMINI_MODELS = [
   'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
   'gemini-flash-latest',
 ];
+
+const GROQ_BASE  = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama3-8b-8192';
 
 // ── 3. Express setup ────────────────────────────────────────────────────────
 
@@ -96,14 +99,6 @@ const generateLimiter = rateLimit({
 
 // ── 5. Helper: transform snake_case parts → SDK camelCase ──────────────────
 
-/**
- * The existing frontend sends parts in Gemini REST snake_case format
- * (`inline_data`, `mime_type`). The @google/genai SDK expects camelCase
- * (`inlineData`, `mimeType`). This function normalises them.
- *
- * @param {Array<{text?: string, inline_data?: {mime_type: string, data: string}}>} parts
- * @returns {Array<{text?: string, inlineData?: {mimeType: string, data: string}}>}
- */
 function normaliseParts(parts) {
   return parts.map(part => {
     if (part.inline_data) {
@@ -112,49 +107,38 @@ function normaliseParts(parts) {
     if (part.file_data) {
       return { fileData: { mimeType: part.file_data.mime_type, fileUri: part.file_data.file_uri } };
     }
-    return part; // { text: '...' } is identical in both formats
+    return part;
   });
 }
 
-// ── 6. Helper: model-fallback + per-minute retry loop ──────────────────────
+// ── 6. Failover helpers ────────────────────────────────────────────────────
 
-/**
- * Returns true if the error is a per-minute rate limit (transient) rather
- * than a daily quota exhaustion or missing model (permanent for now).
- */
 function isPerMinuteLimit(message) {
   const lower = message.toLowerCase();
-  return (
-    lower.includes('per minute') ||
-    lower.includes('rpm') ||
-    lower.includes('rate_limit_exceeded')
-  );
+  return lower.includes('per minute') || lower.includes('rpm') || lower.includes('rate_limit_exceeded');
 }
 
-/**
- * Extracts the server-suggested retry delay from a 429 error message.
- * Falls back to 65 s (safe default above the 1-minute window).
- */
 function retryDelayMs(errorMessage) {
   const match = errorMessage.match(/retry\s+in\s+([\d.]+)\s*s/i);
   return match ? (Math.ceil(parseFloat(match[1])) + 2) * 1000 : 65_000;
 }
 
-/**
- * Calls a single Gemini model, retrying up to `maxAttempts` times on
- * transient per-minute rate-limit errors.
- *
- * @param {string} model          Gemini model ID
- * @param {object} sdkContents    Already-normalised SDK contents array
- * @param {object} config         Optional generation config (temperature, etc.)
- * @returns {Promise<string>}
- */
-async function callModel(model, sdkContents, config, maxAttempts = 2) {
+function isQuotaExhausted(message) {
+  return (
+    (message.includes('429') && !isPerMinuteLimit(message)) ||
+    (message.includes('RESOURCE_EXHAUSTED') && !isPerMinuteLimit(message)) ||
+    message.toLowerCase().includes('quota')
+  );
+}
+
+// ── 7. Gemini SDK: single model call ─────────────────────────────────────
+
+async function callGeminiModel(client, model, sdkContents, config, maxAttempts = 2) {
   let lastError;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await ai.models.generateContent({
+      const response = await client.models.generateContent({
         model,
         contents: sdkContents,
         ...(config && { config }),
@@ -168,16 +152,12 @@ async function callModel(model, sdkContents, config, maxAttempts = 2) {
       lastError = err;
       const message = String(err);
 
-      // Retry after delay only for per-minute rate limits.
       if (message.includes('429') && isPerMinuteLimit(message) && attempt < maxAttempts) {
         const delay = retryDelayMs(message);
-        console.warn(`[proxy] Model ${model} rate-limited; retrying in ${delay / 1000}s…`);
+        console.warn(`[proxy] Model ${model} per-minute rate-limited; retrying in ${delay / 1000}s…`);
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
-
-      // All other errors (401, 400, 500, per-day quota, unknown) — give up on
-      // this model immediately and let the caller try the next one.
       throw err;
     }
   }
@@ -185,37 +165,107 @@ async function callModel(model, sdkContents, config, maxAttempts = 2) {
   throw lastError;
 }
 
-/**
- * Attempts each model in MODELS in order, falling through on permanent
- * failures (404 retired model, RESOURCE_EXHAUSTED daily quota).
- *
- * @param {object} sdkContents
- * @param {object} [config]
- * @returns {Promise<string>}
- */
-async function callGeminiWithFallback(sdkContents, config) {
+// ── 8. Gemini SDK: model-ladder for one client ────────────────────────────
+
+async function callGeminiClient(client, sdkContents, config, label) {
   let lastError;
 
-  for (const model of MODELS) {
+  for (const model of GEMINI_MODELS) {
     try {
-      return await callModel(model, sdkContents, config);
+      return await callGeminiModel(client, model, sdkContents, config);
     } catch (err) {
       lastError = err;
       const message = String(err);
       const isDailyQuota = message.includes('RESOURCE_EXHAUSTED') && !isPerMinuteLimit(message);
-      const isRetired   = message.includes('404');
+      const isRetired    = message.includes('404');
 
       if (isDailyQuota || isRetired) {
-        console.warn(`[proxy] Model ${model} unavailable (${message.slice(0, 80)}), trying next…`);
-        continue; // try next model
+        console.warn(`[proxy] ${label} model ${model} unavailable (${message.slice(0, 80)}), trying next…`);
+        continue;
       }
-
-      // Non-quota error (401, 400, 500): no point trying other models.
       throw err;
     }
   }
 
-  throw lastError ?? new Error('All Gemini models exhausted.');
+  throw lastError ?? new Error(`All models exhausted for ${label}.`);
+}
+
+// ── 9. Groq REST: text-only fallback ─────────────────────────────────────
+
+function extractTextFromParts(parts) {
+  const texts = parts.filter(p => p.text).map(p => p.text);
+  if (texts.length === 0) throw new Error('Groq fallback requires at least one text part.');
+  return texts.join('\n\n');
+}
+
+async function callGroq(rawParts, temperature) {
+  const content = extractTextFromParts(rawParts);
+
+  const res = await fetch(GROQ_BASE, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROQ_KEY}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content }],
+      temperature: typeof temperature === 'number' ? temperature : 0.7,
+    }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const errMsg  = errData.error?.message ?? res.statusText ?? String(res.status);
+    throw new Error(`Groq ${res.status}: ${errMsg}`);
+  }
+
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error('Empty response from Groq.');
+  return text;
+}
+
+// ── 10. Failover orchestrator ─────────────────────────────────────────────
+
+async function generateWithFailover(rawParts, temperature, config) {
+  const sdkContents = [{ role: 'user', parts: normaliseParts(rawParts) }];
+
+  // Stage 1: Primary Gemini key
+  try {
+    return await callGeminiClient(aiPrimary, sdkContents, config, 'GEMINI_PRIMARY');
+  } catch (err) {
+    const msg = String(err);
+    if (!isQuotaExhausted(msg)) throw err;
+    console.warn('[proxy] ⚠️  GEMINI_PRIMARY quota exhausted — failing over to GEMINI_BACKUP…');
+  }
+
+  // Stage 2: Backup Gemini key
+  if (aiBackup) {
+    try {
+      const text = await callGeminiClient(aiBackup, sdkContents, config, 'GEMINI_BACKUP');
+      console.warn('[proxy] ✅ Request served by GEMINI_BACKUP.');
+      return text;
+    } catch (err) {
+      const msg = String(err);
+      if (!isQuotaExhausted(msg)) throw err;
+      console.warn('[proxy] ⚠️  GEMINI_BACKUP quota exhausted — failing over to GROQ_BACKUP…');
+    }
+  } else {
+    console.warn('[proxy] ℹ️  No BACKUP_GEMINI_API_KEY configured — skipping to GROQ_BACKUP…');
+  }
+
+  // Stage 3: Groq fallback (text-only)
+  if (GROQ_KEY) {
+    console.warn(`[proxy] ⚠️  Routing to GROQ_BACKUP (${GROQ_MODEL})…`);
+    const text = await callGroq(rawParts, temperature);
+    console.warn('[proxy] ✅ Request served by GROQ_BACKUP.');
+    return text;
+  }
+
+  throw new Error(
+    'All AI providers exhausted. Configure BACKUP_GEMINI_API_KEY and/or GROQ_API_KEY to enable failover.',
+  );
 }
 
 // ── 7. Route: POST /api/init-upload ───────────────────────────────────────
@@ -316,78 +366,66 @@ app.post('/api/upload-chunk', async (req, res) => {
   }
 });
 
-// ── 9. Route: POST /api/generate ───────────────────────────────────────────
+// ── 11. Route: POST /api/generate ─────────────────────────────────────────
 
 app.post('/api/generate', generateLimiter, async (req, res) => {
-  // ── a. Validate the request body ─────────────────────────────────────────
-  const { parts, temperature, systemInstruction } = req.body ?? {};
+  const { parts, temperature, systemInstruction, maxOutputTokens, responseMimeType, responseSchema } = req.body ?? {};
 
   if (!Array.isArray(parts) || parts.length === 0) {
-    return res.status(400).json({
-      error: 'Request body must include a non-empty "parts" array.',
-    });
+    return res.status(400).json({ error: 'Request body must include a non-empty "parts" array.' });
   }
 
   for (const part of parts) {
     if (!part.text && !part.inline_data && !part.file_data) {
-      return res.status(400).json({
-        error: 'Each part must have "text", "inline_data", or "file_data".',
-      });
+      return res.status(400).json({ error: 'Each part must have "text", "inline_data", or "file_data".' });
     }
   }
 
-  // ── b. Build SDK payload ──────────────────────────────────────────────────
-  const sdkContents = [{ role: 'user', parts: normaliseParts(parts) }];
-
-  // Optional generation config — only include defined values.
   const config = {};
   if (typeof temperature === 'number') config.temperature = temperature;
+  if (typeof maxOutputTokens === 'number' && maxOutputTokens > 0) config.maxOutputTokens = maxOutputTokens;
+  if (typeof responseMimeType === 'string' && responseMimeType.trim()) config.responseMimeType = responseMimeType.trim();
+  if (responseSchema && typeof responseSchema === 'object') config.responseSchema = responseSchema;
   if (typeof systemInstruction === 'string' && systemInstruction.trim()) {
     config.systemInstruction = systemInstruction.trim();
   }
 
-  // ── c. Call Gemini ────────────────────────────────────────────────────────
   try {
-    const text = await callGeminiWithFallback(sdkContents, Object.keys(config).length ? config : undefined);
+    const text = await generateWithFailover(parts, temperature, Object.keys(config).length ? config : undefined);
     return res.json({ text });
-
   } catch (err) {
-    // Log the full error server-side for debugging without leaking internals.
-    console.error('[proxy] Gemini error:', err);
-
+    console.error('[proxy] Fatal error:', err);
     const message = String(err);
 
-    // Map known Gemini error codes to meaningful HTTP responses.
     if (message.includes('401') || message.includes('API_KEY_INVALID')) {
-      return res.status(401).json({ error: 'Invalid or expired Gemini API key.' });
+      return res.status(401).json({ error: 'Invalid or expired API key.' });
     }
-    if (message.includes('RESOURCE_EXHAUSTED')) {
-      return res.status(429).json({ error: 'All Gemini model quotas exhausted. Try again tomorrow.' });
+    if (message.includes('RESOURCE_EXHAUSTED') || message.includes('quota')) {
+      return res.status(429).json({ error: 'All AI provider quotas exhausted. Try again tomorrow.' });
     }
     if (message.includes('400')) {
-      return res.status(400).json({ error: 'Gemini rejected the request. Check your prompt or file type.' });
+      return res.status(400).json({ error: 'AI rejected the request. Check your prompt or file type.' });
     }
-
-    // Generic fallback — never include the raw error in the response.
     return res.status(500).json({ error: 'Generation failed. Please try again.' });
   }
 });
 
-// ── 9. Health-check route ──────────────────────────────────────────────────
+// ── 12. Health-check route ─────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ── 10. 404 catch-all ──────────────────────────────────────────────────────
+// ── 13. 404 catch-all ─────────────────────────────────────────────────────
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found.' });
 });
 
-// ── 11. Start ──────────────────────────────────────────────────────────────
+// ── 14. Start ─────────────────────────────────────────────────────────────
 
 app.listen(PORT, () => {
-  console.log(`[proxy] Gemini proxy running on http://localhost:${PORT}`);
+  console.log(`[proxy] AI proxy running on http://localhost:${PORT}`);
   console.log(`[proxy] Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
+  console.log(`[proxy] Failover: GEMINI_PRIMARY ✓ | GEMINI_BACKUP ${aiBackup ? '✓' : '✗ (BACKUP_GEMINI_API_KEY not set)'} | GROQ ${GROQ_KEY ? '✓' : '✗ (GROQ_API_KEY not set)'}`);
 });

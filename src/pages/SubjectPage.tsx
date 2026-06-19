@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useStore } from '../store/useStore';
 import { useActivity } from '../store/useActivity';
@@ -38,9 +39,9 @@ import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
 import { DictionaryView } from '../components/DictionaryView';
+import { FlashcardProgressDashboard, QuizProgressDashboard } from '../components/ProgressDashboard';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
 import { getStudyQueue } from '../lib/srs';
-import { useBookmarks } from '../store/useBookmarks';
 
 // ── Error helper ───────────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ const PDF_COMPRESS_THRESHOLD = 3 * 1024 * 1024; // 3 MB
 
 type GenStatus = 'idle' | 'generating' | 'done' | 'error';
 interface GenState { status: GenStatus; type?: GenerationType; error?: string; }
-interface GenProgress { current: number; total: number; }
+interface GenProgress { current: number; total: number; chunk?: { current: number; total: number } }
 
 type View = 'dashboard' | 'upload' | 'flashcards' | 'notes' | 'quiz' | 'dictionary';
 
@@ -122,16 +123,16 @@ function SidebarItem({
       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all duration-200 cursor-pointer border-none"
       style={{
         borderRadius: '14px',
-        background: active ? 'rgba(255,255,255,0.07)' : 'transparent',
-        color: active ? '#E6EDF3' : '#8B949E',
+        background: active ? 'var(--bg-elevated)' : 'transparent',
+        color: active ? 'var(--text-1)' : 'var(--text-2)',
       }}
     >
-      <span style={{ flexShrink: 0, color: active ? '#E6EDF3' : '#8B949E' }}>{icon}</span>
+      <span style={{ flexShrink: 0, color: active ? 'var(--text-1)' : 'var(--text-2)' }}>{icon}</span>
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-medium leading-tight truncate" style={{ fontFamily: "'Sora',sans-serif" }}>{label}</span>
-        {sublabel && <span className="block text-[11px] mt-0.5 leading-tight" style={{ color: active ? '#8B949E' : '#484F58' }}>{sublabel}</span>}
+        {sublabel && <span className="block text-[11px] mt-0.5 leading-tight" style={{ color: active ? 'var(--text-2)' : 'var(--text-3)' }}>{sublabel}</span>}
       </span>
-      {dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor || '#3D7EFF', boxShadow: `0 0 5px ${dotColor || '#3D7EFF'}` }} />}
+      {dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor || 'var(--accent-primary)', boxShadow: `0 0 5px ${dotColor || 'var(--accent-primary)'}` }} />}
     </button>
   );
 }
@@ -167,27 +168,27 @@ function QuizHistoryPanel({ history, onRedo }: {
   return (
     <div style={{ marginTop: '32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#484F58' }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
           {ts('Past Results')}
         </span>
-        <div style={{ flex: 1, height: '1px', background: '#21262D' }} />
+        <div style={{ flex: 1, height: '1px', background: 'var(--border-light)' }} />
       </div>
 
       {/* Summary */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '10px', background: '#161B22', border: '1px solid #21262D' }}>
-          <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('Average')}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '10px', background: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{ts('Average')}</span>
           <span style={{ fontSize: '13px', fontWeight: 700, color: scoreColor(avgPct) }}>{avgPct}%</span>
-          <div style={{ width: '60px', height: '4px', background: '#21262D', borderRadius: '999px', overflow: 'hidden' }}>
+          <div style={{ width: '60px', height: '4px', background: 'var(--border-light)', borderRadius: '999px', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${avgPct}%`, background: scoreColor(avgPct), borderRadius: '999px' }} />
           </div>
-          <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('{n} attempts', { n: history.length })}</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('{n} attempts', { n: history.length })}</span>
         </div>
         {bestResult && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: '#161B22', border: '1px solid #21262D' }}>
-            <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('Best')}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{ts('Best')}</span>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#56D364' }}>{bestResult.scorePercent}%</span>
-            <span style={{ fontSize: '10px', color: '#484F58' }}>{ts('on {date}', { date: relDate(bestResult.completedAt) })}</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{ts('on {date}', { date: relDate(bestResult.completedAt) })}</span>
           </div>
         )}
       </div>
@@ -198,13 +199,13 @@ function QuizHistoryPanel({ history, onRedo }: {
           const shown = showAll ? results : results.slice(0, 5);
           return (
             <div key={title}>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#8B949E', marginBottom: '8px' }}>{title}</div>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '8px' }}>{title}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {shown.map(r => (
                   <div key={r.id} style={{
                     display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
                     padding: '10px 14px', borderRadius: '10px',
-                    background: '#161B22', border: '1px solid #21262D',
+                    background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
                   }}>
                     <span style={{
                       padding: '3px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
@@ -215,9 +216,9 @@ function QuizHistoryPanel({ history, onRedo }: {
                     }}>
                       {r.scorePercent}%
                     </span>
-                    <span style={{ fontSize: '11px', color: '#8B949E' }}>{r.correctAnswers} / {r.totalQuestions}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{relDate(r.completedAt)}</span>
-                    <span style={{ fontSize: '10px', color: '#484F58' }}>{fmtTime(r.timeTakenSeconds)}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>{r.correctAnswers} / {r.totalQuestions}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{relDate(r.completedAt)}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{fmtTime(r.timeTakenSeconds)}</span>
                     <div style={{ flex: 1 }} />
                     {r.incorrectAnswers > 0 && (
                       <button
@@ -238,7 +239,7 @@ function QuizHistoryPanel({ history, onRedo }: {
               </div>
               {results.length > 5 && (
                 <button onClick={() => setShowAll(s => !s)} style={{
-                  marginTop: '6px', fontSize: '11px', color: '#484F58', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+                  marginTop: '6px', fontSize: '11px', color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
                 }}>
                   {showAll ? ts('Show less') : ts('+ {n} more', { n: results.length - 5 })}
                 </button>
@@ -268,8 +269,8 @@ function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }
           <path d="M6 20h12" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
         </svg>
       </div>
-      <div className="text-sm font-semibold mb-2" style={{ color: '#E6EDF3' }}>{ts('No content yet')}</div>
-      <div className="text-xs mb-5 text-center max-w-xs" style={{ color: '#8B949E' }}>
+      <div className="text-sm font-semibold mb-2" style={{ color: 'var(--text-1)' }}>{ts('No content yet')}</div>
+      <div className="text-xs mb-5 text-center max-w-xs" style={{ color: 'var(--text-2)' }}>
         {ts('Upload a file and use AI to generate flashcards, notes, or a quiz.')}
       </div>
       <button
@@ -283,73 +284,289 @@ function EmptyState({ color, onUpload }: { color: string; onUpload: () => void }
   );
 }
 
-// ── Overview tile ──────────────────────────────────────────────────────────────
+// ── Subject Banner ─────────────────────────────────────────────────────────────
 
-function OverviewTile({
-  icon, label, color, active, primary, secondary, badges, onClick, index,
+function SubjectBanner({
+  subject, levelFiles, savedNotes, savedFlashcardSets, savedQuizzes, dictEntries,
+  examDate, daysLeft, onExamDateChange, onExamDateClear,
 }: {
-  icon: React.ReactNode; label: string; color: string; active: boolean;
-  primary: string; secondary: string; badges?: string[];
-  onClick: () => void; index: number;
+  subject: import('../data/subjects').SubjectDef;
+  levelFiles: UploadedFile[];
+  savedNotes: import('../lib/db').StoredNote[];
+  savedFlashcardSets: import('../lib/db').StoredFlashcardSet[];
+  savedQuizzes: import('../lib/db').StoredQuiz[];
+  dictEntries: import('../lib/db').DictionaryEntry[];
+  examDate: { subjectId: string; date: string } | undefined;
+  daysLeft: number;
+  onExamDateChange: (iso: string) => void;
+  onExamDateClear: () => void;
 }) {
+  const { ts } = useLang();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const totalCards = savedFlashcardSets.reduce((a, s) => a + s.cards.length, 0);
+
+  const pills: { label: string; count: number }[] = [
+    { label: `${levelFiles.length} files`, count: levelFiles.length },
+    { label: `${savedNotes.length} notes`, count: savedNotes.length },
+    { label: `${totalCards} cards`, count: totalCards },
+    { label: `${savedQuizzes.length} quizzes`, count: savedQuizzes.length },
+    { label: `${dictEntries.length} terms`, count: dictEntries.length },
+  ].filter(p => p.count > 0);
+
+  // Dot grid SVG: 8 rows × 12 cols
+  const dotGridSvg = () => {
+    const dots = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 12; c++) {
+        dots.push(<circle key={`${r}-${c}`} cx={c * 18 + 9} cy={r * 18 + 9} r={1.5} fill={subject.color} />);
+      }
+    }
+    return (
+      <svg
+        width={12 * 18} height={8 * 18}
+        style={{ position: 'absolute', top: 0, right: 0, opacity: 0.07, pointerEvents: 'none' }}
+      >
+        {dots}
+      </svg>
+    );
+  };
+
   return (
-    <button
+    <div style={{
+      background: isLight
+        ? `${subject.color}30`
+        : `linear-gradient(135deg, ${subject.color}45 0%, ${subject.color}18 55%, var(--bg-page) 100%)`,
+      border: isLight ? `1.5px solid ${subject.color}80` : `1.5px solid ${subject.color}60`,
+      boxShadow: 'none',
+      borderRadius: '24px',
+      padding: '32px 36px',
+      marginBottom: '32px',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Decorative circles — dark mode only */}
+      {!isLight && <>
+        <div style={{
+          position: 'absolute', top: -80, right: -80,
+          width: 260, height: 260, borderRadius: '50%',
+          background: `radial-gradient(circle, ${subject.color}35 0%, transparent 65%)`,
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -60, left: -60,
+          width: 160, height: 160, borderRadius: '50%',
+          background: `radial-gradient(circle, ${subject.color}25 0%, transparent 65%)`,
+          pointerEvents: 'none',
+        }} />
+        {dotGridSvg()}
+      </>}
+
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* Row 1: title + exam date */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+          {/* LEFT: title */}
+          <div>
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, color: isLight ? '#0f172a' : 'var(--text-1)' }}>
+                {subject.title}
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: isLight ? '#334155' : 'var(--text-2)' }}>
+              {subject.description}
+            </div>
+          </div>
+
+          {/* RIGHT: exam date */}
+          <div>
+            {examDate ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 16px', borderRadius: 999,
+                background: subject.color + '18',
+                border: `1.5px solid ${subject.color}40`,
+              }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: subject.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: subject.color }}>
+                  {ts('{n} days left', { n: daysLeft })}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--text-2)' }}>
+                  {examDate.date.replace(/-/g, '/')}
+                </span>
+                <button
+                  onClick={onExamDateClear}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, padding: '0 0 0 4px', lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <input
+                type="text"
+                placeholder={ts('Set exam date')}
+                maxLength={10}
+                className="outline-interactive"
+                style={{
+                  background: isLight ? 'rgba(255,255,255,0.5)' : 'transparent',
+                  border: isLight ? '1.5px solid rgba(0,0,0,0.15)' : '1px solid var(--border-base)',
+                  borderRadius: 8,
+                  color: isLight ? '#334155' : 'var(--text-2)',
+                  padding: '7px 12px', fontSize: 12, outline: 'none',
+                  fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '136px',
+                }}
+                onChange={e => {
+                  const raw = e.target.value;
+                  if (raw === '') return;
+                  const iso = raw.replace(/\//g, '-');
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) onExamDateChange(iso);
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: quick stat pills */}
+        <div style={{ marginTop: 20, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {pills.length > 0 ? pills.map(p => (
+            <span key={p.label} style={{
+              padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+              color: isLight ? '#1e293b' : 'var(--text-2)',
+              background: isLight ? '#ffffff' : 'var(--bg-surface)',
+              border: `1.5px solid ${subject.color}${isLight ? '90' : '60'}`,
+            }}>
+              {p.label}
+            </span>
+          )) : (
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              {ts('No content yet — upload files to begin')}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Section Card ───────────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon, label, color, stat, subtext, secondary, onClick, index, inactive, progress, lightBg, lightBorder,
+}: {
+  icon: React.ReactNode; label: string; color: string;
+  stat: string | number; subtext?: string; secondary?: string;
+  onClick: () => void; index: number; inactive?: boolean; progress?: number | null;
+  lightBg?: string; lightBorder?: string;
+}) {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
+  const baseBg = isLight
+    ? (inactive ? '#f8fafc' : (lightBg ?? '#ffffff'))
+    : `linear-gradient(135deg, ${inactive ? 'var(--bg-surface)' : color + '10'} 0%, var(--bg-surface) 100%)`;
+  const baseBorder = isLight
+    ? (inactive ? '#e2e8f0' : (lightBorder ?? '#cbd5e1'))
+    : (inactive ? 'var(--border-base)' : color + '30');
+  const baseShadow = isLight ? '0 4px 12px rgba(0,0,0,0.03)' : 'none';
+
+  return (
+    <div
       onClick={onClick}
-      className="anim-rise"
       style={{
-        ['--d' as string]: `${index * 60}ms`,
-        background: '#161B22', border: '1px solid #21262D',
-        borderRadius: '20px', padding: '24px',
-        textAlign: 'left', cursor: 'pointer',
-        transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1), border-color 0.25s ease, box-shadow 0.25s ease',
-        display: 'flex', flexDirection: 'column', gap: '14px', minHeight: '150px',
+        background: baseBg,
+        border: `1px solid ${baseBorder}`,
+        boxShadow: baseShadow,
+        borderRadius: 20,
+        padding: 22,
+        minHeight: 170,
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: 'pointer',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease, border-color 0.25s ease',
+        ['--idx' as string]: index,
       }}
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLElement;
-        el.style.transform = 'translateY(-3px)';
-        el.style.borderColor = color + '40';
-        el.style.boxShadow = `0 10px 28px rgba(0,0,0,0.4), 0 0 0 1px ${color}22`;
+        el.style.transform = 'translateY(-5px)';
+        el.style.boxShadow = isLight
+          ? `0 12px 28px rgba(0,0,0,0.10), 0 0 0 1.5px ${color}55`
+          : `0 16px 40px ${color}20, 0 0 0 1.5px ${color}40`;
+        el.style.borderColor = color + '55';
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLElement;
         el.style.transform = '';
-        el.style.borderColor = '#21262D';
-        el.style.boxShadow = '';
+        el.style.boxShadow = baseShadow;
+        el.style.borderColor = baseBorder;
       }}
     >
-      <div className="flex items-start justify-between">
+      {/* Decorative glow — dark mode only */}
+      {!isLight && (
         <div style={{
-          width: '52px', height: '52px', borderRadius: '15px',
-          background: active ? color + '1F' : '#1F2937',
-          color: active ? color : '#484F58',
-          border: `1px solid ${active ? color + '33' : '#30363D'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span style={{ transform: 'scale(1.25)' }}>{icon}</span>
-        </div>
-        {active && <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, marginTop: '6px' }} />}
+          position: 'absolute', top: '-70%', right: '-30%',
+          width: 200, height: 200, borderRadius: '50%',
+          background: `radial-gradient(circle, ${color}08 0%, transparent 60%)`,
+          pointerEvents: 'none',
+        }} />
+      )}
+
+      {/* Icon */}
+      <div style={{
+        width: 40, height: 40, borderRadius: 12,
+        background: isLight ? color + '20' : color + '18', color,
+        border: `1px solid ${color}${isLight ? '44' : '22'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative', zIndex: 1,
+      }}>
+        {icon}
       </div>
-      <div style={{ marginTop: 'auto' }}>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: '#E6EDF3', marginBottom: '4px' }}>
+
+      {/* Bottom content */}
+      <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
+        <div style={{
+          fontSize: 38, fontWeight: 800,
+          color: isLight
+            ? (inactive ? '#94a3b8' : '#0f172a')
+            : (inactive ? 'var(--text-3)' : 'var(--accent-primary)'),
+          fontFamily: "'Sora',sans-serif", lineHeight: 1, marginBottom: 4,
+          textShadow: (!isLight && !inactive) ? `0 0 25px ${color}35` : 'none',
+        }}>
+          {stat}
+        </div>
+        <div style={{
+          fontSize: 13, fontWeight: 700, marginBottom: 3,
+          color: isLight
+            ? (inactive ? '#64748b' : '#0f172a')
+            : (inactive ? 'var(--text-2)' : 'var(--text-1)'),
+        }}>
           {label}
         </div>
-        <div style={{ fontSize: '12px', color: active ? color : '#484F58', fontWeight: 600 }}>
-          {primary}
-        </div>
-        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '3px' }}>
-          {secondary}
-        </div>
-        {badges && badges.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap" style={{ marginTop: '10px' }}>
-            {badges.map((b, i) => (
-              <span key={i} style={{ fontSize: '10px', fontWeight: 600, color: color, background: color + '14', border: `1px solid ${color}28`, borderRadius: '999px', padding: '2px 8px' }}>
-                {b}
-              </span>
-            ))}
+        {subtext && (
+          <div style={{ fontSize: 11, fontWeight: 500, color: isLight ? '#475569' : (inactive ? 'var(--text-3)' : color + 'BB') }}>
+            {subtext}
+          </div>
+        )}
+        {secondary && (
+          <div style={{ fontSize: 10, color: isLight ? '#475569' : 'var(--text-3)', marginTop: 4 }}>
+            {secondary}
+          </div>
+        )}
+        {progress !== null && progress !== undefined && !inactive && (
+          <div style={{
+            marginTop: 10, height: '3px', borderRadius: '2px', overflow: 'hidden',
+            background: isLight ? '#e2e8f0' : 'var(--border-base)',
+          }}>
+            <div style={{
+              width: `${Math.min(100, Math.max(0, progress))}%`,
+              height: '100%', background: color, borderRadius: '2px',
+              transition: 'width 900ms cubic-bezier(0,0,0.2,1)',
+            }} />
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -381,7 +598,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   onDropToFolder: (folderId: string | null) => void;
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (folderId: string) => void;
-  onRenameFolder?: (folderId: string, name: string) => void;
+  onRenameFolder: (folderId: string, name: string) => void;
   renderItem: (item: T) => React.ReactNode;
   onReorder?: (reordered: T[]) => void;
   sortAccessors?: { name: (item: T) => string; date?: (item: T) => number };
@@ -390,9 +607,9 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [hoverFolder, setHoverFolder] = useState<string | null>(null);
-  const [renamingFolderId,   setRenamingFolderId]   = useState<string | null>(null);
-  const [renamingFolderName, setRenamingFolderName] = useState('');
-  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(() => new Set(folders.map(f => f.id)));
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
   // Per-zone enter-count counters fix the "dragLeave fires on child-enter" bug.
   const enterCounts = useRef<Map<string, number>>(new Map());
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
@@ -408,10 +625,42 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
     return next;
   });
 
+  const knownFolderIds = useRef<Set<string>>(new Set(folders.map(f => f.id)));
+  useEffect(() => {
+    const newIds = folders.map(f => f.id).filter(id => !knownFolderIds.current.has(id));
+    if (newIds.length) {
+      knownFolderIds.current = new Set(folders.map(f => f.id));
+      setCollapsedFolders(prev => {
+        const next = new Set(prev);
+        newIds.forEach(id => next.add(id));
+        return next;
+      });
+    } else {
+      knownFolderIds.current = new Set(folders.map(f => f.id));
+    }
+  }, [folders]);
+
   const submit = () => {
     const n = newName.trim();
     if (n) onCreateFolder(n);
     setNewName(''); setCreating(false);
+  };
+
+  const startRenaming = (folder: Folder) => {
+    setEditingFolderId(folder.id);
+    setEditName(folder.name);
+  };
+
+  const commitRename = (folderId: string) => {
+    if (editingFolderId !== folderId) return;
+    const n = editName.trim();
+    if (n) onRenameFolder(folderId, n);
+    setEditingFolderId(null);
+  };
+
+  const cancelRename = () => {
+    setEditingFolderId(null);
+    setEditName('');
   };
 
   const kindFolders = folders.filter(f => f.kind === kind);
@@ -544,7 +793,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
   return (
     <div>
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+        <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: 'var(--text-2)' }}>
           {label} ({items.length}){kindFolders.length > 0 && ` · ${ts('{n} folders', { n: kindFolders.length })}`}
         </div>
         <div className="flex items-center gap-3 ml-auto">
@@ -556,8 +805,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
               style={{
                 display: 'flex', alignItems: 'center', gap: '5px',
                 background: sortKey !== 'none' ? color + '14' : 'transparent',
-                color: sortKey !== 'none' ? color : '#8B949E',
-                border: `1px solid ${sortKey !== 'none' ? color + '33' : '#30363D'}`,
+                color: sortKey !== 'none' ? color : 'var(--text-2)',
+                border: `1px solid ${sortKey !== 'none' ? color + '33' : 'var(--border-base)'}`,
                 borderRadius: '999px', fontSize: '11px', fontWeight: 600, padding: '5px 10px',
                 cursor: 'pointer', transition: 'all 0.15s',
               }}
@@ -572,7 +821,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                 <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setShowSortMenu(false)} />
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                  background: '#161B22', border: '1px solid #30363D', borderRadius: '12px',
+                  background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderRadius: '12px',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.4)', padding: '4px', zIndex: 50,
                   minWidth: '136px',
                 }}>
@@ -590,7 +839,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
                         display: 'block', width: '100%', textAlign: 'left',
                         padding: '8px 12px', borderRadius: '8px',
                         background: sortKey === key ? color + '14' : 'transparent',
-                        color: sortKey === key ? color : '#C9D1D9',
+                        color: sortKey === key ? color : 'var(--text-1)',
                         border: 'none', cursor: 'pointer',
                         fontSize: '12px', fontWeight: sortKey === key ? 600 : 400,
                       }}
@@ -611,7 +860,7 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
             onBlur={submit}
             onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setNewName(''); setCreating(false); } }}
             placeholder={ts('Folder name…')}
-            style={{ background: '#0D1117', border: `1px solid ${color}55`, borderRadius: '999px', color: '#E6EDF3', fontSize: '11px', padding: '5px 12px', outline: 'none', width: '160px' }}
+            style={{ background: 'var(--bg-page)', border: `1px solid ${color}55`, borderRadius: '999px', color: 'var(--text-1)', fontSize: '11px', padding: '5px 12px', outline: 'none', width: '160px' }}
           />
         ) : (
           <button
@@ -638,62 +887,66 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
         return (
           <div key={folder.id} style={{ marginBottom: '18px' }}>
             {zone(folder.id, <>
-              <div className="flex items-center gap-2 mb-2.5 px-1">
-                {renamingFolderId === folder.id ? (
+              <div className="flex items-center gap-2 mb-2.5 px-1 group">
+                {editingFolderId === folder.id ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
-                    <span style={{ color, flexShrink: 0 }}><IconFolder /></span>
+                    <span style={{ color }}><IconFolder /></span>
                     <input
                       autoFocus
-                      value={renamingFolderName}
-                      onChange={e => setRenamingFolderName(e.target.value)}
-                      onBlur={() => {
-                        const n = renamingFolderName.trim();
-                        if (n && n !== folder.name) onRenameFolder?.(folder.id, n);
-                        setRenamingFolderId(null);
-                      }}
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      onFocus={e => e.currentTarget.select()}
+                      onBlur={() => commitRename(folder.id)}
                       onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          const n = renamingFolderName.trim();
-                          if (n && n !== folder.name) onRenameFolder?.(folder.id, n);
-                          setRenamingFolderId(null);
-                        }
-                        if (e.key === 'Escape') setRenamingFolderId(null);
+                        if (e.key === 'Enter') commitRename(folder.id);
+                        if (e.key === 'Escape') cancelRename();
                       }}
-                      style={{ flex: 1, background: '#0D1117', border: `1px solid ${color}55`, borderRadius: '6px', color: '#E6EDF3', fontSize: '13px', fontWeight: 600, padding: '1px 6px', outline: 'none', minWidth: 0 }}
+                      style={{
+                        flex: 1, minWidth: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-1)',
+                        background: 'var(--bg-page)', border: `1px solid ${color}55`, borderRadius: '6px',
+                        padding: '2px 6px', outline: 'none',
+                      }}
                     />
                   </div>
                 ) : (
                   <button
                     onClick={() => toggleFolder(folder.id)}
+                    onDoubleClick={e => { e.stopPropagation(); startRenaming(folder); }}
                     style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flex: 1, minWidth: 0 }}
                   >
                     <span style={{ color }}><IconFolder /></span>
-                    <span
-                      onDoubleClick={e => { e.stopPropagation(); setRenamingFolderId(folder.id); setRenamingFolderName(folder.name); }}
-                      title={ts('Double-click to rename')}
-                      style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', flex: 1, textAlign: 'left', cursor: 'text' }}
-                    >
-                      {folder.name}
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#8B949E' }}>{folderItems.length}</span>
-                    <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: '#484F58' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>{folderItems.length}</span>
+                    <svg viewBox="0 0 10 6" width="10" height="10" fill="none" style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: 'var(--text-3)' }}>
                       <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
+                  </button>
+                )}
+                {editingFolderId !== folder.id && (
+                  <button
+                    onClick={e => { e.stopPropagation(); startRenaming(folder); }}
+                    aria-label={ts('Rename folder')}
+                    className="cursor-pointer opacity-0 group-hover:opacity-100"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', padding: '2px', lineHeight: 0, flexShrink: 0, transition: 'opacity 0.15s, color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = color)}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                  >
+                    <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M11.4 2.4a1.4 1.4 0 012 2L5.5 12.3l-3 .8.8-3L11.4 2.4z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </button>
                 )}
                 <button
                   onClick={() => onDeleteFolder(folder.id)}
                   aria-label={ts('Delete folder')}
                   className="cursor-pointer"
-                  style={{ background: 'transparent', border: 'none', color: '#484F58', padding: '2px', lineHeight: 0, flexShrink: 0 }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', padding: '2px', lineHeight: 0, flexShrink: 0 }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
                 >
                   <svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               </div>
               {!isCollapsed && (folderItems.length === 0 ? (
-                <div className="px-1 pb-1 text-[11px]" style={{ color: '#484F58' }}>{ts('Empty — drag items here.')}</div>
+                <div className="px-1 pb-1 text-[11px]" style={{ color: 'var(--text-3)' }}>{ts('Empty — drag items here.')}</div>
               ) : (
                 <div className={gridClass}>
                   {folderItems.map(it => draggableItem(it))}
@@ -708,8 +961,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
       {zone(null, <>
         {kindFolders.length > 0 && (
           <div className="flex items-center gap-2 mb-2.5 px-1">
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#8B949E' }}>{ts('Unfiled')}</span>
-            <span style={{ fontSize: '11px', color: '#484F58' }}>{unfiled.length}</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-2)' }}>{ts('Unfiled')}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{unfiled.length}</span>
           </div>
         )}
         <div className={gridClass}>
@@ -725,6 +978,8 @@ function FolderBoard<T extends { id: string; folderId?: string | null }>({
 export default function SubjectPage() {
   const { id } = useParams<{ id: string }>();
   const { t, ts } = useLang();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const { allSubjects } = useResolvedSubjects();
   const { toast } = useToast();
   const visitSubject = useStore(s => s.visitSubject);
@@ -743,7 +998,8 @@ export default function SubjectPage() {
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [quizCount, setQuizCount] = useState(10);
   const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [cardCount, setCardCount] = useState(0); // 0 = undecided; multiples of 5 up to 50
+  const [quizMode, setQuizMode] = useState<'generated' | 'extraction'>('generated');
+  const [cardCount, setCardCount] = useState<number | 'all'>('all'); // 'all' = no limit; otherwise multiples of 5 up to 50
   const [flashcardMode, setFlashcardMode] = useState<'standard' | 'vocabulary'>('standard');
   const [focusTopic, setFocusTopic] = useState('');
   const [notesDetail, setNotesDetail] = useState<'concise' | 'standard' | 'comprehensive'>('standard');
@@ -757,8 +1013,7 @@ export default function SubjectPage() {
   const [savedNotes, setSavedNotes] = useState<StoredNote[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [savedFlashcardSets, setSavedFlashcardSets] = useState<StoredFlashcardSet[]>([]);
-  const [activeSetId,  setActiveSetId]  = useState<string | null>(null);
-  const [bookmarkMode, setBookmarkMode] = useState(false);
+  const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [draggedItem, setDraggedItem] = useState<{ kind: FolderKind; id: string } | null>(null);
   const [showGenPanel, setShowGenPanel] = useState(false);
@@ -766,28 +1021,7 @@ export default function SubjectPage() {
   const [dictEntries, setDictEntries] = useState<DictionaryEntry[]>([]);
   const [dictPending, setDictPending] = useState<{ id: string; term: string }[]>([]);
   const [expandedSidebarFolderIds, setExpandedSidebarFolderIds] = useState<Set<string>>(new Set());
-  const srsCards      = useSRS(s => s.cards);
-  const bookmarkedIds = useBookmarks(s => s.bookmarks[id ?? ''] ?? []);
-
-  // Guard: if subject not found, show error
-  if (!subject) {
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: '60vh', padding: '32px', textAlign: 'center', gap: '16px',
-      }}>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '18px', color: '#E6EDF3' }}>
-          Subject not found
-        </div>
-        <div style={{ fontSize: '13px', color: '#8B949E', maxWidth: '400px' }}>
-          {id ? `The subject "${id}" could not be found. It may have been deleted or the ID may be incorrect.` : 'No subject ID provided.'}
-        </div>
-        <Link to="/" style={{ padding: '8px 20px', borderRadius: '999px', background: '#3D7EFF18', color: '#3D7EFF', border: '1px solid #3D7EFF40', cursor: 'pointer', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-          Go to dashboard
-        </Link>
-      </div>
-    );
-  }
+  const srsCards = useSRS(s => s.cards);
 
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
@@ -810,7 +1044,6 @@ export default function SubjectPage() {
     setActiveNoteId(null);
     setSavedFlashcardSets([]);
     setActiveSetId(null);
-    setBookmarkMode(false);
     setFolders([]);
     setView('dashboard');
     setGenState({ status: 'idle' });
@@ -1105,12 +1338,14 @@ export default function SubjectPage() {
   };
 
   const renameFolder = (folderId: string, name: string) => {
-    setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name } : f));
-    const folder = folders.find(f => f.id === folderId);
-    if (!folder) return;
-    const updated = { ...folder, name };
-    if (isFirebaseConfigured) saveCloudFolder(updated).catch(() => {});
-    else saveFolder(updated).catch(() => {});
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: trimmed } : f));
+    const updated = folders.find(f => f.id === folderId);
+    if (!updated) return;
+    const next = { ...updated, name: trimmed };
+    if (isFirebaseConfigured) saveCloudFolder(next).catch(() => {});
+    else saveFolder(next).catch(() => {});
   };
 
   const persistFileFolder = (file: UploadedFile, folderId: string | null) => {
@@ -1234,8 +1469,6 @@ export default function SubjectPage() {
   };
 
   // ── Generation ─────────────────────────────────────────────────────────────
-  const cancelGenRef = useRef(false);
-
   const handleGenerate = async () => {
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
     if (selectedFiles.length === 0) return;
@@ -1243,20 +1476,12 @@ export default function SubjectPage() {
       toast('info', 'PDF still compressing', 'Please wait a moment and try again.');
       return;
     }
-    cancelGenRef.current = false;
     try {
       setGenState({ status: 'generating', type: selectedType });
       setGenProgress({ current: 0, total: selectedFiles.length });
 
       const results: unknown[] = [];
       for (let i = 0; i < selectedFiles.length; i++) {
-        if (cancelGenRef.current) {
-          cancelGenRef.current = false;
-          setGenState({ status: 'idle' });
-          setGenProgress(null);
-          toast('info', ts('Generation cancelled'), undefined);
-          return;
-        }
         setGenProgress({ current: i + 1, total: selectedFiles.length });
         let fileForGen = selectedFiles[i].rawFile;
         if (!fileForGen) {
@@ -1277,15 +1502,18 @@ export default function SubjectPage() {
           }
         }
         const result = await generateFromFile(fileForGen, selectedType, subject!.title, {
-          cardCount: cardCount === 0 ? undefined : cardCount,
+          cardCount,
           questionCount: quizCount,
           difficulty: quizDifficulty,
+          quizMode: selectedType === 'quiz' ? quizMode : undefined,
           focusTopic: focusTopic.trim() || undefined,
           notesDetail,
           notesIncludes,
           customPrompt: customPrompt.trim() || undefined,
           language: genLanguage,
           flashcardMode: selectedType === 'flashcards' ? flashcardMode : undefined,
+        }, (chunkCurrent, chunkTotal) => {
+          setGenProgress({ current: i + 1, total: selectedFiles.length, chunk: { current: chunkCurrent, total: chunkTotal } });
         });
         results.push(result);
       }
@@ -1372,7 +1600,7 @@ export default function SubjectPage() {
   if (!subject) {
     return (
       <div className="text-center py-20 px-6">
-        <div className="text-2xl mb-3" style={{ fontFamily: "'Sora',sans-serif", color: '#E6EDF3' }}>{ts('Subject not found')}</div>
+        <div className="text-2xl mb-3" style={{ fontFamily: "'Sora',sans-serif", color: 'var(--text-1)' }}>{ts('Subject not found')}</div>
         <Link to="/" className="text-sm no-underline" style={{ color: '#3D7EFF' }}>{t('back')}</Link>
       </div>
     );
@@ -1383,28 +1611,27 @@ export default function SubjectPage() {
   const selectedLevelFileIds = selectedFileIds.filter(id => levelFiles.some(f => f.id === id));
 
   return (
-    <div className="subject-page-root" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 72px)' }}>
+    <div className="subject-page-root" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 76px)' }}>
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="subject-breadcrumb-strip flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
-        borderBottom: '1px solid #21262D',
-        background: '#0D1117',
+        borderBottom: '1px solid var(--border-light)',
+        background: 'var(--bg-page)',
       }}>
-        <Link to="/" className="flex-shrink-0 transition-colors" style={{ color: '#8B949E', textDecoration: 'none', fontSize: '12px', fontWeight: 500 }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#E6EDF3')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#8B949E')}>
+        <Link to="/" className="flex-shrink-0 transition-colors" style={{ color: 'var(--text-2)', textDecoration: 'none', fontSize: '12px', fontWeight: 500 }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-1)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-2)')}>
           {t('nav_dashboard')}
         </Link>
-        <span className="flex-shrink-0" style={{ color: '#484F58', fontSize: '11px' }}>›</span>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: subject.color, boxShadow: `0 0 8px ${subject.color}`, flexShrink: 0 }} />
+        <span className="flex-shrink-0" style={{ color: 'var(--text-3)', fontSize: '11px' }}>›</span>
         <div className="flex-1 min-w-0 flex items-baseline gap-2.5">
-          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: '#E6EDF3' }}>
+          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '15px', color: 'var(--text-1)' }}>
             {subject.title}
           </span>
           {view !== 'dashboard' && (
             <>
-              <span className="flex-shrink-0 hidden sm:inline" style={{ color: '#484F58', fontSize: '11px' }}>›</span>
-              <span className="hidden sm:inline" style={{ fontSize: '12px', fontWeight: 500, color: '#8B949E', textTransform: 'capitalize' }}>
+              <span className="flex-shrink-0 hidden sm:inline" style={{ color: 'var(--text-3)', fontSize: '11px' }}>›</span>
+              <span className="hidden sm:inline" style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-2)', textTransform: 'capitalize' }}>
                 {view === 'upload' ? ts('Files') : view}
               </span>
             </>
@@ -1421,8 +1648,8 @@ export default function SubjectPage() {
                 style={{
                   borderRadius: '999px',
                   background: activeLevel === level ? subject.color + '20' : 'transparent',
-                  color:      activeLevel === level ? subject.color          : '#8B949E',
-                  borderColor: activeLevel === level ? subject.color + '45'  : '#30363D',
+                  color:      activeLevel === level ? subject.color          : 'var(--text-2)',
+                  borderColor: activeLevel === level ? subject.color + '45'  : 'var(--border-base)',
                 }}
               >
                 {level}
@@ -1433,7 +1660,7 @@ export default function SubjectPage() {
       </div>
 
       {/* ── Mobile tab strip (hidden on md+) ─────────────────────────────────── */}
-      <div className="subject-mobile-tabs md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid #21262D', background: '#0D1117' }}>
+      <div className="subject-mobile-tabs md:hidden flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--bg-page)' }}>
         {([
           { id: 'dashboard',  label: ts('Overview'), dot: false },
           { id: 'upload',     label: ts('Files'),    dot: false },
@@ -1453,7 +1680,7 @@ export default function SubjectPage() {
             style={{
               borderRadius: '999px',
               background:  view === id ? subject.color + '20' : 'transparent',
-              color:       view === id ? subject.color : '#8B949E',
+              color:       view === id ? subject.color : 'var(--text-2)',
               borderColor: view === id ? subject.color + '45' : 'transparent',
             }}
           >
@@ -1475,8 +1702,8 @@ export default function SubjectPage() {
             style={{
               position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
               zIndex: 30, width: '20px', height: '48px', borderRadius: '0 8px 8px 0',
-              background: '#161B22', border: '1px solid #30363D', borderLeft: 'none',
-              color: '#8B949E', cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderLeft: 'none',
+              color: 'var(--text-2)', cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
               fontSize: '9px',
             }}
           >
@@ -1488,8 +1715,8 @@ export default function SubjectPage() {
         <aside className="subject-sidebar hidden md:flex flex-col" style={{
           width: sidebarOpen ? '360px' : '0',
           flexShrink: 0,
-          borderRight: sidebarOpen ? '1px solid #21262D' : 'none',
-          background: '#0D1117',
+          borderRight: sidebarOpen ? '1px solid var(--border-light)' : 'none',
+          background: 'var(--bg-page)',
           overflow: 'hidden',
           transition: 'width 0.25s ease',
         }}>
@@ -1498,16 +1725,16 @@ export default function SubjectPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: sidebarOpen ? '20px 20px 12px' : '0',
             flexShrink: 0,
-            borderBottom: '1px solid #21262D',
-            background: '#0D1117',
+            borderBottom: '1px solid var(--border-light)',
+            background: 'var(--bg-page)',
           }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
               {subject.title.slice(0, 22)}
             </span>
             <button
               onClick={() => setSidebarOpen(false)}
               title={ts('Collapse sidebar')}
-              style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '6px', color: '#484F58', cursor: 'pointer', fontSize: '9px', padding: '3px 6px', flexShrink: 0 }}
+              style={{ background: 'transparent', border: '1px solid var(--border-base)', borderRadius: '6px', color: 'var(--text-3)', cursor: 'pointer', fontSize: '9px', padding: '3px 6px', flexShrink: 0 }}
             >
               ◄
             </button>
@@ -1536,10 +1763,10 @@ export default function SubjectPage() {
                 background: 'none', border: 'none', cursor: 'pointer', padding: '0 10px', marginBottom: '4px',
               }}
             >
-              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', fontFamily: "'Sora',sans-serif" }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', fontFamily: "'Sora',sans-serif" }}>
                 {ts('Files')} ({levelFiles.length})
               </span>
-              <span style={{ fontSize: '10px', color: '#484F58' }}>{filesExpanded ? '▾' : '▸'}</span>
+              <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{filesExpanded ? '▾' : '▸'}</span>
             </button>
 
             {filesExpanded && (
@@ -1584,9 +1811,9 @@ export default function SubjectPage() {
                       {sorted.length > 3 && (
                         <button
                           onClick={() => setSidebarFilesExpanded(v => !v)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: '8px', color: '#484F58', fontSize: '10px', fontWeight: 600, transition: 'color 0.15s' }}
-                          onMouseEnter={e => (e.currentTarget.style.color = '#8B949E')}
-                          onMouseLeave={e => (e.currentTarget.style.color = '#484F58')}
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: '8px', color: 'var(--text-3)', fontSize: '10px', fontWeight: 600, transition: 'color 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-2)')}
+                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
                         >
                           <svg viewBox="0 0 10 6" width="9" height="9" fill="none" style={{ flexShrink: 0, transform: sidebarFilesExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
                             <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -1603,11 +1830,11 @@ export default function SubjectPage() {
                       <div key={folder.id + '-hdr'} style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: '2px' }}>
                         <button
                           onClick={onClick}
-                          style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '7px 4px 7px 10px', borderRadius: '10px', color: '#C9D1D9', fontSize: '13px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '7px 4px 7px 10px', borderRadius: '10px', color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, textAlign: 'left', minWidth: 0 }}
                         >
                           <span style={{ color: subject.color, flexShrink: 0, transform: 'scale(1.2)', transformOrigin: 'center' }}><IconFolder /></span>
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
-                          {count > 0 && <span style={{ color: '#8B949E', flexShrink: 0, fontSize: '12px' }}>{count}</span>}
+                          {count > 0 && <span style={{ color: 'var(--text-2)', flexShrink: 0, fontSize: '12px' }}>{count}</span>}
                         </button>
                         <button
                           onClick={() => setExpandedSidebarFolderIds(prev => {
@@ -1615,7 +1842,7 @@ export default function SubjectPage() {
                             if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id);
                             return next;
                           })}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 10px 7px 4px', color: '#8B949E', flexShrink: 0, lineHeight: 0 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 10px 7px 4px', color: 'var(--text-2)', flexShrink: 0, lineHeight: 0 }}
                         >
                           <svg viewBox="0 0 10 6" width="11" height="11" fill="none" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
                             <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -1637,7 +1864,7 @@ export default function SubjectPage() {
                       );
                     })}
                     {unfiledFiles.length > 0 && (<>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B949E', padding: '6px 10px 4px', fontFamily: "'Sora',sans-serif" }}>{ts('Unfiled')}</div>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-2)', padding: '6px 10px 4px', fontFamily: "'Sora',sans-serif" }}>{ts('Unfiled')}</div>
                       {unfiledFiles.map(f => sidebarFileItem(f, true))}
                     </>)}
                   </>);
@@ -1648,7 +1875,7 @@ export default function SubjectPage() {
 
           {/* Generated content section */}
           <div style={{ marginTop: '8px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#484F58', padding: '0 10px', marginBottom: '4px', fontFamily: "'Sora',sans-serif" }}>
+            <div className="section-header-label" style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', padding: '0 10px', marginBottom: '4px', fontFamily: "'Sora',sans-serif" }}>
               {ts('Content')}
             </div>
 
@@ -1657,8 +1884,6 @@ export default function SubjectPage() {
               label={t('nav_flashcards')}
               sublabel={savedFlashcardSets.length > 0 ? ts('{n} saved', { n: savedFlashcardSets.length }) : ts('None yet')}
               active={view === 'flashcards' && !activeSetId}
-              dot={savedFlashcardSets.length > 0}
-              dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setActiveSetId(null); setView('flashcards'); setFullFocus(false); }}
             />
             <SidebarItem
@@ -1666,8 +1891,6 @@ export default function SubjectPage() {
               label={t('nav_notes')}
               sublabel={savedNotes.length > 0 ? ts('{n} saved', { n: savedNotes.length }) : ts('None yet')}
               active={view === 'notes' && !activeNoteId}
-              dot={savedNotes.length > 0}
-              dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(null); setView('notes'); setFullFocus(false); }}
             />
             <SidebarItem
@@ -1675,8 +1898,6 @@ export default function SubjectPage() {
               label={ts('Dictionary')}
               sublabel={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : ts('None yet')}
               active={view === 'dictionary'}
-              dot={dictEntries.length > 0}
-              dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setView('dictionary'); setFullFocus(false); }}
             />
             <SidebarItem
@@ -1684,8 +1905,6 @@ export default function SubjectPage() {
               label={ts('Quizzes')}
               sublabel={savedQuizzes.length > 0 ? ts('{n} saved', { n: savedQuizzes.length }) : ts('None yet')}
               active={view === 'quiz' && !activeQuizId}
-              dot={savedQuizzes.length > 0}
-              dotColor={subject.color}
               onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setView('quiz'); setFullFocus(false); }}
             />
           </div>
@@ -1694,18 +1913,25 @@ export default function SubjectPage() {
         </aside>
 
         {/* Main content area */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: '#0D1117' }}>
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 md:p-8" style={{ background: 'var(--bg-page)' }}>
 
           {/* Dashboard view */}
           {view === 'dashboard' && (
             <div>
-              <div style={{ marginBottom: '28px' }}>
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '20px', color: '#E6EDF3', marginBottom: '4px' }}>
-                  {subject.title}
-                </div>
-                <div style={{ fontSize: '13px', color: '#8B949E' }}>{subject.description}</div>
-              </div>
+              <SubjectBanner
+                subject={subject}
+                levelFiles={levelFiles}
+                savedNotes={savedNotes}
+                savedFlashcardSets={savedFlashcardSets}
+                savedQuizzes={savedQuizzes}
+                dictEntries={dictEntries}
+                examDate={examDate}
+                daysLeft={examDate ? daysUntil(examDate.date) : 0}
+                onExamDateChange={iso => setExamDate(id!, iso)}
+                onExamDateClear={() => removeExamDate(id!)}
+              />
 
+              {/* Section cards */}
               {(() => {
                 const totalMB = levelFiles.reduce((a, f) => a + f.size, 0) / 1024 / 1024;
                 const pdfCount = levelFiles.filter(f => isPdfType(f.type)).length;
@@ -1714,79 +1940,63 @@ export default function SubjectPage() {
                 const totalCards = savedFlashcardSets.reduce((a, s) => a + s.cards.length, 0);
                 const totalQs = savedQuizzes.reduce((a, q) => a + q.questions.length, 0);
                 const totalSections = savedNotes.reduce((a, n) => a + n.note.sections.length, 0);
+                const avgQuizPct = quizHistory.length > 0 ? Math.round(quizHistory.reduce((a, r) => a + r.scorePercent, 0) / quizHistory.length) : null;
+                const allCardIds = savedFlashcardSets.flatMap(s => s.cards.map(c => c.id));
+                const srsStats = subjectSrsStats(srsCards, allCardIds);
+                const masteryPct = allCardIds.length > 0 ? Math.round((srsStats.graduated / allCardIds.length) * 100) : null;
+
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap: '14px' }}>
-                    <OverviewTile
-                      index={0} icon={<IconFile />} label={ts('Files')} color={subject.color}
-                      active={levelFiles.length > 0}
-                      primary={levelFiles.length > 0 ? ts('{n} uploaded', { n: levelFiles.length }) : ts('No files yet')}
-                      secondary={levelFiles.length > 0 ? `${fileParts} · ${ts('{n} MB total', { n: totalMB.toFixed(1) })}` : ts('Upload PDFs or images to begin')}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(190px, 100%), 1fr))', gap: '14px' }}>
+                    <SectionCard
+                      index={0} icon={<IconFile />} label={ts('Files')} color="#3b82f6"
+                      lightBg="#eff6ff" lightBorder="#bfdbfe"
+                      stat={levelFiles.length}
+                      subtext={levelFiles.length > 0 ? fileParts : undefined}
+                      secondary={levelFiles.length > 0 ? `${totalMB.toFixed(1)} MB total` : ts('Upload PDFs or images to begin')}
+                      inactive={levelFiles.length === 0}
                       onClick={() => setView('upload')}
                     />
-                    <OverviewTile
-                      index={1} icon={<IconNote />} label={ts('Notes')} color="#2EA043"
-                      active={savedNotes.length > 0}
-                      primary={savedNotes.length > 0 ? ts('{n} notes', { n: savedNotes.length }) : ts('None yet')}
-                      secondary={savedNotes.length > 0 ? `${ts('{n} sections', { n: totalSections })} · ${ts('updated {time}', { time: timeAgo(savedNotes[0].createdAt) })}` : ts('Generate structured notes from files')}
+                    <SectionCard
+                      index={1} icon={<IconNote />} label={ts('Notes')} color="#16a34a"
+                      lightBg="#f0fdf4" lightBorder="#bbf7d0"
+                      stat={savedNotes.length}
+                      subtext={savedNotes.length > 0 ? ts('{n} sections', { n: totalSections }) : undefined}
+                      secondary={savedNotes.length > 0 ? ts('updated {time}', { time: timeAgo(savedNotes[0].createdAt) }) : ts('Generate structured notes from files')}
+                      inactive={savedNotes.length === 0}
                       onClick={() => { setActiveNoteId(null); setView('notes'); }}
                     />
-                    <OverviewTile
-                      index={2} icon={<IconCards />} label={ts('Flashcards')} color="#3D7EFF"
-                      active={savedFlashcardSets.length > 0}
-                      primary={savedFlashcardSets.length > 0 ? ts('{n} cards', { n: totalCards }) : ts('None yet')}
-                      secondary={savedFlashcardSets.length > 0 ? `${ts('in {n} sets', { n: savedFlashcardSets.length })} · ${ts('updated {time}', { time: timeAgo(savedFlashcardSets[0].createdAt) })}` : ts('Generate a deck from files')}
+                    <SectionCard
+                      index={2} icon={<IconCards />} label={ts('Flashcards')} color="#4f46e5"
+                      lightBg="#eef2ff" lightBorder="#c7d2fe"
+                      stat={totalCards}
+                      subtext={savedFlashcardSets.length > 0 ? ts('in {n} sets', { n: savedFlashcardSets.length }) : undefined}
+                      secondary={masteryPct !== null ? `${masteryPct}% mastered` : savedFlashcardSets.length > 0 ? ts('updated {time}', { time: timeAgo(savedFlashcardSets[0].createdAt) }) : ts('Generate a deck from files')}
+                      inactive={savedFlashcardSets.length === 0}
+                      progress={masteryPct}
                       onClick={() => { setActiveSetId(null); setView('flashcards'); }}
                     />
-                    <OverviewTile
-                      index={3} icon={<IconQuiz />} label={ts('Quizzes')} color="#D29922"
-                      active={savedQuizzes.length > 0}
-                      primary={savedQuizzes.length > 0 ? ts('{n} questions', { n: totalQs }) : ts('None yet')}
-                      secondary={savedQuizzes.length > 0 ? `${ts('in {n} quizzes', { n: savedQuizzes.length })} · ${ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) })}` : ts('Generate a quiz from files')}
+                    <SectionCard
+                      index={3} icon={<IconQuiz />} label={ts('Quizzes')} color="#d97706"
+                      lightBg="#fffbeb" lightBorder="#fde68a"
+                      stat={savedQuizzes.length > 0 ? totalQs : 0}
+                      subtext={savedQuizzes.length > 0 ? ts('{n} quizzes', { n: savedQuizzes.length }) : undefined}
+                      secondary={avgQuizPct !== null ? `avg ${avgQuizPct}%` : savedQuizzes.length > 0 ? ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) }) : ts('Generate a quiz from files')}
+                      inactive={savedQuizzes.length === 0}
+                      progress={avgQuizPct}
                       onClick={() => { setActiveQuizId(null); setView('quiz'); }}
                     />
-                    <OverviewTile
-                      index={4} icon={<IconDict />} label={ts('Dictionary')} color="#8B5CF6"
-                      active={dictEntries.length > 0}
-                      primary={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : ts('None yet')}
-                      secondary={dictEntries.length > 0 ? ts('updated {time}', { time: timeAgo(dictEntries[dictEntries.length - 1].createdAt) }) : ts('Select a word or phrase in any note, then tap the dictionary button to add it here with an AI-generated definition.')}
+                    <SectionCard
+                      index={4} icon={<IconDict />} label={ts('Dictionary')} color="#7c3aed"
+                      lightBg="#faf5ff" lightBorder="#e9d5ff"
+                      stat={dictEntries.length}
+                      subtext={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : undefined}
+                      secondary={dictEntries.length > 0 ? ts('updated {time}', { time: timeAgo(dictEntries[dictEntries.length - 1].createdAt) }) : ts('Select text in notes to define')}
+                      inactive={dictEntries.length === 0}
                       onClick={() => setView('dictionary')}
                     />
                   </div>
                 );
               })()}
-
-              {/* Exam Date */}
-              <div style={{ marginTop: '28px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#8B949E', marginBottom: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{ts('Exam Date')}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <input
-                    type="text"
-                    value={examDate?.date ? examDate.date.replace(/-/g, '/') : ''}
-                    onChange={e => {
-                      const raw = e.target.value;
-                      if (raw === '') { removeExamDate(id!); return; }
-                      const iso = raw.replace(/\//g, '-');
-                      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) setExamDate(id!, iso);
-                    }}
-                    placeholder="YYYY/MM/DD"
-                    maxLength={10}
-                    style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '8px', color: '#E6EDF3', padding: '7px 12px', fontSize: '12px', outline: 'none', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em', width: '136px' }}
-                  />
-                  {examDate && (
-                    <>
-                      <span style={{ fontSize: '11px', color: subject.color, fontWeight: 600 }}>
-                        {ts('{n} days left', { n: daysUntil(examDate.date) })}
-                      </span>
-                      <button
-                        onClick={() => removeExamDate(id!)}
-                        style={{ background: 'none', border: 'none', color: '#484F58', cursor: 'pointer', fontSize: '11px' }}
-                      >
-                        ✕
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
@@ -1802,9 +2012,9 @@ export default function SubjectPage() {
                 onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
                 className="text-center cursor-pointer outline-none transition-all duration-300 p-8 sm:p-14"
                 style={{
-                  border: `2px dashed ${isDragging ? subject.color : '#30363D'}`,
+                  border: `2px dashed ${isDragging ? subject.color : 'var(--border-base)'}`,
                   borderRadius: '24px',
-                  background: isDragging ? subject.color + '08' : '#161B22',
+                  background: isDragging ? subject.color + '08' : 'var(--bg-surface)',
                   marginBottom: '20px',
                   transform: isDragging ? 'scale(1.01)' : 'scale(1)',
                 }}
@@ -1825,17 +2035,17 @@ export default function SubjectPage() {
                   </svg>
                 </div>
 
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: '16px', color: isDragging ? subject.color : '#E6EDF3', marginBottom: '6px' }}>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: '16px', color: isDragging ? subject.color : 'var(--text-1)', marginBottom: '6px' }}>
                   {isDragging ? t('drop_active') : t('upload_title')}
                 </div>
-                <div style={{ fontSize: '13px', color: '#8B949E', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '16px' }}>
                   {t('upload_desc')}
                 </div>
                 <span style={{
                   display: 'inline-flex', alignItems: 'center',
-                  background: '#1F2937', border: '1px solid #30363D',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
                   borderRadius: '999px', padding: '3px 10px',
-                  fontSize: '11px', color: '#8B949E',
+                  fontSize: '11px', color: 'var(--text-2)',
                 }}>
                   {t('file_types')}
                 </span>
@@ -1864,9 +2074,9 @@ export default function SubjectPage() {
                         style={{ fontSize: '10px', fontWeight: 600, color: subject.color, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         {ts('Select all')}
                       </button>
-                      <span style={{ color: '#30363D', fontSize: '10px' }}>·</span>
+                      <span style={{ color: 'var(--text-3)', fontSize: '10px' }}>·</span>
                       <button onClick={() => setSelectedFileIds([])}
-                        style={{ fontSize: '10px', fontWeight: 600, color: '#8B949E', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         {ts('None')}
                       </button>
                     </div>
@@ -1881,8 +2091,8 @@ export default function SubjectPage() {
                         onClick={() => !isCompressing && toggleFileSelection(file.id)}
                         style={{
                           display: 'flex', flexDirection: 'column', gap: '6px',
-                          background: isFileSelected ? subject.color + '08' : '#161B22',
-                          border: `1px solid ${isFileSelected ? subject.color + '40' : '#30363D'}`,
+                          background: isFileSelected ? subject.color + '08' : 'var(--bg-surface)',
+                          border: `1px solid ${isFileSelected ? subject.color + '40' : 'var(--border-base)'}`,
                           borderRadius: '12px', padding: '10px',
                           cursor: isCompressing ? 'default' : 'pointer', transition: 'all 0.2s ease', position: 'relative',
                           opacity: isCompressing ? 0.7 : 1,
@@ -1893,7 +2103,7 @@ export default function SubjectPage() {
                           position: 'absolute', top: '8px', left: '8px',
                           width: '14px', height: '14px', borderRadius: '4px',
                           background: isFileSelected ? subject.color : 'transparent',
-                          border: `1.5px solid ${isFileSelected ? subject.color : '#484F58'}`,
+                          border: `1.5px solid ${isFileSelected ? subject.color : 'var(--text-3)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.2s ease', zIndex: 1,
                         }}>
@@ -1934,10 +2144,10 @@ export default function SubjectPage() {
                               onBlur={() => commitRename('file')}
                               onKeyDown={e => { if (e.key === 'Enter') commitRename('file'); if (e.key === 'Escape') setRenaming(null); }}
                               onClick={e => e.stopPropagation()}
-                              style={{ width: '100%', background: '#0D1117', border: `1px solid ${subject.color}55`, borderRadius: '4px', color: '#E6EDF3', fontSize: '10px', padding: '1px 4px', outline: 'none' }}
+                              style={{ width: '100%', background: 'var(--bg-page)', border: `1px solid ${subject.color}55`, borderRadius: '4px', color: 'var(--text-1)', fontSize: '10px', padding: '1px 4px', outline: 'none' }}
                             />
                           ) : (
-                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {file.name}
                             </div>
                           )}
@@ -1969,7 +2179,7 @@ export default function SubjectPage() {
                           <button
                             onClick={e => { e.stopPropagation(); startRename(file.id, file.name, 'file'); }}
                             title={ts('Rename file')}
-                            style={{ width: '22px', height: '22px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', background: 'transparent', color: '#8B949E', border: '1px solid #30363D' }}
+                            style={{ width: '22px', height: '22px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--border-base)' }}
                           >✎</button>
                           <button
                             onClick={e => { e.stopPropagation(); removeFile(file.id); }}
@@ -1985,43 +2195,14 @@ export default function SubjectPage() {
             </>
           )}
 
-          {/* Flashcards view — bookmarks viewer, active set, or folder of saved sets */}
+          {/* Flashcards view — either an active set or the folder of saved sets */}
           {view === 'flashcards' && (() => {
-            // ── Bookmarks viewer ─────────────────────────────────────────────
-            if (bookmarkMode) {
-              const allCards = savedFlashcardSets.flatMap(s => s.cards ?? []);
-              const bmCards  = allCards.filter(c => bookmarkedIds.includes(c.id));
-              return (
-                <div>
-                  <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
-                    <button
-                      onClick={() => { setBookmarkMode(false); setSidebarOpen(true); }}
-                      className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
-                      style={{ color: '#8B949E' }}
-                    >
-                      ← {ts('All flashcards')}
-                    </button>
-                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#D29922' }}>
-                      📌 {ts('Bookmarks')} · {bmCards.length} {t('cards')}
-                    </div>
-                  </div>
-                  <FlashcardViewer
-                    key="__bookmarks__"
-                    cards={bmCards}
-                    color="#D29922"
-                    subjectId={subject.id}
-                    onBack={() => setBookmarkMode(false)}
-                  />
-                </div>
-              );
-            }
-
             const activeSet = activeSetId ? savedFlashcardSets.find(s => s.id === activeSetId) : undefined;
 
             if (activeSet) {
               // Sort due cards first, then unseen — most-overdue reviews surface first.
-              const { due: dueCards, unseen: newCards, queue } = getStudyQueue(activeSet.cards ?? [], srsCards);
-              const sessionCards = queue.length > 0 ? queue : (activeSet.cards ?? []);
+              const { due: dueCards, unseen: newCards, queue } = getStudyQueue(activeSet.cards, srsCards);
+              const sessionCards = queue.length > 0 ? queue : activeSet.cards;
               const toReview = dueCards.length + newCards.length;
               return (
                 <div>
@@ -2029,12 +2210,12 @@ export default function SubjectPage() {
                     <button
                       onClick={() => { setActiveSetId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
-                      style={{ color: '#8B949E' }}
+                      style={{ color: 'var(--text-2)' }}
                     >
                       ← {ts('All flashcards')}
                     </button>
-                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
-                      {activeSet.name} · {(activeSet.cards ?? []).length} {t('cards')}
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: 'var(--text-2)' }}>
+                      {activeSet.name} · {activeSet.cards.length} {t('cards')}
                       {toReview > 0 && (
                         <span style={{ marginLeft: '6px', color: subject.color, fontWeight: 700 }}>
                           · {toReview} {ts('to review')}
@@ -2059,99 +2240,16 @@ export default function SubjectPage() {
               return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
             }
 
-            // ── Dashboard ──────────────────────────────────────────────────
-            const allCardIds = savedFlashcardSets.flatMap(s => (s.cards ?? []).map(c => c.id));
-            const allStats   = subjectSrsStats(srsCards, allCardIds);
-            const totalCards = allCardIds.length;
-            const learnedPct = totalCards > 0 ? Math.round((allStats.graduated / totalCards) * 100) : 0;
-
-            const dashItems = [
-              { label: ts('Vocabulary Learned'), value: allStats.graduated, color: '#8B5CF6', pct: learnedPct },
-              { label: ts('Studying'),           value: allStats.learning,  color: '#D29922', pct: totalCards > 0 ? Math.round((allStats.learning / totalCards) * 100) : 0 },
-              { label: ts('Left to Study'),      value: allStats.unseen,    color: subject.color, pct: totalCards > 0 ? Math.round((allStats.unseen / totalCards) * 100) : 0 },
-              { label: ts('Needs Revision'),     value: allStats.due,       color: '#F85149', pct: totalCards > 0 ? Math.round((allStats.due / totalCards) * 100) : 0 },
-            ];
+            const allCardIds = savedFlashcardSets.flatMap(s => s.cards.map(c => c.id));
+            const overallStats = subjectSrsStats(srsCards, allCardIds);
 
             return (
-              <div>
-                {/* Stat tiles + progress bar */}
-                <div style={{ marginBottom: '28px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8B949E', marginBottom: '12px' }}>
-                    {ts('Overview')}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(150px, 100%), 1fr))', gap: '10px', marginBottom: '12px' }}>
-                    {dashItems.map(item => (
-                      <div key={item.label} style={{ background: item.color + '0D', border: `1px solid ${item.color}20`, borderRadius: '14px', padding: '14px 16px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>{item.label}</div>
-                        <div style={{ fontSize: '26px', fontWeight: 700, color: item.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1, marginBottom: '8px' }}>{item.value}</div>
-                        <div style={{ height: '3px', background: '#21262D', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ width: `${item.pct}%`, height: '100%', background: item.color, borderRadius: '2px', transition: 'width 0.6s cubic-bezier(0,0,0.2,1)' }} />
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#484F58', marginTop: '4px' }}>{item.pct}%</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Stacked progress bar */}
-                  <div style={{ background: '#161B22', border: '1px solid #21262D', borderRadius: '12px', padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#8B949E', marginBottom: '8px' }}>
-                      <span>{ts('{n} total cards', { n: totalCards })}</span>
-                      <span style={{ color: '#8B5CF6', fontWeight: 600 }}>{learnedPct}% {ts('learned')}</span>
-                    </div>
-                    <div style={{ height: '6px', background: '#0D1117', borderRadius: '3px', overflow: 'hidden', display: 'flex', gap: '1px' }}>
-                      {([
-                        { val: allStats.graduated, color: '#8B5CF6' },
-                        { val: allStats.learning,  color: '#D29922' },
-                        { val: allStats.due,        color: '#F85149' },
-                        { val: allStats.unseen,    color: subject.color + '60' },
-                      ] as { val: number; color: string }[]).map((seg, i) => (
-                        totalCards > 0 && seg.val > 0 ? (
-                          <div key={i} style={{ width: `${(seg.val / totalCards) * 100}%`, height: '100%', background: seg.color, borderRadius: '2px', transition: 'width 0.6s ease' }} />
-                        ) : null
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: '14px', marginTop: '8px', flexWrap: 'wrap' }}>
-                      {([
-                        { label: ts('Learned'),  color: '#8B5CF6', val: allStats.graduated },
-                        { label: ts('Studying'), color: '#D29922', val: allStats.learning },
-                        { label: ts('Due'),      color: '#F85149', val: allStats.due },
-                        { label: ts('New'),      color: subject.color, val: allStats.unseen },
-                      ] as { label: string; color: string; val: number }[]).map(leg => (
-                        <div key={leg.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: leg.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: '10px', color: '#8B949E' }}>{leg.label}</span>
-                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#C9D1D9', fontFamily: 'monospace' }}>{leg.val}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bookmarks entry */}
-                  {bookmarkedIds.length > 0 && (
-                    <button
-                      onClick={() => { setBookmarkMode(true); setSidebarOpen(false); }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-                        background: '#161B22', border: '1px solid #D2992230',
-                        borderRadius: '14px', padding: '14px 16px', cursor: 'pointer',
-                        marginTop: '10px', transition: 'border-color 0.15s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = '#D2992260')}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = '#D2992230')}
-                    >
-                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#D2992218', color: '#D29922', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg viewBox="0 0 14 16" width="16" height="18" fill="currentColor"><path d="M2 2a1 1 0 011-1h8a1 1 0 011 1v12l-5-3-5 3V2z" /></svg>
-                      </div>
-                      <div style={{ flex: 1, textAlign: 'left' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3' }}>{ts('Bookmarks')}</div>
-                        <div style={{ fontSize: '11px', color: '#D29922', marginTop: '2px' }}>{ts('{n} cards saved', { n: bookmarkedIds.length })}</div>
-                      </div>
-                      <svg viewBox="0 0 6 10" width="6" height="10" fill="none"><path d="M1 1l4 4-4 4" stroke="#484F58" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </button>
-                  )}
-                </div>
-
-              <FolderBoard<StoredFlashcardSet>
+              <>
+                <FlashcardProgressDashboard
+                  stats={overallStats}
+                  color={subject.color}
+                />
+                <FolderBoard<StoredFlashcardSet>
                 kind="card" label={ts('Flashcard sets')} color={subject.color}
                 folders={folders} items={savedFlashcardSets}
                 draggedId={draggedItem?.kind === 'card' ? draggedItem.id : null}
@@ -2165,7 +2263,7 @@ export default function SubjectPage() {
                 sortAccessors={{ name: s => s.name, date: s => s.createdAt }}
                 renderItem={(set) => {
                   const isRenaming = renaming?.id === set.id;
-                  const setStats   = subjectSrsStats(srsCards, (set.cards ?? []).map(c => c.id));
+                  const setStats   = subjectSrsStats(srsCards, set.cards.map(c => c.id));
                   const toReview   = setStats.due + setStats.unseen;
                   return (
                     <div
@@ -2189,18 +2287,18 @@ export default function SubjectPage() {
                             onBlur={() => commitRename('set')}
                             onKeyDown={e => { if (e.key === 'Enter') commitRename('set'); if (e.key === 'Escape') setRenaming(null); }}
                             style={{
-                              width: '100%', background: '#0D1117',
+                              width: '100%', background: 'var(--bg-page)',
                               border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              color: 'var(--text-1)', fontSize: '13px', fontWeight: 600,
                               padding: '2px 6px', outline: 'none',
                             }}
                           />
                         ) : (
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {set.name}
                           </div>
                         )}
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span>{ts('{n} cards', { n: set.cards.length })}</span>
                           {toReview > 0 && (
                             <span style={{
@@ -2220,7 +2318,7 @@ export default function SubjectPage() {
                               ✓ {setStats.graduated} graduated
                             </span>
                           )}
-                          <span style={{ color: '#484F58' }}>{new Date(set.createdAt).toLocaleDateString()}</span>
+                          <span style={{ color: 'var(--text-3)' }}>{new Date(set.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <button
@@ -2230,8 +2328,8 @@ export default function SubjectPage() {
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
                           background: isRenaming ? subject.color + '20' : 'transparent',
-                          color: isRenaming ? subject.color : '#484F58',
-                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          color: isRenaming ? subject.color : 'var(--text-3)',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : 'var(--border-base)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.15s ease',
                         }}
@@ -2255,7 +2353,7 @@ export default function SubjectPage() {
                   );
                 }}
               />
-            </div>
+              </>
             );
           })()}
 
@@ -2270,11 +2368,11 @@ export default function SubjectPage() {
                     <button
                       onClick={() => { setActiveNoteId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
-                      style={{ color: '#8B949E' }}
+                      style={{ color: 'var(--text-2)' }}
                     >
                       ← {ts('All notes')}
                     </button>
-                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: 'var(--text-2)' }}>
                       {activeNote.name} · {ts('{n} sections', { n: activeNote.note.sections.length })}
                     </div>
                   </div>
@@ -2335,18 +2433,18 @@ export default function SubjectPage() {
                             onBlur={() => commitRename('note')}
                             onKeyDown={e => { if (e.key === 'Enter') commitRename('note'); if (e.key === 'Escape') setRenaming(null); }}
                             style={{
-                              width: '100%', background: '#0D1117',
+                              width: '100%', background: 'var(--bg-page)',
                               border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              color: 'var(--text-1)', fontSize: '13px', fontWeight: 600,
                               padding: '2px 6px', outline: 'none',
                             }}
                           />
                         ) : (
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {n.name}
                           </div>
                         )}
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px' }}>
                           {ts('{n} sections', { n: n.note.sections.length })} · {new Date(n.createdAt).toLocaleDateString()}
                         </div>
                       </div>
@@ -2357,8 +2455,8 @@ export default function SubjectPage() {
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
                           background: isRenaming ? subject.color + '20' : 'transparent',
-                          color: isRenaming ? subject.color : '#484F58',
-                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          color: isRenaming ? subject.color : 'var(--text-3)',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : 'var(--border-base)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.15s ease',
                         }}
@@ -2409,11 +2507,11 @@ export default function SubjectPage() {
                     <button
                       onClick={() => { setActiveQuizId(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
-                      style={{ color: '#8B949E' }}
+                      style={{ color: 'var(--text-2)' }}
                     >
                       ← {ts('All quizzes')}
                     </button>
-                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#8B949E' }}>
+                    <div className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: 'var(--text-2)' }}>
                       {activeQuiz.name} · {activeQuiz.questions.length} {t('questions')}
                     </div>
                   </div>
@@ -2432,6 +2530,20 @@ export default function SubjectPage() {
                       useStore.getState().addQuizScore(subject.id, result.correctAnswers, result.totalQuestions);
                       recordActivity({ type: 'quiz', subjectId: subject.id, subjectName: subject.title, detail: `Scored ${result.scorePercent}% on ${subject.title} quiz` });
                     }}
+                    onQuestionEdit={(questionId, draft) => {
+                      setSavedQuizzes(prev => prev.map(q => {
+                        if (q.id !== activeQuiz.id) return q;
+                        const updatedQuestions = q.questions.map(qq =>
+                          qq.id === questionId
+                            ? { ...qq, question: draft.question, options: draft.options, correct: draft.correct }
+                            : qq
+                        );
+                        const updated = { ...q, questions: updatedQuestions };
+                        if (isFirebaseConfigured) saveCloudQuiz({ ...updated, subjectId: id! }).catch(() => {});
+                        else saveQuiz(updated).catch(() => {});
+                        return updated;
+                      }));
+                    }}
                   />
                 </div>
               );
@@ -2441,8 +2553,25 @@ export default function SubjectPage() {
               return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
             }
 
+            const totalCorrect = quizHistory.reduce((a, r) => a + r.correctAnswers, 0);
+            const totalQs = quizHistory.reduce((a, r) => a + r.totalQuestions, 0);
+            const avgPct = quizHistory.length > 0 ? Math.round((totalCorrect / totalQs) * 100) : 0;
+            const bestScore = quizHistory.length > 0 ? Math.max(...quizHistory.map(r => r.scorePercent)) : 0;
+
             return (
               <>
+              <QuizProgressDashboard
+                stats={{
+                  totalAttempts: quizHistory.length,
+                  totalQuestions: totalQs,
+                  totalCorrect,
+                  averagePercent: avgPct,
+                  bestScore,
+                  totalSavedQuizzes: savedQuizzes.length,
+                  totalSavedQuestions: savedQuizzes.reduce((a, q) => a + q.questions.length, 0),
+                }}
+                color={subject.color}
+              />
               <FolderBoard<StoredQuiz>
                 kind="quiz" label={ts('Previous quizzes')} color={subject.color}
                 folders={folders} items={savedQuizzes}
@@ -2479,18 +2608,18 @@ export default function SubjectPage() {
                             onBlur={() => commitRename('quiz')}
                             onKeyDown={e => { if (e.key === 'Enter') commitRename('quiz'); if (e.key === 'Escape') setRenaming(null); }}
                             style={{
-                              width: '100%', background: '#0D1117',
+                              width: '100%', background: 'var(--bg-page)',
                               border: `1px solid ${subject.color}55`, borderRadius: '6px',
-                              color: '#E6EDF3', fontSize: '13px', fontWeight: 600,
+                              color: 'var(--text-1)', fontSize: '13px', fontWeight: 600,
                               padding: '2px 6px', outline: 'none',
                             }}
                           />
                         ) : (
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#E6EDF3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {quiz.name}
                           </div>
                         )}
-                        <div style={{ fontSize: '11px', color: '#8B949E', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px' }}>
                           {ts('{n} questions', { n: quiz.questions.length })} · {new Date(quiz.createdAt).toLocaleDateString()}
                         </div>
                       </div>
@@ -2501,8 +2630,8 @@ export default function SubjectPage() {
                           width: '30px', height: '30px', borderRadius: '999px',
                           cursor: 'pointer', flexShrink: 0,
                           background: isRenaming ? subject.color + '20' : 'transparent',
-                          color: isRenaming ? subject.color : '#484F58',
-                          border: `1px solid ${isRenaming ? subject.color + '50' : '#30363D'}`,
+                          color: isRenaming ? subject.color : 'var(--text-3)',
+                          border: `1px solid ${isRenaming ? subject.color + '50' : 'var(--border-base)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.15s ease',
                         }}
@@ -2547,18 +2676,36 @@ export default function SubjectPage() {
       {/* ── Floating Generate button + popover ──────────────────────────────── */}
       {levelFiles.length > 0 && (
         <div className="hidden md:flex" style={{ position: 'fixed', right: '24px', bottom: '24px', zIndex: 200, flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
-          {showGenPanel && (
+          {showGenPanel && (() => {
+            // ── Per-type category colors ──────────────────────────────────────
+            const TYPE_THEME = {
+              flashcards: { bg: '#eef2ff', text: '#4338ca', border: '#c7d2fe' },
+              notes:      { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+              quiz:       { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+            } as const;
+
+            // Active pill — high-contrast ink style for secondary toggles
+            const activePill  = { background: isLight ? '#ffffff' : 'rgba(255,255,255,0.13)', color: isLight ? '#0f172a' : '#ffffff', border: `2px solid ${isLight ? '#0f172a' : 'rgba(255,255,255,0.55)'}`, fontWeight: 700 } as const;
+            const inactivePill = { background: isLight ? '#ffffff' : 'transparent', color: isLight ? '#334155' : 'var(--text-2)', border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`, fontWeight: 600 } as const;
+
+            // Text input style
+            const inputStyle = { width: '100%', background: isLight ? '#ffffff' : 'var(--bg-page)', border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`, borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: isLight ? '#0f172a' : 'var(--text-1)', outline: 'none', boxSizing: 'border-box' as const };
+
+            return (
             <div
               style={{
                 width: 'min(92vw, 340px)', maxHeight: '70vh', overflowY: 'auto',
-                background: '#161B22', border: '1px solid #30363D', borderRadius: '20px',
-                boxShadow: '0 18px 50px rgba(0,0,0,0.55)', padding: '16px',
+                background: isLight ? '#ffffff' : 'var(--bg-surface)',
+                border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
+                borderRadius: '20px',
+                boxShadow: isLight ? '0 18px 50px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.07)' : '0 18px 50px rgba(0,0,0,0.55)',
+                padding: '16px',
               }}
               className="anim-rise"
             >
               <div className="flex items-center justify-between mb-3">
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: '#E6EDF3' }}>{ts('Generate')}</div>
-                <div style={{ fontSize: '10px', color: selectedLevelFileIds.length > 0 ? subject.color : '#484F58', fontWeight: 600 }}>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: '14px', color: isLight ? '#0f172a' : 'var(--text-1)' }}>{ts('Generate')}</div>
+                <div style={{ fontSize: '10px', color: selectedLevelFileIds.length > 0 ? subject.color : (isLight ? '#94a3b8' : 'var(--text-3)'), fontWeight: 600 }}>
                   {ts('{n}/{total} selected', { n: selectedLevelFileIds.length, total: levelFiles.length })}
                 </div>
               </div>
@@ -2569,75 +2716,75 @@ export default function SubjectPage() {
                 </div>
               )}
 
-              {/* Type selector */}
+              {/* Type selector — category-matched colors */}
               <div className="flex gap-1.5 flex-wrap mb-3">
-                {(['flashcards', 'notes', 'quiz'] as GenerationType[]).map(type => (
-                  <button
-                    key={type}
-                    onClick={() => setSelectedType(type)}
-                    className="h-8 px-3 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
-                    style={{
-                      borderRadius: '999px',
-                      background:   selectedType === type ? subject.color + '20' : 'transparent',
-                      color:        selectedType === type ? subject.color          : '#8B949E',
-                      borderColor:  selectedType === type ? subject.color + '50'   : '#30363D',
-                    }}
-                  >
-                    {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Language selector */}
-              <div className="mb-3">
-                <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Language</div>
-                <div className="flex gap-1.5">
-                  {(['english', 'japanese', 'both'] as const).map(lang => (
+                {(['flashcards', 'notes', 'quiz'] as GenerationType[]).map(type => {
+                  const active = selectedType === type;
+                  const tt = TYPE_THEME[type];
+                  return (
                     <button
-                      key={lang}
-                      onClick={() => setGenLanguage(lang)}
-                      className="h-8 px-3 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
+                      key={type}
+                      onClick={() => setSelectedType(type)}
+                      className="h-8 px-3 text-[11px] cursor-pointer transition-all duration-200"
                       style={{
                         borderRadius: '999px',
-                        background:  genLanguage === lang ? subject.color + '20' : 'transparent',
-                        color:       genLanguage === lang ? subject.color         : '#8B949E',
-                        borderColor: genLanguage === lang ? subject.color + '50'  : '#30363D',
+                        background:  active ? tt.bg  : (isLight ? '#f8fafc' : 'transparent'),
+                        color:       active ? tt.text : (isLight ? '#334155' : 'var(--text-2)'),
+                        border:      active ? `1px solid ${tt.border}` : `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
+                        fontWeight:  active ? 700 : 600,
                       }}
                     >
-                      {lang === 'english' ? 'EN' : lang === 'japanese' ? 'JA' : 'EN + JA'}
+                      {type === 'flashcards' ? 'Cards' : type === 'notes' ? 'Notes' : 'Quiz'}
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+
+              {/* Language selector — ink active style */}
+              <div className="mb-3">
+                <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Language</div>
+                <div className="flex gap-1.5">
+                  {(['english', 'japanese', 'both'] as const).map(lang => {
+                    const active = genLanguage === lang;
+                    return (
+                      <button
+                        key={lang}
+                        onClick={() => setGenLanguage(lang)}
+                        className="h-8 px-3 text-[11px] cursor-pointer transition-all duration-200"
+                        style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}
+                      >
+                        {lang === 'english' ? 'EN' : lang === 'japanese' ? 'JA' : 'EN + JA'}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Flashcard options */}
               {selectedType === 'flashcards' && (
                 <div className="mb-3 flex flex-col gap-2.5">
-                  {/* Mode: standard vs vocabulary */}
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
                     <div className="flex gap-1.5">
                       {([
                         { key: 'standard',   label: 'Study' },
                         { key: 'vocabulary', label: 'Vocabulary' },
-                      ] as const).map(({ key, label }) => (
-                        <button
-                          key={key}
-                          onClick={() => setFlashcardMode(key)}
-                          className="h-8 flex-1 text-[11px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{
-                            borderRadius: '999px',
-                            background:  flashcardMode === key ? subject.color + '20' : 'transparent',
-                            color:       flashcardMode === key ? subject.color         : '#8B949E',
-                            borderColor: flashcardMode === key ? subject.color + '50'  : '#30363D',
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                      ] as const).map(({ key, label }) => {
+                        const active = flashcardMode === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setFlashcardMode(key)}
+                            className="h-8 flex-1 text-[11px] cursor-pointer transition-all duration-200"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
                     </div>
                     {flashcardMode === 'vocabulary' && (
-                      <div style={{ fontSize: '10px', color: '#484F58', marginTop: '5px', lineHeight: 1.5 }}>
+                      <div style={{ fontSize: '10px', color: isLight ? '#64748b' : 'var(--text-3)', marginTop: '5px', lineHeight: 1.5 }}>
                         Front: word in source language. Back: reading, meaning, example sentence + translation.
                       </div>
                     )}
@@ -2645,32 +2792,35 @@ export default function SubjectPage() {
 
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '10px', color: '#8B949E', fontWeight: 600 }}>{flashcardMode === 'vocabulary' ? 'Words per file' : 'Cards per file'}</div>
+                      <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', fontWeight: 600 }}>{flashcardMode === 'vocabulary' ? 'Words per file' : 'Cards per file'}</div>
                       <div style={{
                         fontSize: '14px', fontWeight: 700, fontFamily: "'Sora', sans-serif",
-                        color: cardCount === 0 ? '#484F58' : subject.color,
+                        color: cardCount === 'all' ? (isLight ? '#94a3b8' : 'var(--text-3)') : '#2563eb',
                         transition: 'color 0.15s ease',
                       }}>
-                        {cardCount === 0 ? 'Undecided' : cardCount}
+                        {cardCount === 'all' ? 'All' : cardCount}
                       </div>
                     </div>
                     <input
                       type="range"
                       min={0} max={10} step={1}
-                      value={cardCount / 5}
-                      onChange={e => setCardCount(Number(e.target.value) * 5)}
-                      style={{ width: '100%', accentColor: subject.color, cursor: 'pointer', display: 'block' }}
+                      value={cardCount === 'all' ? 0 : cardCount / 5}
+                      onChange={e => {
+                        const v = Number(e.target.value);
+                        setCardCount(v === 0 ? 'all' : v * 5);
+                      }}
+                      style={{ width: '100%', accentColor: '#2563eb', cursor: 'pointer', display: 'block' }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: '#484F58', userSelect: 'none' }}>
-                      <span>Any</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: isLight ? '#94a3b8' : 'var(--text-3)', userSelect: 'none' }}>
+                      <span>All</span>
+                      <span>5</span>
                       <span>25</span>
                       <span>50</span>
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
-                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Supply & demand"
-                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', boxSizing: 'border-box' }} />
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Supply & demand" style={inputStyle} />
                   </div>
                 </div>
               )}
@@ -2679,25 +2829,28 @@ export default function SubjectPage() {
               {selectedType === 'notes' && (
                 <div className="mb-3 flex flex-col gap-2.5">
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Detail level</div>
                     <div className="flex gap-1.5">
-                      {(['concise', 'standard', 'comprehensive'] as const).map(d => (
-                        <button key={d} onClick={() => setNotesDetail(d)}
-                          className="h-8 px-2.5 text-[10px] border cursor-pointer transition-all duration-200 font-semibold capitalize"
-                          style={{ borderRadius: '999px', background: notesDetail === d ? subject.color + '20' : 'transparent', color: notesDetail === d ? subject.color : '#8B949E', borderColor: notesDetail === d ? subject.color + '50' : '#30363D' }}>
-                          {d === 'comprehensive' ? 'Deep' : d.charAt(0).toUpperCase() + d.slice(1)}
-                        </button>
-                      ))}
+                      {(['concise', 'standard', 'comprehensive'] as const).map(d => {
+                        const active = notesDetail === d;
+                        return (
+                          <button key={d} onClick={() => setNotesDetail(d)}
+                            className="h-8 px-2.5 text-[10px] cursor-pointer transition-all duration-200 capitalize"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
+                            {d === 'comprehensive' ? 'Deep' : d.charAt(0).toUpperCase() + d.slice(1)}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Include</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Include</div>
                     <div className="flex flex-col gap-1.5">
                       {(['formulas', 'diagrams', 'mindmap'] as const).map(item => (
                         <label key={item} className="flex items-center gap-2 cursor-pointer">
                           <input type="checkbox" checked={notesIncludes.includes(item)} onChange={() => toggleInclude(item)}
-                            style={{ accentColor: subject.color, width: '13px', height: '13px', cursor: 'pointer' }} />
-                          <span style={{ fontSize: '11px', color: notesIncludes.includes(item) ? '#C9D1D9' : '#8B949E' }}>
+                            style={{ accentColor: '#15803d', width: '13px', height: '13px', cursor: 'pointer' }} />
+                          <span style={{ fontSize: '11px', color: notesIncludes.includes(item) ? (isLight ? '#0f172a' : 'var(--text-1)') : (isLight ? '#475569' : 'var(--text-2)') }}>
                             {item === 'formulas' ? '∑ Formulas' : item === 'diagrams' ? '→ Diagrams' : '⊞ Mind-map style'}
                           </span>
                         </label>
@@ -2711,30 +2864,57 @@ export default function SubjectPage() {
               {selectedType === 'quiz' && (
                 <div className="mb-3 flex flex-col gap-2.5">
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {[5, 10, 15, 20].map(n => (
-                        <button key={n} onClick={() => setQuizCount(n)}
-                          className="h-8 w-10 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
-                          style={{ borderRadius: '999px', background: quizCount === n ? subject.color + '20' : 'transparent', color: quizCount === n ? subject.color : '#8B949E', borderColor: quizCount === n ? subject.color + '50' : '#30363D' }}>
-                          {n}
-                        </button>
-                      ))}
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Mode</div>
+                    <div className="flex gap-1.5">
+                      {([
+                        { key: 'generated', label: 'AI Generated' },
+                        { key: 'extraction', label: 'Extraction Only' },
+                      ] as const).map(m => {
+                        const active = quizMode === m.key;
+                        return (
+                          <button key={m.key} onClick={() => setQuizMode(m.key)}
+                            className="h-8 flex-1 text-[11px] cursor-pointer transition-all duration-200"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
+                            {m.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[5, 10, 15, 20].map(n => {
+                        const active = quizCount === n;
+                        return (
+                          <button key={n} onClick={() => setQuizCount(n)}
+                            className="h-8 w-10 text-[12px] cursor-pointer transition-all duration-200"
+                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
+                            {n}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
                     <div className="flex gap-1.5">
                       {([
-                        { key: 'easy', label: 'Easy', tint: '#48C78E' },
-                        { key: 'medium', label: 'Medium', tint: '#F6AD55' },
-                        { key: 'hard', label: 'Hard', tint: '#F87171' },
+                        { key: 'easy',   label: 'Easy',   activeBg: '#f0fdf4', activeText: '#15803d', activeBorder: '#bbf7d0' },
+                        { key: 'medium', label: 'Medium', activeBg: '#fffbeb', activeText: '#b45309', activeBorder: '#fde68a' },
+                        { key: 'hard',   label: 'Hard',   activeBg: '#fef2f2', activeText: '#b91c1c', activeBorder: '#fecaca' },
                       ] as const).map(d => {
                         const active = quizDifficulty === d.key;
                         return (
                           <button key={d.key} onClick={() => setQuizDifficulty(d.key)}
-                            className="h-8 flex-1 text-[12px] border cursor-pointer transition-all duration-200 font-semibold"
-                            style={{ borderRadius: '999px', background: active ? d.tint + '20' : 'transparent', color: active ? d.tint : '#8B949E', borderColor: active ? d.tint + '60' : '#30363D' }}>
+                            className="h-8 flex-1 text-[12px] cursor-pointer transition-all duration-200"
+                            style={{
+                              borderRadius: '999px',
+                              background:  active ? d.activeBg   : (isLight ? '#ffffff' : 'transparent'),
+                              color:       active ? d.activeText : (isLight ? '#334155' : 'var(--text-2)'),
+                              border:      active ? `1px solid ${d.activeBorder}` : `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
+                              fontWeight:  active ? 700 : 600,
+                            }}>
                             {d.label}
                           </button>
                         );
@@ -2742,9 +2922,8 @@ export default function SubjectPage() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#8B949E', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
-                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy"
-                      style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', boxSizing: 'border-box' }} />
+                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
+                    <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy" style={inputStyle} />
                   </div>
                 </div>
               )}
@@ -2752,48 +2931,43 @@ export default function SubjectPage() {
               {/* Custom prompt */}
               <div className="mb-3">
                 <button onClick={() => setShowAdvanced(v => !v)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '10px', fontWeight: 600, color: showAdvanced ? subject.color : '#484F58', display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '10px', fontWeight: 600, color: showAdvanced ? (isLight ? '#0f172a' : subject.color) : (isLight ? '#64748b' : 'var(--text-3)'), display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.15s' }}>
                   <span style={{ fontSize: '11px' }}>✦</span> Custom instructions {showAdvanced ? '▴' : '▾'}
                 </button>
                 {showAdvanced && (
                   <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
                     placeholder={`E.g. "Focus on exam definitions", "Use simple language"`}
                     rows={3}
-                    style={{ marginTop: '7px', width: '100%', background: '#0D1117', border: `1px solid ${subject.color}30`, borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: '#E6EDF3', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
+                    style={{ marginTop: '7px', width: '100%', background: isLight ? '#ffffff' : 'var(--bg-page)', border: `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`, borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: isLight ? '#0f172a' : 'var(--text-1)', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }} />
                 )}
               </div>
 
+              {/* Primary Generate CTA */}
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || selectedLevelFileIds.length === 0}
-                className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold border cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-300"
+                className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-default transition-all duration-300"
                 style={{
                   borderRadius: '999px',
-                  background:   isGenerating ? '#1F2937' : subject.color + '18',
-                  color:        isGenerating ? '#8B949E' : subject.color,
-                  borderColor:  isGenerating ? '#30363D' : subject.color + '45',
+                  border: 'none',
+                  background:  isGenerating ? (isLight ? '#334155' : 'var(--bg-elevated)') : '#0f172a',
+                  color:       isGenerating ? (isLight ? '#94a3b8' : 'var(--text-2)') : '#ffffff',
+                  fontFamily:  "'Sora',sans-serif",
+                  letterSpacing: '0.01em',
+                  boxShadow:   isGenerating ? 'none' : (isLight ? '0 4px 14px rgba(15,23,42,0.28)' : '0 4px 14px rgba(0,0,0,0.5)'),
                 }}
               >
                 {isGenerating
-                  ? <><Spinner color={subject.color} /> Generating…</>
-                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? (cardCount === 0 ? 'Cards' : `${cardCount} Cards`) : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
+                  ? <><Spinner color="#94a3b8" /> Generating…</>
+                  : <><IconSparkle /> Generate {selectedType === 'flashcards' ? (cardCount === 'all' ? 'Cards' : `${cardCount} Cards`) : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
                 }
               </button>
 
-              {isGenerating && (
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  {genProgress && genProgress.total > 1 ? (
-                    <span className="text-[11px]" style={{ color: '#8B949E' }}>
-                      File {genProgress.current} of {genProgress.total}…
-                    </span>
-                  ) : <span />}
-                  <button
-                    onClick={() => { cancelGenRef.current = true; }}
-                    className="text-[11px] font-semibold cursor-pointer"
-                    style={{ background: 'transparent', border: '1px solid #30363D', borderRadius: '999px', color: '#8B949E', padding: '3px 10px', flexShrink: 0 }}
-                  >
-                    {ts('Cancel')}
-                  </button>
+              {isGenerating && genProgress && (genProgress.total > 1 || genProgress.chunk) && (
+                <div className="mt-2 text-center text-[11px]" style={{ color: isLight ? '#64748b' : 'var(--text-2)' }}>
+                  {genProgress.total > 1 ? `File ${genProgress.current} of ${genProgress.total}` : 'Processing file'}
+                  {genProgress.chunk && genProgress.chunk.total > 1 && ` — batch ${genProgress.chunk.current} of ${genProgress.chunk.total}`}
+                  …
                 </div>
               )}
 
@@ -2803,20 +2977,24 @@ export default function SubjectPage() {
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
 
+          {/* Floating toggle button */}
           <button
             onClick={() => setShowGenPanel(v => !v)}
             aria-label="Generate study material"
             className="flex items-center gap-2 cursor-pointer transition-all duration-300"
             style={{
-              height: '54px', padding: showGenPanel ? '0 18px' : '0 22px',
+              height: '54px', padding: showGenPanel ? '0 20px' : '0 22px',
               borderRadius: '999px',
-              background: subject.color,
-              color: '#0D1117',
+              background:  showGenPanel ? '#334155' : subject.color,
+              color:       showGenPanel ? '#f8fafc'  : '#0D1117',
               border: 'none',
               fontWeight: 700, fontSize: '14px',
-              boxShadow: `0 10px 30px ${subject.color}55, 0 2px 8px rgba(0,0,0,0.4)`,
+              boxShadow: showGenPanel
+                ? '0 6px 20px rgba(51,65,85,0.40)'
+                : `0 10px 30px ${subject.color}55, 0 2px 8px rgba(0,0,0,0.4)`,
               fontFamily: "'Sora',sans-serif",
             }}
           >

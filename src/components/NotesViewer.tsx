@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useLayoutEffect, forwardRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, forwardRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { GeneratedNote, GeneratedNoteSection } from '../lib/generator';
 import { AskAI } from './AskAI';
-import { useAnnotations, type Annotation } from '../store/useAnnotations';
+import { useAnnotations } from '../store/useAnnotations';
 import { useLang } from '../context/LanguageContext';
+import { MarkdownContent, stripMarkdown } from './MarkdownContent';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -16,8 +17,9 @@ function calcReadTime(note: GeneratedNote): number {
 }
 
 function firstSentence(text: string): string {
-  const m = text.match(/^[^.!?]+[.!?]/);
-  return m ? m[0] : text.slice(0, 120) + '…';
+  const plain = stripMarkdown(text);
+  const m = plain.match(/^[^.!?]+[.!?]/);
+  return m ? m[0] : plain.slice(0, 120) + '…';
 }
 
 // ── RichText: **bold** → accent-highlighted strong ───────────────────────────
@@ -59,126 +61,6 @@ const UNDERLINE_COLORS = [
   { id: 'rose',   value: '#FB7185' },
 ] as const;
 
-// ── buildSegments: merges bold markers + annotations into renderable segments ──
-
-type Segment = {
-  text: string;
-  isBold: boolean;
-  annotation?: Annotation | null;
-};
-
-function buildSegments(rawText: string, annotations: Annotation[]): Segment[] {
-  type BoldSeg = { text: string; isBold: boolean; visStart: number; visEnd: number };
-  const boldSegs: BoldSeg[] = [];
-  const boldRe = /\*\*([^*]+)\*\*/g;
-  let lastIdx = 0;
-  let visPos = 0;
-  let m: RegExpExecArray | null;
-
-  while ((m = boldRe.exec(rawText)) !== null) {
-    if (m.index > lastIdx) {
-      const t = rawText.slice(lastIdx, m.index);
-      boldSegs.push({ text: t, isBold: false, visStart: visPos, visEnd: visPos + t.length });
-      visPos += t.length;
-    }
-    const t = m[1];
-    boldSegs.push({ text: t, isBold: true, visStart: visPos, visEnd: visPos + t.length });
-    visPos += t.length;
-    lastIdx = boldRe.lastIndex;
-  }
-  if (lastIdx < rawText.length) {
-    const t = rawText.slice(lastIdx);
-    boldSegs.push({ text: t, isBold: false, visStart: visPos, visEnd: visPos + t.length });
-  }
-
-  const visibleText = boldSegs.map(s => s.text).join('');
-  const annRanges: { start: number; end: number; ann: Annotation }[] = [];
-  for (const ann of annotations) {
-    if (!ann.selectedText) continue;
-    const idx = visibleText.indexOf(ann.selectedText);
-    if (idx !== -1) annRanges.push({ start: idx, end: idx + ann.selectedText.length, ann });
-  }
-  annRanges.sort((a, b) => a.start - b.start);
-
-  if (annRanges.length === 0) {
-    return boldSegs.map(s => ({ text: s.text, isBold: s.isBold, annotation: null }));
-  }
-
-  const result: Segment[] = [];
-  for (const bs of boldSegs) {
-    let pos = bs.visStart;
-    for (const ar of annRanges) {
-      if (ar.end <= pos || ar.start >= bs.visEnd) continue;
-      if (ar.start > pos) {
-        const t = bs.text.slice(pos - bs.visStart, ar.start - bs.visStart);
-        if (t) result.push({ text: t, isBold: bs.isBold, annotation: null });
-        pos = ar.start;
-      }
-      const end = Math.min(ar.end, bs.visEnd);
-      const t = bs.text.slice(pos - bs.visStart, end - bs.visStart);
-      if (t) result.push({ text: t, isBold: bs.isBold, annotation: ar.ann });
-      pos = end;
-    }
-    if (pos < bs.visEnd) {
-      const t = bs.text.slice(pos - bs.visStart);
-      if (t) result.push({ text: t, isBold: bs.isBold, annotation: null });
-    }
-  }
-  return result;
-}
-
-// ── AnnotatedRichText ─────────────────────────────────────────────────────────
-
-function AnnotatedRichText({ rawText, accent, annotations }: {
-  rawText: string;
-  accent: string;
-  annotations: Annotation[];
-}) {
-  const segments = useMemo(() => buildSegments(rawText, annotations), [rawText, annotations]);
-  return (
-    <>
-      {segments.map((seg, i) => {
-        const ann = seg.annotation;
-        let annStyle: React.CSSProperties = {};
-        if (ann) {
-          if (ann.type === 'highlight') {
-            annStyle = {
-              background: ann.color ?? 'rgba(255,214,0,0.35)',
-              borderRadius: '2px', padding: '0 1px',
-              opacity: 1,
-            };
-          } else {
-            annStyle = {
-              textDecoration: 'underline',
-              textDecorationColor: ann.color ?? accent,
-              textDecorationThickness: '2px',
-              textUnderlineOffset: '4px',
-              color: 'inherit',
-            };
-          }
-        }
-        if (seg.isBold) {
-          return (
-            <strong key={i} data-ann-id={ann?.id} style={{
-              background: ann ? undefined : accent + '22',
-              color: accent, borderRadius: '3px',
-              padding: '1px 5px', fontWeight: 600,
-              ...annStyle,
-            }}>{seg.text}</strong>
-          );
-        }
-        if (ann) {
-          return (
-            <mark key={i} data-ann-id={ann.id} style={{ background: 'transparent', color: 'inherit', ...annStyle }}>
-              {seg.text}
-            </mark>
-          );
-        }
-        return <span key={i}>{seg.text}</span>;
-      })}
-    </>
-  );
-}
 
 // ── AnnotationToolbar ─────────────────────────────────────────────────────────
 
@@ -254,8 +136,8 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
         visibility: pos ? 'visible' : 'hidden',
         zIndex: 9999,
         display: 'flex', alignItems: 'center', gap: '2px', padding: '5px 7px',
-        background: '#0D1117', border: '1px solid rgba(255,255,255,0.14)',
-        borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+        borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
         userSelect: 'none',
       }}
     >
@@ -271,7 +153,7 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
           }}
         />
       ))}
-      <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+      <div style={{ width: '1px', height: '16px', background: 'var(--border-base)', margin: '0 2px' }} />
       {UNDERLINE_COLORS.map(c => (
         <button
           key={c.id}
@@ -289,7 +171,7 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
           }}
         >U</button>
       ))}
-      <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+      <div style={{ width: '1px', height: '16px', background: 'var(--border-base)', margin: '0 2px' }} />
       <button
         onClick={onAddToDictionary}
         title={ts('Add to dictionary')}
@@ -313,8 +195,8 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
         title="翻訳 (Japanese definition)"
         style={{
           height: '28px', padding: '0 9px', borderRadius: '7px',
-          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
-          cursor: 'pointer', color: 'rgba(230,237,243,0.85)', fontSize: '11px', fontWeight: 600,
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
+          cursor: 'pointer', color: 'var(--text-2)', fontSize: '11px', fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: '5px',
           flexShrink: 0, whiteSpace: 'nowrap',
           letterSpacing: '0.02em',
@@ -345,8 +227,8 @@ function AnnotationToolbar({ rect, existingId, onHighlight, onUnderline, onAddTo
             position: 'absolute', left: caretX, width: 0, height: 0,
             transform: 'translateX(-50%)',
             ...(pos.below
-              ? { top: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: '6px solid #111827' }
-              : { bottom: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid #111827' }),
+              ? { top: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: '6px solid var(--bg-surface)' }
+              : { bottom: -6, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid var(--bg-surface)' }),
           }}
         />
       )}
@@ -365,7 +247,7 @@ function RecallCard({ heading, keyPoints, color }: { heading: string; keyPoints:
       marginTop: '10px', borderRadius: '10px',
       border: `1px solid ${color}28`, background: color + '0d', padding: '14px 16px',
     }}>
-      <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, lineHeight: 1.5, color: 'rgba(230,237,243,0.8)' }}>
+      <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, lineHeight: 1.5, color: 'var(--text-1)' }}>
         {ts('Can you explain:')} <span style={{ color }}>{heading}</span>?
       </p>
       {!revealed ? (
@@ -384,7 +266,7 @@ function RecallCard({ heading, keyPoints, color }: { heading: string; keyPoints:
           {keyPoints.map((pt, i) => (
             <li key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
               <span style={{ color, fontSize: '10px', marginTop: '4px', flexShrink: 0 }}>▸</span>
-              <span style={{ fontSize: '13px', lineHeight: 1.62, color: 'rgba(230,237,243,0.75)' }}>{pt}</span>
+              <span style={{ fontSize: '13px', lineHeight: 1.62, color: 'var(--text-2)' }}>{pt}</span>
             </li>
           ))}
         </ul>
@@ -401,13 +283,12 @@ interface SectionCardProps {
   color: string;
   understood: boolean;
   collapsed: boolean;
-  annotations: Annotation[];
   onToggleUnderstood: () => void;
   onToggleCollapsed: () => void;
 }
 
 const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function SectionCard(
-  { index, section, color, understood, collapsed, annotations, onToggleUnderstood, onToggleCollapsed },
+  { index, section, color, understood, collapsed, onToggleUnderstood, onToggleCollapsed },
   ref
 ) {
   const { ts } = useLang();
@@ -423,11 +304,11 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
       style={{
         marginBottom: '24px',
         borderRadius: '16px',
-        border: `1px solid ${understood ? 'rgba(72,199,142,0.35)' : 'rgba(255,255,255,0.075)'}`,
-        background: understood ? 'rgba(72,199,142,0.04)' : 'rgba(255,255,255,0.030)',
+        border: `1px solid ${understood ? 'rgba(72,199,142,0.35)' : 'var(--border-light)'}`,
+        background: understood ? 'rgba(72,199,142,0.04)' : 'var(--bg-surface)',
         transition: 'border-color 0.2s ease, background 0.2s ease',
         scrollMarginTop: '16px',
-        boxShadow: '0 2px 20px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.02)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.6) inset',
       }}
     >
       {/* Section header */}
@@ -435,7 +316,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
         display: 'flex', alignItems: 'center', gap: '14px',
         padding: 'clamp(14px, 3vw, 24px) clamp(14px, 4vw, 36px) 0',
         marginBottom: '20px', paddingBottom: '16px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid var(--border-light)',
       }}>
         <div style={{
           flexShrink: 0, width: '32px', height: '32px', minWidth: '32px', borderRadius: '8px',
@@ -449,7 +330,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
 
         <h3 style={{
           flex: 1, margin: 0, fontSize: '17px', fontWeight: 700,
-          color: 'rgba(255,255,255,0.95)', fontFamily: 'Sora, sans-serif', lineHeight: 1.3,
+          color: 'var(--text-1)', fontFamily: 'Sora, sans-serif', lineHeight: 1.3,
           letterSpacing: '-0.01em',
         }}>
           {section.heading}
@@ -459,11 +340,11 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
           <button
             onClick={onToggleCollapsed}
             style={{
-              background: collapsed ? 'rgba(255,255,255,0.06)' : 'transparent',
-              border: `1px solid ${collapsed ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.10)'}`,
+              background: collapsed ? 'var(--bg-elevated)' : 'transparent',
+              border: `1px solid ${collapsed ? 'var(--border-base)' : 'var(--border-light)'}`,
               borderRadius: '6px', padding: '4px 10px',
               cursor: 'pointer', fontSize: '11px', fontWeight: 600,
-              color: collapsed ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)',
+              color: collapsed ? 'var(--text-1)' : 'var(--text-3)',
               letterSpacing: '0.06em', whiteSpace: 'nowrap',
               transition: 'all 0.15s',
             }}
@@ -475,9 +356,9 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
             title={understood ? ts('Mark as not understood') : ts('Got it')}
             style={{
               width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0,
-              border: `1px solid ${understood ? 'rgba(72,199,142,0.40)' : 'rgba(255,255,255,0.10)'}`,
+              border: `1px solid ${understood ? 'rgba(72,199,142,0.40)' : 'var(--border-light)'}`,
               background: understood ? 'rgba(72,199,142,0.15)' : 'transparent',
-              color: understood ? 'rgba(72,199,142,0.90)' : 'rgba(255,255,255,0.20)',
+              color: understood ? 'rgba(72,199,142,0.90)' : 'var(--text-3)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.15s',
             }}
@@ -491,13 +372,9 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
 
       {/* Body */}
       <div style={{ padding: '0 clamp(14px, 4vw, 36px) 28px' }}>
-        <p className="notes-section-body" style={{
-          margin: '0 0 20px', fontSize: '15px', lineHeight: 1.80,
-          color: 'rgba(255,255,255,0.82)', fontWeight: 400,
-          maxWidth: '640px', letterSpacing: '0.01em',
-        }}>
+        <div className="notes-section-body" style={{ margin: '0 0 20px', maxWidth: '680px' }}>
           {collapsed ? (
-            <>
+            <p style={{ margin: 0, fontSize: '15px', lineHeight: 1.80, color: 'var(--text-1)', letterSpacing: '0.01em' }}>
               {firstSentence(section.content)}
               {' '}
               <button
@@ -506,25 +383,25 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
               >
                 {ts('Read more')}
               </button>
-            </>
+            </p>
           ) : (
-            <AnnotatedRichText rawText={section.content} accent={color} annotations={annotations} />
+            <MarkdownContent content={section.content} accent={color} />
           )}
-        </p>
+        </div>
 
         {/* Formula block */}
         {!collapsed && section.formula && (
           <div style={{
             margin: '16px 0 20px', padding: '16px 20px', borderRadius: '8px',
-            background: 'rgba(0,0,0,0.35)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-base)',
             borderLeft: '3px solid rgba(72,199,142,0.50)',
             fontFamily: 'JetBrains Mono, monospace', fontSize: '13px',
             color: 'rgba(72,199,142,0.90)', lineHeight: 1.7,
             display: 'flex', alignItems: 'flex-start', gap: '10px',
             overflowX: 'auto',
           }}>
-            <span style={{ opacity: 0.5, fontSize: '12px', marginTop: '1px', flexShrink: 0, color: 'rgba(255,255,255,0.35)' }}>∑</span>
+            <span style={{ opacity: 0.5, fontSize: '12px', marginTop: '1px', flexShrink: 0, color: 'var(--text-3)' }}>∑</span>
             <span style={{ whiteSpace: 'pre-wrap' }}>{section.formula}</span>
           </div>
         )}
@@ -533,15 +410,15 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
         {!collapsed && section.diagram && (
           <div style={{
             margin: '16px 0 20px', padding: '16px 20px', borderRadius: '8px',
-            background: 'rgba(0,0,0,0.35)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderLeft: '3px solid rgba(255,255,255,0.15)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-base)',
+            borderLeft: '3px solid var(--border-base)',
             fontFamily: 'JetBrains Mono, monospace', fontSize: '13px',
-            color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, whiteSpace: 'pre-wrap',
+            color: 'var(--text-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap',
             display: 'flex', alignItems: 'flex-start', gap: '10px',
             overflowX: 'auto',
           }}>
-            <span style={{ opacity: 0.4, fontSize: '12px', marginTop: '1px', flexShrink: 0, color: 'rgba(255,255,255,0.35)' }}>→</span>
+            <span style={{ opacity: 0.4, fontSize: '12px', marginTop: '1px', flexShrink: 0, color: 'var(--text-3)' }}>→</span>
             <span>{section.diagram}</span>
           </div>
         )}
@@ -554,7 +431,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
                   flexShrink: 0, width: '5px', height: '5px', minWidth: '5px', borderRadius: '50%',
                   background: 'rgba(72,199,142,0.60)', marginTop: '8px',
                 }} />
-                <span style={{ fontSize: '14px', lineHeight: 1.65, color: 'rgba(255,255,255,0.72)' }}>
+                <span style={{ fontSize: '14px', lineHeight: 1.65, color: 'var(--text-2)' }}>
                   <RichText text={pt} accent={color} />
                 </span>
               </li>
@@ -563,17 +440,17 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
         )}
 
         {!collapsed && (
-          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
             <button
               onClick={() => setRecallOpen(v => !v)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.28)',
+                fontSize: '12px', fontWeight: 500, color: 'var(--text-3)',
                 display: 'flex', alignItems: 'center', gap: '6px', width: 'fit-content',
                 transition: 'color 0.15s', letterSpacing: '0.02em',
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(212,175,55,0.80)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.28)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; }}
             >
               <svg viewBox="0 0 10 10" width="14" height="14" fill="none" style={{ opacity: 0.5 }}>
                 <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.2" />
@@ -664,7 +541,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
 }) {
   const { ts } = useLang();
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation, getForSection } = useAnnotations();
+  const { annotations: allAnnotations, add: addAnnotation, remove: removeAnnotation } = useAnnotations();
   const [toolbar, setToolbar] = useState<{
     rect: SelRect; sectionIndex: number; selectedText: string; existingId?: string;
   } | null>(null);
@@ -910,7 +787,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
       {/* Fixed ToC panel */}
       <div className={`notes-toc-panel${showToc ? ' visible' : ''}`} role="navigation" aria-label={ts('Table of contents')}>
         {/* Reading progress bar */}
-        <div className="contents-reading-progress" style={{ height: '2px', background: 'rgba(255,255,255,0.08)', borderRadius: '999px', marginBottom: '20px', overflow: 'hidden' }}>
+        <div className="contents-reading-progress" style={{ height: '2px', background: 'var(--border-light)', borderRadius: '999px', marginBottom: '20px', overflow: 'hidden' }}>
           <div style={{
             height: '100%',
             width: `${scrollPct * 100}%`,
@@ -919,7 +796,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
             transition: 'width 300ms ease',
           }} />
         </div>
-        <p style={{ margin: '0 0 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase' }}>
+        <p style={{ margin: '0 0 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--text-3)', textTransform: 'uppercase' }}>
           {ts('Contents')}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -938,10 +815,10 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
               onMouseEnter={e => { if (activeSection !== i) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.06)'; }}
               onMouseLeave={e => { if (activeSection !== i) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
             >
-              <span style={{ fontSize: '10px', fontWeight: 700, color: activeSection === i ? 'rgba(212,175,55,0.80)' : 'rgba(255,255,255,0.25)', minWidth: '20px', fontVariantNumeric: 'tabular-nums', fontFamily: 'JetBrains Mono, monospace', flexShrink: 0 }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: activeSection === i ? 'rgba(212,175,55,0.80)' : 'var(--text-3)', minWidth: '20px', fontVariantNumeric: 'tabular-nums', fontFamily: 'JetBrains Mono, monospace', flexShrink: 0 }}>
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <span style={{ fontSize: '12px', color: activeSection === i ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.45)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+              <span style={{ fontSize: '12px', color: activeSection === i ? 'var(--text-1)' : 'var(--text-2)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
                 {s.heading}
               </span>
               {understood.has(i) && (
@@ -961,9 +838,9 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
           {/* Note metadata + completion header */}
           <div className="notes-meta-row" style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('~{min} min read', { min: readTime })}</span>
-              <span style={{ width: '3px', height: '3px', background: '#30363D', borderRadius: '50%' }} />
-              <span style={{ fontSize: '11px', color: '#484F58' }}>{ts('{n} sections', { n: total })}</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{ts('~{min} min read', { min: readTime })}</span>
+              <span style={{ width: '3px', height: '3px', background: 'var(--border-base)', borderRadius: '50%' }} />
+              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{ts('{n} sections', { n: total })}</span>
               <span style={{ flex: 1 }} />
               {onToggleFullFocus && (
                 <button
@@ -971,9 +848,9 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
                   title={fullFocus ? ts('Exit full focus') : ts('Full focus')}
                   style={{
                     background: fullFocus ? color + '20' : 'transparent',
-                    border: `1px solid ${fullFocus ? color + '50' : '#30363D'}`,
+                    border: `1px solid ${fullFocus ? color + '50' : 'var(--border-base)'}`,
                     borderRadius: '7px', padding: '3px 8px',
-                    cursor: 'pointer', color: fullFocus ? color : '#484F58',
+                    cursor: 'pointer', color: fullFocus ? color : 'var(--text-3)',
                     fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em',
                     transition: 'all 0.15s',
                   }}
@@ -983,7 +860,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
               )}
               {/* Understood progress bar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '68px', height: '3px', borderRadius: '2px', background: '#21262D', overflow: 'hidden' }}>
+                <div style={{ width: '68px', height: '3px', borderRadius: '2px', background: 'var(--border-base)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', width: `${completionPct}%`,
                     background: completionPct === 100 ? '#4ade80' : color,
@@ -1005,7 +882,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
                 disabled={activeSection === 0}
                 style={{
                   height: '26px', padding: '0 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 600,
-                  background: 'transparent', border: '1px solid #30363D', color: '#8B949E',
+                  background: 'transparent', border: '1px solid var(--border-base)', color: 'var(--text-2)',
                   cursor: activeSection === 0 ? 'default' : 'pointer',
                   opacity: activeSection === 0 ? 0.35 : 1, transition: 'opacity 0.15s',
                 }}
@@ -1017,7 +894,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
                 disabled={activeSection >= notes.sections.length - 1}
                 style={{
                   height: '26px', padding: '0 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 600,
-                  background: 'transparent', border: '1px solid #30363D', color: '#8B949E',
+                  background: 'transparent', border: '1px solid var(--border-base)', color: 'var(--text-2)',
                   cursor: activeSection >= notes.sections.length - 1 ? 'default' : 'pointer',
                   opacity: activeSection >= notes.sections.length - 1 ? 0.35 : 1, transition: 'opacity 0.15s',
                 }}
@@ -1029,14 +906,14 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
             <h2 className="notes-title" style={{
               margin: '0 0 12px',
               fontFamily: 'Sora, sans-serif', fontWeight: 800,
-              fontSize: '26px', color: '#E6EDF3', lineHeight: 1.3,
+              fontSize: '26px', color: 'var(--text-1)', lineHeight: 1.3,
               letterSpacing: '-0.02em',
             }}>
               {notes.title}
             </h2>
             <p className="notes-section-body" style={{
               margin: '0 0 40px', fontSize: '14px', lineHeight: 1.7,
-              color: 'rgba(255,255,255,0.48)', maxWidth: '600px',
+              color: 'var(--text-2)', maxWidth: '600px',
             }}>
               <RichText text={notes.summary} accent={color} />
             </p>
@@ -1052,7 +929,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
               color={color}
               understood={understood.has(i)}
               collapsed={collapsed.has(i)}
-              annotations={noteId ? getForSection(noteId, i) : []}
               onToggleUnderstood={() => toggleUnderstood(i)}
               onToggleCollapsed={() => toggleCollapsed(i)}
             />
@@ -1061,14 +937,14 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
           {/* Keyboard hint — desktop only */}
           <div className="hidden md:flex" style={{
             marginTop: '8px', padding: '10px 14px', borderRadius: '10px',
-            background: '#161B22', border: '1px solid #21262D',
+            background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
             alignItems: 'center', gap: '6px',
           }}>
-            <span style={{ fontSize: '11px', color: '#30363D' }}>{ts('Navigate sections with')}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{ts('Navigate sections with')}</span>
             {(['j', 'k'] as const).map(k => (
               <kbd key={k} style={{
-                fontSize: '10px', background: '#21262D', border: '1px solid #30363D',
-                borderRadius: '4px', padding: '2px 6px', color: '#484F58',
+                fontSize: '10px', background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
+                borderRadius: '4px', padding: '2px 6px', color: 'var(--text-2)',
                 fontFamily: 'JetBrains Mono, monospace',
               }}>{k}</kbd>
             ))}
@@ -1085,8 +961,8 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
                 onClick={onGoToFlashcards}
                 style={{
                   height: '40px', padding: '0 22px', borderRadius: '999px',
-                  background: '#1D3461', color: '#93B8FF',
-                  border: '1px solid rgba(61,126,255,0.4)',
+                  background: 'var(--bg-elevated)', color: 'var(--text-1)',
+                  border: '1px solid var(--border-base)',
                   fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -1105,19 +981,19 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
           style={{
             position: 'fixed', bottom: '28px', right: '72px', zIndex: 20,
             width: '44px', height: '44px', borderRadius: '50%',
-            background: '#161B22', border: '1px solid #30363D',
-            cursor: 'pointer', color: '#8B949E',
+            background: 'var(--bg-surface)', border: '1px solid var(--border-base)',
+            cursor: 'pointer', color: 'var(--text-2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
             transition: 'border-color 0.2s, color 0.2s',
           }}
           onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.borderColor = '#484F58';
-            (e.currentTarget as HTMLElement).style.color = '#E6EDF3';
+            (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)';
+            (e.currentTarget as HTMLElement).style.color = 'var(--text-1)';
           }}
           onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.borderColor = '#30363D';
-            (e.currentTarget as HTMLElement).style.color = '#8B949E';
+            (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)';
+            (e.currentTarget as HTMLElement).style.color = 'var(--text-2)';
           }}
         >
           <svg viewBox="0 0 12 12" width="12" height="12" fill="none">
@@ -1126,47 +1002,6 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
         </button>
       )}
 
-      {/* Top fade — fixed overlay, only shown while reading */}
-      {createPortal(
-        <div
-          className="notes-reading-fade notes-reading-fade-top"
-          style={{
-            position: 'fixed', left: 0, right: 0, zIndex: 25,
-            height: '72px', pointerEvents: 'none',
-            background: 'linear-gradient(to bottom, rgba(7,7,15,0.98) 0%, rgba(7,7,15,0.6) 40%, transparent 100%)',
-            transition: 'opacity 0.3s ease, top 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        />,
-        document.body
-      )}
-
-      {/* Bottom reading-progress fade — fixed overlay, only shown while reading */}
-      {createPortal(
-        <div
-          style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 25,
-            height: '72px', pointerEvents: 'none',
-            background: 'linear-gradient(to top, rgba(7,7,15,0.98) 0%, rgba(7,7,15,0.6) 40%, transparent 100%)',
-            transition: 'opacity 0.3s ease',
-          }}
-          className="notes-reading-fade"
-        >
-          {/* Progress bar at the very bottom */}
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px',
-            background: 'rgba(255,255,255,0.06)',
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${scrollPct * 100}%`,
-              background: color,
-              transition: 'width 0.25s ease',
-              boxShadow: `0 0 8px ${color}70`,
-            }} />
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

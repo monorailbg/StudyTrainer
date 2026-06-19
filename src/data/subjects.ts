@@ -29,7 +29,7 @@ export const CORE_SUBJECTS: SubjectDef[] = [
     id: 'marketing',
     title: 'Marketing',
     description: 'Marketing mix, segmentation, brand equity, consumer behaviour.',
-    color: '#60a5fa',
+    color: '#73869C',
     hasContent: true,
     flashcardTopic: 'Marketing',
     notesSubject: 'Marketing',
@@ -40,7 +40,7 @@ export const CORE_SUBJECTS: SubjectDef[] = [
     id: 'finance',
     title: 'Finance',
     description: 'NPV, IRR, WACC, capital markets, EMH, risk and return.',
-    color: '#4ade80',
+    color: '#7A8F7D',
     hasContent: true,
     flashcardTopic: 'Finance',
     notesSubject: 'Finance',
@@ -65,21 +65,21 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
     id: 'japanese',
     title: 'Japanese',
     description: 'Japanese language studies: grammar, vocabulary and kanji.',
-    color: '#f87171',
+    color: '#C58B83',
     lat: 35.68, lng: 139.65,   // Tokyo
   },
   {
     id: 'chinese',
     title: 'Chinese',
     description: 'Mandarin Chinese language studies: grammar, vocabulary and hanzi.',
-    color: '#fb923c',
+    color: '#C29C6D',
     lat: 39.91, lng: 116.39,   // Beijing — ~2100 km from Tokyo
   },
   {
     id: 'research-business',
     title: 'Research for Business Studies',
     description: 'Research methods, methodology, data collection and analysis.',
-    color: '#22d3ee',
+    color: '#6E8C8A',
     lat: 59.33, lng: 18.07,    // Stockholm — Scandinavia, ~1700 km from London
   },
   {
@@ -94,7 +94,7 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
     id: 'business-economics',
     title: 'Business Economics',
     description: 'Applied economics: business cycles, fiscal policy, exchange rates.',
-    color: '#fbbf24',
+    color: '#C2410C',
     lat: 1.35, lng: 103.82,    // Singapore — SE Asia business hub
   },
   {
@@ -107,15 +107,15 @@ export const EXTENDED_SUBJECTS: SubjectDef[] = [
   {
     id: 'accounting-advanced',
     title: 'Accounting Advanced',
-    description: 'Advanced financial reporting, consolidation, IFRS standards.',
-    color: '#34d399',
+    description: 'Advanced financial reporting, consolidation, US GAAP standards.',
+    color: '#7A8F7D',
     lat: -33.87, lng: 151.21,  // Sydney — Pacific financial hub, Oceania
   },
   {
     id: 'management',
     title: 'Management',
     description: 'Managerial theory, organisational behaviour, leadership and change.',
-    color: '#f472b6',
+    color: '#C58B83',
     lat: 40.71, lng: -74.01,   // New York — ~1200 km from Chicago
   },
 ];

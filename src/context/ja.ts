@@ -99,8 +99,8 @@ export const ja: Record<string, string> = {
     '応用経済学：景気循環、財政政策、為替レート。',
   'Academic writing, research skills, presentation and citation.':
     'アカデミックライティング、研究スキル、プレゼンテーション、引用。',
-  'Advanced financial reporting, consolidation, IFRS standards.':
-    '上級財務報告、連結、IFRS基準。',
+  'Advanced financial reporting, consolidation, US GAAP standards.':
+    '上級財務報告、連結、米国会計基準（US GAAP）。',
   'Managerial theory, organisational behaviour, leadership and change.':
     '経営理論、組織行動、リーダーシップと変革。',
   'Level 1': 'レベル1',
@@ -365,6 +365,28 @@ export const ja: Record<string, string> = {
   'Clear': 'クリア',
   'Clear search': '検索をクリア',
   'Close': '閉じる',
+
+  // ── Personal Knowledge Graph ─────────────────────────────────────────────
+  'Knowledge Engine': 'ナレッジエンジン',
+  'Personal Knowledge Graph': 'パーソナルナレッジグラフ',
+  '{count} nodes · {types} types': '{count} ノード · {types} タイプ',
+  'Search nodes…': 'ノードを検索…',
+  'Loading graph…': 'グラフを読み込み中…',
+  'Node Details': 'ノード詳細',
+  'Graph Intelligence': 'グラフ分析',
+  'Click any node to see details': 'ノードをクリックして詳細を表示',
+  'Mastery': '習得度',
+  'wrong answers recorded': '回の間違いを記録',
+  'Connections': '接続',
+  'Difficulty': '難易度',
+  'No connections yet': '接続がありません',
+  'Nodes': 'ノード',
+  'Edges': 'エッジ',
+  'Clusters': 'クラスター',
+  'No hub nodes yet': 'ハブノードがありません',
+  'No knowledge gaps': '知識のギャップがありません',
+  'No confusion pairs detected': '混同ペアが見つかりません',
+  'All nodes are connected!': 'すべてのノードが接続されています！',
 
   // ── Misc ──────────────────────────────────────────────────────────────────
   'Select a word or phrase': '単語やフレーズを選択',

@@ -59,9 +59,9 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
       <span className="toast-accent" style={{ background: color }} />
       <span style={{ color, flexShrink: 0, marginTop: '1px' }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, color: '#E6EDF3', paddingRight: '20px' }}>{item.title}</div>
+        <div style={{ fontWeight: 600, color: 'var(--text-1)', paddingRight: '20px' }}>{item.title}</div>
         {item.message && (
-          <div style={{ fontSize: '12px', color: '#8B949E', marginTop: '2px', lineHeight: 1.45 }}>{item.message}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-2)', marginTop: '2px', lineHeight: 1.45 }}>{item.message}</div>
         )}
       </div>
       <button
@@ -70,7 +70,7 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
         style={{
           position: 'absolute', top: '10px', right: '12px',
           background: 'none', border: 'none', cursor: 'pointer',
-          color: '#484F58', padding: '2px', lineHeight: 0,
+          color: 'var(--text-3)', padding: '2px', lineHeight: 0,
         }}
       >
         <svg viewBox="0 0 14 14" width="13" height="13" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
