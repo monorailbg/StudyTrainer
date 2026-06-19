@@ -26,6 +26,9 @@ function parseJSON(raw: string): unknown {
     const start = text.search(/[{[]/);
     if (start > 0) text = text.slice(start);
   }
+  // LLM output sometimes contains raw backslashes (markdown/LaTeX syntax)
+  // that aren't valid JSON escape sequences and crash JSON.parse.
+  text = text.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
   return JSON.parse(text);
 }
 

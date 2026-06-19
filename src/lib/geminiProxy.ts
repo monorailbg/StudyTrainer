@@ -150,8 +150,17 @@ function stripCodeFence(raw: string): string {
   return text;
 }
 
+// The model's JSON string values often contain raw backslashes from markdown,
+// LaTeX-style formulas, or Mermaid diagram syntax (e.g. "A-->B" is fine, but
+// things like "\(x\)" or "C:\path" are not valid JSON escape sequences) and
+// crash JSON.parse with "Bad escaped character in JSON". Escape any backslash
+// that isn't already part of a valid JSON escape token before parsing.
+function sanitizeJsonEscapes(text: string): string {
+  return text.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+}
+
 function parseJSON(raw: string): unknown {
-  const text = stripCodeFence(raw);
+  const text = sanitizeJsonEscapes(stripCodeFence(raw));
 
   // Happy path
   try {

@@ -86,11 +86,19 @@ The "correct" field is the 0-based index of the correct option. Study material:
 ${text}`,
 };
 
-function parseJSON(raw: string): unknown {
+// LLM output sometimes contains raw backslashes (markdown/LaTeX/Mermaid syntax)
+// that aren't valid JSON escape sequences and crash JSON.parse with "Bad escaped character".
+function sanitizeJsonString(raw: string): string {
   let text = raw.trim();
   // Strip markdown code fences
   const fence = text.match(/^```(?:json)?\n?([\s\S]*?)\n?```$/);
   if (fence) text = fence[1].trim();
+  // Escape backslashes that aren't part of a valid JSON escape sequence
+  return text.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+}
+
+function parseJSON(raw: string): unknown {
+  const text = sanitizeJsonString(raw);
   return JSON.parse(text);
 }
 
