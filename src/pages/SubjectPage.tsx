@@ -335,9 +335,9 @@ function SubjectBanner({
   return (
     <div style={{
       background: isLight
-        ? '#E8E2DA'
+        ? `${subject.color}14`
         : `linear-gradient(135deg, ${subject.color}20 0%, ${subject.color}08 55%, var(--bg-page) 100%)`,
-      border: isLight ? '1px solid #DAD2C5' : `1.5px solid ${subject.color}28`,
+      border: isLight ? `1px solid ${subject.color}40` : `1.5px solid ${subject.color}28`,
       boxShadow: 'none',
       borderRadius: '24px',
       padding: '32px 36px',
@@ -433,7 +433,7 @@ function SubjectBanner({
               padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
               color: isLight ? '#1e293b' : 'var(--text-2)',
               background: isLight ? '#ffffff' : 'var(--bg-surface)',
-              border: isLight ? '1px solid #DAD2C5' : '1px solid var(--border-base)',
+              border: `1px solid ${subject.color}${isLight ? '45' : '30'}`,
             }}>
               {p.label}
             </span>
