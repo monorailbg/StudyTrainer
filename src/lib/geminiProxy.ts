@@ -168,8 +168,54 @@ function sanitizeJsonEscapes(text: string): string {
   return text.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
 }
 
+// Gemini occasionally emits a raw, unescaped control character (a literal
+// newline, tab, or similar 0x00–0x1F byte) inside a JSON string value
+// instead of the escaped "\n"/"\t" form — valid as markdown, but illegal
+// inside a JSON string literal, which crashes JSON.parse with "Bad control
+// character in string literal". Walk the text tracking string boundaries
+// (skipping escaped quotes) and escape any raw control character found
+// inside a string.
+function sanitizeControlChars(text: string): string {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) {
+        result += ch;
+        escaped = false;
+        continue;
+      }
+      if (ch === '\\') {
+        result += ch;
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+        result += ch;
+        continue;
+      }
+      const code = text.charCodeAt(i);
+      if (code < 0x20) {
+        if (ch === '\n') result += '\\n';
+        else if (ch === '\r') result += '\\r';
+        else if (ch === '\t') result += '\\t';
+        else result += '\\u' + code.toString(16).padStart(4, '0');
+        continue;
+      }
+      result += ch;
+    } else {
+      if (ch === '"') inString = true;
+      result += ch;
+    }
+  }
+  return result;
+}
+
 function parseJSON(raw: string): unknown {
-  const text = sanitizeJsonEscapes(stripCodeFence(raw));
+  const text = sanitizeJsonEscapes(sanitizeControlChars(stripCodeFence(raw)));
 
   // Happy path
   try {
