@@ -522,6 +522,17 @@ Return ONLY a valid JSON object — no markdown wrapper, no commentary:
 }`;
 }
 
+// Appended to every section-content prompt so a single section can never
+// come back empty, truncated, or stubbed out with a placeholder — each
+// section is a small, bounded call, so there is always token budget left
+// to finish it properly.
+const NOTES_COMPLETENESS_RULES = `
+
+[CRITICAL QUALITY CONSTRAINT]
+- You must provide comprehensive, textbook-level detail. Do not summarize or truncate.
+- This section MUST contain fully developed explanations, definitions, and context.
+- NEVER leave the section empty, and never use placeholders like "Content coming soon" or "To be discussed". Write its full content now.`;
+
 function notesSectionPrompt(subject: string, opts: GenerateOptions, dashboard: boolean, heading: string): string {
   const custom = opts.customPrompt?.trim();
 
@@ -530,7 +541,7 @@ function notesSectionPrompt(subject: string, opts: GenerateOptions, dashboard: b
 
 Subject: university-level ${subject}.
 Based on the content in this file, write ONLY the section titled "${heading}" — cover everything in the material relevant to this section, do not skip detail to save space.
-${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}${NOTES_COMPLETENESS_RULES}
 
 Return ONLY a valid JSON object — no markdown wrapper, no commentary:
 {
@@ -542,7 +553,7 @@ Return ONLY a valid JSON object — no markdown wrapper, no commentary:
   return `You are an expert academic note-taker for university-level ${subject}.
 
 Based on the content in this file, write ONLY the section titled "${heading}". Extract all key concepts, definitions, frameworks, and relationships relevant to this section.
-${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}${NOTES_COMPLETENESS_RULES}
 
 Use clean, well-structured Markdown — standard headers, concise explanations, and bullet points. Bold key terms.
 
@@ -554,8 +565,11 @@ Return ONLY a valid JSON object — no markdown wrapper, no commentary:
 }
 
 const NOTES_OUTLINE_TOKENS = 1024;
-const NOTES_SECTION_TOKENS = 2048;
-const NOTES_SECTION_TOKENS_DASHBOARD = 3072;
+// Each section call is bounded to one heading's content, so a generous
+// per-section budget still finishes well within the request timeout —
+// unlike the old single whole-document call this replaced.
+const NOTES_SECTION_TOKENS = 4096;
+const NOTES_SECTION_TOKENS_DASHBOARD = 8192;
 
 async function generateNotesChunked(
   sourceParts: Part[],
@@ -580,6 +594,7 @@ async function generateNotesChunked(
     const sectionParts: Part[] = [...sourceParts, { text: notesSectionPrompt(subjectTitle, opts, dashboard, heading) }];
     const sectionText = await callProxy(sectionParts, {
       maxOutputTokens: dashboard ? NOTES_SECTION_TOKENS_DASHBOARD : NOTES_SECTION_TOKENS,
+      temperature: 0.3,
     });
     const parsedSection = parseJSON(sectionText) as { content?: string; keyPoints?: string[] };
     sections.push({
@@ -714,7 +729,7 @@ function notesTopicPrompt(
 Create structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
 Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
 
-Create 4–7 sections covering everything important about this topic. Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms.
+Create 4–7 sections covering everything important about this topic. Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms.${NOTES_COMPLETENESS_RULES}
 
 Return ONLY valid JSON — no markdown wrapper, no preamble:
 {
@@ -740,7 +755,7 @@ function notesDashboardTopicPrompt(
 
 Topic: "${topic}"${context ? ` for a ${context} course` : ''}.
 Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
-Cover everything important about this topic — do not skip aspects to save space.
+Cover everything important about this topic — do not skip aspects to save space.${NOTES_COMPLETENESS_RULES}
 
 Return ONLY valid JSON — no markdown wrapper, no preamble:
 {
@@ -970,7 +985,10 @@ export async function generateFromTopic(
     const prompt = detailedNotes
       ? notesDashboardTopicPrompt(topic, subjectContext, level, language)
       : notesTopicPrompt(topic, subjectContext, level, language);
-    const text   = await callProxy([{ text: prompt }], { maxOutputTokens: detailedNotes ? NOTES_DASHBOARD_TOKENS : NOTES_TOKENS });
+    const text   = await callProxy([{ text: prompt }], {
+      maxOutputTokens: detailedNotes ? NOTES_DASHBOARD_TOKENS : NOTES_TOKENS,
+      temperature: 0.3,
+    });
     const parsed = parseJSON(text) as Record<string, unknown>;
     return processResult(parsed, type, topic);
   }
