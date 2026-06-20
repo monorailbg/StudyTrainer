@@ -139,14 +139,23 @@ async function callProxy(
  */
 function stripCodeFence(raw: string): string {
   let text = raw.trim();
-  const fence = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
-  if (fence) {
-    text = fence[1].trim();
-  } else {
-    // No fence: skip any preamble and start from first { or [
-    const start = text.search(/[{[]/);
-    if (start > 0) text = text.slice(start);
+  // Only treat this as a wrapping fence if the WHOLE response starts and ends
+  // with ``` — using the outermost markers (not a lazy regex) avoids
+  // mistaking a ``` code block nested inside a JSON string value (e.g. a
+  // diagram or table the model fenced inside a section's "content" field)
+  // for the closing fence, which would silently discard everything after it.
+  if (text.startsWith('```')) {
+    const lastFence = text.lastIndexOf('```');
+    if (lastFence > 2) {
+      const firstLineEnd = text.indexOf('\n');
+      const body = firstLineEnd === -1 ? '' : text.slice(firstLineEnd + 1, lastFence);
+      text = body.trim();
+      return text;
+    }
   }
+  // No fence: skip any preamble and start from first { or [
+  const start = text.search(/[{[]/);
+  if (start > 0) text = text.slice(start);
   return text;
 }
 
@@ -531,7 +540,8 @@ const NOTES_COMPLETENESS_RULES = `
 [CRITICAL QUALITY CONSTRAINT]
 - You must provide comprehensive, textbook-level detail. Do not summarize or truncate.
 - This section MUST contain fully developed explanations, definitions, and context.
-- NEVER leave the section empty, and never use placeholders like "Content coming soon" or "To be discussed". Write its full content now.`;
+- NEVER leave the section empty, and never use placeholders like "Content coming soon" or "To be discussed". Write its full content now.
+- When creating a markdown table, always finish the entire table structure (headers, separator row, and all data rows) before stopping. Do not emit a partial table outline without data, and do not stop mid-row.`;
 
 function notesSectionPrompt(subject: string, opts: GenerateOptions, dashboard: boolean, heading: string): string {
   const custom = opts.customPrompt?.trim();
