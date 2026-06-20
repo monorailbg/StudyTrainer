@@ -13,6 +13,7 @@
 import type {
   GeneratedFlashcard,
   GeneratedNote,
+  GeneratedNoteSection,
   GeneratedQuizQuestion,
   GenerationType,
 } from './generator';
@@ -488,6 +489,113 @@ Return ONLY a valid JSON object — no markdown wrapper, no commentary:
 }`;
 }
 
+// ── Notes: chunked generation (outline + per-section calls) ────────────────
+//
+// A single call asking for the full notes JSON (especially in dashboard
+// mode) can take long enough to generate that it exceeds the client/server
+// timeout on large or dense documents. Instead, generate an outline first
+// (cheap, fast), then fill in each section's content with its own small,
+// bounded call — every individual request finishes quickly regardless of
+// how long the overall document is.
+
+function notesOutlinePrompt(subject: string, opts: GenerateOptions, dashboard: boolean): string {
+  const detail   = opts.notesDetail ?? 'standard';
+  const includes = opts.notesIncludes ?? [];
+  const custom   = opts.customPrompt?.trim();
+  const sectionCount = notesSectionCountRange(detail);
+
+  const mindmapInstruction = includes.includes('mindmap')
+    ? 'Organise the headings hierarchically: the first heading introduces the top-level concept, subsequent headings each explore one branch.'
+    : '';
+
+  return `You are an expert academic note-taker for university-level ${subject}.
+
+Based on the content in this file, plan the structure of ${dashboard ? 'highly information-dense' : detail} notes with ${sectionCount} sections covering everything important in the material — but do NOT write the section content yet, only the outline.
+${mindmapInstruction}
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+
+Return ONLY a valid JSON object — no markdown wrapper, no commentary:
+{
+  "title": "Descriptive title of the material",
+  "summary": "2–3 sentence executive summary",
+  "headings": ["Section heading 1", "Section heading 2"]
+}`;
+}
+
+function notesSectionPrompt(subject: string, opts: GenerateOptions, dashboard: boolean, heading: string): string {
+  const custom = opts.customPrompt?.trim();
+
+  if (dashboard) {
+    return `${DASHBOARD_FORMAT_RULES}
+
+Subject: university-level ${subject}.
+Based on the content in this file, write ONLY the section titled "${heading}" — cover everything in the material relevant to this section, do not skip detail to save space.
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+
+Return ONLY a valid JSON object — no markdown wrapper, no commentary:
+{
+  "content": "Dense markdown — tables/flowcharts/decision trees/checklists per the rules above. Minimal prose.",
+  "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
+}`;
+  }
+
+  return `You are an expert academic note-taker for university-level ${subject}.
+
+Based on the content in this file, write ONLY the section titled "${heading}". Extract all key concepts, definitions, frameworks, and relationships relevant to this section.
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+
+Use clean, well-structured Markdown — standard headers, concise explanations, and bullet points. Bold key terms.
+
+Return ONLY a valid JSON object — no markdown wrapper, no commentary:
+{
+  "content": "Main explanation in clean markdown (2-4 sentences plus bullet points)",
+  "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
+}`;
+}
+
+const NOTES_OUTLINE_TOKENS = 1024;
+const NOTES_SECTION_TOKENS = 2048;
+const NOTES_SECTION_TOKENS_DASHBOARD = 3072;
+
+async function generateNotesChunked(
+  sourceParts: Part[],
+  subjectTitle: string,
+  opts: GenerateOptions,
+  onProgress?: (current: number, total: number) => void,
+): Promise<GeneratedNote> {
+  const dashboard = !!opts.detailedNotes;
+
+  const outlineParts: Part[] = [...sourceParts, { text: notesOutlinePrompt(subjectTitle, opts, dashboard) }];
+  const outlineText = await callProxy(outlineParts, { maxOutputTokens: NOTES_OUTLINE_TOKENS });
+  const outline = parseJSON(outlineText) as { title?: string; summary?: string; headings?: string[] };
+
+  const headings = Array.isArray(outline.headings) && outline.headings.length > 0
+    ? outline.headings
+    : ['Overview'];
+
+  const sections: GeneratedNoteSection[] = [];
+  for (let i = 0; i < headings.length; i++) {
+    onProgress?.(i + 1, headings.length);
+    const heading = headings[i];
+    const sectionParts: Part[] = [...sourceParts, { text: notesSectionPrompt(subjectTitle, opts, dashboard, heading) }];
+    const sectionText = await callProxy(sectionParts, {
+      maxOutputTokens: dashboard ? NOTES_SECTION_TOKENS_DASHBOARD : NOTES_SECTION_TOKENS,
+    });
+    const parsedSection = parseJSON(sectionText) as { content?: string; keyPoints?: string[] };
+    sections.push({
+      heading,
+      content: String(parsedSection.content ?? ''),
+      keyPoints: parsedSection.keyPoints,
+    });
+  }
+
+  return {
+    title: String(outline.title ?? subjectTitle),
+    summary: String(outline.summary ?? ''),
+    sections,
+  };
+}
+
 const DIFFICULTY_MAP: Record<'easy' | 'medium' | 'hard', string> = {
   easy:   'EASY — test foundational recall and basic comprehension.',
   medium: 'MEDIUM — test solid understanding and application. Require connecting concepts.',
@@ -831,6 +939,12 @@ export async function generateFromFile(
     parts = pageImageParts;
   }
 
+  if (type === 'notes') {
+    const sourceParts: Part[] = extractedText !== null ? [{ text: extractedText }] : (parts ?? []);
+    if (sourceParts.length === 0) throw new Error('Could not prepare file content for generation.');
+    return generateNotesChunked(sourceParts, subjectTitle, options, onProgress);
+  }
+
   if (extractedText !== null) {
     parts = [{ text: `${prompt}\n\nDocument content:\n${extractedText}` }];
   } else if (parts) {
@@ -839,10 +953,7 @@ export async function generateFromFile(
 
   if (!parts) throw new Error('Could not prepare file content for generation.');
 
-  const text = await callProxy(
-    parts,
-    type === 'notes' ? { maxOutputTokens: options.detailedNotes ? NOTES_DASHBOARD_TOKENS : NOTES_TOKENS } : undefined,
-  );
+  const text = await callProxy(parts);
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
 }
