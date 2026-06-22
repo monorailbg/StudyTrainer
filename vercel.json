@@ -1,6 +1,7 @@
 {
   "functions": {
     "api/generate.js":     { "maxDuration": 60 },
+    "api/quiz/ask-ai.js":  { "maxDuration": 60 },
     "api/init-upload.js":  { "maxDuration": 15 },
     "api/upload-chunk.js": { "maxDuration": 30 }
   },

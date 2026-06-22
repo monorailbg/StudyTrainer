@@ -2,6 +2,7 @@ import { useState, useRef, useMemo } from 'react';
 import { useLang } from '../context/LanguageContext';
 import type { GeneratedQuizQuestion } from '../lib/generator';
 import { saveQuizResult, type QuizResult, type QuizResultQuestion } from '../lib/db';
+import { QuizAskAI } from './QuizAskAI';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -966,7 +967,17 @@ function FocusedMode({
             )}
 
             {revealed && (
-              <div className="anim-fadein" style={{ padding: '0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px)', display: 'flex', justifyContent: 'flex-end' }}>
+              <div className="anim-fadein" style={{ padding: '0 clamp(10px, 3vw, 20px) clamp(10px, 3vw, 20px)', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <QuizAskAI
+                  quizContext={{
+                    question: currentQ.question,
+                    options: currentQ.options,
+                    selectedOption: currentQ.options[chosen!],
+                    isCorrect,
+                    baseExplanation: currentQ.explanation ?? '',
+                  }}
+                  color={color}
+                />
                 <button
                   onClick={next}
                   style={{
@@ -975,6 +986,7 @@ function FocusedMode({
                     fontSize: '12px', fontWeight: 700, cursor: 'pointer',
                     boxShadow: `0 2px 12px ${color}40`, letterSpacing: '0.03em',
                     transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+                    flexShrink: 0,
                   }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.04)'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}

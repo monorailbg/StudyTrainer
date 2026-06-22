@@ -410,6 +410,123 @@ app.post('/api/generate', generateLimiter, async (req, res) => {
   }
 });
 
+// ── 11b. Quiz "Ask AI" streaming route ─────────────────────────────────────
+
+function buildQuizTutorPrompt(quizContext, userQuestion) {
+  const { question, options, selectedOption, isCorrect, baseExplanation } = quizContext ?? {};
+  const optionsList = Array.isArray(options) ? options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n') : '';
+
+  return `You are an expert tutor helping a student understand a quiz question they just answered.
+Analyze the provided quiz context, the user's answer, and the default explanation, then answer the user's specific point of confusion concisely and clearly. Use Markdown formatting where helpful (lists, bold, code, tables).
+
+[QUIZ QUESTION]
+${question ?? ''}
+
+[OPTIONS]
+${optionsList}
+
+[STUDENT'S ANSWER]
+${selectedOption ?? ''} (${isCorrect ? 'Correct' : 'Incorrect'})
+
+[DEFAULT EXPLANATION]
+${baseExplanation ?? ''}
+
+[STUDENT'S FOLLOW-UP QUESTION]
+${userQuestion}
+
+Answer the student's follow-up question directly and concisely.`;
+}
+
+async function* streamGeminiClient(client, model, prompt) {
+  const stream = await client.models.generateContentStream({
+    model,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    config: { temperature: 0.4, maxOutputTokens: 2048 },
+  });
+  let gotAnyText = false;
+  for await (const chunk of stream) {
+    const text = chunk.text;
+    if (text) { gotAnyText = true; yield text; }
+  }
+  if (!gotAnyText) throw new Error('Empty streamed response from Gemini.');
+}
+
+async function* streamGeminiClientLadder(client, prompt, label) {
+  let lastError;
+  for (const model of GEMINI_MODELS) {
+    try {
+      yield* streamGeminiClient(client, model, prompt);
+      return;
+    } catch (err) {
+      lastError = err;
+      const message = String(err);
+      const isDailyQuota = message.includes('RESOURCE_EXHAUSTED') && !isPerMinuteLimit(message);
+      const isRetired    = message.includes('404');
+      if (isDailyQuota || isRetired) {
+        console.warn(`[ask-ai] ${label} model ${model} unavailable (${message.slice(0, 80)}), trying next…`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError ?? new Error(`All models exhausted for ${label}.`);
+}
+
+app.post('/api/quiz/ask-ai', generateLimiter, async (req, res) => {
+  const { userQuestion, quizContext } = req.body ?? {};
+  if (typeof userQuestion !== 'string' || !userQuestion.trim()) {
+    return res.status(400).json({ error: 'Request body must include a non-empty "userQuestion" string.' });
+  }
+  if (!quizContext || typeof quizContext !== 'object') {
+    return res.status(400).json({ error: 'Request body must include a "quizContext" object.' });
+  }
+
+  const prompt = buildQuizTutorPrompt(quizContext, userQuestion.trim());
+
+  res.writeHead(200, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'no-cache',
+    'X-Accel-Buffering': 'no',
+  });
+
+  try {
+    try {
+      for await (const chunk of streamGeminiClientLadder(aiPrimary, prompt, 'GEMINI_PRIMARY')) res.write(chunk);
+      return res.end();
+    } catch (err) {
+      const msg = String(err);
+      if (!isQuotaExhausted(msg)) throw err;
+      console.warn('[ask-ai] ⚠️  GEMINI_PRIMARY quota exhausted — failing over to GEMINI_BACKUP…');
+    }
+
+    if (aiBackup) {
+      try {
+        for await (const chunk of streamGeminiClientLadder(aiBackup, prompt, 'GEMINI_BACKUP')) res.write(chunk);
+        return res.end();
+      } catch (err) {
+        const msg = String(err);
+        if (!isQuotaExhausted(msg)) throw err;
+        console.warn('[ask-ai] ⚠️  GEMINI_BACKUP quota exhausted — failing over to GROQ_BACKUP…');
+      }
+    }
+
+    if (GROQ_KEY) {
+      const text = await callGroq([{ text: prompt }], 0.4);
+      res.write(text);
+      return res.end();
+    }
+
+    throw new Error('All AI providers exhausted.');
+  } catch (err) {
+    console.error('[ask-ai] Fatal error:', err);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: String(err.message ?? err).slice(0, 200) });
+    }
+    res.write('\n\n_[Error: response interrupted. Please try again.]_');
+    return res.end();
+  }
+});
+
 // ── 12. Health-check route ─────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => {
