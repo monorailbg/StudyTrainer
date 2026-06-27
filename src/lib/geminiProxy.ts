@@ -443,6 +443,11 @@ Return ONLY valid JSON — no markdown, no commentary:
 
 // ── Notes: single-call generation ───────────────────────────────────────────
 
+// Models occasionally reach for HTML layout tags (<br>, <div>, <p>) when
+// asked for "clean spacing" — this keeps every notes prompt's output
+// renderable as pure Markdown.
+const NO_HTML_RULE = 'Output pure Markdown only — never use HTML tags (e.g. <br>, <div>, <p>) for layout or line breaks. Use standard Markdown double-newlines for spacing and structure.';
+
 function notesSectionCountRange(detail: 'concise' | 'standard' | 'comprehensive'): string {
   return detail === 'concise' ? '3–4' : detail === 'comprehensive' ? '8–12' : '4–7';
 }
@@ -463,7 +468,7 @@ Based on the content in this file, create ${detail} structured notes with ${sect
 ${mindmapInstruction}
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
-Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms.
+Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms. ${NO_HTML_RULE}
 
 Return ONLY a valid JSON object — no markdown wrapper, no commentary:
 {
@@ -494,6 +499,7 @@ RULES:
 - Eliminate filler, introductions, transitions, conversational language, and motivational language.
 - Preserve all important information — do not just shorten the source.
 - Every section must be scannable and understandable in under 30 seconds.
+- ${NO_HTML_RULE}
 
 Use these plain-text diagram conventions inside "content" (as markdown code blocks or plain text — no images):
 - Flowcharts: A ↓ B ↓ C
@@ -611,7 +617,7 @@ Return ONLY a valid JSON object — no markdown wrapper, no commentary:
 Based on the content in this file, write ONLY the section titled "${heading}". Extract all key concepts, definitions, frameworks, and relationships relevant to this section.
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}${NOTES_COMPLETENESS_RULES}
 
-Use clean, well-structured Markdown — standard headers, concise explanations, and bullet points. Bold key terms.
+Use clean, well-structured Markdown — standard headers, concise explanations, and bullet points. Bold key terms. ${NO_HTML_RULE}
 
 Return ONLY a valid JSON object — no markdown wrapper, no commentary:
 {
@@ -785,7 +791,7 @@ function notesTopicPrompt(
 Create structured notes on: "${topic}"${context ? ` for a ${context} course` : ''}.
 Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
 
-Create 4–7 sections covering everything important about this topic. Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms.${NOTES_COMPLETENESS_RULES}
+Create 4–7 sections covering everything important about this topic. Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms. ${NO_HTML_RULE}${NOTES_COMPLETENESS_RULES}
 
 Return ONLY valid JSON — no markdown wrapper, no preamble:
 {
