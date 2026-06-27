@@ -334,7 +334,6 @@ export interface QuizResultQuestion {
   wasCorrect:      boolean;
   options:         string[];
   explanation?:    string;
-  confidenceRating?: number; // 1-5 self-assessed confidence before answering
 }
 
 export interface QuizResult {

@@ -12,7 +12,6 @@ import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
 import notesData from '../data/notes-config.json';
 import { getAllFlashcardSets, getAllNotes, getAllQuizResults, type StoredFlashcardSet, type StoredNote, type QuizResult } from '../lib/db';
-import { useBlindSpots } from '../store/useBlindSpots';
 import { isFirebaseConfigured, getAllCloudFlashcardSets, getAllCloudNotes } from '../lib/cloudDb';
 import GlobeView from '../components/GlobeView';
 import MindMap from '../components/MindMap';
@@ -277,7 +276,6 @@ export default function Home() {
   const [activeCompany, setActiveCompany] = useState<'apple' | 'nestle' | 'jnj' | 'walmart'>('apple');
   const { dates: examDates } = useExamDates();
   const activityEvents = useActivity(s => s.events);
-  const blindSpots = useBlindSpots();
 
   // Generated content across subjects — drives the per-subject progress bars,
   // due badges and the global due count.
@@ -294,12 +292,6 @@ export default function Home() {
     getAllQuizResults()
       .then(d => setQuizResults(d as QuizResult[])).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    const titles: Record<string, string> = {};
-    for (const s of allSubjects) titles[s.id] = s.title;
-    blindSpots.load(titles);
-  }, [allSubjects.map(s => s.id).join(',')]);
 
   const statsBySubject = useMemo(() => {
     const map: Record<string, SubjectStats> = {};
@@ -565,92 +557,6 @@ export default function Home() {
           </div>
         )}
 
-
-        {/* Blind Spot widget */}
-        {blindSpots.loaded && (() => {
-          const { overallStats, subjectBlindSpots } = blindSpots;
-          if (overallStats.totalRated === 0) {
-            return (
-              <div className="mb-10 anim-rise">
-                <SectionLabel>{ts('Exam Intelligence')}</SectionLabel>
-                <Link
-                  to="/blind-spots"
-                  className="no-underline block"
-                  style={{
-                    padding: '16px 20px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 16,
-                    background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
-                    transition: 'border-color 0.2s ease, transform 0.2s ease',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.4)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; (e.currentTarget as HTMLElement).style.transform = ''; }}
-                >
-                  <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
-                      <circle cx="10" cy="10" r="7.5" stroke="#EF4444" strokeWidth="1.3"/>
-                      <circle cx="10" cy="10" r="2.5" fill="#EF4444" fillOpacity="0.4"/>
-                      <circle cx="10" cy="10" r="1" fill="#EF4444"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'Sora',sans-serif", marginBottom: 4 }}>
-                      {ts('Activate Blind Spot Detection')}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>
-                      {ts('Rate your confidence before each quiz answer to discover the illusion of competence before your exams do.')}
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 12, color: '#EF4444', fontWeight: 600, flexShrink: 0 }}>{ts('Learn more')} →</span>
-                </Link>
-              </div>
-            );
-          }
-          const topSpots = subjectBlindSpots.filter(s => s.isBlindSpot).slice(0, 3);
-          const rc = overallStats.overallExamRisk >= 65 ? '#EF4444' : overallStats.overallExamRisk >= 35 ? '#F59E0B' : '#10B981';
-          return (
-            <div className="mb-10">
-              <SectionLabel>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {ts('Exam Blind Spots')}
-                  {overallStats.totalBlindSpots > 0 && (
-                    <span style={{ padding: '1px 7px', borderRadius: 999, background: '#EF44441A', color: '#EF4444', fontSize: 9, fontWeight: 700, border: '1px solid #EF444430' }}>
-                      {overallStats.totalBlindSpots} {ts('detected')}
-                    </span>
-                  )}
-                </span>
-              </SectionLabel>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-                <Link
-                  to="/blind-spots"
-                  className="no-underline"
-                  style={{ padding: '14px 16px', borderRadius: 14, background: `radial-gradient(120% 120% at 0% 0%, ${rc}0D 0%, var(--bg-surface) 55%)`, border: `1px solid ${rc}22`, display: 'flex', flexDirection: 'column', gap: 8, transition: 'transform 0.2s ease' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
-                >
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-3)' }}>{ts('Exam Risk Score')}</div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: rc, fontFamily: "'Sora',sans-serif", lineHeight: 1 }}>{overallStats.overallExamRisk}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{overallStats.totalRated} {ts('questions rated')} · {ts('View details')} →</div>
-                </Link>
-                {topSpots.map(s => (
-                  <Link
-                    key={s.subjectId}
-                    to="/blind-spots"
-                    className="no-underline"
-                    style={{ padding: '14px 16px', borderRadius: 14, background: '#EF44440A', border: '1px solid #EF444420', display: 'flex', flexDirection: 'column', gap: 6, transition: 'transform 0.2s ease' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
-                      <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#EF4444' }}>{ts('Blind Spot')}</span>
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'Sora',sans-serif" }}>{s.subjectTitle}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{s.accuracy}% {ts('accuracy')} · {s.avgConfidence}/5 {ts('confidence')}</div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Upcoming Exams */}
         {examDates.length > 0 && (() => {

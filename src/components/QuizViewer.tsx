@@ -692,56 +692,6 @@ function Explanation({ correct, text }: { correct: boolean; text: string }) {
   );
 }
 
-// ── Confidence picker ──────────────────────────────────────────────────────────
-
-function ConfidencePicker({
-  color, onPick, ts,
-}: {
-  color: string;
-  onPick: (rating: number) => void;
-  ts: (s: string) => string;
-}) {
-  const labels = ['Not sure', 'Somewhat', 'Neutral', 'Fairly sure', 'Very sure'];
-  return (
-    <div className="anim-fadein" style={{ padding: 'clamp(16px, 4vw, 28px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', textAlign: 'center', letterSpacing: '0.03em' }}>
-        {ts('How confident are you in your answer?')}
-      </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-        {[1, 2, 3, 4, 5].map((rating) => (
-          <button
-            key={rating}
-            onClick={() => onPick(rating)}
-            style={{
-              flex: 1, maxWidth: 90, minHeight: 64, borderRadius: 12, cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5,
-              background: 'var(--bg-elevated)', border: '1px solid var(--border-light)',
-              color: 'var(--text-2)', transition: 'all 0.15s',
-            } as React.CSSProperties}
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLElement;
-              el.style.background = color + '1A'; el.style.borderColor = color + '55';
-              el.style.color = color; el.style.transform = 'translateY(-3px)';
-              el.style.boxShadow = `0 4px 14px ${color}30`;
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLElement;
-              el.style.background = 'var(--bg-elevated)'; el.style.borderColor = 'var(--border-light)';
-              el.style.color = 'var(--text-2)'; el.style.transform = ''; el.style.boxShadow = '';
-            }}
-          >
-            <span style={{ fontSize: 20, fontWeight: 700, fontFamily: "'Sora',sans-serif", lineHeight: 1 }}>{rating}</span>
-            <span style={{ fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1 }}>{ts(labels[rating - 1])}</span>
-          </button>
-        ))}
-      </div>
-      <div style={{ fontSize: 10, color: 'var(--text-3)', textAlign: 'center' }}>
-        {ts('1 = Not confident · 5 = Very confident')}
-      </div>
-    </div>
-  );
-}
-
 // ── Focused mode ───────────────────────────────────────────────────────────────
 
 function FocusedMode({
@@ -752,7 +702,7 @@ function FocusedMode({
   color: string;
   isRedoMode?: boolean;
   isPractice?: boolean;
-  onDone: (answers: Record<string, number>, confidences: Record<string, number>, timeSec: number) => void;
+  onDone: (answers: Record<string, number>, timeSec: number) => void;
   onQuestionSaved?: (qid: string, draft: EditDraft) => void;
 }) {
   const { ts } = useLang();
@@ -762,10 +712,6 @@ function FocusedMode({
   const [answeredList, setAnsweredList] = useState<{ qi: number; chosen: number }[]>([]);
   const [animKey, setAnimKey] = useState(0);
   const startTime = useRef(Date.now());
-
-  // Confidence tracking — skip in redo mode
-  const [confidenceSet, setConfidenceSet] = useState(isRedoMode);
-  const [confidences, setConfidences] = useState<Record<number, number>>({});
 
   // Inline edit state
   const [overrides, setOverrides] = useState<Record<string, EditDraft>>({});
@@ -793,7 +739,7 @@ function FocusedMode({
   }).length;
 
   function pick(oi: number) {
-    if (revealed || isEditing || !confidenceSet) return;
+    if (revealed || isEditing) return;
     setChosen(oi);
     setRevealed(true);
   }
@@ -804,15 +750,12 @@ function FocusedMode({
     if (idx + 1 >= total) {
       const answerMap: Record<string, number> = {};
       updated.forEach(({ qi, chosen }) => { answerMap[questions[qi].id] = chosen; });
-      const confMap: Record<string, number> = {};
-      updated.forEach(({ qi }) => { if (confidences[qi] !== undefined) confMap[questions[qi].id] = confidences[qi]; });
-      onDone(answerMap, confMap, Math.floor((Date.now() - startTime.current) / 1000));
+      onDone(answerMap, Math.floor((Date.now() - startTime.current) / 1000));
     } else {
       setAnimKey(k => k + 1);
       setIdx(i => i + 1);
       setChosen(null);
       setRevealed(false);
-      setConfidenceSet(isRedoMode);
     }
   }
 
@@ -925,7 +868,7 @@ function FocusedMode({
 
         <div style={{ height: '1px', background: 'var(--border-light)', margin: '0 clamp(12px, 3vw, 28px)' }} />
 
-        {/* Options panel OR confidence picker OR inline edit form */}
+        {/* Options panel OR inline edit form */}
         {isEditing && editDraft ? (
           <InlineEditForm
             draft={editDraft}
@@ -934,11 +877,6 @@ function FocusedMode({
             onSave={saveEdit}
             onCancel={cancelEdit}
           />
-        ) : !confidenceSet ? (
-          <ConfidencePicker color={color} onPick={(rating) => {
-            setConfidences(prev => ({ ...prev, [idx]: rating }));
-            setConfidenceSet(true);
-          }} ts={ts} />
         ) : (
           <>
             <div style={{ padding: 'clamp(12px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1008,7 +946,7 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
   questions: GeneratedQuizQuestion[];
   color: string;
   isPractice?: boolean;
-  onDone: (answers: Record<string, number>, confidences: Record<string, number>, timeSec: number) => void;
+  onDone: (answers: Record<string, number>, timeSec: number) => void;
   onQuestionSaved?: (qid: string, draft: EditDraft) => void;
 }) {
   const { ts } = useLang();
@@ -1059,7 +997,7 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
 
   function submit() {
     setSubmitted(true);
-    onDone(answers, {}, Math.floor((Date.now() - startTime.current) / 1000));
+    onDone(answers, Math.floor((Date.now() - startTime.current) / 1000));
   }
 
   const editBtnStyle: React.CSSProperties = {
@@ -1584,7 +1522,6 @@ export function QuizViewer({
     qs: GeneratedQuizQuestion[],
     answerMap: Record<string, number>,
     timeSec: number,
-    confMap: Record<string, number> = {},
   ): QuizResult {
     const resultQs: QuizResultQuestion[] = qs.map(q => {
       const chosenIdx = answerMap[q.id] ?? -1;
@@ -1597,7 +1534,6 @@ export function QuizViewer({
         wasCorrect:      chosenIdx === correctIdx,
         options:         [...q.options],
         explanation:     q.explanation || undefined,
-        confidenceRating: confMap[q.id],
       };
     });
     const correct = resultQs.filter(r => r.wasCorrect).length;
@@ -1616,8 +1552,8 @@ export function QuizViewer({
     };
   }
 
-  function handlePlayDone(answerMap: Record<string, number>, confMap: Record<string, number>, timeSec: number) {
-    const result = buildResult(activeQuestions, answerMap, timeSec, confMap);
+  function handlePlayDone(answerMap: Record<string, number>, timeSec: number) {
+    const result = buildResult(activeQuestions, answerMap, timeSec);
     setLastResult(result);
     setPhase('results');
     // Practice mode: zero persistence. No storage write, no activity feed,
@@ -1693,7 +1629,7 @@ export function QuizViewer({
         questions={redoQuestions}
         color={color}
         isRedoMode
-        onDone={(answerMap, _confMap) => handleRedoDone(answerMap)}
+        onDone={(answerMap) => handleRedoDone(answerMap)}
       />
     );
   }

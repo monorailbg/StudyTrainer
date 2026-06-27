@@ -13,7 +13,6 @@ import SubjectPage from './pages/SubjectPage';
 import Generate from './pages/Generate';
 import Dictionary from './pages/Dictionary';
 import KnowledgeGraphPage from './pages/KnowledgeGraph';
-import BlindSpots from './pages/BlindSpots';
 import PersonalKnowledgeGraph from './pages/PersonalKnowledgeGraph';
 import Companies from './pages/Companies';
 import CompanyPage from './pages/CompanyPage';
@@ -31,7 +30,6 @@ function AnimatedRoutes() {
         <Route path="/generate" element={<Generate />} />
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
-        <Route path="/blind-spots" element={<BlindSpots />} />
         <Route path="/pkg" element={<PersonalKnowledgeGraph />} />
         <Route path="/subject/:id" element={<SubjectPage />} />
         <Route path="/companies" element={<Companies />} />
