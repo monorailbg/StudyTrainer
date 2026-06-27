@@ -47,13 +47,13 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
   };
 
   return (
-    <div style={{ marginTop: '20px', borderRadius: '14px', border: `1px solid ${open ? color + '30' : '#21262D'}`, background: '#161B22', overflow: 'hidden', transition: 'border-color 0.2s' }}>
+    <div style={{ marginTop: '20px', borderRadius: '14px', border: `1px solid ${open ? color + '30' : 'var(--border-light)'}`, background: 'var(--bg-elevated)', overflow: 'hidden', transition: 'border-color 0.2s' }}>
       <button
         onClick={() => setOpen(v => !v)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
           padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer',
-          color: open ? color : '#8B949E', fontSize: '12px', fontWeight: 600,
+          color: open ? color : 'var(--text-3)', fontSize: '12px', fontWeight: 600,
           transition: 'color 0.15s',
         }}
       >
@@ -76,10 +76,10 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
                 }}>
                   <div style={{
                     maxWidth: '85%', padding: '8px 12px', borderRadius: m.role === 'user' ? '12px 12px 3px 12px' : '12px 12px 12px 3px',
-                    background: m.role === 'user' ? color + '20' : '#0D1117',
-                    border: `1px solid ${m.role === 'user' ? color + '35' : '#30363D'}`,
+                    background: m.role === 'user' ? color + '20' : 'var(--bg-surface)',
+                    border: `1px solid ${m.role === 'user' ? color + '35' : 'var(--border-base)'}`,
                     fontSize: '13px', lineHeight: 1.6,
-                    color: m.role === 'user' ? '#E6EDF3' : 'rgba(230,237,243,0.82)',
+                    color: m.role === 'user' ? 'var(--text-1)' : 'var(--text-2)',
                     whiteSpace: 'pre-wrap',
                   }}>
                     {m.text}
@@ -88,7 +88,7 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
               ))}
               {loading && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                  <div style={{ padding: '8px 12px', borderRadius: '12px 12px 12px 3px', background: '#0D1117', border: '1px solid #30363D', fontSize: '13px', color: '#484F58' }}>
+                  <div style={{ padding: '8px 12px', borderRadius: '12px 12px 12px 3px', background: 'var(--bg-surface)', border: '1px solid var(--border-base)', fontSize: '13px', color: 'var(--text-3)' }}>
                     {ts('Thinking…')}
                   </div>
                 </div>
@@ -103,12 +103,12 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
               placeholder={ts('Ask about this content…')}
               style={{
-                flex: 1, background: '#0D1117', border: `1px solid #30363D`,
+                flex: 1, background: 'var(--bg-surface)', border: '1px solid var(--border-base)',
                 borderRadius: '8px', padding: '8px 12px', fontSize: '12px',
-                color: '#E6EDF3', outline: 'none',
+                color: 'var(--text-1)', outline: 'none',
               }}
               onFocus={e => { e.currentTarget.style.borderColor = color + '55'; }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#30363D'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-base)'; }}
             />
             <button
               onClick={send}
