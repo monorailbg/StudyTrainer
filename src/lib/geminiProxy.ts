@@ -940,7 +940,13 @@ export async function generateFromFile(
     // Pre-compressed format: JSON array of JPEG page images, created at upload time.
     pageImages = JSON.parse(await file.text()) as Array<{ base64: string; mimeType: 'image/jpeg' }>;
   } else if (file.type === 'application/pdf') {
-    const extracted = await extractTextFromFile(file);
+    let extracted: string;
+    try {
+      extracted = await extractTextFromFile(file);
+    } catch (err) {
+      console.error('[generateFromFile] PDF text extraction failed for', file.name, err);
+      throw err instanceof Error ? err : new Error(`Could not read "${file.name}" — invalid or corrupted PDF.`);
+    }
     if (extracted.trim()) {
       // Text-based PDF: embed extracted text — works for any file size.
       extractedText = extracted;
@@ -949,7 +955,12 @@ export async function generateFromFile(
       // as inline_data parts. Bypasses the Files API entirely. Flashcard
       // generation renders far more pages since it chunks them into several
       // bounded requests below instead of sending them all in one call.
-      pageImages = await renderPdfPagesAsJpeg(file, type === 'flashcards' ? 60 : 15, 0.65);
+      try {
+        pageImages = await renderPdfPagesAsJpeg(file, type === 'flashcards' ? 60 : 15, 0.65);
+      } catch (err) {
+        console.error('[generateFromFile] PDF page rendering failed for', file.name, err);
+        throw err instanceof Error ? err : new Error(`Could not render pages of "${file.name}" — invalid or corrupted PDF.`);
+      }
     } else {
       // Small scanned PDF: inline base64.
       const base64 = await fileToBase64(file);

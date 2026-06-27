@@ -1495,9 +1495,13 @@ export default function SubjectPage() {
             const url = selectedFiles[i].storageUrl;
             if (!url) throw new Error(`File "${selectedFiles[i].name}" is no longer available. Please re-upload it.`);
             try {
-              const blob = await fetch(url).then(r => r.blob());
+              const res = await fetch(url);
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const blob = await res.blob();
+              if (blob.size === 0) throw new Error('downloaded file is empty');
               fileForGen = new File([blob], selectedFiles[i].name, { type: selectedFiles[i].type });
-            } catch {
+            } catch (err) {
+              console.error('[Generate] Failed to download file from cloud storage', selectedFiles[i].name, err);
               throw new Error(`Could not download "${selectedFiles[i].name}" from cloud storage. Please re-upload the file.`);
             }
           }

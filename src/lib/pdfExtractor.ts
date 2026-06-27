@@ -3,6 +3,28 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
+// A valid PDF always starts with this magic header. Catches empty buffers,
+// truncated downloads, and HTML/JSON error bodies mistakenly saved as .pdf
+// (e.g. a failed cloud-storage fetch) before they reach pdf.js.
+function hasPdfHeader(buffer: ArrayBuffer): boolean {
+  if (buffer.byteLength < 5) return false;
+  const bytes = new Uint8Array(buffer, 0, 5);
+  return String.fromCharCode(...bytes) === '%PDF-';
+}
+
+async function loadPdf(file: File, arrayBuffer: ArrayBuffer) {
+  if (!hasPdfHeader(arrayBuffer)) {
+    throw new Error(`"${file.name}" is not a valid PDF (missing PDF header). The file may be empty or corrupted — try re-uploading it.`);
+  }
+  try {
+    return await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  } catch (err) {
+    console.error('[pdfExtractor] Failed to parse PDF', file.name, err);
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(`"${file.name}" could not be read — the PDF structure is invalid or corrupted (${reason}). Try re-uploading the file.`);
+  }
+}
+
 export async function extractTextFromFile(file: File): Promise<string> {
   if (file.type !== 'application/pdf') {
     // For images, return a placeholder — Claude will use vision on the base64
@@ -10,7 +32,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
   }
 
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await loadPdf(file, arrayBuffer);
 
   const pages: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -51,7 +73,7 @@ export async function renderPdfPagesAsJpeg(
   quality = 0.65,
 ): Promise<Array<{ base64: string; mimeType: 'image/jpeg' }>> {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await loadPdf(file, arrayBuffer);
   const numPages = Math.min(pdf.numPages, maxPages);
   const TARGET_WIDTH = 1280;
   const results: Array<{ base64: string; mimeType: 'image/jpeg' }> = [];
