@@ -997,6 +997,8 @@ export default function SubjectPage() {
   const [genState, setGenState] = useState<GenState>({ status: 'idle' });
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [quizCount, setQuizCount] = useState(10);
+  const [quizCountIsCustom, setQuizCountIsCustom] = useState(false);
+  const [quizCustomInput, setQuizCustomInput] = useState('');
   const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [quizMode, setQuizMode] = useState<'generated' | 'extraction'>('generated');
   const [cardCount, setCardCount] = useState<number | 'all'>('all'); // 'all' = no limit; otherwise multiples of 5 up to 50
@@ -2907,17 +2909,47 @@ export default function SubjectPage() {
                   </div>
                   <div>
                     <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
-                    <div className="flex gap-1.5 flex-wrap">
+                    <div className="flex gap-1.5 flex-wrap items-center">
                       {[5, 10, 15, 20].map(n => {
-                        const active = quizCount === n;
+                        const active = !quizCountIsCustom && quizCount === n;
                         return (
-                          <button key={n} onClick={() => setQuizCount(n)}
+                          <button key={n} onClick={() => { setQuizCountIsCustom(false); setQuizCount(n); }}
                             className="h-8 w-10 text-[12px] cursor-pointer transition-all duration-200"
                             style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
                             {n}
                           </button>
                         );
                       })}
+                      <button
+                        onClick={() => {
+                          setQuizCountIsCustom(true);
+                          setQuizCustomInput(String(quizCount));
+                        }}
+                        className="h-8 px-3 text-[12px] cursor-pointer transition-all duration-200"
+                        style={{ borderRadius: '999px', ...(quizCountIsCustom ? activePill : inactivePill) }}>
+                        Custom
+                      </button>
+                      {quizCountIsCustom && (
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={quizCustomInput}
+                          onChange={e => {
+                            const raw = e.target.value;
+                            setQuizCustomInput(raw);
+                            const n = parseInt(raw, 10);
+                            if (!isNaN(n) && n >= 1 && n <= 100) setQuizCount(n);
+                          }}
+                          onBlur={() => {
+                            const n = parseInt(quizCustomInput, 10);
+                            if (isNaN(n) || n < 1) { setQuizCustomInput('1'); setQuizCount(1); }
+                            else if (n > 100) { setQuizCustomInput('100'); setQuizCount(100); }
+                          }}
+                          autoFocus
+                          style={{ ...inputStyle, width: '60px', height: '32px', padding: '0 8px', textAlign: 'center', boxSizing: 'border-box', borderRadius: '8px' }}
+                        />
+                      )}
                     </div>
                   </div>
                   <div>
