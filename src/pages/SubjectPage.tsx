@@ -71,12 +71,12 @@ function timeAgo(ts: number): string {
 interface UploadedFile {
   id: string; name: string; type: string; size: number;
   url: string; rawFile: File | null; level: string; storageUrl?: string;
-  folderId?: string | null; compressing?: boolean;
+  folderId?: string | null; compressing?: boolean; wordCount?: number;
 }
 
 // Treat pre-compressed pages blobs the same as PDF for display purposes.
-const isPdfType = (t: string) =>
-  t === 'application/pdf' || t === 'application/x-studytrainer-pages';
+const isPdfType  = (t: string) => t === 'application/pdf' || t === 'application/x-studytrainer-pages';
+const isTextType = (t: string) => t === 'application/x-studytrainer-text';
 
 const PDF_COMPRESS_THRESHOLD = 3 * 1024 * 1024; // 3 MB
 
@@ -990,6 +990,9 @@ export default function SubjectPage() {
   const [view, setView] = useState<View>('dashboard');
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadTab, setUploadTab] = useState<'file' | 'text'>('file');
+  const [pasteTitle, setPasteTitle] = useState('');
+  const [pasteBody, setPasteBody] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [activeSidebarFileId, setActiveSidebarFileId] = useState<string | null>(null);
@@ -1083,7 +1086,7 @@ export default function SubjectPage() {
             const cloudIds = new Set(cloudFiles.map(cf => cf.id));
             const localOnlyMapped: UploadedFile[] = localFiles
               .filter(f => !cloudIds.has(f.id))
-              .map(sf => ({ id: sf.id, name: sf.name, type: sf.type, size: sf.size, url: URL.createObjectURL(sf.blob), rawFile: new File([sf.blob], sf.name, { type: sf.type }), level: sf.level, folderId: sf.folderId ?? null }));
+              .map(sf => ({ id: sf.id, name: sf.name, type: sf.type, size: sf.size, url: isTextType(sf.type) ? '' : URL.createObjectURL(sf.blob), rawFile: new File([sf.blob], sf.name, { type: sf.type }), level: sf.level, folderId: sf.folderId ?? null, wordCount: sf.wordCount }));
             setFiles([...cloudMapped, ...localOnlyMapped]);
           }
         } else {
@@ -1103,10 +1106,11 @@ export default function SubjectPage() {
           if (storedFiles.length > 0) {
             const mapped: UploadedFile[] = storedFiles.map(sf => ({
               id: sf.id, name: sf.name, type: sf.type, size: sf.size,
-              url: URL.createObjectURL(sf.blob),
+              url: isTextType(sf.type) ? '' : URL.createObjectURL(sf.blob),
               rawFile: new File([sf.blob], sf.name, { type: sf.type }),
               level: sf.level,
               folderId: sf.folderId ?? null,
+              wordCount: sf.wordCount,
             }));
             setFiles(mapped);
           }
@@ -1199,6 +1203,27 @@ export default function SubjectPage() {
     e.preventDefault(); setIsDragging(false);
     if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
   }, [addFiles]);
+
+  const addTextSource = useCallback(() => {
+    const body = pasteBody.trim();
+    if (!body) { toast('error', ts('Error'), 'Paste some text first.'); return; }
+    const name = pasteTitle.trim() || 'Text source';
+    const blob = new File([body], name, { type: 'application/x-studytrainer-text' });
+    const wordCount = body.split(/\s+/).filter(Boolean).length;
+    const entry: UploadedFile = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name, type: 'application/x-studytrainer-text',
+      size: blob.size, url: '', rawFile: blob,
+      level: activeLevel, wordCount,
+    };
+    setFiles(prev => [...prev, entry]);
+    setSelectedFileIds(prev => [...prev, entry.id]);
+    saveFile({ id: entry.id, subjectId: id!, name, type: 'application/x-studytrainer-text', size: blob.size, level: activeLevel, blob, wordCount }).catch(() => {});
+    setPasteTitle('');
+    setPasteBody('');
+    setUploadTab('file');
+    toast('success', ts('{n} files added', { n: 1 }), undefined);
+  }, [pasteBody, pasteTitle, activeLevel, id, toast, ts]);
 
   const removeFile = (fileId: string) => {
     setFiles(prev => {
@@ -1801,7 +1826,7 @@ export default function SubjectPage() {
                         <SidebarItem
                           icon={<IconFile />}
                           label={file.name.length > 22 ? file.name.slice(0, 22) + '…' : file.name}
-                          sublabel={`${(file.size / 1024 / 1024).toFixed(1)} MB · ${isPdfType(file.type) ? 'PDF' : ts('Image')}`}
+                          sublabel={isTextType(file.type) ? `${(file.wordCount ?? 0).toLocaleString()} words · Text` : `${(file.size / 1024 / 1024).toFixed(1)} MB · ${isPdfType(file.type) ? 'PDF' : ts('Image')}`}
                           active={isSidebarActive}
                           dot={isSidebarActive}
                           dotColor={subject.color}
@@ -2011,6 +2036,26 @@ export default function SubjectPage() {
           {/* Upload view */}
           {view === 'upload' && (
             <>
+              {/* Tab toggle */}
+              <div className="flex gap-2 mb-4">
+                {(['file', 'text'] as const).map(tab => {
+                  const active = uploadTab === tab;
+                  return (
+                    <button key={tab} onClick={() => setUploadTab(tab)}
+                      className="h-8 px-4 text-[12px] font-semibold cursor-pointer transition-all duration-200"
+                      style={{
+                        borderRadius: '999px',
+                        background: active ? subject.color : 'var(--bg-surface)',
+                        color: active ? '#ffffff' : 'var(--text-2)',
+                        border: `1px solid ${active ? subject.color : 'var(--border-base)'}`,
+                      }}>
+                      {tab === 'file' ? '↑ Upload File' : '✎ Paste Text'}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {uploadTab === 'file' ? (
               <div
                 role="button" tabIndex={0} aria-label={ts('Upload files')}
                 onDrop={handleDrop}
@@ -2058,6 +2103,48 @@ export default function SubjectPage() {
                   {t('file_types')}
                 </span>
               </div>
+              ) : (
+              <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-base)', borderRadius: '20px', padding: '20px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: subject.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                      <rect x="3" y="2" width="14" height="16" rx="2" stroke={subject.color} strokeWidth="1.4"/>
+                      <path d="M6 7h8M6 10h8M6 13h5" stroke={subject.color} strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: '14px', color: 'var(--text-1)' }}>Paste Text</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Notes, articles, or any study material</div>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={pasteTitle}
+                  onChange={e => setPasteTitle(e.target.value)}
+                  placeholder="Source title (e.g. Chapter 3 Notes)"
+                  style={{ width: '100%', background: 'var(--bg-page)', border: '1px solid var(--border-base)', borderRadius: '10px', padding: '8px 12px', fontSize: '13px', color: 'var(--text-1)', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <textarea
+                  value={pasteBody}
+                  onChange={e => setPasteBody(e.target.value)}
+                  placeholder="Paste your study notes, articles, or text here..."
+                  rows={8}
+                  style={{ width: '100%', background: 'var(--bg-page)', border: '1px solid var(--border-base)', borderRadius: '10px', padding: '10px 12px', fontSize: '13px', color: 'var(--text-1)', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                    {pasteBody.trim() ? `${pasteBody.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words` : 'No text yet'}
+                  </span>
+                  <button
+                    onClick={addTextSource}
+                    disabled={!pasteBody.trim()}
+                    style={{ height: '34px', padding: '0 18px', borderRadius: '999px', border: 'none', background: pasteBody.trim() ? subject.color : 'var(--bg-elevated)', color: pasteBody.trim() ? '#ffffff' : 'var(--text-3)', fontSize: '12px', fontWeight: 700, cursor: pasteBody.trim() ? 'pointer' : 'default', transition: 'all 0.2s', fontFamily: "'Sora',sans-serif" }}
+                  >
+                    Add Text Source
+                  </button>
+                </div>
+              </div>
+              )}
 
               {/* File list with folders */}
               {levelFiles.length > 0 && (
@@ -2091,7 +2178,8 @@ export default function SubjectPage() {
                   }
                   renderItem={(file) => {
                     const isPDF = isPdfType(file.type);
-                    const iconColor = isPDF ? '#f87171' : '#60a5fa';
+                    const isText = isTextType(file.type);
+                    const iconColor = isPDF ? '#f87171' : isText ? '#34d399' : '#60a5fa';
                     const isFileSelected = selectedFileIds.includes(file.id);
                     const isCompressing = file.compressing === true;
                     return (
@@ -2123,13 +2211,18 @@ export default function SubjectPage() {
                         </div>
 
                         {/* Preview */}
-                        {isPDF ? (
+                        {(isPDF || isText) ? (
                           <div style={{ width: '100%', height: '40px', borderRadius: '7px', background: iconColor + '14', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '3px' }}>
                             {isCompressing ? (
                               <>
                                 <Spinner color={iconColor} />
                                 <span style={{ fontSize: '8px', color: iconColor, fontWeight: 600 }}>Compressing</span>
                               </>
+                            ) : isText ? (
+                              <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
+                                <rect x="3" y="2" width="14" height="16" rx="2" stroke={iconColor} strokeWidth="1.3"/>
+                                <path d="M6 7h8M6 10h8M6 13h5" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round"/>
+                              </svg>
                             ) : (
                               <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
                                 <path d="M5 2h8l4 4v12H5V2z" stroke={iconColor} strokeWidth="1.3" strokeLinejoin="round"/>

@@ -63,14 +63,15 @@ function openDB(): Promise<IDBDatabase> {
 // ── Files ──────────────────────────────────────────────────────────────────────
 
 export interface StoredFile {
-  id:        string;
-  subjectId: string;
-  name:      string;
-  type:      string;
-  size:      number;
-  level:     string;
-  blob:      Blob;
-  folderId?: string | null;
+  id:         string;
+  subjectId:  string;
+  name:       string;
+  type:       string;
+  size:       number;
+  level:      string;
+  blob:       Blob;
+  folderId?:  string | null;
+  wordCount?: number;
 }
 
 export async function saveFile(file: StoredFile): Promise<void> {

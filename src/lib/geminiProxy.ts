@@ -942,7 +942,11 @@ export async function generateFromFile(
   let pageImages: Array<{ base64: string; mimeType: 'image/jpeg' }> | null = null;
   let extractedText: string | null = null;
 
-  if (file.type === 'application/x-studytrainer-pages') {
+  if (file.type === 'application/x-studytrainer-text') {
+    // Virtual text source: raw text pasted by the user, stored as a plain text blob.
+    extractedText = await file.text();
+    if (!extractedText.trim()) throw new Error(`"${file.name}" is empty — add some text content before generating.`);
+  } else if (file.type === 'application/x-studytrainer-pages') {
     // Pre-compressed format: JSON array of JPEG page images, created at upload time.
     pageImages = JSON.parse(await file.text()) as Array<{ base64: string; mimeType: 'image/jpeg' }>;
   } else if (file.type === 'application/pdf') {
