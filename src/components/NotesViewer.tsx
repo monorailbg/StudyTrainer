@@ -275,6 +275,43 @@ function RecallCard({ heading, keyPoints, color }: { heading: string; keyPoints:
   );
 }
 
+// ── Auto-resizing textarea: grows to fit content, no fixed row count ───────
+
+function AutoResizeTextarea({ value, onChange, placeholder, style, autoFocus }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  style?: React.CSSProperties;
+  autoFocus?: boolean;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const resize = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+  useEffect(() => { resize(); }, [value, resize]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={e => { onChange(e.target.value); }}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      rows={1}
+      style={{ resize: 'none', overflow: 'hidden', ...style }}
+    />
+  );
+}
+
+// ── Section edit draft ──────────────────────────────────────────────────────
+
+interface SectionEditDraft {
+  heading: string;
+  content: string;
+}
+
 // ── Section card ──────────────────────────────────────────────────────────────
 
 interface SectionCardProps {
@@ -285,16 +322,123 @@ interface SectionCardProps {
   collapsed: boolean;
   onToggleUnderstood: () => void;
   onToggleCollapsed: () => void;
+  isEditing: boolean;
+  editDraft: SectionEditDraft | null;
+  onEditDraftChange: (draft: SectionEditDraft) => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onDelete: () => void;
 }
 
 const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function SectionCard(
-  { index, section, color, understood, collapsed, onToggleUnderstood, onToggleCollapsed },
+  {
+    index, section, color, understood, collapsed, onToggleUnderstood, onToggleCollapsed,
+    isEditing, editDraft, onEditDraftChange, onStartEdit, onCancelEdit, onSaveEdit, onDelete,
+  },
   ref
 ) {
   const { ts } = useLang();
   const [recallOpen, setRecallOpen] = useState(false);
   const num = String(index + 1).padStart(2, '0');
   const hasKeyPoints = (section.keyPoints ?? []).length > 0;
+
+  const fieldBase: React.CSSProperties = {
+    width: '100%', background: 'var(--bg-page)', color: 'var(--text-1)',
+    border: '1px solid var(--border-light)', borderRadius: '10px',
+    padding: '9px 13px', fontSize: '14px',
+    fontFamily: "'Inter', system-ui, sans-serif",
+    outline: 'none', lineHeight: 1.6, boxSizing: 'border-box',
+  };
+
+  const actionBtnStyle: React.CSSProperties = {
+    width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0,
+    border: '1px solid var(--border-light)', background: 'transparent',
+    color: 'var(--text-3)', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'all 0.15s',
+  };
+
+  if (isEditing && editDraft) {
+    return (
+      <div
+        ref={ref}
+        data-section-idx={String(index)}
+        className="notes-section-card"
+        style={{
+          marginBottom: '24px', borderRadius: '16px',
+          border: `1px solid ${color}40`, background: 'var(--bg-surface)',
+          scrollMarginTop: '16px',
+        }}
+        onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onCancelEdit(); } }}
+      >
+        <div style={{ padding: 'clamp(14px, 3vw, 24px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border-light)' }}>
+            <svg viewBox="0 0 14 14" width="12" height="12" fill="none" style={{ flexShrink: 0, color: 'var(--text-2)' }}>
+              <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-2)' }}>
+              {ts('Edit Section')}
+            </span>
+          </div>
+
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: '8px' }}>
+              {ts('Heading')}
+            </div>
+            <input
+              type="text"
+              value={editDraft.heading}
+              onChange={e => onEditDraftChange({ ...editDraft, heading: e.target.value })}
+              style={fieldBase}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-base)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '18px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text-3)', marginBottom: '8px' }}>
+              {ts('Content')}
+            </div>
+            <AutoResizeTextarea
+              value={editDraft.content}
+              onChange={v => onEditDraftChange({ ...editDraft, content: v })}
+              style={{ ...fieldBase, minHeight: '120px' }}
+              autoFocus
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <button
+              onClick={onCancelEdit}
+              style={{
+                height: '34px', padding: '0 16px', borderRadius: '999px',
+                background: 'transparent', border: '1px solid var(--border-base)',
+                color: 'var(--text-2)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              {ts('Cancel')}
+            </button>
+            <button
+              onClick={onSaveEdit}
+              style={{
+                height: '34px', padding: '0 20px', borderRadius: '999px',
+                background: '#22c55e', border: 'none',
+                color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(34,197,94,0.35)',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.88'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+            >
+              ✓ {ts('Save')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -366,6 +510,28 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
           >
             <svg viewBox="0 0 12 12" width="12" height="12" fill="none">
               <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button
+            onClick={onStartEdit}
+            title={ts('Edit this section')}
+            style={actionBtnStyle}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-1)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+          >
+            <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+              <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <button
+            onClick={onDelete}
+            title={ts('Delete this section')}
+            style={actionBtnStyle}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#F97979'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,113,113,0.4)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+          >
+            <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+              <path d="M2.5 3.5h9M5.5 3.5V2a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1.5M6 6.5v4M8 6.5v4M3.5 3.5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
         </div>
@@ -473,7 +639,7 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
 
 // ── NotesViewer ───────────────────────────────────────────────────────────────
 
-export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrollElRef, onRead, onGoToFlashcards, onAddToDictionary, onAddToJapaneseDictionary, fullFocus, onToggleFullFocus }: {
+export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrollElRef, onRead, onGoToFlashcards, onAddToDictionary, onAddToJapaneseDictionary, fullFocus, onToggleFullFocus, onNotesChange }: {
   notes: GeneratedNote;
   color?: string;
   noteId?: string;
@@ -485,6 +651,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
   onAddToJapaneseDictionary?: (term: string, noteTitle?: string, noteId?: string) => void;
   fullFocus?: boolean;
   onToggleFullFocus?: () => void;
+  onNotesChange?: (updated: GeneratedNote) => void;
 }) {
   const { ts } = useLang();
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -535,6 +702,57 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
       return next;
     });
   }, []);
+
+  // Removes `delIdx` from an index Set and shifts every index above it down
+  // by one, so "understood"/"collapsed" state stays aligned with the
+  // sections array after a section is deleted.
+  function shiftIndicesAfterDelete(set: Set<number>, delIdx: number): Set<number> {
+    const next = new Set<number>();
+    for (const i of set) {
+      if (i === delIdx) continue;
+      next.add(i > delIdx ? i - 1 : i);
+    }
+    return next;
+  }
+
+  // ── Section edit / delete ─────────────────────────────────────────────────
+
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<SectionEditDraft | null>(null);
+
+  const startEditSection = useCallback((i: number) => {
+    const s = notes.sections[i];
+    setEditDraft({ heading: s.heading, content: s.content });
+    setEditingIndex(i);
+  }, [notes.sections]);
+
+  const cancelEditSection = useCallback(() => {
+    setEditingIndex(null);
+    setEditDraft(null);
+  }, []);
+
+  const saveEditSection = useCallback(() => {
+    if (editingIndex === null || !editDraft) return;
+    const updatedSections = notes.sections.map((s, i) =>
+      i === editingIndex ? { ...s, heading: editDraft.heading, content: editDraft.content } : s
+    );
+    onNotesChange?.({ ...notes, sections: updatedSections });
+    setEditingIndex(null);
+    setEditDraft(null);
+  }, [editingIndex, editDraft, notes, onNotesChange]);
+
+  const deleteSection = useCallback((i: number) => {
+    const updatedSections = notes.sections.filter((_, idx) => idx !== i);
+    onNotesChange?.({ ...notes, sections: updatedSections });
+    setUnderstood(prev => {
+      const next = shiftIndicesAfterDelete(prev, i);
+      if (storageKey) localStorage.setItem(storageKey, JSON.stringify([...next]));
+      return next;
+    });
+    setCollapsed(prev => shiftIndicesAfterDelete(prev, i));
+    if (editingIndex === i) { setEditingIndex(null); setEditDraft(null); }
+    else if (editingIndex !== null && editingIndex > i) { setEditingIndex(editingIndex - 1); }
+  }, [notes, onNotesChange, storageKey, editingIndex]);
 
   // Scroll progress + back-to-top
   useEffect(() => {
@@ -876,6 +1094,13 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
               collapsed={collapsed.has(i)}
               onToggleUnderstood={() => toggleUnderstood(i)}
               onToggleCollapsed={() => toggleCollapsed(i)}
+              isEditing={editingIndex === i}
+              editDraft={editingIndex === i ? editDraft : null}
+              onEditDraftChange={setEditDraft}
+              onStartEdit={() => startEditSection(i)}
+              onCancelEdit={cancelEditSection}
+              onSaveEdit={saveEditSection}
+              onDelete={() => deleteSection(i)}
             />
           ))}
 

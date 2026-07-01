@@ -546,7 +546,7 @@ function notesFilePrompt(subject: string, opts: GenerateOptions): string {
 
   return `You are an expert academic note-taker for university-level ${subject}.
 
-Based on the content in this file, create ${detail} structured notes with ${sectionCount} sections covering everything important in the material. Extract all key concepts, definitions, frameworks, and relationships.
+Based on the content in this file, create ${detail} structured notes with ${sectionCount} sections covering everything important in the material. Extract all key concepts, definitions, frameworks, and relationships. You MUST split the material into multiple sequential, distinctly-titled entries in the "sections" array — never collapse everything into a single section.
 ${mindmapInstruction}
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
@@ -614,7 +614,7 @@ function notesDashboardFilePrompt(subject: string, opts: GenerateOptions): strin
   return `${DASHBOARD_FORMAT_RULES}
 
 Subject: university-level ${subject}.
-Based on the content in this file, cover everything important in the material — do not skip topics to save space.
+Based on the content in this file, cover everything important in the material — do not skip topics to save space. You MUST split the material into multiple sequential, distinctly-titled entries in the "sections" array (per the numbered structure above) — never collapse everything into a single section.
 ${mindmapInstruction}
 ${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 

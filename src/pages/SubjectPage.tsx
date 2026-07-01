@@ -2493,6 +2493,16 @@ export default function SubjectPage() {
                     onAddToJapaneseDictionary={(term, srcTitle, srcId) => addToJapaneseDictionary(term, srcTitle, srcId)}
                     fullFocus={fullFocus}
                     onToggleFullFocus={() => setFullFocus(v => !v)}
+                    onNotesChange={updatedNote => {
+                      setSavedNotes(prev => prev.map(n =>
+                        n.id !== activeNote.id ? n : { ...n, note: updatedNote }
+                      ));
+                      if (isFirebaseConfigured) {
+                        saveCloudNote({ ...activeNote, subjectId: id!, note: updatedNote }).catch(() => {});
+                      } else {
+                        saveNote({ ...activeNote, note: updatedNote }).catch(() => {});
+                      }
+                    }}
                   />
                 </div>
               );
