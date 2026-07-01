@@ -710,7 +710,7 @@ async function generateNotesChunked(
   const dashboard = !!opts.detailedNotes;
 
   const outlineParts: Part[] = [...sourceParts, { text: notesOutlinePrompt(subjectTitle, opts, dashboard) }];
-  const outlineText = await callProxy(outlineParts, { maxOutputTokens: NOTES_OUTLINE_TOKENS });
+  const outlineText = await callProxy(outlineParts, { maxOutputTokens: NOTES_OUTLINE_TOKENS, responseMimeType: 'application/json' });
   const outline = parseJSON(outlineText) as { title?: string; summary?: string; headings?: string[] };
 
   const headings = Array.isArray(outline.headings) && outline.headings.length > 0
@@ -725,6 +725,7 @@ async function generateNotesChunked(
     const sectionText = await callProxy(sectionParts, {
       maxOutputTokens: dashboard ? NOTES_SECTION_TOKENS_DASHBOARD : NOTES_SECTION_TOKENS,
       temperature: 0.3,
+      responseMimeType: 'application/json',
     });
     const parsedSection = parseJSON(sectionText) as { content?: string; keyPoints?: string[] };
     sections.push({
@@ -757,20 +758,23 @@ function quizExtractionPrompt(subject: string, opts: GenerateOptions): string {
   const focus  = opts.focusTopic?.trim();
   return `You are a verbatim content extractor for a ${subject} study tool.
 
-Your task is to create exactly ${count} multiple-choice questions by lifting sentences and phrases WORD FOR WORD from the provided document — do NOT paraphrase, summarise, or invent content.
+[CRITICAL: EXTRACTION MODE]
+- You are a strict text extractor, not a question writer. If the source document already contains pre-written multiple-choice questions (e.g. an exam paper, quiz sheet, or worksheet with its own lettered options), copy those questions, their options, and their answers EXACTLY as written — do NOT rephrase, alter, add to, or omit any text from the questions or options.
+- Do NOT invent or generate new questions when the source already has its own. If the source document contains 6 pre-written questions, output exactly those 6 questions — not more, not fewer — even if that differs from the requested count below.
+- The requested count of ${count} questions below applies ONLY when the source document is prose (a textbook, article, notes) with no pre-existing questions of its own, in which case you build ${count} questions from verbatim passages as described.
 ${focus ? `Focus on passages related to: "${focus}".` : ''}
 
 For each question:
-1. Find a meaningful sentence or short passage in the document that contains a key term, figure, or fact.
-2. Quote that sentence or passage VERBATIM, character-for-character exactly as it appears in the document, as the "question" field — do NOT alter, blank out, redact, or replace any word with "___" or any placeholder. The full original sentence must appear intact, unmodified.
-3. Turn it into a question by appending a separate, short instruction after the quoted passage, e.g. ending with "What is the key term/figure described here?" — but the quoted text itself stays 100% unchanged.
-4. The correct answer (option at index "correct") must be the term, figure, or fact from that passage, copied verbatim from the document.
-5. If the source document itself presents this question as a pre-written multiple-choice item (e.g. an exam paper with its own lettered options A, B, C, D, E...), copy that document's own options VERBATIM and preserve its exact option count — do NOT reduce it to 4. Otherwise, when you must invent distractors yourself, write exactly three, plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented out of thin air.
+1. If the document already presents this as a formatted multiple-choice question, copy the question text, every option, and the letter/position of the correct answer VERBATIM, character-for-character — do not touch the wording, option count, or order.
+2. Otherwise, find a meaningful sentence or short passage in the document that contains a key term, figure, or fact, and quote that sentence or passage VERBATIM as the "question" field — do NOT alter, blank out, redact, or replace any word with "___" or any placeholder. The full original sentence must appear intact, unmodified.
+3. When building a question from prose (case 2), turn it into a question by appending a separate, short instruction after the quoted passage, e.g. ending with "What is the key term/figure described here?" — but the quoted text itself stays 100% unchanged.
+4. The correct answer (option at index "correct") must be the term, figure, or fact from that passage (or the document's own marked correct answer), copied verbatim from the document.
+5. If the source document itself presents this question as a pre-written multiple-choice item (e.g. an exam paper with its own lettered options A, B, C, D, E...), copy that document's own options VERBATIM and preserve its exact option count — do NOT reduce it to 4. Otherwise, when you must invent distractors yourself (case 2), write exactly three plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented out of thin air.
 6. The explanation must cite the exact sentence from the document where the answer appears.
 
 Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full.
 
-Return ONLY valid JSON — no markdown, no commentary. The "options" array length must match the source document's own option count when the document presents a pre-written multiple-choice question (it may be 5 or more); only default to 4 total options when you are inventing the distractors yourself:
+Return ONLY the raw JSON object below — no markdown fences, no conversational introduction or conclusion, no commentary before or after the JSON, nothing but the object itself. The "options" array length must match the source document's own option count when the document presents a pre-written multiple-choice question (it may be 5 or more); only default to 4 total options when you are inventing the distractors yourself:
 {
   "questions": [
     {
@@ -1093,7 +1097,7 @@ export async function generateFromFile(
           ...chunks[i].map((p): InlineDataPart => ({ inline_data: { mime_type: p.mimeType, data: p.base64 } })),
           { text: chunkPrompt },
         ];
-        const text = await callProxy(chunkParts);
+        const text = await callProxy(chunkParts, { responseMimeType: 'application/json' });
         const parsed = parseJSON(text) as Record<string, unknown>;
         merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
       }
@@ -1126,7 +1130,7 @@ export async function generateFromFile(
 
   if (!parts) throw new Error('Could not prepare file content for generation.');
 
-  const text = await callProxy(parts);
+  const text = await callProxy(parts, { responseMimeType: 'application/json' });
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, subjectTitle);
 }
@@ -1146,13 +1150,14 @@ export async function generateFromTopic(
     const text   = await callProxy([{ text: prompt }], {
       maxOutputTokens: detailedNotes ? NOTES_DASHBOARD_TOKENS : NOTES_TOKENS,
       temperature: 0.3,
+      responseMimeType: 'application/json',
     });
     const parsed = parseJSON(text) as Record<string, unknown>;
     return processResult(parsed, type, topic);
   }
 
   const prompt = TOPIC_PROMPTS[type](topic, subjectContext, level, language);
-  const text   = await callProxy([{ text: prompt }]);
+  const text   = await callProxy([{ text: prompt }], { responseMimeType: 'application/json' });
   const parsed = parseJSON(text) as Record<string, unknown>;
   return processResult(parsed, type, topic);
 }
