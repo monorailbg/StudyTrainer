@@ -62,53 +62,76 @@ function isUnavailable(msg) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// ── Gemini REST: single model call ────────────────────────────────────────
-
-async function callGeminiModel(apiKey, model, contents, genConfig, maxAttempts = 3) {
-  const url = `${GEMINI_BASE}/${model}:generateContent`;
-  let lastError;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const body = { contents };
-    if (genConfig && Object.keys(genConfig).length) body.generationConfig = genConfig;
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const errMsg  = errData.error?.message ?? res.statusText ?? String(res.status);
-      const errCode = errData.error?.status ?? '';
-      lastError = new Error(`${res.status} ${errCode}: ${errMsg}`);
-
-      // Retry transient 503 UNAVAILABLE (high demand) with exponential backoff.
-      if (res.status === 503 && attempt < maxAttempts) {
-        const delay = [4000, 9000][attempt - 1] ?? 9000;
-        console.warn(`[generate] ${model} unavailable (503); retrying in ${delay / 1000}s… (attempt ${attempt}/${maxAttempts})`);
-        await sleep(delay);
+/**
+ * Generic exponential-backoff-with-jitter retry wrapper for transient
+ * 503 UNAVAILABLE / high-demand errors from the Gemini API. `apiFn` is
+ * retried up to `maxRetries` times; any other error (auth, bad request,
+ * quota) is rethrown immediately without retrying.
+ */
+async function callGeminiWithRetry(apiFn, maxRetries = 3, initialDelay = 1000) {
+  let delay = initialDelay;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await apiFn();
+    } catch (error) {
+      const msg = String(error?.message ?? error);
+      if (isUnavailable(msg) && attempt < maxRetries) {
+        // Random jitter prevents every retrying client from hammering the API in lockstep.
+        const jitter = Math.random() * 200;
+        console.warn(`[generate] Model unavailable (503); retrying in ${Math.round((delay + jitter) / 1000)}s… (attempt ${attempt}/${maxRetries})`);
+        await sleep(delay + jitter);
+        delay *= 2; // Exponentially increase delay
         continue;
       }
+      throw error; // Not a 503, or retries exhausted — rethrow
+    }
+  }
+}
 
-      // Retry per-minute rate limits with the API-provided delay.
-      if (res.status === 429 && isPerMinuteLimit(errMsg) && attempt < maxAttempts) {
-        const delay = retryDelayMs(errMsg);
+// ── Gemini REST: single model call ────────────────────────────────────────
+
+async function fetchGeminiOnce(apiKey, model, contents, genConfig) {
+  const url = `${GEMINI_BASE}/${model}:generateContent`;
+  const body = { contents };
+  if (genConfig && Object.keys(genConfig).length) body.generationConfig = genConfig;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const errMsg  = errData.error?.message ?? res.statusText ?? String(res.status);
+    const errCode = errData.error?.status ?? '';
+    throw new Error(`${res.status} ${errCode}: ${errMsg}`);
+  }
+
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Empty response from Gemini.');
+  return text;
+}
+
+async function callGeminiModel(apiKey, model, contents, genConfig, maxPerMinuteAttempts = 2) {
+  // 503 UNAVAILABLE gets exponential backoff + jitter via callGeminiWithRetry.
+  // Per-minute 429s get their own inner loop, since the API tells us exactly
+  // how long to wait rather than needing a doubling schedule.
+  for (let attempt = 1; attempt <= maxPerMinuteAttempts; attempt++) {
+    try {
+      return await callGeminiWithRetry(() => fetchGeminiOnce(apiKey, model, contents, genConfig));
+    } catch (err) {
+      const msg = String(err?.message ?? err);
+      if (msg.includes('429') && isPerMinuteLimit(msg) && attempt < maxPerMinuteAttempts) {
+        const delay = retryDelayMs(msg);
         console.warn(`[generate] ${model} per-minute rate-limited; retrying in ${delay / 1000}s…`);
         await sleep(delay);
         continue;
       }
-      throw lastError;
+      throw err;
     }
-
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('Empty response from Gemini.');
-    return text;
   }
-
-  throw lastError;
 }
 
 // ── Gemini REST: model-ladder for one key ─────────────────────────────────

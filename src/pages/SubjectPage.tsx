@@ -6,7 +6,7 @@ import { useResolvedSubjects } from '../store/useSubjects';
 import { useStore } from '../store/useStore';
 import { useActivity } from '../store/useActivity';
 import { useToast } from '../components/Toast';
-import { generateFromFile } from '../lib/geminiProxy';
+import { generateFromFile, onGenerationRetry } from '../lib/geminiProxy';
 import { extractTextFromFile, renderPdfPagesAsJpeg } from '../lib/pdfExtractor';
 
 import { useExamDates } from '../store/useExamDates';
@@ -1000,6 +1000,7 @@ export default function SubjectPage() {
   const [selectedType, setSelectedType] = useState<GenerationType>('flashcards');
   const [genState, setGenState] = useState<GenState>({ status: 'idle' });
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
+  const [genRetryStatus, setGenRetryStatus] = useState<string | null>(null);
   const [quizCount, setQuizCount] = useState(10);
   const [quizCountIsCustom, setQuizCountIsCustom] = useState(false);
   const [quizCustomInput, setQuizCustomInput] = useState('');
@@ -1508,6 +1509,7 @@ export default function SubjectPage() {
     try {
       setGenState({ status: 'generating', type: selectedType });
       setGenProgress({ current: 0, total: selectedFiles.length });
+      onGenerationRetry(setGenRetryStatus);
 
       const results: unknown[] = [];
       for (let i = 0; i < selectedFiles.length; i++) {
@@ -1628,6 +1630,8 @@ export default function SubjectPage() {
       toast('error', ts('Generation failed'), ts(friendlyError(String(err))));
     } finally {
       setGenProgress(null);
+      onGenerationRetry(null);
+      setGenRetryStatus(null);
     }
   };
 
@@ -3108,12 +3112,12 @@ export default function SubjectPage() {
                 }}
               >
                 {isGenerating
-                  ? <><Spinner color="#94a3b8" /> Generating…</>
+                  ? <><Spinner color="#94a3b8" /> {genRetryStatus ?? 'Generating…'}</>
                   : <><IconSparkle /> Generate {selectedType === 'flashcards' ? (cardCount === 'all' ? 'Cards' : `${cardCount} Cards`) : selectedType === 'quiz' ? `${quizCount} Q` : 'Notes'}</>
                 }
               </button>
 
-              {isGenerating && genProgress && (genProgress.total > 1 || genProgress.chunk) && (
+              {isGenerating && !genRetryStatus && genProgress && (genProgress.total > 1 || genProgress.chunk) && (
                 <div className="mt-2 text-center text-[11px]" style={{ color: isLight ? '#64748b' : 'var(--text-2)' }}>
                   {genProgress.total > 1 ? `File ${genProgress.current} of ${genProgress.total}` : 'Processing file'}
                   {genProgress.chunk && genProgress.chunk.total > 1 && ` — batch ${genProgress.chunk.current} of ${genProgress.chunk.total}`}

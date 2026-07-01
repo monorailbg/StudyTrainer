@@ -131,38 +131,66 @@ function isQuotaExhausted(message) {
   );
 }
 
+function isUnavailable(message) {
+  return message.includes('503') || message.includes('UNAVAILABLE') || message.toLowerCase().includes('high demand');
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/**
+ * Generic exponential-backoff-with-jitter retry wrapper for transient
+ * 503 UNAVAILABLE / high-demand errors from the Gemini API. `apiFn` is
+ * retried up to `maxRetries` times; any other error (auth, bad request,
+ * quota) is rethrown immediately without retrying.
+ */
+async function callGeminiWithRetry(apiFn, maxRetries = 3, initialDelay = 1000) {
+  let delay = initialDelay;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await apiFn();
+    } catch (error) {
+      const msg = String(error?.message ?? error);
+      if (isUnavailable(msg) && attempt < maxRetries) {
+        // Random jitter prevents every retrying client from hammering the API in lockstep.
+        const jitter = Math.random() * 200;
+        console.warn(`[proxy] Model unavailable (503); retrying in ${Math.round((delay + jitter) / 1000)}s… (attempt ${attempt}/${maxRetries})`);
+        await sleep(delay + jitter);
+        delay *= 2; // Exponentially increase delay
+        continue;
+      }
+      throw error; // Not a 503, or retries exhausted — rethrow
+    }
+  }
+}
+
 // ── 7. Gemini SDK: single model call ─────────────────────────────────────
 
-async function callGeminiModel(client, model, sdkContents, config, maxAttempts = 2) {
-  let lastError;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+async function callGeminiModel(client, model, sdkContents, config, maxPerMinuteAttempts = 2) {
+  for (let attempt = 1; attempt <= maxPerMinuteAttempts; attempt++) {
     try {
-      const response = await client.models.generateContent({
-        model,
-        contents: sdkContents,
-        ...(config && { config }),
+      return await callGeminiWithRetry(async () => {
+        const response = await client.models.generateContent({
+          model,
+          contents: sdkContents,
+          ...(config && { config }),
+        });
+
+        const text = response.text;
+        if (!text) throw new Error('Empty response from Gemini.');
+        return text;
       });
-
-      const text = response.text;
-      if (!text) throw new Error('Empty response from Gemini.');
-      return text;
-
     } catch (err) {
-      lastError = err;
-      const message = String(err);
+      const message = String(err?.message ?? err);
 
-      if (message.includes('429') && isPerMinuteLimit(message) && attempt < maxAttempts) {
+      if (message.includes('429') && isPerMinuteLimit(message) && attempt < maxPerMinuteAttempts) {
         const delay = retryDelayMs(message);
         console.warn(`[proxy] Model ${model} per-minute rate-limited; retrying in ${delay / 1000}s…`);
-        await new Promise(r => setTimeout(r, delay));
+        await sleep(delay);
         continue;
       }
       throw err;
     }
   }
-
-  throw lastError;
 }
 
 // ── 8. Gemini SDK: model-ladder for one client ────────────────────────────
@@ -178,8 +206,9 @@ async function callGeminiClient(client, sdkContents, config, label) {
       const message = String(err);
       const isDailyQuota = message.includes('RESOURCE_EXHAUSTED') && !isPerMinuteLimit(message);
       const isRetired    = message.includes('404');
+      const isOverloaded = isUnavailable(message);
 
-      if (isDailyQuota || isRetired) {
+      if (isDailyQuota || isRetired || isOverloaded) {
         console.warn(`[proxy] ${label} model ${model} unavailable (${message.slice(0, 80)}), trying next…`);
         continue;
       }
@@ -236,8 +265,8 @@ async function generateWithFailover(rawParts, temperature, config) {
     return await callGeminiClient(aiPrimary, sdkContents, config, 'GEMINI_PRIMARY');
   } catch (err) {
     const msg = String(err);
-    if (!isQuotaExhausted(msg)) throw err;
-    console.warn('[proxy] ⚠️  GEMINI_PRIMARY quota exhausted — failing over to GEMINI_BACKUP…');
+    if (!isQuotaExhausted(msg) && !isUnavailable(msg)) throw err;
+    console.warn('[proxy] ⚠️  GEMINI_PRIMARY unavailable — failing over to GEMINI_BACKUP…');
   }
 
   // Stage 2: Backup Gemini key
@@ -248,8 +277,8 @@ async function generateWithFailover(rawParts, temperature, config) {
       return text;
     } catch (err) {
       const msg = String(err);
-      if (!isQuotaExhausted(msg)) throw err;
-      console.warn('[proxy] ⚠️  GEMINI_BACKUP quota exhausted — failing over to GROQ_BACKUP…');
+      if (!isQuotaExhausted(msg) && !isUnavailable(msg)) throw err;
+      console.warn('[proxy] ⚠️  GEMINI_BACKUP unavailable — failing over to GROQ_BACKUP…');
     }
   } else {
     console.warn('[proxy] ℹ️  No BACKUP_GEMINI_API_KEY configured — skipping to GROQ_BACKUP…');
@@ -405,6 +434,9 @@ app.post('/api/generate', generateLimiter, async (req, res) => {
     }
     if (message.includes('400')) {
       return res.status(400).json({ error: 'AI rejected the request. Check your prompt or file type.' });
+    }
+    if (isUnavailable(message)) {
+      return res.status(503).json({ error: 'The AI model is temporarily experiencing high demand. Please try again in a moment.' });
     }
     return res.status(500).json({ error: 'Generation failed. Please try again.' });
   }

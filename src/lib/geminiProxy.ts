@@ -69,77 +69,119 @@ interface CallProxyOptions {
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
-// Retry delays for 503 UNAVAILABLE / high-demand errors (ms).
-const UNAVAILABLE_RETRY_DELAYS = [5_000, 15_000];
+// ── Retry status pub/sub ─────────────────────────────────────────────────
+//
+// Lets the UI show a low-profile "Model busy, retrying…" message instead of
+// the loading spinner going quiet (or the request just failing) during a
+// transient 503 retry. SubjectPage registers a listener before calling
+// generateFromFile/generateFromTopic and clears it once generation settles.
+type RetryListener = (status: string | null) => void;
+let activeRetryListener: RetryListener | null = null;
+
+export function onGenerationRetry(listener: RetryListener | null): void {
+  activeRetryListener = listener;
+}
+
+function isUnavailableError(errText: string): boolean {
+  return errText.includes('UNAVAILABLE') || errText.toLowerCase().includes('high demand') || errText.includes('503');
+}
+
+/**
+ * Generic exponential-backoff-with-jitter retry wrapper for transient
+ * 503 UNAVAILABLE / high-demand errors from the proxy. `apiFn` is retried
+ * up to `maxRetries` times; any other error is rethrown immediately.
+ */
+async function callGeminiWithRetry<T>(
+  apiFn: () => Promise<T>,
+  isRetryable: (err: unknown) => boolean,
+  maxRetries = 3,
+  initialDelay = 3000,
+): Promise<T> {
+  let delay = initialDelay;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await apiFn();
+      activeRetryListener?.(null);
+      return result;
+    } catch (error) {
+      if (isRetryable(error) && attempt < maxRetries) {
+        // Random jitter prevents every retrying client from hammering the API in lockstep.
+        const jitter = Math.random() * 200;
+        activeRetryListener?.('Model busy, retrying…');
+        console.warn(`[callProxy] Model high-demand (attempt ${attempt}/${maxRetries}); retrying in ${Math.round((delay + jitter) / 1000)}s…`);
+        await sleep(delay + jitter);
+        delay *= 2; // Exponentially increase delay
+        continue;
+      }
+      activeRetryListener?.(null);
+      throw error; // Not retryable, or retries exhausted — rethrow
+    }
+  }
+  // Unreachable but satisfies TypeScript.
+  throw new Error('Generation failed after retries.');
+}
+
+async function callProxyOnce(body: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(GENERATE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: controller.signal,
+    });
+  } catch (e) {
+    clearTimeout(timeout);
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error('The request took too long and timed out. Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
+    }
+    throw new Error('Could not reach the proxy server. In development, run: cd server && npm run dev');
+  }
+  clearTimeout(timeout);
+
+  if (response.ok) {
+    const data = await response.json() as { text: string };
+    if (!data.text) throw new Error('Empty response from proxy.');
+    return data.text;
+  }
+
+  // Parse the structured error body.
+  const err = await response.json().catch(() => ({ error: response.statusText })) as { error: string; retryAfter?: number };
+  const errText = err.error ?? '';
+
+  // 503 from the proxy OR high-demand error passed through from the model.
+  if (response.status === 503 || isUnavailableError(errText)) {
+    throw new Error(errText || 'The AI model is temporarily experiencing high demand. Please try again in a moment.');
+  }
+  if (response.status === 504 || response.status === 502) {
+    throw new Error('The server took too long to respond (gateway timeout). Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
+  }
+  if (response.status === 429) {
+    const wait = err.retryAfter ?? 60;
+    throw new Error(`Rate limit reached. Please wait ${wait} seconds and try again.`);
+  }
+  if (response.status === 401) {
+    throw new Error('Invalid or expired Gemini API key. Update GEMINI_API_KEY in Vercel → Project Settings → Environment Variables, then redeploy.');
+  }
+  if (response.status === 400) {
+    throw new Error(`Bad request: ${errText}`);
+  }
+
+  throw new Error(errText || `Generation failed (HTTP ${response.status}). Please try again.`);
+}
 
 async function callProxy(
   parts: Part[],
   options?: CallProxyOptions,
 ): Promise<string> {
   const body = JSON.stringify({ parts, ...options });
-
-  for (let attempt = 0; attempt <= UNAVAILABLE_RETRY_DELAYS.length; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    let response: Response;
-    try {
-      response = await fetch(GENERATE_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        signal: controller.signal,
-      });
-    } catch (e) {
-      clearTimeout(timeout);
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        throw new Error('The request took too long and timed out. Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
-      }
-      throw new Error('Could not reach the proxy server. In development, run: cd server && npm run dev');
-    }
-    clearTimeout(timeout);
-
-    if (response.ok) {
-      const data = await response.json() as { text: string };
-      if (!data.text) throw new Error('Empty response from proxy.');
-      return data.text;
-    }
-
-    // Parse the structured error body.
-    const err = await response.json().catch(() => ({ error: response.statusText })) as { error: string; retryAfter?: number };
-    const errText = err.error ?? '';
-
-    // 503 from the proxy OR high-demand error passed through from the model.
-    const isUnavailable = response.status === 503 || errText.includes('UNAVAILABLE') || errText.toLowerCase().includes('high demand');
-    if (isUnavailable && attempt < UNAVAILABLE_RETRY_DELAYS.length) {
-      const delay = UNAVAILABLE_RETRY_DELAYS[attempt];
-      console.warn(`[callProxy] Model high-demand (attempt ${attempt + 1}); retrying in ${delay / 1000}s…`);
-      await sleep(delay);
-      continue;
-    }
-    if (isUnavailable) {
-      throw new Error('The AI model is temporarily experiencing high demand. Please try again in a moment.');
-    }
-
-    if (response.status === 504 || response.status === 502) {
-      throw new Error('The server took too long to respond (gateway timeout). Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
-    }
-    if (response.status === 429) {
-      const wait = err.retryAfter ?? 60;
-      throw new Error(`Rate limit reached. Please wait ${wait} seconds and try again.`);
-    }
-    if (response.status === 401) {
-      throw new Error('Invalid or expired Gemini API key. Update GEMINI_API_KEY in Vercel → Project Settings → Environment Variables, then redeploy.');
-    }
-    if (response.status === 400) {
-      throw new Error(`Bad request: ${errText}`);
-    }
-
-    throw new Error(errText || `Generation failed (HTTP ${response.status}). Please try again.`);
-  }
-
-  // Unreachable but satisfies TypeScript.
-  throw new Error('Generation failed after retries.');
+  return callGeminiWithRetry(
+    () => callProxyOnce(body),
+    err => isUnavailableError(err instanceof Error ? err.message : String(err)),
+  );
 }
 
 // ── Shared helpers (identical to geminiGenerator.ts) ───────────────────────
