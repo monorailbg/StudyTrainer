@@ -394,12 +394,26 @@ function processResult(
 
   if (type === 'notes') return parsed as unknown as GeneratedNote;
 
-  const raw = parsed['questions'];
+  const rawQuestions = parsed['questions'];
+  return processQuizQuestions(rawQuestions);
+}
+
+// Fail-safe cleanup for when the model still leaks an inline multiple-choice
+// option list into the "question" field despite the prompt instructions
+// (e.g. "...called ______. A) ergonomics B) work-life balance C) ..."). Only
+// trims once it finds a genuine "A) ... B)" sequence — a single
+// letter+punctuation match would false-positive on ordinary abbreviations
+// that are just as common in study material ("Mr. Smith", "U.S. policy",
+// "e.g. this", "Fig. 2", decimal-adjacent text, etc.).
+function cleanQuestionStem(question: string): string {
+  const match = /\s+A[).]\s+\S[\s\S]*?\s+B[).]\s+\S/i.exec(question);
+  if (!match) return question.trim();
+  return question.slice(0, match.index).trim();
+}
+
+function processQuizQuestions(raw: unknown): GeneratedQuizQuestion[] {
   if (!Array.isArray(raw) || raw.length === 0) {
-    throw new Error(
-      `Gemini returned an unexpected format for quiz questions. ` +
-      `Got keys: ${Object.keys(parsed).join(', ') || '(none)'}`,
-    );
+    throw new Error('Gemini returned an unexpected format for quiz questions.');
   }
   // The model occasionally repeats the final question verbatim (e.g. when it
   // pads out to hit the requested count) — drop exact repeats of a prior
@@ -419,7 +433,7 @@ function processResult(
 
   return deduped.map((q, i) => ({
     id: `gem-${Date.now()}-${i}`,
-    question: q.question,
+    question: cleanQuestionStem(String(q.question ?? '')),
     options:  q.options,
     correct:  Number(q.correct),
     explanation: q.explanation,
@@ -764,15 +778,21 @@ function quizExtractionPrompt(subject: string, opts: GenerateOptions): string {
 - The requested count of ${count} questions below applies ONLY when the source document is prose (a textbook, article, notes) with no pre-existing questions of its own, in which case you build ${count} questions from verbatim passages as described.
 ${focus ? `Focus on passages related to: "${focus}".` : ''}
 
+[CRITICAL: TEXT CLEANING]
+- The "question" field must contain ONLY the question stem or fill-in-the-blank sentence itself — never the answer choices.
+- When the source lists its options inline right after the question (e.g. "...is called ______. A) ergonomics B) work-life balance C) quality of work life"), you MUST strip that entire inline option list out of the "question" field and move each option's text into its own slot in the "options" array instead. The "question" field ends at the sentence/blank — it must NOT contain "A)", "B)", "C)" or any option text after it.
+- Example of what NOT to do: "question": "An overall environment... is called ______. A) ergonomics B) work-life balance C) quality of work life D) job enrichment E) employee turnover" — this is WRONG because the options leaked into the question field.
+- Correct version: "question": "An overall environment... is called ______." with "options": ["ergonomics", "work-life balance", "quality of work life", "job enrichment", "employee turnover"].
+
 For each question:
-1. If the document already presents this as a formatted multiple-choice question, copy the question text, every option, and the letter/position of the correct answer VERBATIM, character-for-character — do not touch the wording, option count, or order.
+1. If the document already presents this as a formatted multiple-choice question, copy the question text, every option, and the letter/position of the correct answer VERBATIM, character-for-character — do not touch the wording, option count, or order. The question text itself must exclude the "A) ... B) ... C) ..." option list — that list belongs only in the "options" array, per the TEXT CLEANING rule above.
 2. Otherwise, find a meaningful sentence or short passage in the document that contains a key term, figure, or fact, and quote that sentence or passage VERBATIM as the "question" field — do NOT alter, blank out, redact, or replace any word with "___" or any placeholder. The full original sentence must appear intact, unmodified.
 3. When building a question from prose (case 2), turn it into a question by appending a separate, short instruction after the quoted passage, e.g. ending with "What is the key term/figure described here?" — but the quoted text itself stays 100% unchanged.
 4. The correct answer (option at index "correct") must be the term, figure, or fact from that passage (or the document's own marked correct answer), copied verbatim from the document.
 5. If the source document itself presents this question as a pre-written multiple-choice item (e.g. an exam paper with its own lettered options A, B, C, D, E...), copy that document's own options VERBATIM and preserve its exact option count — do NOT reduce it to 4. Otherwise, when you must invent distractors yourself (case 2), write exactly three plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented out of thin air.
 6. The explanation must cite the exact sentence from the document where the answer appears.
 
-Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full.
+Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full — but with any inline option list removed and relocated into the "options" array as described above.
 
 Return ONLY the raw JSON object below — no markdown fences, no conversational introduction or conclusion, no commentary before or after the JSON, nothing but the object itself. The "options" array length must match the source document's own option count when the document presents a pre-written multiple-choice question (it may be 5 or more); only default to 4 total options when you are inventing the distractors yourself:
 {
@@ -789,7 +809,8 @@ Return ONLY the raw JSON object below — no markdown fences, no conversational 
 const OPTION_COUNT_RULE = `
 - Analyze the source material for each question. If the source question explicitly provides 5 options, you MUST generate exactly 5 corresponding options (A, B, C, D, E).
 - Do not truncate or force the quiz into a standard 4-option (A-D) format if the source text contains more.
-- If the source material does not present pre-existing options (i.e. you are writing the question yourself), default to exactly 4 options.`;
+- If the source material does not present pre-existing options (i.e. you are writing the question yourself), default to exactly 4 options.
+- [CRITICAL: TEXT CLEANING] The "question" field must contain ONLY the question stem — never the answer choices. If the source lists options inline right after the question (e.g. "...called ______. A) ergonomics B) work-life balance C) quality of work life"), strip that entire inline list out of the "question" field and place each option's text into its own slot in the "options" array instead. The "question" field must never contain "A)", "B)", "C)" or any option text after the stem.`;
 
 function quizFilePrompt(subject: string, opts: GenerateOptions): string {
   if (opts.quizMode === 'extraction') return quizExtractionPrompt(subject, opts);
