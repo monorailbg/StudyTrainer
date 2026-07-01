@@ -51,6 +51,7 @@ function friendlyError(raw?: string): string {
   if (raw.includes('RESOURCE_EXHAUSTED')) return 'Quota exhausted — try again tomorrow.';
   if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
   if (raw.includes('unsupported') || raw.includes('Unsupported') || raw.includes('INVALID_ARGUMENT')) return 'File format not supported. Try a PDF or image file.';
+  if (raw.includes('UNAVAILABLE') || raw.includes('high demand') || raw.includes('503')) return 'The AI model is temporarily experiencing high demand. Please try again in a moment.';
   return `Generation failed: ${raw.replace(/^Error:\s*/i, '').slice(0, 140)}`;
 }
 

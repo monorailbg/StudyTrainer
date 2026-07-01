@@ -56,9 +56,15 @@ function isQuotaExhausted(msg) {
   );
 }
 
+function isUnavailable(msg) {
+  return msg.includes('503') || msg.includes('UNAVAILABLE') || msg.toLowerCase().includes('high demand');
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 // ── Gemini REST: single model call ────────────────────────────────────────
 
-async function callGeminiModel(apiKey, model, contents, genConfig, maxAttempts = 2) {
+async function callGeminiModel(apiKey, model, contents, genConfig, maxAttempts = 3) {
   const url = `${GEMINI_BASE}/${model}:generateContent`;
   let lastError;
 
@@ -78,11 +84,19 @@ async function callGeminiModel(apiKey, model, contents, genConfig, maxAttempts =
       const errCode = errData.error?.status ?? '';
       lastError = new Error(`${res.status} ${errCode}: ${errMsg}`);
 
-      // Retry only for transient per-minute limits.
+      // Retry transient 503 UNAVAILABLE (high demand) with exponential backoff.
+      if (res.status === 503 && attempt < maxAttempts) {
+        const delay = [4000, 9000][attempt - 1] ?? 9000;
+        console.warn(`[generate] ${model} unavailable (503); retrying in ${delay / 1000}s… (attempt ${attempt}/${maxAttempts})`);
+        await sleep(delay);
+        continue;
+      }
+
+      // Retry per-minute rate limits with the API-provided delay.
       if (res.status === 429 && isPerMinuteLimit(errMsg) && attempt < maxAttempts) {
         const delay = retryDelayMs(errMsg);
         console.warn(`[generate] ${model} per-minute rate-limited; retrying in ${delay / 1000}s…`);
-        await new Promise(r => setTimeout(r, delay));
+        await sleep(delay);
         continue;
       }
       throw lastError;
@@ -108,10 +122,11 @@ async function callGeminiKey(apiKey, contents, genConfig, label) {
     } catch (err) {
       lastError = err;
       const msg = String(err);
-      const isDailyQuota = msg.includes('RESOURCE_EXHAUSTED') && !isPerMinuteLimit(msg);
-      const isRetired    = msg.includes('404');
+      const isDailyQuota  = msg.includes('RESOURCE_EXHAUSTED') && !isPerMinuteLimit(msg);
+      const isRetired     = msg.includes('404');
+      const isOverloaded  = isUnavailable(msg);
 
-      if (isDailyQuota || isRetired) {
+      if (isDailyQuota || isRetired || isOverloaded) {
         console.warn(`[generate] ${label} model ${model} unavailable (${msg.slice(0, 80)}), trying next model…`);
         continue;
       }
@@ -172,8 +187,8 @@ async function generateWithFailover(parts, temperature, genConfig) {
     return text;
   } catch (err) {
     const msg = String(err);
-    if (!isQuotaExhausted(msg)) throw err; // auth/bad-request — don't failover
-    console.warn('[generate] ⚠️  GEMINI_PRIMARY quota exhausted — failing over to GEMINI_BACKUP…');
+    if (!isQuotaExhausted(msg) && !isUnavailable(msg)) throw err; // auth/bad-request — don't failover
+    console.warn('[generate] ⚠️  GEMINI_PRIMARY unavailable — failing over to GEMINI_BACKUP…');
   }
 
   // ── Stage 2: Backup Gemini key ───────────────────────────────────────────
@@ -184,8 +199,8 @@ async function generateWithFailover(parts, temperature, genConfig) {
       return text;
     } catch (err) {
       const msg = String(err);
-      if (!isQuotaExhausted(msg)) throw err;
-      console.warn('[generate] ⚠️  GEMINI_BACKUP quota exhausted — failing over to GROQ_BACKUP…');
+      if (!isQuotaExhausted(msg) && !isUnavailable(msg)) throw err;
+      console.warn('[generate] ⚠️  GEMINI_BACKUP unavailable — failing over to GROQ_BACKUP…');
     }
   } else {
     console.warn('[generate] ℹ️  No BACKUP_GEMINI_API_KEY configured — skipping to GROQ_BACKUP…');
@@ -244,6 +259,9 @@ export default async function handler(req, res) {
     }
     if (msg.includes('400')) {
       return res.status(400).json({ error: 'AI rejected the request. Check your prompt or file type.' });
+    }
+    if (isUnavailable(msg)) {
+      return res.status(503).json({ error: 'The AI model is temporarily experiencing high demand. Please try again in a moment.' });
     }
     return res.status(500).json({ error: msg.slice(0, 200) || 'Generation failed. Please try again.' });
   }

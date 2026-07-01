@@ -67,64 +67,79 @@ interface CallProxyOptions {
   responseSchema?: Record<string, unknown>;
 }
 
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+// Retry delays for 503 UNAVAILABLE / high-demand errors (ms).
+const UNAVAILABLE_RETRY_DELAYS = [5_000, 15_000];
+
 async function callProxy(
   parts: Part[],
   options?: CallProxyOptions,
 ): Promise<string> {
   const body = JSON.stringify({ parts, ...options });
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  for (let attempt = 0; attempt <= UNAVAILABLE_RETRY_DELAYS.length; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  let response: Response;
-  try {
-    response = await fetch(GENERATE_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      signal: controller.signal,
-    });
-  } catch (e) {
-    if (e instanceof DOMException && e.name === 'AbortError') {
-      throw new Error('The request took too long and timed out. Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
+    let response: Response;
+    try {
+      response = await fetch(GENERATE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: controller.signal,
+      });
+    } catch (e) {
+      clearTimeout(timeout);
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        throw new Error('The request took too long and timed out. Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
+      }
+      throw new Error('Could not reach the proxy server. In development, run: cd server && npm run dev');
     }
-    // Network-level failure (server down, CORS, no internet).
-    throw new Error(
-      'Could not reach the proxy server. In development, run: cd server && npm run dev',
-    );
-  } finally {
     clearTimeout(timeout);
+
+    if (response.ok) {
+      const data = await response.json() as { text: string };
+      if (!data.text) throw new Error('Empty response from proxy.');
+      return data.text;
+    }
+
+    // Parse the structured error body.
+    const err = await response.json().catch(() => ({ error: response.statusText })) as { error: string; retryAfter?: number };
+    const errText = err.error ?? '';
+
+    // 503 from the proxy OR high-demand error passed through from the model.
+    const isUnavailable = response.status === 503 || errText.includes('UNAVAILABLE') || errText.toLowerCase().includes('high demand');
+    if (isUnavailable && attempt < UNAVAILABLE_RETRY_DELAYS.length) {
+      const delay = UNAVAILABLE_RETRY_DELAYS[attempt];
+      console.warn(`[callProxy] Model high-demand (attempt ${attempt + 1}); retrying in ${delay / 1000}s…`);
+      await sleep(delay);
+      continue;
+    }
+    if (isUnavailable) {
+      throw new Error('The AI model is temporarily experiencing high demand. Please try again in a moment.');
+    }
+
+    if (response.status === 504 || response.status === 502) {
+      throw new Error('The server took too long to respond (gateway timeout). Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
+    }
+    if (response.status === 429) {
+      const wait = err.retryAfter ?? 60;
+      throw new Error(`Rate limit reached. Please wait ${wait} seconds and try again.`);
+    }
+    if (response.status === 401) {
+      throw new Error('Invalid or expired Gemini API key. Update GEMINI_API_KEY in Vercel → Project Settings → Environment Variables, then redeploy.');
+    }
+    if (response.status === 400) {
+      throw new Error(`Bad request: ${errText}`);
+    }
+
+    throw new Error(errText || `Generation failed (HTTP ${response.status}). Please try again.`);
   }
 
-  if (response.ok) {
-    const data = await response.json() as { text: string };
-    if (!data.text) throw new Error('Empty response from proxy.');
-    return data.text;
-  }
-
-  if (response.status === 504 || response.status === 502 || response.status === 503) {
-    throw new Error('The server took too long to respond (gateway timeout). Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
-  }
-
-  // Parse the structured error the proxy always returns.
-  const err = await response.json().catch(() => ({ error: response.statusText })) as {
-    error: string;
-    retryAfter?: number;
-  };
-
-  if (response.status === 429) {
-    const wait = err.retryAfter ?? 60;
-    throw new Error(`Rate limit reached. Please wait ${wait} seconds and try again.`);
-  }
-  if (response.status === 401) {
-    throw new Error('Invalid or expired Gemini API key. Update GEMINI_API_KEY in Vercel → Project Settings → Environment Variables, then redeploy.');
-  }
-  if (response.status === 400) {
-    throw new Error(`Bad request: ${err.error}`);
-  }
-
-  // 500 or unexpected status — use || so empty strings fall through to the default.
-  throw new Error(err.error || `Generation failed (HTTP ${response.status}). Please try again.`);
+  // Unreachable but satisfies TypeScript.
+  throw new Error('Generation failed after retries.');
 }
 
 // ── Shared helpers (identical to geminiGenerator.ts) ───────────────────────
