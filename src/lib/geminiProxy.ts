@@ -354,7 +354,7 @@ function processResult(
   const seen = new Set<string>();
   const deduped = (raw as Array<{
     question: string;
-    options: [string, string, string, string];
+    options: string[];
     correct: number;
     explanation: string;
   }>).filter(q => {
@@ -368,7 +368,7 @@ function processResult(
     id: `gem-${Date.now()}-${i}`,
     question: q.question,
     options:  q.options,
-    correct:  Number(q.correct) as 0 | 1 | 2 | 3,
+    correct:  Number(q.correct),
     explanation: q.explanation,
   }));
 }
@@ -729,6 +729,11 @@ Return ONLY valid JSON — no markdown, no commentary:
   ]
 }`;}
 
+const OPTION_COUNT_RULE = `
+- Analyze the source material for each question. If the source question explicitly provides 5 options, you MUST generate exactly 5 corresponding options (A, B, C, D, E).
+- Do not truncate or force the quiz into a standard 4-option (A-D) format if the source text contains more.
+- If the source material does not present pre-existing options (i.e. you are writing the question yourself), default to exactly 4 options.`;
+
 function quizFilePrompt(subject: string, opts: GenerateOptions): string {
   if (opts.quizMode === 'extraction') return quizExtractionPrompt(subject, opts);
   const count  = opts.questionCount ?? 10;
@@ -740,7 +745,9 @@ Analyse the content in this file and create exactly ${count} multiple-choice que
 ${focus ? `Focus specifically on the topic: "${focus}".` : ''}${difficultyInstruction(opts.difficulty)}
 ${custom ? `Additional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
-Return ONLY valid JSON — no markdown, no commentary:
+Option count rules:${OPTION_COUNT_RULE}
+
+Return ONLY valid JSON — no markdown, no commentary. The "options" array length must match the number of options for that question (usually 4, but 5+ when the source material provides that many):
 {
   "questions": [
     {

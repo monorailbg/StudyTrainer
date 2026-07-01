@@ -6,13 +6,16 @@ import { QuizAskAI } from './QuizAskAI';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const LETTERS = ['A', 'B', 'C', 'D', 'E'];
+// Dynamically maps an option index to its letter (0→A, 1→B, ..., safely
+// handling any number of options, e.g. index 5 → F) instead of a fixed list.
+const letterFor = (index: number): string => String.fromCharCode(65 + index);
+const indexForLetter = (letter: string): number => letter.charCodeAt(0) - 65;
 
 // Per-question edit draft — sits on top of AI-generated data
 export interface EditDraft {
   question: string;
-  options: [string, string, string, string];
-  correct: 0 | 1 | 2 | 3;
+  options: string[];
+  correct: number;
 }
 
 export type QuizMode = 'focused' | 'test' | 'practice';
@@ -79,13 +82,13 @@ function formatDate(ts: number): string {
 
 
 function shuffleOptions(q: GeneratedQuizQuestion): GeneratedQuizQuestion {
-  const indices = [0, 1, 2, 3];
-  for (let i = 3; i > 0; i--) {
+  const indices = q.options.map((_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [indices[i], indices[j]] = [indices[j], indices[i]];
   }
-  const newOptions = indices.map(i => q.options[i]) as [string, string, string, string];
-  const newCorrect = indices.indexOf(q.correct) as 0 | 1 | 2 | 3;
+  const newOptions = indices.map(i => q.options[i]);
+  const newCorrect = indices.indexOf(q.correct);
   return { ...q, options: newOptions, correct: newCorrect };
 }
 
@@ -150,7 +153,7 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved }
   function startListEdit(q: GeneratedQuizQuestion) {
     const ov = listOverrides[q.id];
     const dq = ov ? { ...q, ...ov } : q;
-    setListEditDraft({ question: dq.question, options: [...dq.options] as [string,string,string,string], correct: dq.correct as 0|1|2|3 });
+    setListEditDraft({ question: dq.question, options: [...dq.options], correct: dq.correct });
     setListEditId(q.id);
   }
   function cancelListEdit() { setListEditId(null); setListEditDraft(null); }
@@ -390,7 +393,7 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved }
                                 }}>
                                   {isCorrect
                                     ? <svg viewBox="0 0 10 10" width="9" height="9" fill="none"><path d="M2 5l2 2 4-4" stroke="rgb(72,199,142)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                    : LETTERS[oi]}
+                                    : letterFor(oi)}
                                 </span>
                                 <span style={{ fontSize: '12px', color: isCorrect ? 'rgb(72,199,142)' : 'var(--text-2)', lineHeight: 1.4 }}>{opt}</span>
                               </div>
@@ -423,7 +426,7 @@ function InlineEditForm({
   const { ts } = useLang();
 
   function setOption(i: number, v: string) {
-    const opts = [...draft.options] as [string, string, string, string];
+    const opts = [...draft.options];
     opts[i] = v;
     onChange({ ...draft, options: opts });
   }
@@ -498,12 +501,12 @@ function InlineEditForm({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {draft.options.map((opt, i) => {
             const isCorrect = draft.correct === i;
-            const tint = LETTER_TINTS[i] ?? LETTER_TINTS[0];
+            const tint = LETTER_TINTS[i % LETTER_TINTS.length];
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {/* Clickable badge — tap to mark as correct answer */}
                 <button
-                  onClick={() => onChange({ ...draft, correct: i as 0 | 1 | 2 | 3 })}
+                  onClick={() => onChange({ ...draft, correct: i })}
                   title={ts('Mark as correct answer')}
                   style={{
                     width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0,
@@ -520,7 +523,7 @@ function InlineEditForm({
                 >
                   {isCorrect
                     ? <svg viewBox="0 0 12 12" width="13" height="13" fill="none"><path d="M2 6l2.5 2.5L10 3.5" stroke={tint.text} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    : LETTERS[i]}
+                    : letterFor(i)}
                 </button>
                 {/* Option text input */}
                 <input
@@ -572,12 +575,13 @@ function InlineEditForm({
 // ── Option button ─────────────────────────────────────────────────────────────
 
 // Per-letter accent tints — gives each option a unique, scannable identity.
+// Cycles via modulo so any number of options (5, 6, ...) still gets a tint.
 const LETTER_TINTS = [
   { bg: 'rgba(99,179,237,0.15)',  border: 'rgba(99,179,237,0.4)',  text: 'rgb(99,179,237)'  }, // A blue
   { bg: 'rgba(154,117,234,0.15)', border: 'rgba(154,117,234,0.4)', text: 'rgb(154,117,234)' }, // B purple
   { bg: 'rgba(72,199,142,0.15)',  border: 'rgba(72,199,142,0.4)',  text: 'rgb(72,199,142)'  }, // C green
   { bg: 'rgba(246,173,85,0.15)',  border: 'rgba(246,173,85,0.4)',  text: 'rgb(246,173,85)'  }, // D amber
-  { bg: 'rgba(99,179,237,0.15)',  border: 'rgba(99,179,237,0.4)',  text: 'rgb(99,179,237)'  }, // E (fallback)
+  { bg: 'rgba(236,116,169,0.15)', border: 'rgba(236,116,169,0.4)', text: 'rgb(236,116,169)' }, // E pink
 ];
 
 function OptionBtn({
@@ -590,7 +594,7 @@ function OptionBtn({
   const [hover, setHover] = useState(false);
   const [pulse, setPulse] = useState(false);
 
-  const tint = LETTER_TINTS[Math.max(0, LETTERS.indexOf(letter))] ?? LETTER_TINTS[0];
+  const tint = LETTER_TINTS[Math.max(0, indexForLetter(letter)) % LETTER_TINTS.length];
 
   // Card surface + text per state.
   const card = {
@@ -762,8 +766,8 @@ function FocusedMode({
   function startEdit() {
     setEditDraft({
       question: currentQ.question,
-      options: [...currentQ.options] as [string, string, string, string],
-      correct: currentQ.correct as 0 | 1 | 2 | 3,
+      options: [...currentQ.options],
+      correct: currentQ.correct,
     });
     setEditingId(q.id);
   }
@@ -885,7 +889,7 @@ function FocusedMode({
                   ? (chosen === oi ? 'chosen' : 'idle')
                   : (oi === correct ? 'right' : (chosen === oi ? 'wrong' : 'idle'));
                 return (
-                  <OptionBtn key={oi} letter={LETTERS[oi]} text={opt} state={state}
+                  <OptionBtn key={oi} letter={letterFor(oi)} text={opt} state={state}
                     color={color} disabled={revealed} onClick={() => pick(oi)} />
                 );
               })}
@@ -968,8 +972,8 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
     const eq = effectiveQ(q);
     setEditDraft({
       question: eq.question,
-      options: [...eq.options] as [string, string, string, string],
-      correct: eq.correct as 0 | 1 | 2 | 3,
+      options: [...eq.options],
+      correct: eq.correct,
     });
     setEditingId(q.id);
   }
@@ -1098,7 +1102,7 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
                       ? (chosen === oi ? 'chosen' : 'idle')
                       : (oi === Number(eq.correct) ? 'right' : (chosen === oi ? 'chosen' : 'idle'));
                     return (
-                      <OptionBtn key={oi} letter={LETTERS[oi]} text={opt}
+                      <OptionBtn key={oi} letter={letterFor(oi)} text={opt}
                         state={state as 'idle' | 'chosen' | 'right' | 'wrong'}
                         color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi)}
                         compact />
@@ -1446,7 +1450,7 @@ function ResultsScreen({
                           border: `1px solid ${border}`, background: bg,
                         }}>
                           <span style={{ width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0, background: isCorrect ? 'rgba(46,160,67,0.2)' : (isChosen ? 'rgba(248,81,73,0.2)' : 'var(--bg-elevated)'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800, color, fontFamily: 'JetBrains Mono, monospace' }}>
-                            {LETTERS[oi]}
+                            {letterFor(oi)}
                           </span>
                           <span style={{ fontSize: '11px', color, lineHeight: 1.4 }}>{opt}</span>
                           {isCorrect && <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#56D364', fontWeight: 700 }}>✓ {ts('Correct')}</span>}
@@ -1657,8 +1661,8 @@ function buildRedoQuestions(result: QuizResult): GeneratedQuizQuestion[] {
     .map(rq => ({
       id:          rq.questionId,
       question:    rq.questionText,
-      options:     rq.options.slice(0, 4) as [string, string, string, string],
-      correct:     rq.options.indexOf(rq.correctAnswer) as 0 | 1 | 2 | 3,
+      options:     rq.options,
+      correct:     rq.options.indexOf(rq.correctAnswer),
       explanation: rq.explanation ?? '',
     }));
 }
