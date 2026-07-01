@@ -765,12 +765,12 @@ For each question:
 2. Quote that sentence or passage VERBATIM, character-for-character exactly as it appears in the document, as the "question" field — do NOT alter, blank out, redact, or replace any word with "___" or any placeholder. The full original sentence must appear intact, unmodified.
 3. Turn it into a question by appending a separate, short instruction after the quoted passage, e.g. ending with "What is the key term/figure described here?" — but the quoted text itself stays 100% unchanged.
 4. The correct answer (option at index "correct") must be the term, figure, or fact from that passage, copied verbatim from the document.
-5. The three distractors must be plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented.
+5. If the source document itself presents this question as a pre-written multiple-choice item (e.g. an exam paper with its own lettered options A, B, C, D, E...), copy that document's own options VERBATIM and preserve its exact option count — do NOT reduce it to 4. Otherwise, when you must invent distractors yourself, write exactly three, plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented out of thin air.
 6. The explanation must cite the exact sentence from the document where the answer appears.
 
 Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full.
 
-Return ONLY valid JSON — no markdown, no commentary:
+Return ONLY valid JSON — no markdown, no commentary. The "options" array length must match the source document's own option count when the document presents a pre-written multiple-choice question (it may be 5 or more); only default to 4 total options when you are inventing the distractors yourself:
 {
   "questions": [
     {
@@ -800,12 +800,18 @@ ${custom ? `Additional instructions: ${custom}` : ''}${languageInstruction(opts.
 
 Option count rules:${OPTION_COUNT_RULE}
 
-Return ONLY valid JSON — no markdown, no commentary. The "options" array length must match the number of options for that question (usually 4, but 5+ when the source material provides that many):
+Return ONLY valid JSON — no markdown, no commentary. The example below shows two questions purely to demonstrate that "options" arrays are NOT all the same length — copy the source material's actual option count for each question individually, it is not always 4:
 {
   "questions": [
     {
-      "question": "Clear, specific question",
+      "question": "Clear, specific question (source material provided only 4 options, or none at all)",
       "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct": 0,
+      "explanation": "Why this is correct (1-2 sentences)"
+    },
+    {
+      "question": "Clear, specific question (source material explicitly provided 5 options for THIS question)",
+      "options": ["Option A", "Option B", "Option C", "Option D", "Option E"],
       "correct": 0,
       "explanation": "Why this is correct (1-2 sentences)"
     }
