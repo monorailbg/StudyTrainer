@@ -286,6 +286,21 @@ function sanitizeControlChars(text: string): string {
   return result;
 }
 
+// Gemini's JSON-mode output can occasionally include trailing content after
+// an otherwise complete, valid JSON value — a stray explanatory sentence, a
+// repeated/echoed object, or leftover prose despite "no commentary"
+// instructions. JSON.parse rejects the whole string with "Unexpected
+// non-whitespace character after JSON at position N" in that case; this
+// truncates the text to the position V8 reports and retries parsing just
+// the valid JSON prefix.
+function stripTrailingGarbage(text: string, err: SyntaxError): string | null {
+  const match = /position (\d+)/.exec(err.message);
+  if (!match) return null;
+  const pos = Number(match[1]);
+  if (!(pos > 0) || pos >= text.length) return null;
+  return text.slice(0, pos);
+}
+
 function parseJSON(raw: string): unknown {
   const text = sanitizeJsonEscapes(sanitizeControlChars(stripCodeFence(raw)));
 
@@ -293,9 +308,22 @@ function parseJSON(raw: string): unknown {
   try {
     return JSON.parse(text);
   } catch (firstErr) {
-    // Attempt to repair a truncated response by closing any open structure.
-    // This handles the common case where the model ran out of output tokens
-    // mid-string, mid-array, or mid-object.
+    if (firstErr instanceof SyntaxError) {
+      // Case 1: trailing content after an otherwise complete JSON value.
+      const truncated = stripTrailingGarbage(text, firstErr);
+      if (truncated !== null) {
+        try {
+          return JSON.parse(truncated);
+        } catch {
+          // Fall through to the truncation-repair attempt below.
+        }
+      }
+    }
+
+    // Case 2: response was cut off before the closing delimiter — attempt
+    // to repair by closing any open structure. Handles the common case
+    // where the model ran out of output tokens mid-string, mid-array, or
+    // mid-object.
     const repaired = repairTruncatedJSON(text);
     if (repaired !== text) {
       try {
