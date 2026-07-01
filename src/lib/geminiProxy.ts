@@ -138,7 +138,18 @@ async function callProxyOnce(body: string): Promise<string> {
     if (e instanceof DOMException && e.name === 'AbortError') {
       throw new Error('The request took too long and timed out. Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
     }
-    throw new Error('Could not reach the proxy server. In development, run: cd server && npm run dev');
+    // A network-level fetch failure (not an HTTP error response) means the
+    // request never reached a server at all — could be the local dev proxy
+    // not running, a misconfigured VITE_PROXY_URL, no internet connection,
+    // or a browser extension (ad blocker) blocking the request. The message
+    // must differ by environment: telling a production user to run a local
+    // dev server is actively misleading.
+    if (import.meta.env.DEV) {
+      throw new Error(`Could not reach the proxy server at "${GENERATE_ENDPOINT}". In development, run: cd server && npm run dev`);
+    }
+    throw new Error(
+      `Could not reach the generation server at "${GENERATE_ENDPOINT}". This usually means a network issue, an ad blocker/extension blocking the request, or the server is temporarily unreachable — check your connection and try again.`,
+    );
   }
   clearTimeout(timeout);
 
