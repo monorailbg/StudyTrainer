@@ -51,9 +51,13 @@ type Part            = TextPart | InlineDataPart | FileDataPart;
  * @throws {Error} with a user-facing message on 4xx/5xx responses.
  */
 // Client-side ceiling for a single proxy call. Kept comfortably below the
-// gateway/serverless function's own timeout so a hung request fails with a
-// clear, actionable message instead of the browser waiting on a 504.
-const REQUEST_TIMEOUT_MS = 55_000;
+// gateway/serverless function's own timeout (see vercel.json maxDuration)
+// so a hung request fails with a clear, actionable message instead of the
+// browser waiting on a 504. Large documents no longer need the full budget
+// as often now that big text sources are chunked before generation, but a
+// single chunk (or a document just under the chunking threshold) can still
+// legitimately take a while, so this stays close to the server's ceiling.
+const REQUEST_TIMEOUT_MS = 85_000;
 
 interface CallProxyOptions {
   temperature?: number;
@@ -767,10 +771,11 @@ function difficultyInstruction(difficulty?: 'easy' | 'medium' | 'hard'): string 
   return `\nDifficulty level: ${DIFFICULTY_MAP[difficulty]}`;
 }
 
-function quizExtractionPrompt(subject: string, opts: GenerateOptions): string {
+function quizExtractionPrompt(subject: string, opts: GenerateOptions, chunkExcerpt = false): string {
   const count  = opts.questionCount ?? 10;
   const focus  = opts.focusTopic?.trim();
   return `You are a verbatim content extractor for a ${subject} study tool.
+${chunkExcerpt ? '\nNote: the text below is one excerpt of a larger document, split for processing — extract every pre-written question you find in THIS excerpt (and, if none exist, build verbatim-passage questions from it as described below); do not worry about the total count across the whole document, that is handled separately.\n' : ''}
 
 [CRITICAL: EXTRACTION MODE]
 - You are a strict text extractor, not a question writer. If the source document already contains pre-written multiple-choice questions (e.g. an exam paper, quiz sheet, or worksheet with its own lettered options), copy those questions, their options, and their answers EXACTLY as written — do NOT rephrase, alter, add to, or omit any text from the questions or options.
@@ -812,14 +817,16 @@ const OPTION_COUNT_RULE = `
 - If the source material does not present pre-existing options (i.e. you are writing the question yourself), default to exactly 4 options.
 - [CRITICAL: TEXT CLEANING] The "question" field must contain ONLY the question stem — never the answer choices. If the source lists options inline right after the question (e.g. "...called ______. A) ergonomics B) work-life balance C) quality of work life"), strip that entire inline list out of the "question" field and place each option's text into its own slot in the "options" array instead. The "question" field must never contain "A)", "B)", "C)" or any option text after the stem.`;
 
-function quizFilePrompt(subject: string, opts: GenerateOptions): string {
-  if (opts.quizMode === 'extraction') return quizExtractionPrompt(subject, opts);
+function quizFilePrompt(subject: string, opts: GenerateOptions, chunkExcerpt = false): string {
+  if (opts.quizMode === 'extraction') return quizExtractionPrompt(subject, opts, chunkExcerpt);
   const count  = opts.questionCount ?? 10;
   const focus  = opts.focusTopic?.trim();
   const custom = opts.customPrompt?.trim();
   return `You are an expert exam question writer for university-level ${subject}.
 
-Analyse the content in this file and create exactly ${count} multiple-choice questions.
+${chunkExcerpt
+    ? `The text below is one excerpt of a larger document, split for processing. Create up to ${count} multiple-choice questions covering the material in THIS excerpt — fewer is fine if the excerpt doesn't support that many; do not pad with filler or repeat concepts just to hit the number. Do not worry about the total count across the whole document, that is handled separately.`
+    : `Analyse the content in this file and create exactly ${count} multiple-choice questions.`}
 ${focus ? `Focus specifically on the topic: "${focus}".` : ''}${difficultyInstruction(opts.difficulty)}
 ${custom ? `Additional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
 
@@ -970,6 +977,33 @@ function chunkPages<T extends { base64: string }>(pages: T[], maxPerChunk: numbe
   return chunks;
 }
 
+// A text-based PDF/paste above this many words is split into batches before
+// generation — a single request carrying the whole document risks a slow
+// response that eats into the gateway's maxDuration, especially for quiz
+// generation where the model has to read the entire text before writing a
+// single question.
+const LARGE_TEXT_THRESHOLD_WORDS = 4500;
+const TEXT_WORDS_PER_CHUNK = 4000;
+// Small word overlap between consecutive chunks so a concept or question
+// split across a chunk boundary still appears whole in at least one chunk,
+// instead of being silently lost or half-extracted at the edge.
+const TEXT_CHUNK_OVERLAP_WORDS = 200;
+
+function chunkText(text: string, wordsPerChunk = TEXT_WORDS_PER_CHUNK, overlapWords = TEXT_CHUNK_OVERLAP_WORDS): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= LARGE_TEXT_THRESHOLD_WORDS) return [text];
+
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < words.length) {
+    const end = Math.min(start + wordsPerChunk, words.length);
+    chunks.push(words.slice(start, end).join(' '));
+    if (end >= words.length) break;
+    start = end - overlapWords;
+  }
+  return chunks;
+}
+
 // ── Large-image compression ─────────────────────────────────────────────────
 
 const COMPRESS_TARGET = 2.5 * 1024 * 1024; // 2.5 MB binary (→ ~3.3 MB base64)
@@ -1029,6 +1063,67 @@ const NOTES_TOKENS = 8192;
 // Dashboard mode packs many tables/diagrams per section, so it needs a much
 // larger budget than the default fast prompt to avoid truncating mid-note.
 const NOTES_DASHBOARD_TOKENS = 16384;
+
+// ── Quiz/flashcards: chunked generation from large extracted text ──────────
+//
+// A large text-based PDF (or pasted text) is split into overlapping word
+// chunks and generated one excerpt at a time instead of one call carrying
+// the entire document — each request finishes quickly and reports progress
+// via onProgress, matching the existing image-page chunking UX.
+
+async function generateQuizOrFlashcardsFromTextChunks(
+  extractedText: string,
+  type: 'quiz' | 'flashcards',
+  subjectTitle: string,
+  options: GenerateOptions,
+  onProgress?: (current: number, total: number) => void,
+): Promise<GeneratedFlashcard[] | GeneratedQuizQuestion[]> {
+  const chunks = chunkText(extractedText);
+
+  if (type === 'flashcards') {
+    const chunkPrompt = flashcardFilePrompt(subjectTitle, options, true);
+    const merged: GeneratedFlashcard[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      onProgress?.(i + 1, chunks.length);
+      const text = await callProxy(
+        [{ text: `${chunkPrompt}\n\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}` }],
+        { responseMimeType: 'application/json' },
+      );
+      const parsed = parseJSON(text) as Record<string, unknown>;
+      merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
+    }
+    return (options.cardCount && options.cardCount !== 'all') ? merged.slice(0, options.cardCount) : merged;
+  }
+
+  // Quiz: split the requested total across chunks, generating a little extra
+  // per chunk so the global dedupe below still has enough left after
+  // dropping cross-chunk repeats from the overlapping text windows.
+  const isExtraction = options.quizMode === 'extraction';
+  const totalCount = options.questionCount ?? 10;
+  const perChunkCount = Math.max(2, Math.ceil(totalCount / chunks.length));
+  const merged: GeneratedQuizQuestion[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < chunks.length; i++) {
+    onProgress?.(i + 1, chunks.length);
+    const chunkPrompt = quizFilePrompt(subjectTitle, { ...options, questionCount: perChunkCount }, true);
+    const text = await callProxy(
+      [{ text: `${chunkPrompt}\n\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}` }],
+      { responseMimeType: 'application/json' },
+    );
+    const parsed = parseJSON(text) as Record<string, unknown>;
+    const questions = processResult(parsed, 'quiz', subjectTitle) as GeneratedQuizQuestion[];
+    for (const q of questions) {
+      const key = q.question.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(q);
+    }
+  }
+  // Extraction mode must preserve every distinct question the source
+  // actually contains — trimming to totalCount would silently drop real
+  // exam questions. "Generated" mode still honours the requested count.
+  return isExtraction ? merged : merged.slice(0, totalCount);
+}
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -1141,6 +1236,10 @@ export async function generateFromFile(
     const sourceParts: Part[] = extractedText !== null ? [{ text: extractedText }] : (parts ?? []);
     if (sourceParts.length === 0) throw new Error('Could not prepare file content for generation.');
     return generateNotesChunked(sourceParts, subjectTitle, options, onProgress);
+  }
+
+  if (extractedText !== null && extractedText.split(/\s+/).filter(Boolean).length > LARGE_TEXT_THRESHOLD_WORDS) {
+    return generateQuizOrFlashcardsFromTextChunks(extractedText, type, subjectTitle, options, onProgress);
   }
 
   if (extractedText !== null) {

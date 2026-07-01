@@ -3130,7 +3130,11 @@ export default function SubjectPage() {
               {isGenerating && !genRetryStatus && genProgress && (genProgress.total > 1 || genProgress.chunk) && (
                 <div className="mt-2 text-center text-[11px]" style={{ color: isLight ? '#64748b' : 'var(--text-2)' }}>
                   {genProgress.total > 1 ? `File ${genProgress.current} of ${genProgress.total}` : 'Processing file'}
-                  {genProgress.chunk && genProgress.chunk.total > 1 && ` — batch ${genProgress.chunk.current} of ${genProgress.chunk.total}`}
+                  {genProgress.chunk && genProgress.chunk.total > 1 && (
+                    genProgress.chunk.current >= genProgress.chunk.total
+                      ? ` — assembling final ${selectedType === 'flashcards' ? 'deck' : selectedType === 'quiz' ? 'quiz' : 'notes'}`
+                      : ` — processing section ${genProgress.chunk.current} of ${genProgress.chunk.total}`
+                  )}
                   …
                 </div>
               )}
