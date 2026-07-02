@@ -135,6 +135,18 @@ function isUnavailable(message) {
   return message.includes('503') || message.includes('UNAVAILABLE') || message.toLowerCase().includes('high demand');
 }
 
+// A 401/403 means THIS key is bad (revoked, expired, or its backing Google
+// Cloud project has been denied access/suspended) — not that the request
+// itself was malformed. That's exactly the case the backup key exists for:
+// a different key/project may still be perfectly healthy.
+function isKeyRejected(message) {
+  return (
+    message.includes('401') || message.includes('403') ||
+    message.includes('API_KEY_INVALID') || message.includes('PERMISSION_DENIED') ||
+    message.toLowerCase().includes('denied access')
+  );
+}
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /**
@@ -265,8 +277,9 @@ async function generateWithFailover(rawParts, temperature, config) {
     return await callGeminiClient(aiPrimary, sdkContents, config, 'GEMINI_PRIMARY');
   } catch (err) {
     const msg = String(err);
-    if (!isQuotaExhausted(msg) && !isUnavailable(msg)) throw err;
-    console.warn('[proxy] ⚠️  GEMINI_PRIMARY unavailable — failing over to GEMINI_BACKUP…');
+    if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+    if (isKeyRejected(msg)) console.warn('[proxy] ⚠️  GEMINI_PRIMARY key rejected (401/403) — failing over to GEMINI_BACKUP…');
+    else console.warn('[proxy] ⚠️  GEMINI_PRIMARY unavailable — failing over to GEMINI_BACKUP…');
   }
 
   // Stage 2: Backup Gemini key
@@ -277,7 +290,7 @@ async function generateWithFailover(rawParts, temperature, config) {
       return text;
     } catch (err) {
       const msg = String(err);
-      if (!isQuotaExhausted(msg) && !isUnavailable(msg)) throw err;
+      if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
       console.warn('[proxy] ⚠️  GEMINI_BACKUP unavailable — failing over to GROQ_BACKUP…');
     }
   } else {
@@ -429,6 +442,11 @@ app.post('/api/generate', generateLimiter, async (req, res) => {
     if (message.includes('401') || message.includes('API_KEY_INVALID')) {
       return res.status(401).json({ error: 'Invalid or expired API key.' });
     }
+    if (message.includes('403') || message.includes('PERMISSION_DENIED')) {
+      return res.status(403).json({
+        error: 'The Gemini API key\'s Google Cloud project has been denied access (not just an invalid key — the project itself is blocked, often due to billing or a ToS review). Generate a new API key from a different/healthy Google Cloud project, or set BACKUP_GEMINI_API_KEY to a working key so requests fail over automatically.',
+      });
+    }
     if (message.includes('RESOURCE_EXHAUSTED') || message.includes('quota')) {
       return res.status(429).json({ error: 'All AI provider quotas exhausted. Try again tomorrow.' });
     }
@@ -527,8 +545,8 @@ app.post('/api/quiz/ask-ai', generateLimiter, async (req, res) => {
       return res.end();
     } catch (err) {
       const msg = String(err);
-      if (!isQuotaExhausted(msg)) throw err;
-      console.warn('[ask-ai] ⚠️  GEMINI_PRIMARY quota exhausted — failing over to GEMINI_BACKUP…');
+      if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+      console.warn('[ask-ai] ⚠️  GEMINI_PRIMARY unavailable/rejected — failing over to GEMINI_BACKUP…');
     }
 
     if (aiBackup) {
@@ -537,8 +555,8 @@ app.post('/api/quiz/ask-ai', generateLimiter, async (req, res) => {
         return res.end();
       } catch (err) {
         const msg = String(err);
-        if (!isQuotaExhausted(msg)) throw err;
-        console.warn('[ask-ai] ⚠️  GEMINI_BACKUP quota exhausted — failing over to GROQ_BACKUP…');
+        if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+        console.warn('[ask-ai] ⚠️  GEMINI_BACKUP unavailable/rejected — failing over to GROQ_BACKUP…');
       }
     }
 

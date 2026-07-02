@@ -44,6 +44,22 @@ function isQuotaExhausted(msg) {
   );
 }
 
+function isUnavailable(msg) {
+  return msg.includes('503') || msg.includes('UNAVAILABLE') || msg.toLowerCase().includes('high demand');
+}
+
+// A 401/403 means THIS key is bad (revoked, expired, or its backing Google
+// Cloud project has been denied access/suspended) — not that the request
+// itself was malformed. That's exactly the case the backup key exists for:
+// a different key/project may still be perfectly healthy.
+function isKeyRejected(msg) {
+  return (
+    msg.includes('401') || msg.includes('403') ||
+    msg.includes('API_KEY_INVALID') || msg.includes('PERMISSION_DENIED') ||
+    msg.toLowerCase().includes('denied access')
+  );
+}
+
 // ── Build tutor prompt ───────────────────────────────────────────────────────
 
 function buildTutorPrompt(quizContext, userQuestion) {
@@ -133,7 +149,8 @@ async function* streamGeminiKey(apiKey, prompt, label) {
       const msg = String(err);
       const isDailyQuota = msg.includes('RESOURCE_EXHAUSTED') && !isPerMinuteLimit(msg);
       const isRetired    = msg.includes('404');
-      if (isDailyQuota || isRetired) {
+      const isOverloaded = isUnavailable(msg);
+      if (isDailyQuota || isRetired || isOverloaded) {
         console.warn(`[ask-ai] ${label} model ${model} unavailable (${msg.slice(0, 80)}), trying next model…`);
         continue;
       }
@@ -202,8 +219,8 @@ export default async function handler(req, res) {
       return res.end();
     } catch (err) {
       const msg = String(err);
-      if (!isQuotaExhausted(msg)) throw err;
-      console.warn('[ask-ai] ⚠️  GEMINI_PRIMARY quota exhausted — failing over to GEMINI_BACKUP…');
+      if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+      console.warn('[ask-ai] ⚠️  GEMINI_PRIMARY unavailable/rejected — failing over to GEMINI_BACKUP…');
     }
 
     if (keys.backup) {
@@ -214,8 +231,8 @@ export default async function handler(req, res) {
         return res.end();
       } catch (err) {
         const msg = String(err);
-        if (!isQuotaExhausted(msg)) throw err;
-        console.warn('[ask-ai] ⚠️  GEMINI_BACKUP quota exhausted — failing over to GROQ_BACKUP…');
+        if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+        console.warn('[ask-ai] ⚠️  GEMINI_BACKUP unavailable/rejected — failing over to GROQ_BACKUP…');
       }
     }
 
