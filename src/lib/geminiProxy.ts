@@ -503,6 +503,11 @@ function languageInstruction(language?: 'english' | 'japanese' | 'both'): string
 
 // ── Prompt builders (identical to geminiGenerator.ts) ──────────────────────
 
+// Forbids stopping mid-generation with an incomplete final item, a stub, or
+// a placeholder — the flashcard/quiz equivalent of NOTES_COMPLETENESS_RULES
+// below, which only covers notes sections.
+const NO_PLACEHOLDER_RULE = '\n\n[CRITICAL: COMPLETION] Every item must be fully written out — never leave any field blank, stubbed, or as a placeholder like "TBD", "...", or "to be added". If you are running low on space, finish the item you are currently writing completely and simply return fewer total items rather than leaving the last one incomplete.';
+
 function flashcardVocabPrompt(subject: string, opts: GenerateOptions, forceAll = false): string {
   const isAll = forceAll || opts.cardCount === 'all';
   const count = isAll ? undefined : (opts.cardCount ?? 15);
@@ -514,7 +519,7 @@ ${isAll
     ? 'Analyse the provided content and extract every single unique vocabulary word or expression it contains — do not cap or limit the count, no upper restriction, include all of them even if there are dozens.'
     : `Analyse the provided content and extract exactly ${count} key vocabulary items from it.`}
 ${focus ? `Focus on vocabulary related to: "${focus}".` : ''}
-${custom ? `Additional instructions: ${custom}` : ''}
+${custom ? `Additional instructions: ${custom}` : ''}${NO_PLACEHOLDER_RULE}
 
 For each vocabulary item provide:
 - "front": the word or expression in its native script only (characters/script — no reading, no translation)
@@ -551,7 +556,7 @@ ${isAll
     ? 'Analyse the content in this file and create a flashcard for every distinct concept, term or fact it contains — do not cap or limit the count, no upper restriction.'
     : `Analyse the content in this file and create exactly ${count} high-quality flashcards.`}
 ${focus ? `Focus specifically on the topic: "${focus}".` : 'Cover the most important concepts, definitions, and relationships.'}
-${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}${NO_PLACEHOLDER_RULE}
 
 Return ONLY valid JSON — no markdown, no commentary:
 {
@@ -561,7 +566,9 @@ Return ONLY valid JSON — no markdown, no commentary:
 }`;
 }
 
-// ── Notes: single-call generation ───────────────────────────────────────────
+// ── Notes: shared prompt fragments (used by the chunked outline/section and
+// topic-based prompts below — file-based notes always go through the
+// chunked outline+section path, never a single-call prompt) ───────────────
 
 // Models occasionally reach for HTML layout tags (<br>, <div>, <p>) when
 // asked for "clean spacing" — this keeps every notes prompt's output
@@ -572,39 +579,7 @@ function notesSectionCountRange(detail: 'concise' | 'standard' | 'comprehensive'
   return detail === 'concise' ? '3–4' : detail === 'comprehensive' ? '8–12' : '4–7';
 }
 
-function notesFilePrompt(subject: string, opts: GenerateOptions): string {
-  const detail   = opts.notesDetail ?? 'standard';
-  const includes = opts.notesIncludes ?? [];
-  const custom   = opts.customPrompt?.trim();
-  const sectionCount = notesSectionCountRange(detail);
-
-  const mindmapInstruction = includes.includes('mindmap')
-    ? 'Organise sections hierarchically: the first section introduces the top-level concept, subsequent sections each explore one branch.'
-    : '';
-
-  return `You are an expert academic note-taker for university-level ${subject}.
-
-Based on the content in this file, create ${detail} structured notes with ${sectionCount} sections covering everything important in the material. Extract all key concepts, definitions, frameworks, and relationships. You MUST split the material into multiple sequential, distinctly-titled entries in the "sections" array — never collapse everything into a single section.
-${mindmapInstruction}
-${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
-
-Use clean, well-structured Markdown for each section's content — standard headers, concise explanations, and bullet points. Bold key terms. ${NO_HTML_RULE}
-
-Return ONLY a valid JSON object — no markdown wrapper, no commentary:
-{
-  "title": "Descriptive title of the material",
-  "summary": "2–3 sentence executive summary",
-  "sections": [
-    {
-      "heading": "Section heading",
-      "content": "Main explanation in clean markdown (2-4 sentences plus bullet points)",
-      "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
-    }
-  ]
-}`;
-}
-
-// ── Notes: detailed "dashboard" mode (opt-in, single call) ─────────────────
+// ── Notes: detailed "dashboard" mode format rules ───────────────────────────
 //
 // Same JSON contract as the fast prompt (title/summary/sections[]) so no
 // downstream parsing change is needed — only the instructions for what goes
@@ -640,35 +615,6 @@ Structure the "sections" array using whichever of these apply to the material (s
 8. Key Facts — compact tables or checklists only.
 9. Common Mistakes — frequently confused concepts, misconceptions, important distinctions, typical errors.
 10. Chapter Summary — single-screen recap: core idea, most important concepts, key relationships, critical rules, essential formulas.`;
-
-function notesDashboardFilePrompt(subject: string, opts: GenerateOptions): string {
-  const includes = opts.notesIncludes ?? [];
-  const custom   = opts.customPrompt?.trim();
-
-  const mindmapInstruction = includes.includes('mindmap')
-    ? 'Organise the Topic Overview and Core Concepts sections hierarchically: top-level concept first, subsequent sections each explore one branch.'
-    : '';
-
-  return `${DASHBOARD_FORMAT_RULES}
-
-Subject: university-level ${subject}.
-Based on the content in this file, cover everything important in the material — do not skip topics to save space. You MUST split the material into multiple sequential, distinctly-titled entries in the "sections" array (per the numbered structure above) — never collapse everything into a single section.
-${mindmapInstruction}
-${custom ? `\nAdditional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
-
-Return ONLY a valid JSON object — no markdown wrapper, no commentary:
-{
-  "title": "Descriptive title of the material",
-  "summary": "2–3 sentence executive summary",
-  "sections": [
-    {
-      "heading": "Section heading (e.g. 'Topic Overview', 'Core Concepts: <name>', 'Comparisons', 'Processes', 'Decision Logic', 'Relationships', 'Formulas', 'Key Facts', 'Common Mistakes', 'Chapter Summary')",
-      "content": "Dense markdown — tables/flowcharts/decision trees/checklists per the rules above. Minimal prose.",
-      "keyPoints": ["Specific point 1", "Specific point 2", "Specific point 3"]
-    }
-  ]
-}`;
-}
 
 // ── Notes: chunked generation (outline + per-section calls) ────────────────
 //
@@ -769,27 +715,44 @@ async function generateNotesChunked(
     ? outline.headings
     : ['Overview'];
 
+  // Each section is its own bounded request — if one section fails even
+  // after the client/server retry layers are exhausted (or its response
+  // can't be parsed despite the JSON repair pipeline), skip just that
+  // section instead of discarding every section already generated
+  // successfully. Only throws if every single section fails.
   const sections: GeneratedNoteSection[] = [];
+  const failedHeadings: string[] = [];
   for (let i = 0; i < headings.length; i++) {
     onProgress?.(i + 1, headings.length);
     const heading = headings[i];
-    const sectionParts: Part[] = [...sourceParts, { text: notesSectionPrompt(subjectTitle, opts, dashboard, heading) }];
-    const sectionText = await callProxy(sectionParts, {
-      maxOutputTokens: dashboard ? NOTES_SECTION_TOKENS_DASHBOARD : NOTES_SECTION_TOKENS,
-      temperature: 0.3,
-      responseMimeType: 'application/json',
-    });
-    const parsedSection = parseJSON(sectionText) as { content?: string; keyPoints?: string[] };
-    sections.push({
-      heading,
-      content: String(parsedSection.content ?? ''),
-      keyPoints: parsedSection.keyPoints,
-    });
+    try {
+      const sectionParts: Part[] = [...sourceParts, { text: notesSectionPrompt(subjectTitle, opts, dashboard, heading) }];
+      const sectionText = await callProxy(sectionParts, {
+        maxOutputTokens: dashboard ? NOTES_SECTION_TOKENS_DASHBOARD : NOTES_SECTION_TOKENS,
+        temperature: 0.3,
+        responseMimeType: 'application/json',
+      });
+      const parsedSection = parseJSON(sectionText) as { content?: string; keyPoints?: string[] };
+      sections.push({
+        heading,
+        content: String(parsedSection.content ?? ''),
+        keyPoints: parsedSection.keyPoints,
+      });
+    } catch (err) {
+      console.error(`[generateNotesChunked] Section "${heading}" failed, skipping:`, err);
+      failedHeadings.push(heading);
+    }
+  }
+
+  if (sections.length === 0) {
+    throw new Error(`Could not generate any section (all ${headings.length} failed). Try again, or generate a smaller/simpler note.`);
   }
 
   return {
     title: String(outline.title ?? subjectTitle),
-    summary: String(outline.summary ?? ''),
+    summary: failedHeadings.length > 0
+      ? `${String(outline.summary ?? '')}\n\n(Note: ${failedHeadings.length} section${failedHeadings.length > 1 ? 's' : ''} could not be generated and were skipped — you can try regenerating if needed.)`
+      : String(outline.summary ?? ''),
     sections,
   };
 }
@@ -832,6 +795,7 @@ For each question:
 6. The explanation must cite the exact sentence from the document where the answer appears.
 
 Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full — but with any inline option list removed and relocated into the "options" array as described above.
+${NO_PLACEHOLDER_RULE}
 
 Return ONLY the raw JSON object below — no markdown fences, no conversational introduction or conclusion, no commentary before or after the JSON, nothing but the object itself. The "options" array length must match the source document's own option count when the document presents a pre-written multiple-choice question (it may be 5 or more); only default to 4 total options when you are inventing the distractors yourself:
 {
@@ -862,7 +826,7 @@ ${chunkExcerpt
     ? `The text below is one excerpt of a larger document, split for processing. Create up to ${count} multiple-choice questions covering the material in THIS excerpt — fewer is fine if the excerpt doesn't support that many; do not pad with filler or repeat concepts just to hit the number. Do not worry about the total count across the whole document, that is handled separately.`
     : `Analyse the content in this file and create exactly ${count} multiple-choice questions.`}
 ${focus ? `Focus specifically on the topic: "${focus}".` : ''}${difficultyInstruction(opts.difficulty)}
-${custom ? `Additional instructions: ${custom}` : ''}${languageInstruction(opts.language)}
+${custom ? `Additional instructions: ${custom}` : ''}${languageInstruction(opts.language)}${NO_PLACEHOLDER_RULE}
 
 Option count rules:${OPTION_COUNT_RULE}
 
@@ -899,7 +863,7 @@ const TOPIC_PROMPTS: Record<
     `You are an expert study material creator for university students.
 
 Create exactly 12 flashcards on: "${topic}"${context ? ` in the context of ${context}` : ''}.
-Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
+Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}${NO_PLACEHOLDER_RULE}
 
 Return ONLY valid JSON — no markdown, no preamble:
 {
@@ -912,7 +876,7 @@ Return ONLY valid JSON — no markdown, no preamble:
     `You are an expert exam question writer for university students.
 
 Create exactly 10 multiple-choice questions on: "${topic}"${context ? ` for a ${context} course` : ''}.
-Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}
+Level: ${LEVEL_MAP[level] ?? level}.${languageInstruction(language)}${NO_PLACEHOLDER_RULE}
 
 Return ONLY valid JSON — no markdown, no preamble:
 {
@@ -1114,18 +1078,33 @@ async function generateQuizOrFlashcardsFromTextChunks(
 ): Promise<GeneratedFlashcard[] | GeneratedQuizQuestion[]> {
   const chunks = chunkText(extractedText);
 
+  // Each chunk is its own bounded request — if one chunk fails even after
+  // the retry layers are exhausted, skip just that chunk's contribution
+  // instead of discarding every chunk already generated successfully. Only
+  // throws if every single chunk fails.
+  let failedChunks = 0;
+
   if (type === 'flashcards') {
     const chunkPrompt = flashcardFilePrompt(subjectTitle, options, true);
     const merged: GeneratedFlashcard[] = [];
     for (let i = 0; i < chunks.length; i++) {
       onProgress?.(i + 1, chunks.length);
-      const text = await callProxy(
-        [{ text: `${chunkPrompt}\n\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}` }],
-        { responseMimeType: 'application/json' },
-      );
-      const parsed = parseJSON(text) as Record<string, unknown>;
-      merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
+      try {
+        const text = await callProxy(
+          [{ text: `${chunkPrompt}\n\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}` }],
+          { responseMimeType: 'application/json' },
+        );
+        const parsed = parseJSON(text) as Record<string, unknown>;
+        merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
+      } catch (err) {
+        console.error(`[generateQuizOrFlashcardsFromTextChunks] Chunk ${i + 1}/${chunks.length} failed, skipping:`, err);
+        failedChunks++;
+      }
     }
+    if (merged.length === 0) {
+      throw new Error(`Could not generate any flashcards (all ${chunks.length} batches failed). Try again, or use a smaller document.`);
+    }
+    if (failedChunks > 0) console.warn(`[generateQuizOrFlashcardsFromTextChunks] ${failedChunks}/${chunks.length} batches failed — returning flashcards from the remaining ${chunks.length - failedChunks}.`);
     return (options.cardCount && options.cardCount !== 'all') ? merged.slice(0, options.cardCount) : merged;
   }
 
@@ -1139,20 +1118,29 @@ async function generateQuizOrFlashcardsFromTextChunks(
   const seen = new Set<string>();
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.(i + 1, chunks.length);
-    const chunkPrompt = quizFilePrompt(subjectTitle, { ...options, questionCount: perChunkCount }, true);
-    const text = await callProxy(
-      [{ text: `${chunkPrompt}\n\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}` }],
-      { responseMimeType: 'application/json' },
-    );
-    const parsed = parseJSON(text) as Record<string, unknown>;
-    const questions = processResult(parsed, 'quiz', subjectTitle) as GeneratedQuizQuestion[];
-    for (const q of questions) {
-      const key = q.question.trim().toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(q);
+    try {
+      const chunkPrompt = quizFilePrompt(subjectTitle, { ...options, questionCount: perChunkCount }, true);
+      const text = await callProxy(
+        [{ text: `${chunkPrompt}\n\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}` }],
+        { responseMimeType: 'application/json' },
+      );
+      const parsed = parseJSON(text) as Record<string, unknown>;
+      const questions = processResult(parsed, 'quiz', subjectTitle) as GeneratedQuizQuestion[];
+      for (const q of questions) {
+        const key = q.question.trim().toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(q);
+      }
+    } catch (err) {
+      console.error(`[generateQuizOrFlashcardsFromTextChunks] Chunk ${i + 1}/${chunks.length} failed, skipping:`, err);
+      failedChunks++;
     }
   }
+  if (merged.length === 0) {
+    throw new Error(`Could not generate any questions (all ${chunks.length} batches failed). Try again, or use a smaller document.`);
+  }
+  if (failedChunks > 0) console.warn(`[generateQuizOrFlashcardsFromTextChunks] ${failedChunks}/${chunks.length} batches failed — returning questions from the remaining ${chunks.length - failedChunks}.`);
   // Extraction mode must preserve every distinct question the source
   // actually contains — trimming to totalCount would silently drop real
   // exam questions. "Generated" mode still honours the requested count.
@@ -1168,11 +1156,6 @@ export async function generateFromFile(
   options: GenerateOptions = {},
   onProgress?: (current: number, total: number) => void,
 ): Promise<GeneratedFlashcard[] | GeneratedNote | GeneratedQuizQuestion[]> {
-  const prompt =
-    type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) :
-    type === 'notes'      ? (options.detailedNotes ? notesDashboardFilePrompt(subjectTitle, options) : notesFilePrompt(subjectTitle, options)) :
-                            quizFilePrompt(subjectTitle, options);
-
   let parts: Part[] | null = null;
   let pageImages: Array<{ base64: string; mimeType: 'image/jpeg' }> | null = null;
   let extractedText: string | null = null;
@@ -1275,6 +1258,10 @@ export async function generateFromFile(
   if (extractedText !== null && extractedText.split(/\s+/).filter(Boolean).length > LARGE_TEXT_THRESHOLD_WORDS) {
     return generateQuizOrFlashcardsFromTextChunks(extractedText, type, subjectTitle, options, onProgress);
   }
+
+  // Only flashcards/quiz reach here — notes always returns earlier via
+  // generateNotesChunked, and large text sources via the chunked path above.
+  const prompt = type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) : quizFilePrompt(subjectTitle, options);
 
   if (extractedText !== null) {
     parts = [{ text: `${prompt}\n\nDocument content:\n${extractedText}` }];
