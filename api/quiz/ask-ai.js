@@ -12,7 +12,7 @@
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GROQ_BASE   = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL  = 'llama3-8b-8192';
+const GROQ_MODEL  = 'llama-3.1-8b-instant';
 
 const GEMINI_MODELS = [
   'gemini-2.5-flash',

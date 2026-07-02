@@ -14,7 +14,7 @@
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GROQ_BASE   = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL  = 'llama3-8b-8192';
+const GROQ_MODEL  = 'llama-3.1-8b-instant';
 
 const GEMINI_MODELS = [
   'gemini-2.5-flash',
@@ -301,7 +301,13 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: 'All AI provider quotas exhausted. Try again tomorrow.' });
     }
     if (msg.includes('400')) {
-      return res.status(400).json({ error: 'AI rejected the request. Check your prompt or file type.' });
+      // Include the real underlying reason (Gemini's or Groq's actual
+      // message) instead of a canned string — a 400 here can mean the
+      // request was genuinely malformed, but it can just as easily be a
+      // Groq fallback failing (e.g. a decommissioned model) after Gemini
+      // was skipped due to rate limits, which is not diagnosable at all
+      // from a generic "check your prompt" message.
+      return res.status(400).json({ error: `AI rejected the request: ${msg.slice(0, 200)}` });
     }
     if (isUnavailable(msg)) {
       return res.status(503).json({ error: 'The AI model is temporarily experiencing high demand. Please try again in a moment.' });
