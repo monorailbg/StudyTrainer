@@ -130,12 +130,13 @@ function Toggle({ on, color, onChange, label }: { on: boolean; color: string; on
 
 // ── Setup screen ───────────────────────────────────────────────────────────────
 
-function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved }: {
+function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved, onQuestionDeleted }: {
   questions: GeneratedQuizQuestion[];
   color: string;
   onStart: (count: number, shuffle: boolean, mode: QuizMode) => void;
   initialMode?: QuizMode;
   onQuestionSaved?: (qid: string, draft: EditDraft) => void;
+  onQuestionDeleted?: (qid: string) => void;
 }) {
   const total = questions.length;
   const { ts } = useLang();
@@ -149,6 +150,17 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved }
   const [listEditId, setListEditId]     = useState<string | null>(null);
   const [listEditDraft, setListEditDraft] = useState<EditDraft | null>(null);
   const [listOverrides, setListOverrides] = useState<Record<string, EditDraft>>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  function requestDelete(qid: string) {
+    if (total <= 1) return; // a quiz needs at least one question
+    if (confirmDeleteId === qid) {
+      onQuestionDeleted?.(qid);
+      setConfirmDeleteId(null);
+    } else {
+      setConfirmDeleteId(qid);
+    }
+  }
 
   function startListEdit(q: GeneratedQuizQuestion) {
     const ov = listOverrides[q.id];
@@ -369,6 +381,33 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved }
                                 <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>
                             </button>
+                            {onQuestionDeleted && (
+                              <button
+                                onClick={() => requestDelete(q.id)}
+                                onBlur={() => setConfirmDeleteId(prev => prev === q.id ? null : prev)}
+                                disabled={total <= 1}
+                                title={total <= 1 ? ts('A quiz needs at least one question') : (confirmDeleteId === q.id ? ts('Click again to confirm delete') : ts('Delete this question'))}
+                                style={{
+                                  width: confirmDeleteId === q.id ? 'auto' : '26px', height: '26px', borderRadius: '7px', flexShrink: 0,
+                                  padding: confirmDeleteId === q.id ? '0 10px' : 0,
+                                  background: confirmDeleteId === q.id ? 'rgba(248,81,73,0.15)' : 'var(--bg-elevated)',
+                                  border: `1px solid ${confirmDeleteId === q.id ? 'rgba(248,81,73,0.5)' : 'var(--border-light)'}`,
+                                  color: confirmDeleteId === q.id ? '#F97979' : 'var(--text-3)',
+                                  cursor: total <= 1 ? 'not-allowed' : 'pointer',
+                                  opacity: total <= 1 ? 0.4 : 1,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                                  fontSize: '10px', fontWeight: 700,
+                                  transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { if (confirmDeleteId !== q.id && total > 1) { (e.currentTarget as HTMLElement).style.color = '#F97979'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,81,73,0.4)'; } }}
+                                onMouseLeave={e => { if (confirmDeleteId !== q.id && total > 1) { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; } }}
+                              >
+                                <svg viewBox="0 0 14 14" width="12" height="12" fill="none" style={{ flexShrink: 0 }}>
+                                  <path d="M3 4h8M5.5 4V2.8a.8.8 0 0 1 .8-.8h1.4a.8.8 0 0 1 .8.8V4M4 4l.5 7.2a1 1 0 0 0 1 .8h3a1 1 0 0 0 1-.8L10 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                {confirmDeleteId === q.id && ts('Confirm')}
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -1495,6 +1534,7 @@ export function QuizViewer({
   initialRedoResult,
   onExit,
   onQuestionEdit,
+  onQuestionDelete,
 }: {
   questions: GeneratedQuizQuestion[];
   color: string;
@@ -1505,6 +1545,7 @@ export function QuizViewer({
   initialRedoResult?: QuizResult;
   onExit?: () => void;
   onQuestionEdit?: (questionId: string, draft: EditDraft) => void;
+  onQuestionDelete?: (questionId: string) => void;
 }) {
   const [phase, setPhase] = useState<Phase>(initialRedoResult ? 'redo' : 'setup');
   const [activeQuestions, setActiveQuestions] = useState<GeneratedQuizQuestion[]>(
@@ -1586,6 +1627,7 @@ export function QuizViewer({
         color={color}
         initialMode={setupMode}
         onQuestionSaved={onQuestionEdit}
+        onQuestionDeleted={onQuestionDelete}
         onStart={(count, shuffle, mode) => {
           const pool = shuffle ? [...questions].sort(() => Math.random() - 0.5) : [...questions];
           setActiveQuestions(pool.slice(0, count));

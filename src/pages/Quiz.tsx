@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLang } from '../context/LanguageContext';
-import { getAllQuizzes, getFolders, type StoredQuiz, type Folder } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudQuizzes, getCloudFolders } from '../lib/cloudDb';
+import { getAllQuizzes, getFolders, saveQuiz, type StoredQuiz, type Folder } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudQuizzes, getCloudFolders, saveCloudQuiz } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
@@ -317,6 +317,13 @@ export default function Quiz() {
                 const name = activeSubject?.title ?? ts('a subject');
                 addQuizScore(activeSubject?.id ?? activeQuiz.subjectId, result.correctAnswers, result.totalQuestions);
                 record({ type: 'quiz', subjectId: activeQuiz.subjectId, subjectName: name, detail: ts('Scored {percent}% on {name} quiz', { percent: result.scorePercent, name }) });
+              }}
+              onQuestionDelete={(questionId) => {
+                const updated = { ...activeQuiz, questions: activeQuiz.questions.filter(qq => qq.id !== questionId) };
+                if (isFirebaseConfigured) saveCloudQuiz(updated).catch(() => {});
+                else saveQuiz(updated).catch(() => {});
+                setActiveQuiz(updated);
+                setQuizzes(prev => prev.map(q => q.id === updated.id ? updated : q));
               }} />
           </div>
         ) : renderMain()}

@@ -2735,6 +2735,16 @@ export default function SubjectPage() {
                         return updated;
                       }));
                     }}
+                    onQuestionDelete={(questionId) => {
+                      setSavedQuizzes(prev => prev.map(q => {
+                        if (q.id !== activeQuiz.id) return q;
+                        const updatedQuestions = q.questions.filter(qq => qq.id !== questionId);
+                        const updated = { ...q, questions: updatedQuestions };
+                        if (isFirebaseConfigured) saveCloudQuiz({ ...updated, subjectId: id! }).catch(() => {});
+                        else saveQuiz(updated).catch(() => {});
+                        return updated;
+                      }));
+                    }}
                   />
                 </div>
               );
