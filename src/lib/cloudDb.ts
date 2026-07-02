@@ -120,6 +120,17 @@ export async function uploadFileToStorage(subjectId: string, fileId: string, fil
     if (msg.includes('not found') || msg.includes('404') || msg.includes('Bucket')) {
       throw new Error(`Supabase bucket "${STORAGE_BUCKET}" not found. Create it in Supabase → Storage.`);
     }
+    // The Supabase JS SDK doesn't always reject/throw on a network-level
+    // failure — it can also resolve with { error: { message: 'Failed to
+    // fetch' } } instead, which skips the catch block below entirely and
+    // would otherwise surface as this raw, unhelpful browser string.
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network request failed')) {
+      const url = (import.meta.env.VITE_SUPABASE_URL as string) || '(not set)';
+      throw new Error(
+        `Cannot reach Supabase (${url.slice(0, 40)}). ` +
+        'Check: 1) Supabase project is not paused (free-tier projects pause after ~1 week idle), 2) VITE_SUPABASE_URL is correct, 3) no ad blocker/extension or CORS policy is blocking requests to supabase.co.',
+      );
+    }
     throw new Error(msg);
   }
   const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
