@@ -115,7 +115,7 @@ export async function uploadFileToStorage(subjectId: string, fileId: string, fil
     console.error('[Supabase] upload error:', error);
     const msg = (error as { message?: string }).message ?? String(error);
     if (msg.includes('row-level security') || msg.includes('Unauthorized') || msg.includes('403')) {
-      throw new Error('Supabase RLS policy missing. Run the policy SQL in Supabase → SQL Editor.');
+      throw new Error('Supabase RLS policy missing. Run supabase/storage-policy.sql in Supabase → SQL Editor to make the bucket publicly readable/writable.');
     }
     if (msg.includes('not found') || msg.includes('404') || msg.includes('Bucket')) {
       throw new Error(`Supabase bucket "${STORAGE_BUCKET}" not found. Create it in Supabase → Storage.`);
@@ -309,5 +309,45 @@ export async function migrateSubjectFromIndexedDB(subjectId: string): Promise<vo
     localStorage.setItem(migKey, '1');
   } catch {
     // Migration is best-effort — never block the app
+  }
+}
+
+// Backfills any locally-stored file that never made it into shared cloud
+// storage — e.g. uploaded before Supabase was configured, or a previous
+// upload attempt that failed silently — so it becomes visible to every
+// other user instead of staying stuck on the one browser that uploaded it.
+//
+// Deliberately NOT gated by a one-time "already migrated" flag like
+// migrateSubjectFromIndexedDB above: a transient failure (network blip,
+// Supabase hiccup) must be retryable on the next visit, not permanently
+// skipped because an unrelated migration flag got set first. It's cheap to
+// re-run — once every local file has a matching cloud record, there's
+// nothing left to upload and this is a single no-op Firestore query.
+export async function backfillLocalFilesToCloud(subjectId: string): Promise<void> {
+  if (!isSupabaseConfigured) return; // no shared blob storage to upload to
+
+  try {
+    const idb = await import('./db');
+    const idbFiles = await idb.getFiles(subjectId);
+    if (idbFiles.length === 0) return;
+
+    const existingCloudIds = new Set((await getCloudFiles(subjectId)).map(f => f.id));
+    const toMigrate = idbFiles.filter(f => !existingCloudIds.has(f.id));
+    if (toMigrate.length === 0) return;
+
+    await Promise.all(toMigrate.map(async f => {
+      try {
+        const blobFile = new File([f.blob], f.name, { type: f.type });
+        const storageUrl = await uploadFileToStorage(subjectId, f.id, blobFile);
+        await saveCloudFile({
+          id: f.id, subjectId, name: f.name, type: f.type, size: f.size,
+          level: f.level, storageUrl, createdAt: Date.now(), folderId: f.folderId ?? null,
+        });
+      } catch (err) {
+        console.warn('[backfillLocalFilesToCloud] Failed to migrate file', f.name, '—', err instanceof Error ? err.message : err);
+      }
+    }));
+  } catch (err) {
+    console.warn('[backfillLocalFilesToCloud] Failed for subject', subjectId, '—', err instanceof Error ? err.message : err);
   }
 }

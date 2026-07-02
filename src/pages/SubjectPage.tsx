@@ -26,7 +26,7 @@ import {
   saveCloudFlashcardSet, getCloudFlashcardSets, deleteCloudFlashcardSet, renameCloudFlashcardSet,
   saveCloudQuiz, getCloudQuizzes, deleteCloudQuiz, renameCloudQuiz,
   saveCloudFolder, getCloudFolders, deleteCloudFolder,
-  migrateSubjectFromIndexedDB,
+  migrateSubjectFromIndexedDB, backfillLocalFilesToCloud,
 } from '../lib/cloudDb';
 import type {
   GenerationType,
@@ -1060,6 +1060,10 @@ export default function SubjectPage() {
       try {
         if (isFirebaseConfigured) {
           await migrateSubjectFromIndexedDB(id!);
+          // Retried on every visit (unlike the one-time migration above) so a
+          // file that failed to sync earlier gets another chance to become
+          // visible to everyone instead of staying stuck on this browser.
+          await backfillLocalFilesToCloud(id!);
           const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets, cloudFolders, localHistory] = await Promise.all([
             getCloudFiles(id!),
             getCloudQuizzes(id!),
