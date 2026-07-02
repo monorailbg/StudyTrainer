@@ -705,6 +705,19 @@ const NOTES_OUTLINE_TOKENS = 1024;
 const NOTES_SECTION_TOKENS = 4096;
 const NOTES_SECTION_TOKENS_DASHBOARD = 8192;
 
+// Minimum gap between sequential chunked calls (notes sections, quiz/
+// flashcard batches). Free-tier Gemini RPM ceilings are commonly as low as
+// 10-15 requests/minute, and a single generation can fire well over a dozen
+// calls back-to-back (a comprehensive note is 1 outline + up to 12 sections).
+// A short stagger doesn't spread that across a full minute — 600ms × 13
+// calls is ~8s of pauses, all still landing inside the same 60s window —
+// so this needs to be large enough that a worst-case run of ~15 sequential
+// calls stays under a low RPM ceiling on its own, with no other activity
+// involved at all (this is what "the app is rate-limited but I only made
+// one request" usually means: the rate limit is real, it's just that one
+// UI action fans out into many rapid API calls).
+const CHUNK_CALL_STAGGER_MS = 4000;
+
 async function generateNotesChunked(
   sourceParts: Part[],
   subjectTitle: string,
@@ -732,12 +745,7 @@ async function generateNotesChunked(
   for (let i = 0; i < headings.length; i++) {
     onProgress?.(i + 1, headings.length);
     const heading = headings[i];
-    // A comprehensive note fires up to 12 section calls (plus the outline)
-    // back-to-back — enough on its own to trip a free-tier per-minute RPM
-    // limit within a single note generation, before any other activity.
-    // A small stagger between calls costs little wall-clock time but
-    // meaningfully reduces how often that happens in the first place.
-    if (i > 0) await sleep(600);
+    if (i > 0) await sleep(CHUNK_CALL_STAGGER_MS);
     try {
       const sectionParts: Part[] = [...sourceParts, { text: notesSectionPrompt(subjectTitle, opts, dashboard, heading) }];
       const sectionText = await callProxy(sectionParts, {
@@ -1111,6 +1119,7 @@ async function generateQuizOrFlashcardsFromTextChunks(
     const merged: GeneratedFlashcard[] = [];
     for (let i = 0; i < chunks.length; i++) {
       onProgress?.(i + 1, chunks.length);
+      if (i > 0) await sleep(CHUNK_CALL_STAGGER_MS);
       try {
         const text = await callProxy(
           [{ text: `${chunkPrompt}\n\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}` }],
@@ -1146,6 +1155,7 @@ async function generateQuizOrFlashcardsFromTextChunks(
   const seen = new Set<string>();
   for (let i = 0; i < chunks.length; i++) {
     onProgress?.(i + 1, chunks.length);
+    if (i > 0) await sleep(CHUNK_CALL_STAGGER_MS);
     try {
       const chunkPrompt = quizFilePrompt(subjectTitle, { ...options, questionCount: perChunkCount }, true);
       const text = await callProxy(
@@ -1260,6 +1270,7 @@ export async function generateFromFile(
       const merged: GeneratedFlashcard[] = [];
       for (let i = 0; i < chunks.length; i++) {
         onProgress?.(i + 1, chunks.length);
+        if (i > 0) await sleep(CHUNK_CALL_STAGGER_MS);
         const chunkParts: Part[] = [
           ...chunks[i].map((p): InlineDataPart => ({ inline_data: { mime_type: p.mimeType, data: p.base64 } })),
           { text: chunkPrompt },
