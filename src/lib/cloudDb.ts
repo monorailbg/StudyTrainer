@@ -323,18 +323,29 @@ export async function migrateSubjectFromIndexedDB(subjectId: string): Promise<vo
 // skipped because an unrelated migration flag got set first. It's cheap to
 // re-run — once every local file has a matching cloud record, there's
 // nothing left to upload and this is a single no-op Firestore query.
-export async function backfillLocalFilesToCloud(subjectId: string): Promise<void> {
-  if (!isSupabaseConfigured) return; // no shared blob storage to upload to
+export interface BackfillResult {
+  attempted: number;
+  migrated:  number;
+  /** Human-readable reason nothing was attempted (e.g. Supabase not configured, no local files). Undefined when files were actually attempted. */
+  skippedReason?: string;
+  /** First error message seen, useful for surfacing a toast without needing devtools. */
+  lastError?: string;
+}
+
+export async function backfillLocalFilesToCloud(subjectId: string): Promise<BackfillResult> {
+  if (!isSupabaseConfigured) return { attempted: 0, migrated: 0, skippedReason: 'Supabase not configured' };
 
   try {
     const idb = await import('./db');
     const idbFiles = await idb.getFiles(subjectId);
-    if (idbFiles.length === 0) return;
+    if (idbFiles.length === 0) return { attempted: 0, migrated: 0, skippedReason: 'no local files for this subject' };
 
     const existingCloudIds = new Set((await getCloudFiles(subjectId)).map(f => f.id));
     const toMigrate = idbFiles.filter(f => !existingCloudIds.has(f.id));
-    if (toMigrate.length === 0) return;
+    if (toMigrate.length === 0) return { attempted: 0, migrated: 0, skippedReason: 'already in sync' };
 
+    let migrated = 0;
+    let lastError: string | undefined;
     await Promise.all(toMigrate.map(async f => {
       try {
         const blobFile = new File([f.blob], f.name, { type: f.type });
@@ -343,11 +354,17 @@ export async function backfillLocalFilesToCloud(subjectId: string): Promise<void
           id: f.id, subjectId, name: f.name, type: f.type, size: f.size,
           level: f.level, storageUrl, createdAt: Date.now(), folderId: f.folderId ?? null,
         });
+        migrated++;
       } catch (err) {
-        console.warn('[backfillLocalFilesToCloud] Failed to migrate file', f.name, '—', err instanceof Error ? err.message : err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn('[backfillLocalFilesToCloud] Failed to migrate file', f.name, '—', errMsg);
+        lastError = errMsg;
       }
     }));
+    return { attempted: toMigrate.length, migrated, lastError };
   } catch (err) {
-    console.warn('[backfillLocalFilesToCloud] Failed for subject', subjectId, '—', err instanceof Error ? err.message : err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.warn('[backfillLocalFilesToCloud] Failed for subject', subjectId, '—', errMsg);
+    return { attempted: 0, migrated: 0, lastError: errMsg };
   }
 }

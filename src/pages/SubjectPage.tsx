@@ -1063,7 +1063,14 @@ export default function SubjectPage() {
           // Retried on every visit (unlike the one-time migration above) so a
           // file that failed to sync earlier gets another chance to become
           // visible to everyone instead of staying stuck on this browser.
-          await backfillLocalFilesToCloud(id!);
+          const backfill = await backfillLocalFilesToCloud(id!);
+          if (backfill.attempted > 0 && backfill.migrated < backfill.attempted) {
+            toast('error', ts('Cloud sync incomplete'), ts('{failed} of {total} local file(s) for this subject could not be uploaded to shared storage{reason}.', {
+              failed: backfill.attempted - backfill.migrated,
+              total: backfill.attempted,
+              reason: backfill.lastError ? ` (${backfill.lastError.slice(0, 120)})` : '',
+            }));
+          }
           const [cloudFiles, cloudQuizzes, cloudNotes, cloudSets, cloudFolders, localHistory] = await Promise.all([
             getCloudFiles(id!),
             getCloudQuizzes(id!),
@@ -1191,8 +1198,11 @@ export default function SubjectPage() {
       finalFiles.push({ entry, file: fileToStore, type: typeToStore });
     }
 
-    // Best-effort cloud sync — never blocks or errors the user.
+    // Best-effort cloud sync — never blocks the user, but a silent
+    // console.warn on failure was easy to miss (files would silently stay
+    // local-only and invisible to other users). Surface it as a toast too.
     if (isFirebaseConfigured && isSupabaseConfigured) {
+      const failedNames: string[] = [];
       for (const { entry, file, type } of finalFiles) {
         try {
           const storageUrl = await uploadFileToStorage(id!, entry.id, file);
@@ -1200,7 +1210,11 @@ export default function SubjectPage() {
           setFiles(prev => prev.map(f => f.id === entry.id ? { ...f, storageUrl } : f));
         } catch (err) {
           console.warn('[CloudSync] Supabase upload failed for', entry.name, '—', err instanceof Error ? err.message : err);
+          failedNames.push(entry.name);
         }
+      }
+      if (failedNames.length > 0) {
+        toast('error', ts('Cloud sync failed'), ts('{n} file(s) saved on this device only — they\'ll retry automatically next time you open this subject.', { n: failedNames.length }));
       }
     }
   }, [activeLevel, id, toast, ts]);
@@ -1210,7 +1224,7 @@ export default function SubjectPage() {
     if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
   }, [addFiles]);
 
-  const addTextSource = useCallback(() => {
+  const addTextSource = useCallback(async () => {
     const body = pasteBody.trim();
     if (!body) { toast('error', ts('Error'), 'Paste some text first.'); return; }
     const name = pasteTitle.trim() || 'Text source';
@@ -1224,11 +1238,25 @@ export default function SubjectPage() {
     };
     setFiles(prev => [...prev, entry]);
     setSelectedFileIds(prev => [...prev, entry.id]);
-    saveFile({ id: entry.id, subjectId: id!, name, type: 'application/x-studytrainer-text', size: blob.size, level: activeLevel, blob, wordCount }).catch(() => {});
+    await saveFile({ id: entry.id, subjectId: id!, name, type: 'application/x-studytrainer-text', size: blob.size, level: activeLevel, blob, wordCount }).catch(() => {});
     setPasteTitle('');
     setPasteBody('');
     setUploadTab('file');
     toast('success', ts('{n} files added', { n: 1 }), undefined);
+
+    // Same best-effort cloud sync as addFiles — pasted text was previously
+    // only ever saved to local IndexedDB, so it never became visible to
+    // other users even when Firebase + Supabase were fully configured.
+    if (isFirebaseConfigured && isSupabaseConfigured) {
+      try {
+        const storageUrl = await uploadFileToStorage(id!, entry.id, blob);
+        await saveCloudFile({ id: entry.id, subjectId: id!, name, type: 'application/x-studytrainer-text', size: blob.size, level: activeLevel, storageUrl, createdAt: Date.now() });
+        setFiles(prev => prev.map(f => f.id === entry.id ? { ...f, storageUrl } : f));
+      } catch (err) {
+        console.warn('[CloudSync] Supabase upload failed for', name, '—', err instanceof Error ? err.message : err);
+        toast('error', ts('Cloud sync failed'), ts('"{name}" was saved on this device only — it will retry automatically next time you open this subject.', { name }));
+      }
+    }
   }, [pasteBody, pasteTitle, activeLevel, id, toast, ts]);
 
   const removeFile = (fileId: string) => {
