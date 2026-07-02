@@ -219,7 +219,7 @@ export default async function handler(req, res) {
       return res.end();
     } catch (err) {
       const msg = String(err);
-      if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+      if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg) && !isPerMinuteLimit(msg)) throw err;
       console.warn('[ask-ai] ⚠️  GEMINI_PRIMARY unavailable/rejected — failing over to GEMINI_BACKUP…');
     }
 
@@ -231,7 +231,7 @@ export default async function handler(req, res) {
         return res.end();
       } catch (err) {
         const msg = String(err);
-        if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+        if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg) && !isPerMinuteLimit(msg)) throw err;
         console.warn('[ask-ai] ⚠️  GEMINI_BACKUP unavailable/rejected — failing over to GROQ_BACKUP…');
       }
     }

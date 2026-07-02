@@ -49,7 +49,12 @@ function friendlyError(raw?: string): string {
   if (!raw) return 'Generation failed.';
   if (raw.includes('401') || raw.includes('API_KEY_INVALID')) return 'Invalid or expired API key. Check the server configuration.';
   if (raw.includes('RESOURCE_EXHAUSTED')) return 'Quota exhausted — try again tomorrow.';
-  if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
+  // No hardcoded "429 → wait 60s" override here on purpose: a per-minute
+  // rate limit and a fully exhausted daily quota are both 429s but have
+  // very different real wait times, and geminiProxy.ts now throws the
+  // server's actual message (which already says which one it is and how
+  // long to wait) — that falls through to the generic branch below, which
+  // shows it verbatim instead of a hardcoded, often-wrong "60 seconds".
   if (raw.includes('unsupported') || raw.includes('Unsupported') || raw.includes('INVALID_ARGUMENT')) return 'File format not supported. Try a PDF or image file.';
   if (raw.includes('UNAVAILABLE') || raw.includes('high demand') || raw.includes('503')) return 'The AI model is temporarily experiencing high demand. Please try again in a moment.';
   return `Generation failed: ${raw.replace(/^Error:\s*/i, '').slice(0, 140)}`;

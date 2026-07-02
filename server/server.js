@@ -277,8 +277,14 @@ async function generateWithFailover(rawParts, temperature, config) {
     return await callGeminiClient(aiPrimary, sdkContents, config, 'GEMINI_PRIMARY');
   } catch (err) {
     const msg = String(err);
-    if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+    // A per-minute rate limit is scoped to THIS key's quota bucket — a
+    // different key (the backup) has its own separate bucket and is very
+    // likely still healthy, so it's still worth failing over to rather than
+    // giving up entirely once callGeminiModel's in-place retries (which
+    // already handle brief spikes) are exhausted.
+    if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg) && !isPerMinuteLimit(msg)) throw err;
     if (isKeyRejected(msg)) console.warn('[proxy] ⚠️  GEMINI_PRIMARY key rejected (401/403) — failing over to GEMINI_BACKUP…');
+    else if (isPerMinuteLimit(msg)) console.warn('[proxy] ⚠️  GEMINI_PRIMARY per-minute rate limited — failing over to GEMINI_BACKUP…');
     else console.warn('[proxy] ⚠️  GEMINI_PRIMARY unavailable — failing over to GEMINI_BACKUP…');
   }
 
@@ -290,7 +296,7 @@ async function generateWithFailover(rawParts, temperature, config) {
       return text;
     } catch (err) {
       const msg = String(err);
-      if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg)) throw err;
+      if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg) && !isPerMinuteLimit(msg)) throw err;
       console.warn('[proxy] ⚠️  GEMINI_BACKUP unavailable — failing over to GROQ_BACKUP…');
     }
   } else {
@@ -446,6 +452,13 @@ app.post('/api/generate', generateLimiter, async (req, res) => {
       return res.status(403).json({
         error: 'The Gemini API key\'s Google Cloud project has been denied access (not just an invalid key — the project itself is blocked, often due to billing or a ToS review). Generate a new API key from a different/healthy Google Cloud project, or set BACKUP_GEMINI_API_KEY to a working key so requests fail over automatically.',
       });
+    }
+    if (isPerMinuteLimit(message)) {
+      // Distinct from the daily-quota case below: this resolves in well
+      // under a minute, not tomorrow, and it only reaches here if the
+      // backup key/Groq were also rate-limited or unavailable — reusing the
+      // "try again tomorrow" message for this would be actively wrong.
+      return res.status(429).json({ error: 'All AI providers are briefly rate-limited (per-minute cap). Wait a few seconds and try again.', retryAfter: 15 });
     }
     if (message.includes('RESOURCE_EXHAUSTED') || message.includes('quota')) {
       return res.status(429).json({ error: 'All AI provider quotas exhausted. Try again tomorrow.' });

@@ -175,6 +175,12 @@ async function callProxyOnce(body: string): Promise<string> {
     throw new Error('The server took too long to respond (gateway timeout). Try a smaller batch (fewer pages, or a lower "Cards per file" count instead of "All").');
   }
   if (response.status === 429) {
+    // Prefer the server's actual message when it has one — a brief
+    // per-minute rate limit and a fully exhausted daily quota are both
+    // 429s, but they mean very different things and have very different
+    // wait times; collapsing them into one generic "wait 60s" message hides
+    // that distinction from the user.
+    if (errText) throw new Error(errText);
     const wait = err.retryAfter ?? 60;
     throw new Error(`Rate limit reached. Please wait ${wait} seconds and try again.`);
   }

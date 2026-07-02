@@ -15,7 +15,10 @@ function friendlyError(raw?: string): string {
   if (!raw) return 'Definition failed.';
   if (raw.includes('401') || raw.includes('API_KEY_INVALID')) return 'Invalid or expired API key. Check the server configuration.';
   if (raw.includes('RESOURCE_EXHAUSTED')) return 'Quota exhausted — try again tomorrow.';
-  if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
+  // No hardcoded "429 → wait 60s" override on purpose — geminiProxy.ts now
+  // throws the server's actual message, which already distinguishes a
+  // brief per-minute limit from a fully exhausted daily quota and states
+  // the real wait time; that falls through to the generic branch below.
   if (raw.includes('unsupported') || raw.includes('Unsupported') || raw.includes('INVALID_ARGUMENT')) return 'Failed to process. Try again.';
   return `Definition failed: ${raw.replace(/^Error:\s*/i, '').slice(0, 140)}`;
 }

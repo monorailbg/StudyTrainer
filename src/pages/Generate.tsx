@@ -23,7 +23,10 @@ function friendlyError(raw: string): string {
     return 'Daily quota exhausted on all models. Try again tomorrow.';
   }
   if (raw.toLowerCase().includes('quota')) return 'Quota limit reached. Try again tomorrow.';
-  if (raw.includes('429')) return 'Rate limit hit. Wait 60 seconds and try again.';
+  // No hardcoded "429 → wait 60s" fallback on purpose — geminiProxy.ts now
+  // throws the server's actual message for a 429, which already states the
+  // real reason and wait time; that falls through to the generic branch
+  // below instead of being overridden by a fixed, often-wrong guess.
   if (raw.includes('400')) return 'Bad request — topic too long or unsupported content.';
   return `Generation failed: ${raw.slice(0, 160)}`;
 }
