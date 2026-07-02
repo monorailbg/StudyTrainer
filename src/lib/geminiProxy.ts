@@ -728,9 +728,16 @@ async function generateNotesChunked(
   // successfully. Only throws if every single section fails.
   const sections: GeneratedNoteSection[] = [];
   const failedHeadings: string[] = [];
+  let lastSectionError: string | undefined;
   for (let i = 0; i < headings.length; i++) {
     onProgress?.(i + 1, headings.length);
     const heading = headings[i];
+    // A comprehensive note fires up to 12 section calls (plus the outline)
+    // back-to-back — enough on its own to trip a free-tier per-minute RPM
+    // limit within a single note generation, before any other activity.
+    // A small stagger between calls costs little wall-clock time but
+    // meaningfully reduces how often that happens in the first place.
+    if (i > 0) await sleep(600);
     try {
       const sectionParts: Part[] = [...sourceParts, { text: notesSectionPrompt(subjectTitle, opts, dashboard, heading) }];
       const sectionText = await callProxy(sectionParts, {
@@ -745,13 +752,21 @@ async function generateNotesChunked(
         keyPoints: parsedSection.keyPoints,
       });
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       console.error(`[generateNotesChunked] Section "${heading}" failed, skipping:`, err);
       failedHeadings.push(heading);
+      lastSectionError = errMsg;
     }
   }
 
   if (sections.length === 0) {
-    throw new Error(`Could not generate any section (all ${headings.length} failed). Try again, or generate a smaller/simpler note.`);
+    // Include the real underlying reason — "all N failed" alone forced
+    // opening server logs to find out why, every single time.
+    throw new Error(
+      `Could not generate any section (all ${headings.length} failed)` +
+      (lastSectionError ? `: ${lastSectionError}` : '') +
+      '. Try again, or generate a smaller/simpler note.',
+    );
   }
 
   return {
@@ -1089,6 +1104,7 @@ async function generateQuizOrFlashcardsFromTextChunks(
   // instead of discarding every chunk already generated successfully. Only
   // throws if every single chunk fails.
   let failedChunks = 0;
+  let lastChunkError: string | undefined;
 
   if (type === 'flashcards') {
     const chunkPrompt = flashcardFilePrompt(subjectTitle, options, true);
@@ -1103,12 +1119,18 @@ async function generateQuizOrFlashcardsFromTextChunks(
         const parsed = parseJSON(text) as Record<string, unknown>;
         merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
       } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
         console.error(`[generateQuizOrFlashcardsFromTextChunks] Chunk ${i + 1}/${chunks.length} failed, skipping:`, err);
         failedChunks++;
+        lastChunkError = errMsg;
       }
     }
     if (merged.length === 0) {
-      throw new Error(`Could not generate any flashcards (all ${chunks.length} batches failed). Try again, or use a smaller document.`);
+      throw new Error(
+        `Could not generate any flashcards (all ${chunks.length} batches failed)` +
+        (lastChunkError ? `: ${lastChunkError}` : '') +
+        '. Try again, or use a smaller document.',
+      );
     }
     if (failedChunks > 0) console.warn(`[generateQuizOrFlashcardsFromTextChunks] ${failedChunks}/${chunks.length} batches failed — returning flashcards from the remaining ${chunks.length - failedChunks}.`);
     return (options.cardCount && options.cardCount !== 'all') ? merged.slice(0, options.cardCount) : merged;
@@ -1139,12 +1161,18 @@ async function generateQuizOrFlashcardsFromTextChunks(
         merged.push(q);
       }
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       console.error(`[generateQuizOrFlashcardsFromTextChunks] Chunk ${i + 1}/${chunks.length} failed, skipping:`, err);
       failedChunks++;
+      lastChunkError = errMsg;
     }
   }
   if (merged.length === 0) {
-    throw new Error(`Could not generate any questions (all ${chunks.length} batches failed). Try again, or use a smaller document.`);
+    throw new Error(
+      `Could not generate any questions (all ${chunks.length} batches failed)` +
+      (lastChunkError ? `: ${lastChunkError}` : '') +
+      '. Try again, or use a smaller document.',
+    );
   }
   if (failedChunks > 0) console.warn(`[generateQuizOrFlashcardsFromTextChunks] ${failedChunks}/${chunks.length} batches failed — returning questions from the remaining ${chunks.length - failedChunks}.`);
   // Extraction mode must preserve every distinct question the source
