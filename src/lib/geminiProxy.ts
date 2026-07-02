@@ -233,11 +233,17 @@ function stripCodeFence(raw: string): string {
 
 // The model's JSON string values often contain raw backslashes from markdown,
 // LaTeX-style formulas, or Mermaid diagram syntax (e.g. "A-->B" is fine, but
-// things like "\(x\)" or "C:\path" are not valid JSON escape sequences) and
-// crash JSON.parse with "Bad escaped character in JSON". Escape any backslash
-// that isn't already part of a valid JSON escape token before parsing.
+// things like "\(x\)", "C:\path", or LaTeX commands like "\underline{}" or
+// "\upsilon" are not valid JSON escape sequences) and crash JSON.parse with
+// "Bad escaped character in JSON". Escape any backslash that isn't already
+// part of a valid JSON escape token before parsing. \u is only a valid
+// escape when followed by exactly 4 hex digits — treating a bare backslash
+// followed by any "u" as already-valid (the previous, buggy version of this
+// regex) let LaTeX commands starting with \u (\underline, \upsilon, ...)
+// slip through unescaped and crash with "Bad Unicode escape"/"Bad escaped
+// character" instead.
 function sanitizeJsonEscapes(text: string): string {
-  return text.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+  return text.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\');
 }
 
 // Gemini occasionally emits a raw, unescaped control character (a literal
