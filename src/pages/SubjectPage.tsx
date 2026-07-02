@@ -1259,7 +1259,28 @@ export default function SubjectPage() {
     }
   }, [pasteBody, pasteTitle, activeLevel, id, toast, ts]);
 
+  // Every delete in this app is optimistic (remove from UI immediately, fire
+  // the real deletion in the background) — that's fine and matches the rest
+  // of the app's UX, but every call site previously did `.catch(() => {})`
+  // on the *shared cloud* delete with no rollback or feedback. If that call
+  // actually failed (network issue, Firestore/Supabase unreachable), the
+  // item silently stayed alive in the shared store: gone from this browser,
+  // but still there for every other user, and it would reappear here too on
+  // the next reload once the cloud state was re-fetched. This restores the
+  // optimistic removal and tells the user, instead of leaving them with a
+  // UI that quietly lied about what actually got deleted.
+  async function deleteWithRollback(deletePromise: Promise<unknown>, restore: () => void, itemLabel: string) {
+    try {
+      await deletePromise;
+    } catch (err) {
+      console.error(`[Delete] Failed to delete "${itemLabel}" from shared storage:`, err);
+      restore();
+      toast('error', ts('Delete failed'), ts('"{name}" could not be removed from shared storage — it has been restored. Check your connection and try again.', { name: itemLabel }));
+    }
+  }
+
   const removeFile = (fileId: string) => {
+    const removed = files.find(f => f.id === fileId);
     setFiles(prev => {
       const f = prev.find(x => x.id === fileId);
       if (f?.url.startsWith('blob:')) URL.revokeObjectURL(f.url);
@@ -1269,7 +1290,13 @@ export default function SubjectPage() {
     // Always wipe the local IndexedDB copy so it doesn't reappear on next load
     // via the local-only merge path, even when cloud sync is active.
     deleteFile(fileId).catch(() => {});
-    if (isFirebaseConfigured) deleteCloudFile(id!, fileId).catch(() => {});
+    if (isFirebaseConfigured && removed) {
+      deleteWithRollback(
+        deleteCloudFile(id!, fileId),
+        () => setFiles(prev => (prev.some(f => f.id === fileId) ? prev : [...prev, removed])),
+        removed.name,
+      );
+    }
   };
 
   const toggleFileSelection = (fileId: string) => {
@@ -1279,21 +1306,30 @@ export default function SubjectPage() {
   };
 
   const removeQuiz = (quizId: string) => {
+    const removed = savedQuizzes.find(q => q.id === quizId);
     setSavedQuizzes(prev => prev.filter(q => q.id !== quizId));
     if (activeQuizId === quizId) setActiveQuizId(null);
-    if (isFirebaseConfigured) deleteCloudQuiz(quizId).catch(() => {}); else deleteQuiz(quizId).catch(() => {});
+    if (!removed) return;
+    const restore = () => setSavedQuizzes(prev => (prev.some(q => q.id === quizId) ? prev : [...prev, removed]));
+    deleteWithRollback(isFirebaseConfigured ? deleteCloudQuiz(quizId) : deleteQuiz(quizId), restore, removed.name);
   };
 
   const removeNote = (noteId: string) => {
+    const removed = savedNotes.find(n => n.id === noteId);
     setSavedNotes(prev => prev.filter(n => n.id !== noteId));
     if (activeNoteId === noteId) setActiveNoteId(null);
-    if (isFirebaseConfigured) deleteCloudNote(noteId).catch(() => {}); else deleteNote(noteId).catch(() => {});
+    if (!removed) return;
+    const restore = () => setSavedNotes(prev => (prev.some(n => n.id === noteId) ? prev : [...prev, removed]));
+    deleteWithRollback(isFirebaseConfigured ? deleteCloudNote(noteId) : deleteNote(noteId), restore, removed.name);
   };
 
   const removeSet = (setId: string) => {
+    const removed = savedFlashcardSets.find(s => s.id === setId);
     setSavedFlashcardSets(prev => prev.filter(s => s.id !== setId));
     if (activeSetId === setId) setActiveSetId(null);
-    if (isFirebaseConfigured) deleteCloudFlashcardSet(setId).catch(() => {}); else deleteFlashcardSet(setId).catch(() => {});
+    if (!removed) return;
+    const restore = () => setSavedFlashcardSets(prev => (prev.some(s => s.id === setId) ? prev : [...prev, removed]));
+    deleteWithRollback(isFirebaseConfigured ? deleteCloudFlashcardSet(setId) : deleteFlashcardSet(setId), restore, removed.name);
   };
 
   // ── Rename ─────────────────────────────────────────────────────────────────
@@ -1392,11 +1428,13 @@ export default function SubjectPage() {
   };
 
   const removeFolder = (folderId: string) => {
+    const removed = folders.find(f => f.id === folderId);
     setFolders(prev => prev.filter(f => f.id !== folderId));
     // Orphan any items in this folder back to "Unfiled".
     moveAllOutOfFolder(folderId);
-    if (isFirebaseConfigured) deleteCloudFolder(folderId).catch(() => {});
-    else deleteFolder(folderId).catch(() => {});
+    if (!removed) return;
+    const restore = () => setFolders(prev => (prev.some(f => f.id === folderId) ? prev : [...prev, removed]));
+    deleteWithRollback(isFirebaseConfigured ? deleteCloudFolder(folderId) : deleteFolder(folderId), restore, removed.name);
   };
 
   const renameFolder = (folderId: string, name: string) => {
