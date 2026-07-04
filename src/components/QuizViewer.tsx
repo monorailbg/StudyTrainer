@@ -1620,6 +1620,19 @@ export function QuizViewer({
     setPhase('redo');
   }
 
+  // Mid-quiz edits (FocusedMode/TestMode's "Save Edit") previously only
+  // updated mode-local override state, so in-session feedback reflected the
+  // edit but buildResult() still graded against the stale activeQuestions —
+  // the results screen, persisted result, and redo pool all used the
+  // pre-edit answer/options. Apply the edit to activeQuestions too so
+  // grading is consistent everywhere, in addition to persisting it.
+  function handleQuestionSaved(qid: string, draft: EditDraft) {
+    setActiveQuestions(prev => prev.map(q =>
+      q.id === qid ? { ...q, question: draft.question, options: draft.options, correct: draft.correct } : q
+    ));
+    onQuestionEdit?.(qid, draft);
+  }
+
   if (phase === 'setup') {
     return (
       <SetupScreen
@@ -1642,8 +1655,8 @@ export function QuizViewer({
   if (phase === 'playing') {
     const isPractice = quizMode === 'practice';
     return quizMode === 'test'
-      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} onQuestionSaved={onQuestionEdit} />
-      : <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} onQuestionSaved={onQuestionEdit} />;
+      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} />
+      : <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} />;
   }
 
   if (phase === 'results' && lastResult) {
