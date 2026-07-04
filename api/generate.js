@@ -76,13 +76,23 @@ function isKeyRejected(msg) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// The client aborts its fetch at 85s (see REQUEST_TIMEOUT_MS in
+// src/lib/geminiProxy.ts) and Vercel kills this function at 90s
+// (vercel.json maxDuration). Retry delays below (up to 65s for a
+// per-minute rate limit) must never be allowed to run the clock past that —
+// otherwise the client aborts with a generic "took too long, try a smaller
+// batch" message that hides the real cause (a rate limit, not batch size).
+// Every retry site below checks this deadline before sleeping and returns
+// the real error immediately instead once there isn't enough budget left.
+const FUNCTION_BUDGET_MS = 78_000;
+
 /**
  * Generic exponential-backoff-with-jitter retry wrapper for transient
  * 503 UNAVAILABLE / high-demand errors from the Gemini API. `apiFn` is
  * retried up to `maxRetries` times; any other error (auth, bad request,
  * quota) is rethrown immediately without retrying.
  */
-async function callGeminiWithRetry(apiFn, maxRetries = 3, initialDelay = 1000) {
+async function callGeminiWithRetry(apiFn, maxRetries = 3, initialDelay = 1000, deadline = Infinity) {
   let delay = initialDelay;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -92,6 +102,10 @@ async function callGeminiWithRetry(apiFn, maxRetries = 3, initialDelay = 1000) {
       if (isUnavailable(msg) && attempt < maxRetries) {
         // Random jitter prevents every retrying client from hammering the API in lockstep.
         const jitter = Math.random() * 200;
+        if (Date.now() + delay + jitter >= deadline) {
+          console.warn('[generate] Skipping 503 retry — not enough time left in the function budget.');
+          throw error;
+        }
         console.warn(`[generate] Model unavailable (503); retrying in ${Math.round((delay + jitter) / 1000)}s… (attempt ${attempt}/${maxRetries})`);
         await sleep(delay + jitter);
         delay *= 2; // Exponentially increase delay
@@ -128,17 +142,21 @@ async function fetchGeminiOnce(apiKey, model, contents, genConfig) {
   return text;
 }
 
-async function callGeminiModel(apiKey, model, contents, genConfig, maxPerMinuteAttempts = 2) {
+async function callGeminiModel(apiKey, model, contents, genConfig, maxPerMinuteAttempts = 2, deadline = Infinity) {
   // 503 UNAVAILABLE gets exponential backoff + jitter via callGeminiWithRetry.
   // Per-minute 429s get their own inner loop, since the API tells us exactly
   // how long to wait rather than needing a doubling schedule.
   for (let attempt = 1; attempt <= maxPerMinuteAttempts; attempt++) {
     try {
-      return await callGeminiWithRetry(() => fetchGeminiOnce(apiKey, model, contents, genConfig));
+      return await callGeminiWithRetry(() => fetchGeminiOnce(apiKey, model, contents, genConfig), 3, 1000, deadline);
     } catch (err) {
       const msg = String(err?.message ?? err);
       if (msg.includes('429') && isPerMinuteLimit(msg) && attempt < maxPerMinuteAttempts) {
         const delay = retryDelayMs(msg);
+        if (Date.now() + delay >= deadline) {
+          console.warn(`[generate] ${model} per-minute rate-limited but not enough time left in the function budget — returning the error now instead of waiting ${delay / 1000}s.`);
+          throw err;
+        }
         console.warn(`[generate] ${model} per-minute rate-limited; retrying in ${delay / 1000}s…`);
         await sleep(delay);
         continue;
@@ -150,12 +168,12 @@ async function callGeminiModel(apiKey, model, contents, genConfig, maxPerMinuteA
 
 // ── Gemini REST: model-ladder for one key ─────────────────────────────────
 
-async function callGeminiKey(apiKey, contents, genConfig, label) {
+async function callGeminiKey(apiKey, contents, genConfig, label, deadline = Infinity) {
   let lastError;
 
   for (const model of GEMINI_MODELS) {
     try {
-      return await callGeminiModel(apiKey, model, contents, genConfig);
+      return await callGeminiModel(apiKey, model, contents, genConfig, 2, deadline);
     } catch (err) {
       lastError = err;
       const msg = String(err);
@@ -214,13 +232,13 @@ async function callGroq(groqKey, parts, temperature) {
 
 // ── Failover orchestrator ──────────────────────────────────────────────────
 
-async function generateWithFailover(parts, temperature, genConfig) {
+async function generateWithFailover(parts, temperature, genConfig, deadline) {
   const { primary, backup, groq } = resolveKeys();
   const contents = [{ role: 'user', parts }];
 
   // ── Stage 1: Primary Gemini key ──────────────────────────────────────────
   try {
-    const text = await callGeminiKey(primary, contents, genConfig, 'GEMINI_PRIMARY');
+    const text = await callGeminiKey(primary, contents, genConfig, 'GEMINI_PRIMARY', deadline);
     return text;
   } catch (err) {
     const msg = String(err);
@@ -238,7 +256,7 @@ async function generateWithFailover(parts, temperature, genConfig) {
   // ── Stage 2: Backup Gemini key ───────────────────────────────────────────
   if (backup) {
     try {
-      const text = await callGeminiKey(backup, contents, genConfig, 'GEMINI_BACKUP');
+      const text = await callGeminiKey(backup, contents, genConfig, 'GEMINI_BACKUP', deadline);
       console.warn('[generate] ✅ Request served by GEMINI_BACKUP.');
       return text;
     } catch (err) {
@@ -288,8 +306,10 @@ export default async function handler(req, res) {
   if (typeof responseMimeType === 'string' && responseMimeType.trim()) genConfig.responseMimeType = responseMimeType.trim();
   if (responseSchema && typeof responseSchema === 'object') genConfig.responseSchema = responseSchema;
 
+  const deadline = Date.now() + FUNCTION_BUDGET_MS;
+
   try {
-    const text = await generateWithFailover(parts, temperature, Object.keys(genConfig).length ? genConfig : undefined);
+    const text = await generateWithFailover(parts, temperature, Object.keys(genConfig).length ? genConfig : undefined, deadline);
     return res.json({ text });
   } catch (err) {
     console.error('[generate] Fatal error:', err);
