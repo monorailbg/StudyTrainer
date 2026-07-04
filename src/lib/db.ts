@@ -340,6 +340,11 @@ export interface QuizResultQuestion {
   questionText:    string;
   userAnswer:      string;   // text of the chosen option
   correctAnswer:   string;   // text of the correct option
+  // Indices into `options`, authoritative for matching (text can collide
+  // when two options share the same wording). Optional since results saved
+  // before this field existed only have the text.
+  userAnswerIndex?:    number;
+  correctAnswerIndex?: number;
   wasCorrect:      boolean;
   options:         string[];
   explanation?:    string;

@@ -1684,8 +1684,8 @@ function ResultsScreen({
                     <div style={{ height: '1px', background: 'var(--border-light)', marginBottom: '8px' }} />
                     <DefinableArea onDefine={onDefine} onDefineJapanese={onDefineJapanese}>
                     {rq.options.map((opt, oi) => {
-                      const isCorrect = opt === rq.correctAnswer;
-                      const isChosen = opt === rq.userAnswer;
+                      const isCorrect = rq.correctAnswerIndex !== undefined ? oi === rq.correctAnswerIndex : opt === rq.correctAnswer;
+                      const isChosen = rq.userAnswerIndex !== undefined ? oi === rq.userAnswerIndex : opt === rq.userAnswer;
                       let bg = 'transparent', border = 'var(--border-base)', color = 'var(--text-2)';
                       if (isCorrect) { bg = 'rgba(46,160,67,0.08)'; border = 'rgba(46,160,67,0.3)'; color = '#56D364'; }
                       if (isChosen && !isCorrect) { bg = 'rgba(248,81,73,0.08)'; border = 'rgba(248,81,73,0.3)'; color = '#F97979'; }
@@ -1788,6 +1788,8 @@ export function QuizViewer({
         questionText:    q.question,
         userAnswer:      chosenIdx >= 0 ? q.options[chosenIdx] : '',
         correctAnswer:   q.options[correctIdx],
+        userAnswerIndex:    chosenIdx >= 0 ? chosenIdx : undefined,
+        correctAnswerIndex: correctIdx,
         wasCorrect:      chosenIdx === correctIdx,
         options:         [...q.options],
         explanation:     q.explanation || undefined,
@@ -1940,7 +1942,7 @@ function buildRedoQuestions(result: QuizResult): GeneratedQuizQuestion[] {
       id:          rq.questionId,
       question:    rq.questionText,
       options:     rq.options,
-      correct:     rq.options.indexOf(rq.correctAnswer),
+      correct:     rq.correctAnswerIndex !== undefined ? rq.correctAnswerIndex : rq.options.indexOf(rq.correctAnswer),
       explanation: rq.explanation ?? '',
     }));
 }
