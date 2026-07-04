@@ -249,7 +249,11 @@ function stripCodeFence(raw: string): string {
 // slip through unescaped and crash with "Bad Unicode escape"/"Bad escaped
 // character" instead.
 function sanitizeJsonEscapes(text: string): string {
-  return text.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\');
+  // Consume already-valid "\\" pairs whole first so the lone-backslash branch
+  // below never matches their second backslash — matching it in isolation
+  // would double it and turn a valid escaped backslash into a broken
+  // 3-backslash sequence.
+  return text.replace(/\\\\|\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, m => (m.length === 2 ? m : '\\\\'));
 }
 
 // Gemini occasionally emits a raw, unescaped control character (a literal
