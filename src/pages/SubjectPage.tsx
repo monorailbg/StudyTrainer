@@ -1320,21 +1320,29 @@ export default function SubjectPage() {
 
   const removeFile = (fileId: string) => {
     const removed = files.find(f => f.id === fileId);
-    setFiles(prev => {
-      const f = prev.find(x => x.id === fileId);
-      if (f?.url.startsWith('blob:')) URL.revokeObjectURL(f.url);
-      return prev.filter(x => x.id !== fileId);
-    });
+    setFiles(prev => prev.filter(x => x.id !== fileId));
     setSelectedFileIds(prev => prev.filter(fid => fid !== fileId));
-    // Always wipe the local IndexedDB copy so it doesn't reappear on next load
-    // via the local-only merge path, even when cloud sync is active.
-    deleteFile(fileId).catch(() => {});
-    if (isFirebaseConfigured && removed) {
+    if (!removed) return;
+
+    const restore = () => setFiles(prev => (prev.some(f => f.id === fileId) ? prev : [...prev, removed]));
+
+    if (isFirebaseConfigured) {
+      // Revoking the blob URL and wiping the local IndexedDB copy are both
+      // irreversible — doing them eagerly meant a failed cloud delete rolled
+      // the file back into view with a dead (revoked) preview URL and no
+      // local blob left to fall back on. Defer both until the cloud delete
+      // is actually confirmed.
       deleteWithRollback(
-        deleteCloudFile(id!, fileId),
-        () => setFiles(prev => (prev.some(f => f.id === fileId) ? prev : [...prev, removed])),
+        deleteCloudFile(id!, fileId).then(() => {
+          deleteFile(fileId).catch(() => {});
+          if (removed.url.startsWith('blob:')) URL.revokeObjectURL(removed.url);
+        }),
+        restore,
         removed.name,
       );
+    } else {
+      if (removed.url.startsWith('blob:')) URL.revokeObjectURL(removed.url);
+      deleteFile(fileId).catch(() => {});
     }
   };
 
@@ -1475,11 +1483,19 @@ export default function SubjectPage() {
   const removeFolder = (folderId: string) => {
     const removed = folders.find(f => f.id === folderId);
     setFolders(prev => prev.filter(f => f.id !== folderId));
-    // Orphan any items in this folder back to "Unfiled".
-    moveAllOutOfFolder(folderId);
     if (!removed) return;
     const restore = () => setFolders(prev => (prev.some(f => f.id === folderId) ? prev : [...prev, removed]));
-    deleteWithRollback(isFirebaseConfigured ? deleteCloudFolder(folderId) : deleteFolder(folderId), restore, removed.name);
+    // Unfiling the folder's items is itself persisted (moveItemToFolder saves
+    // each item) and not easily undone — do it only once the folder delete
+    // is actually confirmed, instead of eagerly, which left a failed delete
+    // rolling the folder back already empty.
+    deleteWithRollback(
+      (isFirebaseConfigured ? deleteCloudFolder(folderId) : deleteFolder(folderId)).then(() => {
+        moveAllOutOfFolder(folderId);
+      }),
+      restore,
+      removed.name,
+    );
   };
 
   const renameFolder = (folderId: string, name: string) => {
