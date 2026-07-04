@@ -149,6 +149,22 @@ export async function saveCloudFile(file: CloudFile): Promise<void> {
   await setDoc(doc(db(), 'uploadedFiles', file.id), file);
 }
 
+// Targeted read-modify-write that only touches the one field being changed
+// (mirrors renameCloudNote/renameCloudQuiz/renameCloudFlashcardSet) — unlike
+// reconstructing the whole document, this can't stamp a fresh createdAt over
+// the original or blank out other fields with undefined.
+export async function renameCloudFile(fileId: string, name: string): Promise<void> {
+  const ref_ = doc(db(), 'uploadedFiles', fileId);
+  const snap = await getDoc(ref_);
+  if (snap.exists()) await setDoc(ref_, { ...snap.data(), name });
+}
+
+export async function moveCloudFile(fileId: string, folderId: string | null): Promise<void> {
+  const ref_ = doc(db(), 'uploadedFiles', fileId);
+  const snap = await getDoc(ref_);
+  if (snap.exists()) await setDoc(ref_, { ...snap.data(), folderId });
+}
+
 export async function getCloudFiles(subjectId: string): Promise<CloudFile[]> {
   const items = await getBySubject<CloudFile>('uploadedFiles', subjectId);
   return items.sort((a, b) => a.createdAt - b.createdAt);

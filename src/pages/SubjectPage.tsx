@@ -21,7 +21,7 @@ import {
 } from '../lib/db';
 import {
   isFirebaseConfigured, isSupabaseConfigured,
-  uploadFileToStorage, saveCloudFile, getCloudFiles, deleteCloudFile,
+  uploadFileToStorage, saveCloudFile, getCloudFiles, deleteCloudFile, renameCloudFile, moveCloudFile,
   saveCloudNote, getCloudNotes, deleteCloudNote, renameCloudNote,
   saveCloudFlashcardSet, getCloudFlashcardSets, deleteCloudFlashcardSet, renameCloudFlashcardSet,
   saveCloudQuiz, getCloudQuizzes, deleteCloudQuiz, renameCloudQuiz,
@@ -1392,16 +1392,12 @@ export default function SubjectPage() {
       }
     } else if (type === 'file') {
       setFiles(prev => prev.map(f => f.id === renaming.id ? { ...f, name } : f));
-      if (isFirebaseConfigured) {
-        const file = files.find(f => f.id === renaming.id);
-        if (file) {
-          saveCloudFile({
-            id: file.id, subjectId: id!, name, type: file.type, size: file.size,
-            level: file.level, storageUrl: file.storageUrl ?? '', createdAt: Date.now(),
-            folderId: file.folderId ?? undefined,
-          }).catch(() => {});
-        }
-      }
+      // Targeted update — only touches the name field, so it can't stamp a
+      // fresh createdAt over the original or send an undefined folderId
+      // (which Firestore rejects outright). No-ops for a local-only file
+      // that has no cloud doc yet, rather than creating a phantom record
+      // with an empty storageUrl that would block its later cloud backfill.
+      if (isFirebaseConfigured) renameCloudFile(renaming.id, name).catch(() => {});
     } else {
       setSavedFlashcardSets(prev => prev.map(s => s.id === renaming.id ? { ...s, name } : s));
       if (isFirebaseConfigured) {
@@ -1456,10 +1452,10 @@ export default function SubjectPage() {
 
   const persistFileFolder = (file: UploadedFile, folderId: string | null) => {
     if (isFirebaseConfigured) {
-      saveCloudFile({
-        id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size,
-        level: file.level, storageUrl: file.storageUrl ?? '', createdAt: Date.now(), folderId,
-      }).catch(() => {});
+      // Same targeted update as renameCloudFile — preserves createdAt and
+      // no-ops for a local-only file with no cloud doc yet instead of
+      // creating a phantom storageUrl:'' record that blocks backfill.
+      moveCloudFile(file.id, folderId).catch(() => {});
     } else if (file.rawFile) {
       saveFile({
         id: file.id, subjectId: id!, name: file.name, type: file.type, size: file.size,
