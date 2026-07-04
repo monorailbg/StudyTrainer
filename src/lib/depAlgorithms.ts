@@ -10,23 +10,27 @@ export interface EnrichedConcept extends ConceptDef {
 // ── Transitive traversal ─────────────────────────────────────────────
 
 /** All prerequisites recursively (ancestors) */
-export function getAllPrereqs(conceptId: string, visited = new Set<string>()): Set<string> {
-  if (visited.has(conceptId)) return visited;
-  visited.add(conceptId);
+export function getAllPrereqs(conceptId: string, guard = new Set<string>(), result = new Set<string>()): Set<string> {
+  if (guard.has(conceptId)) return result;
+  guard.add(conceptId);
   const def = CONCEPT_MAP.get(conceptId);
-  if (!def) return visited;
-  for (const p of def.prerequisites) getAllPrereqs(p, visited);
-  visited.delete(conceptId); // only ancestors, not self
-  return visited;
+  if (!def) return result;
+  for (const p of def.prerequisites) {
+    result.add(p);
+    getAllPrereqs(p, guard, result);
+  }
+  return result;
 }
 
 /** All descendants recursively (unlocks) */
-export function getAllUnlocks(conceptId: string, visited = new Set<string>()): Set<string> {
-  if (visited.has(conceptId)) return visited;
-  visited.add(conceptId);
-  for (const u of getUnlocks(conceptId)) getAllUnlocks(u.id, visited);
-  visited.delete(conceptId);
-  return visited;
+export function getAllUnlocks(conceptId: string, guard = new Set<string>(), result = new Set<string>()): Set<string> {
+  if (guard.has(conceptId)) return result;
+  guard.add(conceptId);
+  for (const u of getUnlocks(conceptId)) {
+    result.add(u.id);
+    getAllUnlocks(u.id, guard, result);
+  }
+  return result;
 }
 
 // ── Readiness scoring ────────────────────────────────────────────────
