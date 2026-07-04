@@ -1687,7 +1687,7 @@ export function QuizViewer({
         total={redoDoneStats.total}
         color={color}
         onRedoAgain={startRedoAgain}
-        onBack={() => setPhase('results')}
+        onBack={() => (lastResult ? setPhase('results') : onExit?.())}
       />
     );
   }
