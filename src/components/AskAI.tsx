@@ -15,10 +15,15 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
+
+  // Abort any in-flight request on unmount, so navigating away mid-answer
+  // doesn't leave it running (and doesn't try to update state afterward).
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const send = async () => {
     const question = input.trim();
@@ -26,12 +31,17 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: question }]);
     setLoading(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const prompt = `You are a helpful study assistant. Context:\n${context}\n\nQuestion: ${question}\n\nAnswer clearly and concisely.`;
       const res = await fetch(PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parts: [{ text: prompt }] }),
+        signal: controller.signal,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
@@ -40,9 +50,10 @@ export function AskAI({ context, color = '#3D7EFF' }: { context: string; color?:
       const data = await res.json() as { text: string };
       setMessages(prev => [...prev, { role: 'ai', text: data.text ?? 'No response.' }]);
     } catch (err) {
+      if (controller.signal.aborted) return; // unmounted — nothing left to update
       setMessages(prev => [...prev, { role: 'ai', text: `Error: ${err instanceof Error ? err.message : String(err)}` }]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 

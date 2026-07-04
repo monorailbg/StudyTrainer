@@ -30,10 +30,15 @@ export function QuizAskAI({ quizContext, color = '#3D7EFF' }: { quizContext: Qui
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
+
+  // Abort any in-flight stream on unmount — without this, navigating away
+  // mid-answer left the fetch (and its read loop) running indefinitely.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const send = async () => {
     const question = input.trim();
@@ -42,11 +47,15 @@ export function QuizAskAI({ quizContext, color = '#3D7EFF' }: { quizContext: Qui
     setMessages(prev => [...prev, { role: 'user', text: question }, { role: 'ai', text: '' }]);
     setLoading(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const res = await fetch(ASK_AI_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userQuestion: question, quizContext }),
+        signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -68,6 +77,7 @@ export function QuizAskAI({ quizContext, color = '#3D7EFF' }: { quizContext: Qui
         });
       }
     } catch (err) {
+      if (controller.signal.aborted) return; // unmounted — nothing left to update
       const message = `Error: ${err instanceof Error ? err.message : String(err)}`;
       setMessages(prev => {
         const next = [...prev];
@@ -75,7 +85,7 @@ export function QuizAskAI({ quizContext, color = '#3D7EFF' }: { quizContext: Qui
         return next;
       });
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
