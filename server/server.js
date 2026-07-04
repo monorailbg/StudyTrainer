@@ -78,20 +78,26 @@ app.use(express.json({ limit: '20mb' }));
 // ── 4. Rate limiter ─────────────────────────────────────────────────────────
 
 /**
- * Scoped to the /api/generate route — 10 requests per minute per IP.
- * Adjust windowMs / max to match your expected traffic and Gemini free-tier
- * quota (2.5-flash: 10 RPM on the free tier as of 2025).
+ * Scoped to the /api/generate route, per IP. This exists to catch runaway
+ * loops, not to throttle legitimate use — the client's own chunked
+ * generation (large notes/quizzes/flashcard sets split into bounded
+ * requests) already staggers its calls by CHUNK_CALL_STAGGER_MS (4s), which
+ * alone can produce up to ~15 calls/min for a single big document. The
+ * previous limit of 10/min sat below that, so large local-dev generations
+ * would get 429'd partway through and silently lose their tail chunks.
+ * Gemini's own free-tier RPM cap is the real backstop for actual quota
+ * exhaustion; this just needs enough headroom above the client's own pacing.
  */
 const generateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10,             // requests per window per IP
+  max: 30,             // requests per window per IP — 2x the client's own ~15/min ceiling
   standardHeaders: 'draft-7', // Return RateLimit-* headers (RFC 9110 draft)
   legacyHeaders: false,
 
   // Custom response so the frontend can show a friendly message.
   handler: (_req, res) => {
     res.status(429).json({
-      error: 'Too many requests. You can send up to 10 requests per minute.',
+      error: 'Too many requests. You can send up to 30 requests per minute.',
       retryAfter: 60,
     });
   },
