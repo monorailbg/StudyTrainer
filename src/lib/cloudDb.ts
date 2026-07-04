@@ -311,13 +311,16 @@ export async function migrateSubjectFromIndexedDB(subjectId: string): Promise<vo
       idb.getQuizzes(subjectId),
     ]);
 
-    await Promise.all([
-      ...idbNotes.map(n => saveCloudNote({ id: n.id, subjectId, name: n.name, createdAt: n.createdAt, note: n.note }).catch(() => {})),
-      ...idbSets.map(s => saveCloudFlashcardSet({ id: s.id, subjectId, name: s.name, createdAt: s.createdAt, cards: s.cards }).catch(() => {})),
-      ...idbQuizzes.map(q => saveCloudQuiz({ id: q.id, subjectId, name: q.name, createdAt: q.createdAt, questions: q.questions }).catch(() => {})),
+    const results = await Promise.all([
+      ...idbNotes.map(n => saveCloudNote({ id: n.id, subjectId, name: n.name, createdAt: n.createdAt, note: n.note, folderId: n.folderId ?? null }).then(() => true, () => false)),
+      ...idbSets.map(s => saveCloudFlashcardSet({ id: s.id, subjectId, name: s.name, createdAt: s.createdAt, cards: s.cards, folderId: s.folderId ?? null }).then(() => true, () => false)),
+      ...idbQuizzes.map(q => saveCloudQuiz({ id: q.id, subjectId, name: q.name, createdAt: q.createdAt, questions: q.questions, folderId: q.folderId ?? null }).then(() => true, () => false)),
     ]);
 
-    localStorage.setItem(migKey, '1');
+    // Only mark this subject as migrated once every item actually made it to
+    // Firestore — otherwise a partial/offline failure would permanently hide
+    // the un-migrated local content (the flag is never re-checked).
+    if (results.every(ok => ok)) localStorage.setItem(migKey, '1');
   } catch {
     // Migration is best-effort — never block the app
   }
