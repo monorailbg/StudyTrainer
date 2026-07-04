@@ -18,6 +18,7 @@ import {
 import type { GeneratedFlashcard, GeneratedNote, GeneratedQuizQuestion } from './generator';
 import { firebaseDb, isFirebaseConfigured } from './firebase';
 import { supabase, isSupabaseConfigured, STORAGE_BUCKET } from './supabase';
+import { withManualOrder } from './sortOrder';
 
 // Re-export so callers can gate on cloud features without importing individual lib files.
 export { isFirebaseConfigured, isSupabaseConfigured };
@@ -44,6 +45,8 @@ export interface CloudFile {
   storageUrl: string;
   createdAt:  number;
   folderId?:  string | null;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?:     number;
 }
 
 export interface CloudNote {
@@ -53,6 +56,8 @@ export interface CloudNote {
   createdAt: number;
   note:      GeneratedNote;
   folderId?: string | null;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?:    number;
 }
 
 export interface CloudFlashcardSet {
@@ -62,6 +67,8 @@ export interface CloudFlashcardSet {
   createdAt: number;
   cards:     GeneratedFlashcard[];
   folderId?: string | null;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?:    number;
 }
 
 export interface CloudQuiz {
@@ -71,6 +78,8 @@ export interface CloudQuiz {
   createdAt: number;
   questions: GeneratedQuizQuestion[];
   folderId?: string | null;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?:    number;
 }
 
 // ── Internal helpers ───────────────────────────────────────────────────────
@@ -165,9 +174,13 @@ export async function moveCloudFile(fileId: string, folderId: string | null): Pr
   await updateDoc(doc(db(), 'uploadedFiles', fileId), { folderId });
 }
 
+export async function reorderCloudFile(fileId: string, order: number): Promise<void> {
+  await updateDoc(doc(db(), 'uploadedFiles', fileId), { order });
+}
+
 export async function getCloudFiles(subjectId: string): Promise<CloudFile[]> {
   const items = await getBySubject<CloudFile>('uploadedFiles', subjectId);
-  return items.sort((a, b) => a.createdAt - b.createdAt);
+  return items.sort(withManualOrder((a, b) => a.createdAt - b.createdAt));
 }
 
 export async function deleteCloudFile(subjectId: string, fileId: string): Promise<void> {
@@ -199,12 +212,12 @@ export async function saveCloudNote(note: CloudNote): Promise<void> {
 
 export async function getCloudNotes(subjectId: string): Promise<CloudNote[]> {
   const items = await getBySubject<CloudNote>('notes', subjectId);
-  return items.sort((a, b) => b.createdAt - a.createdAt);
+  return items.sort(withManualOrder((a, b) => b.createdAt - a.createdAt));
 }
 
 export async function getAllCloudNotes(): Promise<CloudNote[]> {
   const items = await getAll<CloudNote>('notes');
-  return items.sort((a, b) => b.createdAt - a.createdAt);
+  return items.sort(withManualOrder((a, b) => b.createdAt - a.createdAt));
 }
 
 export async function deleteCloudNote(noteId: string): Promise<void> {
@@ -217,6 +230,10 @@ export async function renameCloudNote(noteId: string, name: string): Promise<voi
   await updateDoc(doc(db(), 'notes', noteId), { name });
 }
 
+export async function reorderCloudNote(noteId: string, order: number): Promise<void> {
+  await updateDoc(doc(db(), 'notes', noteId), { order });
+}
+
 // ── Flashcard sets CRUD ────────────────────────────────────────────────────
 
 export async function saveCloudFlashcardSet(set: CloudFlashcardSet): Promise<void> {
@@ -225,12 +242,12 @@ export async function saveCloudFlashcardSet(set: CloudFlashcardSet): Promise<voi
 
 export async function getCloudFlashcardSets(subjectId: string): Promise<CloudFlashcardSet[]> {
   const items = await getBySubject<CloudFlashcardSet>('flashcardSets', subjectId);
-  return items.sort((a, b) => b.createdAt - a.createdAt);
+  return items.sort(withManualOrder((a, b) => b.createdAt - a.createdAt));
 }
 
 export async function getAllCloudFlashcardSets(): Promise<CloudFlashcardSet[]> {
   const items = await getAll<CloudFlashcardSet>('flashcardSets');
-  return items.sort((a, b) => b.createdAt - a.createdAt);
+  return items.sort(withManualOrder((a, b) => b.createdAt - a.createdAt));
 }
 
 export async function deleteCloudFlashcardSet(setId: string): Promise<void> {
@@ -243,6 +260,10 @@ export async function renameCloudFlashcardSet(setId: string, name: string): Prom
   await updateDoc(doc(db(), 'flashcardSets', setId), { name });
 }
 
+export async function reorderCloudFlashcardSet(setId: string, order: number): Promise<void> {
+  await updateDoc(doc(db(), 'flashcardSets', setId), { order });
+}
+
 // ── Quizzes CRUD ───────────────────────────────────────────────────────────
 
 export async function saveCloudQuiz(quiz: CloudQuiz): Promise<void> {
@@ -251,12 +272,12 @@ export async function saveCloudQuiz(quiz: CloudQuiz): Promise<void> {
 
 export async function getCloudQuizzes(subjectId: string): Promise<CloudQuiz[]> {
   const items = await getBySubject<CloudQuiz>('quizzes', subjectId);
-  return items.sort((a, b) => b.createdAt - a.createdAt);
+  return items.sort(withManualOrder((a, b) => b.createdAt - a.createdAt));
 }
 
 export async function getAllCloudQuizzes(): Promise<CloudQuiz[]> {
   const items = await getAll<CloudQuiz>('quizzes');
-  return items.sort((a, b) => b.createdAt - a.createdAt);
+  return items.sort(withManualOrder((a, b) => b.createdAt - a.createdAt));
 }
 
 export async function deleteCloudQuiz(quizId: string): Promise<void> {
@@ -267,6 +288,10 @@ export async function deleteCloudQuiz(quizId: string): Promise<void> {
 // getDoc-then-setDoc read-modify-write.
 export async function renameCloudQuiz(quizId: string, name: string): Promise<void> {
   await updateDoc(doc(db(), 'quizzes', quizId), { name });
+}
+
+export async function reorderCloudQuiz(quizId: string, order: number): Promise<void> {
+  await updateDoc(doc(db(), 'quizzes', quizId), { order });
 }
 
 // ── Quiz results CRUD ─────────────────────────────────────────────────────
@@ -328,9 +353,9 @@ export async function migrateSubjectFromIndexedDB(subjectId: string): Promise<vo
     ]);
 
     const results = await Promise.all([
-      ...idbNotes.map(n => saveCloudNote({ id: n.id, subjectId, name: n.name, createdAt: n.createdAt, note: n.note, folderId: n.folderId ?? null }).then(() => true, () => false)),
-      ...idbSets.map(s => saveCloudFlashcardSet({ id: s.id, subjectId, name: s.name, createdAt: s.createdAt, cards: s.cards, folderId: s.folderId ?? null }).then(() => true, () => false)),
-      ...idbQuizzes.map(q => saveCloudQuiz({ id: q.id, subjectId, name: q.name, createdAt: q.createdAt, questions: q.questions, folderId: q.folderId ?? null }).then(() => true, () => false)),
+      ...idbNotes.map(n => saveCloudNote({ id: n.id, subjectId, name: n.name, createdAt: n.createdAt, note: n.note, folderId: n.folderId ?? null, order: n.order }).then(() => true, () => false)),
+      ...idbSets.map(s => saveCloudFlashcardSet({ id: s.id, subjectId, name: s.name, createdAt: s.createdAt, cards: s.cards, folderId: s.folderId ?? null, order: s.order }).then(() => true, () => false)),
+      ...idbQuizzes.map(q => saveCloudQuiz({ id: q.id, subjectId, name: q.name, createdAt: q.createdAt, questions: q.questions, folderId: q.folderId ?? null, order: q.order }).then(() => true, () => false)),
     ]);
 
     // Only mark this subject as migrated once every item actually made it to
@@ -382,7 +407,7 @@ export async function backfillLocalFilesToCloud(subjectId: string): Promise<Back
         const storageUrl = await uploadFileToStorage(subjectId, f.id, blobFile);
         await saveCloudFile({
           id: f.id, subjectId, name: f.name, type: f.type, size: f.size,
-          level: f.level, storageUrl, createdAt: Date.now(), folderId: f.folderId ?? null,
+          level: f.level, storageUrl, createdAt: Date.now(), folderId: f.folderId ?? null, order: f.order,
         });
         migrated++;
       } catch (err) {

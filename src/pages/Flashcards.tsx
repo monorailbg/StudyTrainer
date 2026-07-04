@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllFlashcardSets, saveFlashcardSet, getFolders, type StoredFlashcardSet, type Folder } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudFlashcardSets, saveCloudFlashcardSet, renameCloudFlashcardSet, getCloudFolders } from '../lib/cloudDb';
+import { withManualOrder } from '../lib/sortOrder';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { FlashcardViewer } from '../components/FlashcardViewer';
@@ -155,7 +156,7 @@ export default function Flashcards() {
   useEffect(() => {
     const loadData = isFirebaseConfigured
       ? getAllCloudFlashcardSets().then(data => data as StoredFlashcardSet[])
-      : getAllFlashcardSets().then(data => data.sort((a, b) => b.createdAt - a.createdAt));
+      : getAllFlashcardSets().then(data => data.sort(withManualOrder((a, b) => b.createdAt - a.createdAt)));
 
     loadData.then(data => {
       setSets(data);

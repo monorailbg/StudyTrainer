@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getAllNotes, getFolders, saveNote, type StoredNote, type DictionaryEntry, type Folder, saveDictionaryEntry } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudNotes, getCloudFolders, saveCloudNote } from '../lib/cloudDb';
+import { withManualOrder } from '../lib/sortOrder';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
@@ -153,7 +154,7 @@ export default function Notes() {
   useEffect(() => {
     const loadData = isFirebaseConfigured
       ? getAllCloudNotes().then(data => data as StoredNote[])
-      : getAllNotes().then(data => data.sort((a, b) => b.createdAt - a.createdAt));
+      : getAllNotes().then(data => data.sort(withManualOrder((a, b) => b.createdAt - a.createdAt)));
 
     loadData.then(data => {
       setNotes(data);

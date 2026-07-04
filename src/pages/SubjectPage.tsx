@@ -21,13 +21,14 @@ import {
 } from '../lib/db';
 import {
   isFirebaseConfigured, isSupabaseConfigured,
-  uploadFileToStorage, saveCloudFile, getCloudFiles, deleteCloudFile, renameCloudFile, moveCloudFile,
-  saveCloudNote, getCloudNotes, deleteCloudNote, renameCloudNote,
-  saveCloudFlashcardSet, getCloudFlashcardSets, deleteCloudFlashcardSet, renameCloudFlashcardSet,
-  saveCloudQuiz, getCloudQuizzes, deleteCloudQuiz, renameCloudQuiz,
+  uploadFileToStorage, saveCloudFile, getCloudFiles, deleteCloudFile, renameCloudFile, moveCloudFile, reorderCloudFile,
+  saveCloudNote, getCloudNotes, deleteCloudNote, renameCloudNote, reorderCloudNote,
+  saveCloudFlashcardSet, getCloudFlashcardSets, deleteCloudFlashcardSet, renameCloudFlashcardSet, reorderCloudFlashcardSet,
+  saveCloudQuiz, getCloudQuizzes, deleteCloudQuiz, renameCloudQuiz, reorderCloudQuiz,
   saveCloudFolder, getCloudFolders, deleteCloudFolder,
   migrateSubjectFromIndexedDB, backfillLocalFilesToCloud,
 } from '../lib/cloudDb';
+import { withManualOrder } from '../lib/sortOrder';
 import type {
   GenerationType,
   GeneratedFlashcard,
@@ -78,6 +79,8 @@ interface UploadedFile {
   id: string; name: string; type: string; size: number;
   url: string; rawFile: File | null; level: string; storageUrl?: string;
   folderId?: string | null; compressing?: boolean; wordCount?: number;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?: number;
 }
 
 // Treat pre-compressed pages blobs the same as PDF for display purposes.
@@ -1114,14 +1117,17 @@ export default function SubjectPage() {
             const cloudMapped: UploadedFile[] = cloudFiles.map(cf => {
               const local = localById.get(cf.id);
               const rawFile = local?.blob ? new File([local.blob], cf.name, { type: cf.type }) : null;
-              return { id: cf.id, name: cf.name, type: cf.type, size: cf.size, url: cf.storageUrl, rawFile, level: cf.level, storageUrl: cf.storageUrl, folderId: cf.folderId ?? null };
+              return { id: cf.id, name: cf.name, type: cf.type, size: cf.size, url: cf.storageUrl, rawFile, level: cf.level, storageUrl: cf.storageUrl, folderId: cf.folderId ?? null, order: cf.order };
             });
             // Include local-only files not present in the cloud list.
             const cloudIds = new Set(cloudFiles.map(cf => cf.id));
             const localOnlyMapped: UploadedFile[] = localFiles
               .filter(f => !cloudIds.has(f.id))
-              .map(sf => ({ id: sf.id, name: sf.name, type: sf.type, size: sf.size, url: isTextType(sf.type) ? '' : URL.createObjectURL(sf.blob), rawFile: new File([sf.blob], sf.name, { type: sf.type }), level: sf.level, folderId: sf.folderId ?? null, wordCount: sf.wordCount }));
-            setFiles([...cloudMapped, ...localOnlyMapped]);
+              .map(sf => ({ id: sf.id, name: sf.name, type: sf.type, size: sf.size, url: isTextType(sf.type) ? '' : URL.createObjectURL(sf.blob), rawFile: new File([sf.blob], sf.name, { type: sf.type }), level: sf.level, folderId: sf.folderId ?? null, wordCount: sf.wordCount, order: sf.order }));
+            // getCloudFiles already applies manual order (falling back to
+            // createdAt); a no-op fallback here just preserves that arrival
+            // order for files without one instead of re-sorting by nothing.
+            setFiles([...cloudMapped, ...localOnlyMapped].sort(withManualOrder(() => 0)));
           }
         } else {
           const [storedFiles, storedQuizzes, storedNotes, storedSets, storedFolders, storedHistory] = await Promise.all([
@@ -1135,9 +1141,9 @@ export default function SubjectPage() {
           if (cancelled) return;
           setQuizHistory(storedHistory);
           if (storedFolders.length > 0) setFolders(storedFolders);
-          if (storedQuizzes.length > 0) setSavedQuizzes(storedQuizzes.sort((a, b) => b.createdAt - a.createdAt));
-          if (storedNotes.length > 0) setSavedNotes(storedNotes.sort((a, b) => b.createdAt - a.createdAt));
-          if (storedSets.length > 0) setSavedFlashcardSets(storedSets.sort((a, b) => b.createdAt - a.createdAt));
+          if (storedQuizzes.length > 0) setSavedQuizzes(storedQuizzes.sort(withManualOrder((a, b) => b.createdAt - a.createdAt)));
+          if (storedNotes.length > 0) setSavedNotes(storedNotes.sort(withManualOrder((a, b) => b.createdAt - a.createdAt)));
+          if (storedSets.length > 0) setSavedFlashcardSets(storedSets.sort(withManualOrder((a, b) => b.createdAt - a.createdAt)));
           if (storedFiles.length > 0) {
             const mapped: UploadedFile[] = storedFiles.map(sf => ({
               id: sf.id, name: sf.name, type: sf.type, size: sf.size,
@@ -1146,8 +1152,9 @@ export default function SubjectPage() {
               level: sf.level,
               folderId: sf.folderId ?? null,
               wordCount: sf.wordCount,
+              order: sf.order,
             }));
-            setFiles(mapped);
+            setFiles(mapped.sort(withManualOrder(() => 0)));
           }
         }
       } catch (err) {
@@ -2307,10 +2314,23 @@ export default function SubjectPage() {
                   onCreateFolder={name => createFolder('file', name)}
                   onDeleteFolder={removeFolder}
                   onRenameFolder={renameFolder}
-                  onReorder={reordered => setFiles(prev => {
-                    const ids = new Set(reordered.map(f => f.id));
-                    return [...prev.filter(f => !ids.has(f.id)), ...reordered];
-                  })}
+                  onReorder={reordered => {
+                    const withOrder = reordered.map((f, i) => ({ ...f, order: i }));
+                    setFiles(prev => {
+                      const ids = new Set(withOrder.map(f => f.id));
+                      return [...prev.filter(f => !ids.has(f.id)), ...withOrder];
+                    });
+                    withOrder.forEach(f => {
+                      if (isFirebaseConfigured) {
+                        reorderCloudFile(f.id, f.order!).catch(() => {});
+                      } else if (f.rawFile) {
+                        saveFile({
+                          id: f.id, subjectId: id!, name: f.name, type: f.type, size: f.size,
+                          level: f.level, blob: f.rawFile, folderId: f.folderId ?? null, wordCount: f.wordCount, order: f.order,
+                        }).catch(() => {});
+                      }
+                    });
+                  }}
                   sortAccessors={{ name: f => f.name, date: f => parseInt(f.id.split('-')[0]) || 0 }}
                   headerExtra={
                     <div className="flex gap-2">
@@ -2515,7 +2535,14 @@ export default function SubjectPage() {
                 onCreateFolder={name => createFolder('card', name)}
                 onDeleteFolder={removeFolder}
                 onRenameFolder={renameFolder}
-                onReorder={reordered => setSavedFlashcardSets(reordered)}
+                onReorder={reordered => {
+                  const withOrder = reordered.map((s, i) => ({ ...s, order: i }));
+                  setSavedFlashcardSets(withOrder);
+                  withOrder.forEach(s => {
+                    if (isFirebaseConfigured) reorderCloudFlashcardSet(s.id, s.order!).catch(() => {});
+                    else saveFlashcardSet(s).catch(() => {});
+                  });
+                }}
                 sortAccessors={{ name: s => s.name, date: s => s.createdAt }}
                 renderItem={(set) => {
                   const isRenaming = renaming?.id === set.id;
@@ -2673,7 +2700,14 @@ export default function SubjectPage() {
                 onCreateFolder={name => createFolder('note', name)}
                 onDeleteFolder={removeFolder}
                 onRenameFolder={renameFolder}
-                onReorder={reordered => setSavedNotes(reordered)}
+                onReorder={reordered => {
+                  const withOrder = reordered.map((n, i) => ({ ...n, order: i }));
+                  setSavedNotes(withOrder);
+                  withOrder.forEach(n => {
+                    if (isFirebaseConfigured) reorderCloudNote(n.id, n.order!).catch(() => {});
+                    else saveNote(n).catch(() => {});
+                  });
+                }}
                 sortAccessors={{ name: n => n.name, date: n => n.createdAt }}
                 renderItem={(n) => {
                   const isRenaming = renaming?.id === n.id;
@@ -2860,7 +2894,14 @@ export default function SubjectPage() {
                 onCreateFolder={name => createFolder('quiz', name)}
                 onDeleteFolder={removeFolder}
                 onRenameFolder={renameFolder}
-                onReorder={reordered => setSavedQuizzes(reordered)}
+                onReorder={reordered => {
+                  const withOrder = reordered.map((q, i) => ({ ...q, order: i }));
+                  setSavedQuizzes(withOrder);
+                  withOrder.forEach(q => {
+                    if (isFirebaseConfigured) reorderCloudQuiz(q.id, q.order!).catch(() => {});
+                    else saveQuiz(q).catch(() => {});
+                  });
+                }}
                 sortAccessors={{ name: q => q.name, date: q => q.createdAt }}
                 renderItem={(quiz) => {
                   const isRenaming = renaming?.id === quiz.id;

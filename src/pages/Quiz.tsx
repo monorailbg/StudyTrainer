@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLang } from '../context/LanguageContext';
 import { getAllQuizzes, getFolders, saveQuiz, saveDictionaryEntry, type StoredQuiz, type Folder, type DictionaryEntry } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudQuizzes, getCloudFolders, saveCloudQuiz } from '../lib/cloudDb';
+import { withManualOrder } from '../lib/sortOrder';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
@@ -183,7 +184,7 @@ export default function Quiz() {
   useEffect(() => {
     const loadData = isFirebaseConfigured
       ? getAllCloudQuizzes().then(data => data as StoredQuiz[])
-      : getAllQuizzes().then(data => data.sort((a, b) => b.createdAt - a.createdAt));
+      : getAllQuizzes().then(data => data.sort(withManualOrder((a, b) => b.createdAt - a.createdAt)));
 
     loadData.then(data => {
       setQuizzes(data);

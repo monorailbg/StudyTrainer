@@ -72,6 +72,8 @@ export interface StoredFile {
   blob:       Blob;
   folderId?:  string | null;
   wordCount?: number;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?:     number;
 }
 
 export async function saveFile(file: StoredFile): Promise<void> {
@@ -137,6 +139,8 @@ export interface StoredQuiz {
   createdAt: number;
   questions: GeneratedQuizQuestion[];
   folderId?: string | null;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?:    number;
 }
 
 export async function saveQuiz(quiz: StoredQuiz): Promise<void> {
@@ -178,6 +182,8 @@ export interface StoredNote {
   createdAt: number;
   note:      GeneratedNote;
   folderId?: string | null;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?:    number;
 }
 
 export async function saveNote(note: StoredNote): Promise<void> {
@@ -219,6 +225,8 @@ export interface StoredFlashcardSet {
   createdAt: number;
   cards:     GeneratedFlashcard[];
   folderId?: string | null;
+  /** Manual drag-to-reorder position; absent means never manually reordered. */
+  order?:    number;
 }
 
 export async function saveFlashcardSet(set: StoredFlashcardSet): Promise<void> {
