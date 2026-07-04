@@ -49,10 +49,10 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
   const { color, icon } = KIND[item.kind];
   const { ts } = useLang();
   useEffect(() => {
-    if (item.message) return;
-    const t = setTimeout(() => onDismiss(item.id), 4200);
+    const duration = item.kind === 'error' ? 5000 : 3000;
+    const t = setTimeout(() => onDismiss(item.id), duration);
     return () => clearTimeout(t);
-  }, [item.id, item.message, onDismiss]);
+  }, [item.id, item.kind, onDismiss]);
 
   return (
     <div className={`toast${item.leaving ? ' leaving' : ''}`} role="status" style={{ position: 'relative' }}>
