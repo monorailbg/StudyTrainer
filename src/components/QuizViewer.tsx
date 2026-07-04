@@ -1540,7 +1540,7 @@ function ResultsScreen({
               background: 'var(--bg-surface)', color: 'var(--text-2)', border: '1px solid var(--border-light)',
               fontSize: '12px', fontWeight: 600, cursor: 'pointer',
             }}>
-              {ts('Start rated quiz')} →
+              {onStartRated ? <>{ts('Start rated quiz')} →</> : ts('New test')}
             </button>
             {onExit && (
               <button onClick={onExit} style={{
@@ -1698,6 +1698,7 @@ type Phase = 'setup' | 'playing' | 'results' | 'redo' | 'redo-results';
 export function QuizViewer({
   questions, color,
   quizId = 'quiz', quizTitle = 'Quiz', subjectId = '',
+  disableResultPersistence = false,
   onComplete,
   initialRedoResult,
   onExit,
@@ -1711,6 +1712,11 @@ export function QuizViewer({
   quizId?: string;
   quizTitle?: string;
   subjectId?: string;
+  // Skips saveQuizResult/onComplete regardless of the user's chosen play
+  // mode — for callers with no real subject/quiz to attach a result to
+  // (e.g. the standalone Generate page), where persisting would just leave
+  // behind orphaned quizId:'quiz'/subjectId:'' history entries.
+  disableResultPersistence?: boolean;
   onComplete?: (result: QuizResult) => void;
   initialRedoResult?: QuizResult;
   onExit?: () => void;
@@ -1777,7 +1783,7 @@ export function QuizViewer({
     setPhase('results');
     // Practice mode: zero persistence. No storage write, no activity feed,
     // no effect on averages or quiz history (onComplete is what updates those).
-    if (quizMode === 'practice') return;
+    if (quizMode === 'practice' || disableResultPersistence) return;
     persistResult(result);
     onComplete?.(result);
   }
@@ -1834,14 +1840,14 @@ export function QuizViewer({
   }
 
   if (phase === 'playing') {
-    const isPractice = quizMode === 'practice';
+    const isPractice = quizMode === 'practice' || disableResultPersistence;
     return quizMode === 'test'
-      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} onDefine={onDefine} onDefineJapanese={onDefineJapanese} />
+      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} onDefine={onDefine} onDefineJapanese={onDefineJapanese} />
       : <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} onDefine={onDefine} onDefineJapanese={onDefineJapanese} />;
   }
 
   if (phase === 'results' && lastResult) {
-    const isPractice = quizMode === 'practice';
+    const isPractice = quizMode === 'practice' || disableResultPersistence;
     return (
       <ResultsScreen
         result={lastResult}
@@ -1858,7 +1864,7 @@ export function QuizViewer({
           setPhase('redo');
         }}
         onRetakeSetup={() => setPhase('setup')}
-        onStartRated={() => { setSetupMode('focused'); setPhase('setup'); }}
+        onStartRated={disableResultPersistence ? undefined : () => { setSetupMode('focused'); setPhase('setup'); }}
         onExit={onExit}
       />
     );

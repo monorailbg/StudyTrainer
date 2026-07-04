@@ -12,6 +12,8 @@ import type {
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
+import { saveQuiz, saveNote, saveFlashcardSet, type StoredQuiz, type StoredNote, type StoredFlashcardSet } from '../lib/db';
+import { isFirebaseConfigured, saveCloudQuiz, saveCloudNote, saveCloudFlashcardSet } from '../lib/cloudDb';
 
 function friendlyError(raw: string): string {
   if (!raw) return 'Generation failed.';
@@ -78,6 +80,7 @@ export default function Generate() {
   const [status, setStatus] = useState<GenStatus>('idle');
   const [error, setError] = useState('');
   const [result, setResult] = useState<Result | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const subject = ALL_SUBJECTS.find(s => s.id === selectedSubjectId);
   const accentColor = subject?.color ?? '#3D7EFF';
@@ -88,6 +91,7 @@ export default function Generate() {
     setStatus('generating');
     setError('');
     setResult(null);
+    setSaveState('idle');
     try {
       const output = await generateFromTopic(topic.trim(), contentType, subject?.title ?? '', level);
       const r: Result = { type: contentType, topic: topic.trim(), color: accentColor };
@@ -99,6 +103,44 @@ export default function Generate() {
     } catch (err) {
       setError(String(err));
       setStatus('error');
+    }
+  };
+
+  // Generate page results have no subjectId/quizId to attach to, so nothing
+  // is saved automatically (see QuizViewer's disableResultPersistence) —
+  // this lets the user explicitly persist the generated set to a real subject.
+  const handleSaveToSubject = async () => {
+    if (!result || !selectedSubjectId) return;
+    setSaveState('saving');
+    try {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const name = result.topic.slice(0, 60);
+      const createdAt = Date.now();
+      if (result.type === 'quiz' && result.quiz) {
+        const quiz: StoredQuiz = { id: `quiz-${id}`, subjectId: selectedSubjectId, name, createdAt, questions: result.quiz };
+        if (isFirebaseConfigured) {
+          try { await saveCloudQuiz(quiz); } catch { await saveQuiz(quiz); }
+        } else {
+          await saveQuiz(quiz);
+        }
+      } else if (result.type === 'flashcards' && result.flashcards) {
+        const set: StoredFlashcardSet = { id: `set-${id}`, subjectId: selectedSubjectId, name, createdAt, cards: result.flashcards };
+        if (isFirebaseConfigured) {
+          try { await saveCloudFlashcardSet(set); } catch { await saveFlashcardSet(set); }
+        } else {
+          await saveFlashcardSet(set);
+        }
+      } else if (result.type === 'notes' && result.notes) {
+        const note: StoredNote = { id: `note-${id}`, subjectId: selectedSubjectId, name, createdAt, note: result.notes };
+        if (isFirebaseConfigured) {
+          try { await saveCloudNote(note); } catch { await saveNote(note); }
+        } else {
+          await saveNote(note);
+        }
+      }
+      setSaveState('saved');
+    } catch {
+      setSaveState('error');
     }
   };
 
@@ -280,17 +322,35 @@ export default function Generate() {
                 {result.topic}
               </span>
             </div>
-            <button
-              onClick={() => { setResult(null); setStatus('idle'); }}
-              className="bg-transparent border-none text-md-on-surface-variant text-xs cursor-pointer underline p-0 hover:text-md-on-surface"
-            >
-              {ts('Clear')}
-            </button>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <button
+                onClick={handleSaveToSubject}
+                disabled={!selectedSubjectId || saveState === 'saving'}
+                title={!selectedSubjectId ? ts('Pick a subject above to save to') : undefined}
+                className="h-7 px-3 rounded-full text-xs font-semibold border cursor-pointer disabled:cursor-default disabled:opacity-40"
+                style={{
+                  backgroundColor: saveState === 'saved' ? 'rgba(46,160,67,0.15)' : accentColor + '18',
+                  borderColor: saveState === 'saved' ? 'rgba(46,160,67,0.4)' : accentColor + '50',
+                  color: saveState === 'saved' ? '#2EA043' : accentColor,
+                }}
+              >
+                {saveState === 'saving' ? ts('Saving…')
+                  : saveState === 'saved' ? ts('Saved ✓')
+                  : saveState === 'error' ? ts('Save failed — retry')
+                  : ts('Save to subject')}
+              </button>
+              <button
+                onClick={() => { setResult(null); setStatus('idle'); setSaveState('idle'); }}
+                className="bg-transparent border-none text-md-on-surface-variant text-xs cursor-pointer underline p-0 hover:text-md-on-surface"
+              >
+                {ts('Clear')}
+              </button>
+            </div>
           </div>
 
           {result.flashcards && <FlashcardViewer cards={result.flashcards} color={result.color} />}
           {result.notes && <NotesViewer notes={result.notes} />}
-          {result.quiz && <QuizViewer questions={result.quiz} color={result.color} />}
+          {result.quiz && <QuizViewer questions={result.quiz} color={result.color} disableResultPersistence />}
         </div>
       )}
 
