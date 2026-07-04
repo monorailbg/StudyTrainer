@@ -138,7 +138,7 @@ export default function CompanyPage() {
 
   if (!company) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - 76px)', gap: '12px', color: 'var(--text-2)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - var(--nav-height))', gap: '12px', color: 'var(--text-2)' }}>
         <div style={{ fontSize: '32px' }}>🏢</div>
         <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-1)' }}>Company not found</div>
         <button onClick={() => navigate('/companies')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3D7EFF', fontSize: '13px' }}>
@@ -193,7 +193,7 @@ export default function CompanyPage() {
   ];
 
   return (
-    <div style={{ background: 'var(--bg-page)', minHeight: 'calc(100vh - 76px)' }}>
+    <div style={{ background: 'var(--bg-page)', minHeight: 'calc(100vh - var(--nav-height))' }}>
 
       {/* ── Hero header ── */}
       <div style={{

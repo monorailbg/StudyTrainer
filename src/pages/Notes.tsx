@@ -316,7 +316,7 @@ export default function Notes() {
   };
 
   return (
-    <div className={activeNote ? 'page-notes-reading' : ''} style={{ display: 'flex', height: 'calc(100vh - 76px)', background: 'var(--bg-page)' }}>
+    <div className={activeNote ? 'page-notes-reading' : ''} style={{ display: 'flex', height: 'calc(100vh - var(--nav-height))', background: 'var(--bg-page)' }}>
       <aside className="notes-sidebar hidden md:flex flex-col" style={{
         width: sidebarOpen ? '220px' : '0', flexShrink: 0,
         borderRight: sidebarOpen ? '1px solid var(--border-light)' : 'none',

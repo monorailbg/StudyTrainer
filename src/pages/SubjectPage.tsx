@@ -1840,7 +1840,7 @@ export default function SubjectPage() {
   const selectedLevelFileIds = selectedFileIds.filter(id => levelFiles.some(f => f.id === id));
 
   return (
-    <div className="subject-page-root" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 76px)' }}>
+    <div className="subject-page-root" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--nav-height))' }}>
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="subject-breadcrumb-strip flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{

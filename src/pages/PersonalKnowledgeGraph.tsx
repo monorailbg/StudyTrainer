@@ -32,7 +32,7 @@ export default function PersonalKnowledgeGraphPage() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: 'calc(100vh - 60px)', overflow: 'hidden',
+      height: 'calc(100vh - var(--nav-height))', overflow: 'hidden',
       padding: '20px 24px', gap: 14,
       background: 'var(--bg-page)',
     }}>

@@ -35,7 +35,7 @@ export default function KnowledgeGraphPage() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 60px)',
+        height: 'calc(100vh - var(--nav-height))',
         overflow: 'hidden',
         padding: '20px 24px',
         gap: 16,

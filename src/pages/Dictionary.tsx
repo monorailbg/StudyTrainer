@@ -95,7 +95,7 @@ export default function Dictionary() {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 76px)', background: 'var(--bg-page)', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - var(--nav-height))', background: 'var(--bg-page)', overflow: 'hidden', position: 'relative' }}>
 
       {/* Mobile backdrop */}
       {isMobile && sidebarOpen && (
@@ -120,7 +120,7 @@ export default function Dictionary() {
         transition: 'width 0.2s ease, padding 0.2s ease',
         ...(isMobile && sidebarOpen ? {
           position: 'fixed', left: 0, top: 0, bottom: 0,
-          zIndex: 11, paddingTop: '76px',
+          zIndex: 11, paddingTop: 'var(--nav-height)',
         } : {}),
       }}>
         <div style={{ minWidth: '196px' }}>

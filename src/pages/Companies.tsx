@@ -100,7 +100,7 @@ export default function Companies() {
   const industryCounts = (ind: string) => ind === 'All' ? COMPANIES.length : COMPANIES.filter(c => c.industry === ind).length;
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 76px)', background: 'var(--bg-page)' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - var(--nav-height))', background: 'var(--bg-page)' }}>
 
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col" style={{

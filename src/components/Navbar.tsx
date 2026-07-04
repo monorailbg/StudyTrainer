@@ -472,13 +472,15 @@ export default function Navbar() {
   return (
     <>
       {/*
-        Outer nav: sticky wrapper keeps 76px so calc(100vh - 76px) pages
-        remain intact. The visual glass pill sits inside with 10px breathing
-        room top + bottom, 16px left + right.
+        Outer nav: sticky wrapper height comes from the --nav-height CSS var
+        (index.css), which mirrors this same 768px breakpoint, so
+        calc(100vh - var(--nav-height)) pages stay correct at every width.
+        The visual glass pill sits inside with 10px breathing room top +
+        bottom, 16px left + right.
       */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50,
-        height: isMobile ? '60px' : '76px',
+        height: 'var(--nav-height)',
         background: 'transparent',
         padding: isMobile ? '6px 10px' : '10px 16px',
         boxSizing: 'border-box',
@@ -557,7 +559,7 @@ export default function Navbar() {
       {/* Mobile menu overlay */}
       {menuOpen && (
         <div style={{
-          position: 'fixed', top: isMobile ? '60px' : '76px', left: 0, right: 0, bottom: 0, zIndex: 49,
+          position: 'fixed', top: 'var(--nav-height)', left: 0, right: 0, bottom: 0, zIndex: 49,
           background: dark ? 'rgba(8,11,16,0.97)' : 'rgba(245,243,238,0.97)',
           backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
           display: 'flex', flexDirection: 'column', padding: '12px 12px 20px', overflowY: 'auto',

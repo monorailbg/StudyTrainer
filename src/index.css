@@ -97,6 +97,16 @@
   --text-3: #484F58;
   --accent-primary: #3D7EFF;
   --accent-orange: #FF8C42;
+
+  /* Navbar.tsx's sticky wrapper height — kept in sync with its own
+     useIsMobile(768) breakpoint below so calc(100vh - var(--nav-height))
+     pages match the real rendered nav at every width instead of each
+     page guessing a single fixed value. */
+  --nav-height: 76px;
+}
+
+@media (max-width: 767px) {
+  :root { --nav-height: 60px; }
 }
 
 body.theme-light {
