@@ -59,7 +59,13 @@ export default function DepGraph({ concepts, searchQuery }: DepGraphProps) {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
-  const positions = useMemo(() => layoutConcepts(concepts), [concepts.length]);
+  // Memoized on the actual set of concept ids, not just the count — an
+  // equal-count filter change (e.g. one concept swapped for another) would
+  // otherwise keep stale positions and leave the new concept's node with no
+  // entry, falling back to (0,0) below instead of getting laid out.
+  const conceptIds = concepts.map(c => c.id).join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on conceptIds, not the concepts array reference
+  const positions = useMemo(() => layoutConcepts(concepts), [conceptIds]);
 
   const { nodes, edges } = useMemo(() => {
     const sq = searchQuery.toLowerCase();
