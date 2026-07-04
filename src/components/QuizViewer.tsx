@@ -1173,7 +1173,6 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
   const { ts } = useLang();
   const { toast } = useToast();
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [submitted, setSubmitted] = useState(false);
   const startTime = useRef(Date.now());
 
   // Inline edit state
@@ -1220,17 +1219,15 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
     setEditDraft(null);
   }
 
-  const score = submitted ? questions.filter(q => answers[q.id] === Number(effectiveQ(q).correct)).length : 0;
-  const pct = submitted && questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
   const answered = Object.keys(answers).length;
-  const counted = useCountUp(pct, submitted);
 
   function handleAnswer(qid: string, oi: number) {
     setAnswers(a => ({ ...a, [qid]: oi }));
   }
 
   function submit() {
-    setSubmitted(true);
+    // onDone flips the parent to the results phase, unmounting TestMode
+    // immediately — there's no in-place "submitted" view to show here.
     onDone(answers, Math.floor((Date.now() - startTime.current) / 1000));
   }
 
@@ -1244,33 +1241,9 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
 
   return (
     <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 8px' }}>
-      {isPractice && !submitted && (
+      {isPractice && (
         <div style={{ marginBottom: '16px' }}>
           <PracticeBanner text={ts("Practice mode — results won't be saved")} />
-        </div>
-      )}
-      {submitted && (
-        <div className="anim-fadein" style={{
-          padding: '20px 24px', borderRadius: '16px', marginBottom: '20px',
-          background: `radial-gradient(120% 140% at 0% 0%, ${color}0E 0%, var(--bg-surface) 55%)`,
-          border: `1px solid ${color}28`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-              <span className="mono" style={{ fontSize: '2.8rem', color, lineHeight: 1, fontWeight: 700 }}>{counted}%</span>
-              <span style={{ fontSize: '13px', color: 'var(--text-2)' }}>{ts('{score} / {total} correct', { score, total: questions.length })}</span>
-            </div>
-            <button
-              onClick={() => { setAnswers({}); setSubmitted(false); }}
-              style={{ height: '32px', padding: '0 14px', borderRadius: '999px', background: 'var(--bg-elevated)', color: 'var(--text-1)', border: '1px solid var(--border-base)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
-            >
-              {ts('Retry')}
-            </button>
-          </div>
-          <div style={{ display: 'flex', height: '6px', borderRadius: '999px', overflow: 'hidden', background: 'var(--bg-elevated)' }}>
-            <div style={{ width: `${pct}%`, background: '#2EA043', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
-            <div style={{ width: `${100 - pct}%`, background: 'rgba(248,81,73,0.5)', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
-          </div>
         </div>
       )}
 
@@ -1278,8 +1251,6 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
         {questions.map((q, qi) => {
           const eq = effectiveQ(q);
           const chosen = answers[q.id];
-          const reveal = submitted;
-          const answeredCorrectly = chosen !== undefined && chosen === Number(eq.correct);
           const isEditing = editingId === q.id;
           const ov = overrides[q.id];
 
@@ -1302,7 +1273,7 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
                   {ov && !isEditing && (
                     <span title={ts('Edited')} style={{ width: '5px', height: '5px', borderRadius: '50%', background: color, display: 'inline-block' }} />
                   )}
-                  {!submitted && !isEditing && (
+                  {!isEditing && (
                     <button
                       onClick={() => startEdit(q)}
                       title={ts('Edit this question')}
@@ -1330,24 +1301,13 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
               ) : (
                 <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <DefinableArea onDefine={onDefine} onDefineJapanese={onDefineJapanese}>
-                    {eq.options.map((opt, oi) => {
-                      const state = !reveal
-                        ? (chosen === oi ? 'chosen' : 'idle')
-                        : (oi === Number(eq.correct) ? 'right' : (chosen === oi ? 'chosen' : 'idle'));
-                      return (
-                        <OptionBtn key={oi} letter={letterFor(oi)} text={opt}
-                          state={state as 'idle' | 'chosen' | 'right' | 'wrong'}
-                          color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi)}
-                          compact />
-                      );
-                    })}
+                    {eq.options.map((opt, oi) => (
+                      <OptionBtn key={oi} letter={letterFor(oi)} text={opt}
+                        state={chosen === oi ? 'chosen' : 'idle'}
+                        color={color} disabled={false} onClick={() => handleAnswer(q.id, oi)}
+                        compact />
+                    ))}
                   </DefinableArea>
-                </div>
-              )}
-
-              {reveal && q.explanation && (
-                <div style={{ margin: '0 12px 14px' }}>
-                  <Explanation correct={answeredCorrectly} text={q.explanation} />
                 </div>
               )}
             </div>
@@ -1355,7 +1315,7 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
         })}
       </div>
 
-      {!submitted && answered > 0 && (
+      {answered > 0 && (
         <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button
             onClick={submit}
