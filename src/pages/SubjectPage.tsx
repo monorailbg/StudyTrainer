@@ -1039,6 +1039,11 @@ export default function SubjectPage() {
   // Refs so async callbacks always read the latest values without stale closures
   const filesRef = useRef<UploadedFile[]>([]);
   filesRef.current = files;
+  // Lets long-running async work (addFiles, handleGenerate) started before a
+  // subject switch detect that it's now stale and skip writing its result
+  // into what has become a different subject's state.
+  const idRef = useRef(id);
+  idRef.current = id;
 
   // ── Load persisted data when subject changes ───────────────────────────────
   useEffect(() => {
@@ -1062,14 +1067,21 @@ export default function SubjectPage() {
     setGenState({ status: 'idle' });
     setActiveLevel(subject?.levels?.[0] ?? '');
 
+    // Guards against the subject-switch race: if `id` changes again before
+    // this load finishes, a slow load for the previous subject must not land
+    // its setFiles/setSavedQuizzes/etc. on top of the new subject's state.
+    let cancelled = false;
+
     async function loadPersisted() {
       try {
         if (isFirebaseConfigured) {
           await migrateSubjectFromIndexedDB(id!);
+          if (cancelled) return;
           // Retried on every visit (unlike the one-time migration above) so a
           // file that failed to sync earlier gets another chance to become
           // visible to everyone instead of staying stuck on this browser.
           const backfill = await backfillLocalFilesToCloud(id!);
+          if (cancelled) return;
           if (backfill.attempted > 0 && backfill.migrated < backfill.attempted) {
             toast('error', ts('Cloud sync incomplete'), ts('{failed} of {total} local file(s) for this subject could not be uploaded to shared storage{reason}.', {
               failed: backfill.attempted - backfill.migrated,
@@ -1085,6 +1097,7 @@ export default function SubjectPage() {
             getCloudFolders(id!),
             getQuizResults(id!),
           ]);
+          if (cancelled) return;
           setQuizHistory(localHistory);
           if (cloudFolders.length > 0) setFolders(cloudFolders);
           if (cloudQuizzes.length > 0) setSavedQuizzes(cloudQuizzes);
@@ -1092,6 +1105,7 @@ export default function SubjectPage() {
           if (cloudSets.length > 0) setSavedFlashcardSets(cloudSets);
           // Also load locally-saved files (fallback blobs from failed cloud uploads).
           const localFiles = await getFiles(id!).catch(() => []);
+          if (cancelled) return;
           const localById = new Map(localFiles.map(f => [f.id, f]));
 
           if (cloudFiles.length > 0 || localFiles.length > 0) {
@@ -1117,6 +1131,7 @@ export default function SubjectPage() {
             getFolders(id!),
             getQuizResults(id!),
           ]);
+          if (cancelled) return;
           setQuizHistory(storedHistory);
           if (storedFolders.length > 0) setFolders(storedFolders);
           if (storedQuizzes.length > 0) setSavedQuizzes(storedQuizzes.sort((a, b) => b.createdAt - a.createdAt));
@@ -1137,8 +1152,10 @@ export default function SubjectPage() {
       } catch (err) {
         console.error('Failed to load persisted subject data:', err);
       }
+      if (cancelled) return;
       // Dictionary entries are always local-only (not shared via cloud)
       getDictionaryEntries(id!).then(entries => {
+        if (cancelled) return;
         setDictEntries(entries.sort((a, b) => a.term.localeCompare(b.term)));
       }).catch(() => {});
     }
@@ -1146,12 +1163,18 @@ export default function SubjectPage() {
     loadPersisted();
 
     return () => {
+      cancelled = true;
       filesRef.current.forEach(f => { if (f.url.startsWith('blob:')) URL.revokeObjectURL(f.url); });
     };
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── File management ────────────────────────────────────────────────────────
   const addFiles = useCallback(async (newFiles: FileList | File[]) => {
+    // Captured so later setFiles calls (after compression/upload awaits) can
+    // detect a subject switch mid-upload and skip writing into what is now a
+    // different subject's file list — the persistence calls below still use
+    // this id, so the upload itself completes correctly either way.
+    const forId = id;
     const all = Array.from(newFiles);
     const valid = all.filter(f => ACCEPTED.includes(f.type));
     const rejected = all.length - valid.length;
@@ -1195,12 +1218,14 @@ export default function SubjectPage() {
         }
       }
 
-      setFiles(prev => prev.map(f =>
-        f.id === entry.id
-          ? { ...f, rawFile: fileToStore, type: typeToStore, size: fileToStore.size, compressing: false }
-          : f,
-      ));
-      await saveFile({ id: entry.id, subjectId: id!, name: rawFile.name, type: typeToStore, size: fileToStore.size, level: activeLevel, blob: fileToStore }).catch(() => {});
+      if (idRef.current === forId) {
+        setFiles(prev => prev.map(f =>
+          f.id === entry.id
+            ? { ...f, rawFile: fileToStore, type: typeToStore, size: fileToStore.size, compressing: false }
+            : f,
+        ));
+      }
+      await saveFile({ id: entry.id, subjectId: forId!, name: rawFile.name, type: typeToStore, size: fileToStore.size, level: activeLevel, blob: fileToStore }).catch(() => {});
       finalFiles.push({ entry, file: fileToStore, type: typeToStore });
     }
 
@@ -1211,9 +1236,9 @@ export default function SubjectPage() {
       const failedNames: string[] = [];
       for (const { entry, file, type } of finalFiles) {
         try {
-          const storageUrl = await uploadFileToStorage(id!, entry.id, file);
-          await saveCloudFile({ id: entry.id, subjectId: id!, name: entry.name, type, size: file.size, level: activeLevel, storageUrl, createdAt: Date.now() });
-          setFiles(prev => prev.map(f => f.id === entry.id ? { ...f, storageUrl } : f));
+          const storageUrl = await uploadFileToStorage(forId!, entry.id, file);
+          await saveCloudFile({ id: entry.id, subjectId: forId!, name: entry.name, type, size: file.size, level: activeLevel, storageUrl, createdAt: Date.now() });
+          if (idRef.current === forId) setFiles(prev => prev.map(f => f.id === entry.id ? { ...f, storageUrl } : f));
         } catch (err) {
           console.warn('[CloudSync] Supabase upload failed for', entry.name, '—', err instanceof Error ? err.message : err);
           failedNames.push(entry.name);
@@ -1572,6 +1597,12 @@ export default function SubjectPage() {
 
   // ── Generation ─────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
+    // Captured so the (possibly minutes-long) generation below can detect a
+    // subject switch and skip clobbering a different subject's now-visible
+    // view/genState/saved-content lists with this generation's result —
+    // the content itself is still saved under this subject either way.
+    const forId = id;
+    const stillOnSubject = () => idRef.current === forId;
     const selectedFiles = levelFiles.filter(f => selectedFileIds.includes(f.id));
     if (selectedFiles.length === 0) return;
     if (selectedFiles.some(f => f.compressing)) {
@@ -1585,11 +1616,11 @@ export default function SubjectPage() {
 
       const results: unknown[] = [];
       for (let i = 0; i < selectedFiles.length; i++) {
-        setGenProgress({ current: i + 1, total: selectedFiles.length });
+        if (stillOnSubject()) setGenProgress({ current: i + 1, total: selectedFiles.length });
         let fileForGen = selectedFiles[i].rawFile;
         if (!fileForGen) {
           // Try local IndexedDB first (covers failed cloud uploads with local fallback).
-          const local = await import('../lib/db').then(m => m.getFiles(id!)).catch(() => []);
+          const local = await import('../lib/db').then(m => m.getFiles(forId!)).catch(() => []);
           const localMatch = local.find(f => f.id === selectedFiles[i].id);
           if (localMatch?.blob) {
             fileForGen = new File([localMatch.blob], selectedFiles[i].name, { type: selectedFiles[i].type });
@@ -1621,7 +1652,7 @@ export default function SubjectPage() {
           language: genLanguage,
           flashcardMode: selectedType === 'flashcards' ? flashcardMode : undefined,
         }, (chunkCurrent, chunkTotal) => {
-          setGenProgress({ current: i + 1, total: selectedFiles.length, chunk: { current: chunkCurrent, total: chunkTotal } });
+          if (stillOnSubject()) setGenProgress({ current: i + 1, total: selectedFiles.length, chunk: { current: chunkCurrent, total: chunkTotal } });
         });
         results.push(result);
       }
@@ -1644,14 +1675,14 @@ export default function SubjectPage() {
         const allQuestions = (results as GeneratedQuizQuestion[][]).flat().map((q, i) => ({ ...q, id: `m${i}-${q.id}` }));
         const quiz: StoredQuiz = {
           id: `quiz-${uid()}`,
-          subjectId: id!,
+          subjectId: forId!,
           name,
           createdAt: Date.now(),
           questions: allQuestions,
         };
         if (isFirebaseConfigured) {
           try {
-            await saveCloudQuiz({ id: quiz.id, subjectId: id!, name, createdAt: quiz.createdAt, questions: quiz.questions });
+            await saveCloudQuiz({ id: quiz.id, subjectId: forId!, name, createdAt: quiz.createdAt, questions: quiz.questions });
           } catch {
             savedLocallyOnly = true;
             await saveQuiz(quiz).catch(() => {});
@@ -1659,21 +1690,20 @@ export default function SubjectPage() {
         } else {
           await saveQuiz(quiz).catch(() => {});
         }
-        setSavedQuizzes(prev => [quiz, ...prev]);
-        setActiveQuizId(quiz.id);
+        if (stillOnSubject()) { setSavedQuizzes(prev => [quiz, ...prev]); setActiveQuizId(quiz.id); }
       } else if (selectedType === 'flashcards') {
         // Each generation is saved as its own flashcard set in the folder
         const cards = (results as GeneratedFlashcard[][]).flat();
         const set: StoredFlashcardSet = {
           id: `set-${uid()}`,
-          subjectId: id!,
+          subjectId: forId!,
           name,
           createdAt: Date.now(),
           cards,
         };
         if (isFirebaseConfigured) {
           try {
-            await saveCloudFlashcardSet({ id: set.id, subjectId: id!, name, createdAt: set.createdAt, cards: set.cards });
+            await saveCloudFlashcardSet({ id: set.id, subjectId: forId!, name, createdAt: set.createdAt, cards: set.cards });
           } catch {
             savedLocallyOnly = true;
             await saveFlashcardSet(set).catch(() => {});
@@ -1681,8 +1711,7 @@ export default function SubjectPage() {
         } else {
           await saveFlashcardSet(set).catch(() => {});
         }
-        setSavedFlashcardSets(prev => [set, ...prev]);
-        setActiveSetId(set.id);
+        if (stillOnSubject()) { setSavedFlashcardSets(prev => [set, ...prev]); setActiveSetId(set.id); }
       } else {
         // Each generation is saved as its own note in the notes folder
         let note: GeneratedNote;
@@ -1694,14 +1723,14 @@ export default function SubjectPage() {
         }
         const stored: StoredNote = {
           id: `note-${uid()}`,
-          subjectId: id!,
+          subjectId: forId!,
           name,
           createdAt: Date.now(),
           note,
         };
         if (isFirebaseConfigured) {
           try {
-            await saveCloudNote({ id: stored.id, subjectId: id!, name, createdAt: stored.createdAt, note: stored.note });
+            await saveCloudNote({ id: stored.id, subjectId: forId!, name, createdAt: stored.createdAt, note: stored.note });
           } catch {
             savedLocallyOnly = true;
             await saveNote(stored).catch(() => {});
@@ -1709,13 +1738,14 @@ export default function SubjectPage() {
         } else {
           await saveNote(stored).catch(() => {});
         }
-        setSavedNotes(prev => [stored, ...prev]);
-        setActiveNoteId(stored.id);
+        if (stillOnSubject()) { setSavedNotes(prev => [stored, ...prev]); setActiveNoteId(stored.id); }
       }
 
-      setGenState({ status: 'done', type: selectedType });
-      setView(selectedType);
       const typeLabel = selectedType === 'flashcards' ? ts('Flashcards') : selectedType === 'quiz' ? ts('Quiz') : ts('Notes');
+      if (stillOnSubject()) {
+        setGenState({ status: 'done', type: selectedType });
+        setView(selectedType);
+      }
       if (savedLocallyOnly) {
         toast('error', ts('{type} saved locally only', { type: typeLabel }), ts('Cloud sync failed — this device can see it, but it will retry syncing automatically next time you open this subject.'));
       } else {
@@ -1723,12 +1753,18 @@ export default function SubjectPage() {
       }
       recordActivity({ type: 'generate', subjectId: subject!.id, subjectName: subject!.title, detail: `Generated ${typeLabel.toLowerCase()} for ${subject!.title}` });
     } catch (err) {
-      setGenState({ status: 'error', type: selectedType, error: String(err) });
+      if (stillOnSubject()) setGenState({ status: 'error', type: selectedType, error: String(err) });
       toast('error', ts('Generation failed'), ts(friendlyError(String(err))));
     } finally {
-      setGenProgress(null);
-      onGenerationRetry(null);
-      setGenRetryStatus(null);
+      // Guarded: if the user has since started a new generation on a
+      // different subject, that call already re-registered its own
+      // setGenRetryStatus / genProgress — clearing them here unconditionally
+      // would wipe out the new subject's in-progress generation state.
+      if (stillOnSubject()) {
+        setGenProgress(null);
+        onGenerationRetry(null);
+        setGenRetryStatus(null);
+      }
     }
   };
 
