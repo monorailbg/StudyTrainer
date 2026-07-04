@@ -324,6 +324,18 @@ export default function Quiz() {
                 else saveQuiz(updated).catch(() => {});
                 setActiveQuiz(updated);
                 setQuizzes(prev => prev.map(q => q.id === updated.id ? updated : q));
+              }}
+              onQuestionEdit={(questionId, draft) => {
+                const updated = {
+                  ...activeQuiz,
+                  questions: activeQuiz.questions.map(qq => qq.id === questionId
+                    ? { ...qq, question: draft.question, options: draft.options, correct: draft.correct }
+                    : qq),
+                };
+                if (isFirebaseConfigured) saveCloudQuiz(updated).catch(() => {});
+                else saveQuiz(updated).catch(() => {});
+                setActiveQuiz(updated);
+                setQuizzes(prev => prev.map(q => q.id === updated.id ? updated : q));
               }} />
           </div>
         ) : renderMain()}

@@ -133,7 +133,7 @@ function Toggle({ on, color, onChange, label }: { on: boolean; color: string; on
 function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved, onQuestionDeleted }: {
   questions: GeneratedQuizQuestion[];
   color: string;
-  onStart: (count: number, shuffle: boolean, mode: QuizMode) => void;
+  onStart: (count: number, shuffle: boolean, mode: QuizMode, overrides: Record<string, EditDraft>) => void;
   initialMode?: QuizMode;
   onQuestionSaved?: (qid: string, draft: EditDraft) => void;
   onQuestionDeleted?: (qid: string) => void;
@@ -280,7 +280,7 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved, 
 
         {/* Begin */}
         <button
-          onClick={() => { saveLastMode(mode); onStart(testCount, shuffle, mode); }}
+          onClick={() => { saveLastMode(mode); onStart(testCount, shuffle, mode, listOverrides); }}
           style={{
             display: 'block', margin: '0 auto', minWidth: '200px',
             height: '46px', padding: '0 40px', borderRadius: '999px',
@@ -1641,8 +1641,15 @@ export function QuizViewer({
         initialMode={setupMode}
         onQuestionSaved={onQuestionEdit}
         onQuestionDeleted={onQuestionDelete}
-        onStart={(count, shuffle, mode) => {
-          const pool = shuffle ? [...questions].sort(() => Math.random() - 0.5) : [...questions];
+        onStart={(count, shuffle, mode, overrides) => {
+          // Merge in edits made from the setup screen's question list — it
+          // only tracked them in display-only local state, so Begin used to
+          // build the pool from the original, pre-edit questions prop.
+          const effective = questions.map(q => {
+            const ov = overrides[q.id];
+            return ov ? { ...q, question: ov.question, options: ov.options, correct: ov.correct } : q;
+          });
+          const pool = shuffle ? [...effective].sort(() => Math.random() - 0.5) : [...effective];
           setActiveQuestions(pool.slice(0, count));
           setQuizMode(mode);
           setSetupMode(undefined);
