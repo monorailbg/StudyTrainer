@@ -1633,6 +1633,12 @@ export default function SubjectPage() {
         : `${baseNames[0]} +${baseNames.length - 1} more`;
       const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+      // Newly generated content only lives in this component's state until a
+      // save succeeds somewhere durable — if the cloud write fails, fall back
+      // to the local IndexedDB copy instead of silently discarding it while
+      // still telling the user generation succeeded.
+      let savedLocallyOnly = false;
+
       if (selectedType === 'quiz') {
         // Each generation is saved as its own quiz in the "previous quizzes" folder
         const allQuestions = (results as GeneratedQuizQuestion[][]).flat().map((q, i) => ({ ...q, id: `m${i}-${q.id}` }));
@@ -1644,7 +1650,12 @@ export default function SubjectPage() {
           questions: allQuestions,
         };
         if (isFirebaseConfigured) {
-          await saveCloudQuiz({ id: quiz.id, subjectId: id!, name, createdAt: quiz.createdAt, questions: quiz.questions }).catch(() => {});
+          try {
+            await saveCloudQuiz({ id: quiz.id, subjectId: id!, name, createdAt: quiz.createdAt, questions: quiz.questions });
+          } catch {
+            savedLocallyOnly = true;
+            await saveQuiz(quiz).catch(() => {});
+          }
         } else {
           await saveQuiz(quiz).catch(() => {});
         }
@@ -1661,7 +1672,12 @@ export default function SubjectPage() {
           cards,
         };
         if (isFirebaseConfigured) {
-          await saveCloudFlashcardSet({ id: set.id, subjectId: id!, name, createdAt: set.createdAt, cards: set.cards }).catch(() => {});
+          try {
+            await saveCloudFlashcardSet({ id: set.id, subjectId: id!, name, createdAt: set.createdAt, cards: set.cards });
+          } catch {
+            savedLocallyOnly = true;
+            await saveFlashcardSet(set).catch(() => {});
+          }
         } else {
           await saveFlashcardSet(set).catch(() => {});
         }
@@ -1684,7 +1700,12 @@ export default function SubjectPage() {
           note,
         };
         if (isFirebaseConfigured) {
-          await saveCloudNote({ id: stored.id, subjectId: id!, name, createdAt: stored.createdAt, note: stored.note }).catch(() => {});
+          try {
+            await saveCloudNote({ id: stored.id, subjectId: id!, name, createdAt: stored.createdAt, note: stored.note });
+          } catch {
+            savedLocallyOnly = true;
+            await saveNote(stored).catch(() => {});
+          }
         } else {
           await saveNote(stored).catch(() => {});
         }
@@ -1695,7 +1716,11 @@ export default function SubjectPage() {
       setGenState({ status: 'done', type: selectedType });
       setView(selectedType);
       const typeLabel = selectedType === 'flashcards' ? ts('Flashcards') : selectedType === 'quiz' ? ts('Quiz') : ts('Notes');
-      toast('success', ts('{type} ready', { type: typeLabel }), ts('Generated from {n} files.', { n: selectedFiles.length }));
+      if (savedLocallyOnly) {
+        toast('error', ts('{type} saved locally only', { type: typeLabel }), ts('Cloud sync failed — this device can see it, but it will retry syncing automatically next time you open this subject.'));
+      } else {
+        toast('success', ts('{type} ready', { type: typeLabel }), ts('Generated from {n} files.', { n: selectedFiles.length }));
+      }
       recordActivity({ type: 'generate', subjectId: subject!.id, subjectName: subject!.title, detail: `Generated ${typeLabel.toLowerCase()} for ${subject!.title}` });
     } catch (err) {
       setGenState({ status: 'error', type: selectedType, error: String(err) });
