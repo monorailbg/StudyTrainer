@@ -1,13 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useLang } from '../context/LanguageContext';
-import { getAllQuizzes, getFolders, saveQuiz, type StoredQuiz, type Folder } from '../lib/db';
+import { getAllQuizzes, getFolders, saveQuiz, saveDictionaryEntry, type StoredQuiz, type Folder, type DictionaryEntry } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudQuizzes, getCloudFolders, saveCloudQuiz } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
 import { QuizViewer } from '../components/QuizViewer';
 import { SkeletonCardGrid } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
+import { generateDefinition, generateJapaneseDefinition } from '../lib/geminiProxy';
 import type { SubjectDef } from '../data/subjects';
+
+function friendlyError(raw?: string): string {
+  if (!raw) return 'Definition failed.';
+  if (raw.includes('401') || raw.includes('API_KEY_INVALID')) return 'Invalid or expired API key. Check the server configuration.';
+  if (raw.includes('RESOURCE_EXHAUSTED')) return 'Quota exhausted — try again tomorrow.';
+  if (raw.includes('unsupported') || raw.includes('Unsupported') || raw.includes('INVALID_ARGUMENT')) return 'Failed to process. Try again.';
+  return `Definition failed: ${raw.replace(/^Error:\s*/i, '').slice(0, 140)}`;
+}
 
 // ── Sidebar buttons ───────────────────────────────────────────────────────────
 
@@ -126,12 +136,49 @@ export default function Quiz() {
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const record = useActivity(s => s.record);
   const addQuizScore = useStore(s => s.addQuizScore);
+  const { toast } = useToast();
 
   const toggleFolder = (id: string) => setCollapsedFolders(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
+
+  const addToEnglishDictionary = async (term: string, quizTitle?: string, quizId?: string) => {
+    if (!activeQuiz) return;
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    toast('info', `Adding "${trimmed}" to dictionary…`);
+    try {
+      const subject = allSubjects.find(s => s.id === activeQuiz.subjectId);
+      const definition = await generateDefinition(trimmed, subject?.title ?? '');
+      const entry: DictionaryEntry = {
+        id: `dict-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        subjectId: activeQuiz.subjectId, term: trimmed, definition,
+        sourceNoteTitle: quizTitle, sourceNoteId: quizId, createdAt: Date.now(),
+      };
+      await saveDictionaryEntry(entry);
+      toast('success', `"${trimmed}" added to dictionary`, definition.replace(/^[•\-*]\s*/gm, '').trim());
+    } catch (err) { toast('error', `Failed to define "${trimmed}"`, friendlyError(String(err))); }
+  };
+
+  const addToJapaneseDictionary = async (term: string, quizTitle?: string, quizId?: string) => {
+    if (!activeQuiz) return;
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    toast('info', `翻訳中 "${trimmed}"…`);
+    try {
+      const subject = allSubjects.find(s => s.id === activeQuiz.subjectId);
+      const definition = await generateJapaneseDefinition(trimmed, subject?.title ?? '');
+      const entry: DictionaryEntry = {
+        id: `dict-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        subjectId: activeQuiz.subjectId, term: trimmed, definition, folder: '翻訳',
+        sourceNoteTitle: quizTitle, sourceNoteId: quizId, createdAt: Date.now(),
+      };
+      await saveDictionaryEntry(entry);
+      toast('success', `"${trimmed}" を翻訳しました`, definition.replace(/^[•\-*]\s*/gm, '').trim());
+    } catch (err) { toast('error', `翻訳に失敗しました "${trimmed}"`, friendlyError(String(err))); }
+  };
 
   useEffect(() => {
     const loadData = isFirebaseConfigured
@@ -336,7 +383,9 @@ export default function Quiz() {
                 else saveQuiz(updated).catch(() => {});
                 setActiveQuiz(updated);
                 setQuizzes(prev => prev.map(q => q.id === updated.id ? updated : q));
-              }} />
+              }}
+              onDefine={(term) => addToEnglishDictionary(term, activeQuiz.name, activeQuiz.id)}
+              onDefineJapanese={(term) => addToJapaneseDictionary(term, activeQuiz.name, activeQuiz.id)} />
           </div>
         ) : renderMain()}
       </main>

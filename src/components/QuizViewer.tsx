@@ -1,4 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useLang } from '../context/LanguageContext';
 import type { GeneratedQuizQuestion } from '../lib/generator';
 import { saveQuizResult, type QuizResult, type QuizResultQuestion } from '../lib/db';
@@ -655,6 +656,12 @@ function OptionBtn({
   const cardBorder = hovering ? 'var(--border-base)' : card.border;
 
   function handleClick() {
+    // A click fires on mouseup even when the mousedown→mouseup was a
+    // text-selection drag (e.g. selecting a word to define) rather than a
+    // tap — without this guard, selecting text inside an option would also
+    // silently lock in that option as the chosen answer.
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) return;
     if (!disabled) {
       setPulse(true);
       setTimeout(() => setPulse(false), 200);
@@ -699,6 +706,11 @@ function OptionBtn({
         fontSize: compact ? '14px' : '16px', color: card.text,
         lineHeight: 1.5, letterSpacing: '0.01em',
         fontWeight: state === 'idle' ? 500 : 600,
+        // Native <button> text is non-selectable by default in every major
+        // browser (the UA stylesheet's "appearance" special-case forces
+        // user-select:none even though computed style reports "auto") — force
+        // it back on so answer text can be selected for the Define toolbar.
+        userSelect: 'text', WebkitUserSelect: 'text', cursor: 'text',
       }}>
         {text}
       </span>
@@ -735,11 +747,164 @@ function Explanation({ correct, text }: { correct: boolean; text: string }) {
   );
 }
 
+// ── Define selection (dictionary lookup for question/answer text) ─────────────
+
+interface DefSelRect { left: number; top: number; bottom: number; width: number }
+
+function DefineToolbar({ rect, onDefine, onDefineJapanese, onDismiss }: {
+  rect: DefSelRect;
+  onDefine?: () => void;
+  onDefineJapanese?: () => void;
+  onDismiss: () => void;
+}) {
+  const { ts } = useLang();
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  // Same measure-then-position approach as NotesViewer's AnnotationToolbar:
+  // render invisibly first so we can read its real size, then place it
+  // centered over the selection (flipping below if too close to the top).
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = ref.current;
+      if (!el) return;
+      const tw = el.offsetWidth;
+      const th = el.offsetHeight;
+      if (!tw && !th) { requestAnimationFrame(measure); return; }
+      const m = 8;
+      let left = rect.left + rect.width / 2 - tw / 2;
+      left = Math.max(m, Math.min(left, window.innerWidth - tw - m));
+      let top = rect.top - th - 10;
+      if (top < m) top = rect.bottom + 10;
+      setPos({ left, top });
+    };
+    measure();
+  }, [rect]);
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onDismiss();
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('scroll', onDismiss, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('scroll', onDismiss, true);
+    };
+  }, [onDismiss]);
+
+  return createPortal(
+    <div
+      ref={ref}
+      onMouseDown={e => e.preventDefault()}
+      onClick={e => e.stopPropagation()}
+      style={{
+        position: 'fixed',
+        left: pos ? pos.left : rect.left,
+        top: pos ? pos.top : rect.top - 50,
+        visibility: pos ? 'visible' : 'hidden',
+        zIndex: 9999,
+        display: 'flex', alignItems: 'center', gap: '2px', padding: '5px 7px',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+        borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+        userSelect: 'none',
+      }}
+    >
+      {onDefine && (
+        <button
+          onClick={onDefine}
+          title={ts('Add to dictionary')}
+          style={{
+            height: '28px', padding: '0 9px', borderRadius: '7px',
+            background: 'rgba(61,126,255,0.15)', border: '1px solid rgba(61,126,255,0.3)',
+            cursor: 'pointer', color: '#3D7EFF', fontSize: '11px', fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: '5px',
+            flexShrink: 0, whiteSpace: 'nowrap',
+          }}
+        >
+          <svg viewBox="0 0 14 14" width="11" height="11" fill="none">
+            <path d="M2 2A1 1 0 013 1h8a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V2z" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+          </svg>
+          {ts('Define')}
+        </button>
+      )}
+      {onDefineJapanese && (
+        <button
+          onClick={onDefineJapanese}
+          title="翻訳 (Japanese definition)"
+          style={{
+            height: '28px', padding: '0 9px', borderRadius: '7px',
+            background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
+            cursor: 'pointer', color: 'var(--text-2)', fontSize: '11px', fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: '5px',
+            flexShrink: 0, whiteSpace: 'nowrap', letterSpacing: '0.02em',
+          }}
+        >
+          <span style={{ fontSize: '13px', lineHeight: 1, fontWeight: 400, opacity: 0.9 }}>あ</span>
+          翻訳
+        </button>
+      )}
+    </div>,
+    document.body
+  );
+}
+
+// Wraps question/answer text so selecting a word or phrase inside it shows a
+// small "Define"/"翻訳" toolbar — same lookup used in Notes. A no-op wrapper
+// (renders children directly) when neither callback is provided.
+function DefinableArea({ onDefine, onDefineJapanese, children }: {
+  onDefine?: (term: string) => void;
+  onDefineJapanese?: (term: string) => void;
+  children: React.ReactNode;
+}) {
+  const [toolbar, setToolbar] = useState<{ rect: DefSelRect; text: string } | null>(null);
+
+  const handleSelectionEnd = useCallback(() => {
+    // rAF: Safari finalizes window.getSelection() asynchronously relative to mouseup.
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      const text = sel.toString().trim();
+      if (text.length < 2) return;
+      const range = sel.getRangeAt(0);
+      let r = range.getBoundingClientRect();
+      if (!r.width && !r.height) {
+        const rects = range.getClientRects();
+        if (rects.length) r = rects[rects.length - 1];
+      }
+      if (!r.width && !r.height) return;
+      setToolbar({ rect: { left: r.left, top: r.top, bottom: r.bottom, width: r.width }, text });
+    });
+  }, []);
+
+  const dismiss = useCallback(() => setToolbar(null), []);
+
+  if (!onDefine && !onDefineJapanese) return <>{children}</>;
+
+  return (
+    // A <span> (not <div>) so this is valid to nest inside inline contexts
+    // like the question <p> in TestMode — display:contents makes it
+    // transparent to layout either way.
+    <span style={{ display: 'contents' }} onMouseUp={handleSelectionEnd} onTouchEnd={handleSelectionEnd}>
+      {children}
+      {toolbar && (
+        <DefineToolbar
+          rect={toolbar.rect}
+          onDefine={onDefine ? () => { onDefine(toolbar.text); window.getSelection()?.removeAllRanges(); dismiss(); } : undefined}
+          onDefineJapanese={onDefineJapanese ? () => { onDefineJapanese(toolbar.text); window.getSelection()?.removeAllRanges(); dismiss(); } : undefined}
+          onDismiss={dismiss}
+        />
+      )}
+    </span>
+  );
+}
+
 // ── Focused mode ───────────────────────────────────────────────────────────────
 
 function FocusedMode({
   questions, color, isRedoMode = false, isPractice = false,
-  onDone, onQuestionSaved,
+  onDone, onQuestionSaved, onDefine, onDefineJapanese,
 }: {
   questions: GeneratedQuizQuestion[];
   color: string;
@@ -747,6 +912,8 @@ function FocusedMode({
   isPractice?: boolean;
   onDone: (answers: Record<string, number>, timeSec: number) => void;
   onQuestionSaved?: (qid: string, draft: EditDraft) => void;
+  onDefine?: (term: string) => void;
+  onDefineJapanese?: (term: string) => void;
 }) {
   const { ts } = useLang();
   const [idx, setIdx] = useState(0);
@@ -881,7 +1048,9 @@ function FocusedMode({
         <div style={{ padding: 'clamp(16px, 4vw, 32px) clamp(14px, 4vw, 36px) clamp(12px, 2vw, 20px)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             <div style={{ flex: 1, fontSize: '20px', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, letterSpacing: '0.005em', whiteSpace: 'pre-wrap' }}>
-              {currentQ.question}
+              <DefinableArea onDefine={onDefine} onDefineJapanese={onDefineJapanese}>
+                {currentQ.question}
+              </DefinableArea>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
               {/* Edited indicator dot */}
@@ -923,15 +1092,17 @@ function FocusedMode({
         ) : (
           <>
             <div style={{ padding: 'clamp(12px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {currentQ.options.map((opt, oi) => {
-                const state = !revealed
-                  ? (chosen === oi ? 'chosen' : 'idle')
-                  : (oi === correct ? 'right' : (chosen === oi ? 'wrong' : 'idle'));
-                return (
-                  <OptionBtn key={oi} letter={letterFor(oi)} text={opt} state={state}
-                    color={color} disabled={revealed} onClick={() => pick(oi)} />
-                );
-              })}
+              <DefinableArea onDefine={onDefine} onDefineJapanese={onDefineJapanese}>
+                {currentQ.options.map((opt, oi) => {
+                  const state = !revealed
+                    ? (chosen === oi ? 'chosen' : 'idle')
+                    : (oi === correct ? 'right' : (chosen === oi ? 'wrong' : 'idle'));
+                  return (
+                    <OptionBtn key={oi} letter={letterFor(oi)} text={opt} state={state}
+                      color={color} disabled={revealed} onClick={() => pick(oi)} />
+                  );
+                })}
+              </DefinableArea>
             </div>
 
             {revealed && currentQ.explanation && (
@@ -985,12 +1156,14 @@ function FocusedMode({
 
 // ── Test mode ──────────────────────────────────────────────────────────────────
 
-function TestMode({ questions, color, isPractice = false, onDone, onQuestionSaved }: {
+function TestMode({ questions, color, isPractice = false, onDone, onQuestionSaved, onDefine, onDefineJapanese }: {
   questions: GeneratedQuizQuestion[];
   color: string;
   isPractice?: boolean;
   onDone: (answers: Record<string, number>, timeSec: number) => void;
   onQuestionSaved?: (qid: string, draft: EditDraft) => void;
+  onDefine?: (term: string) => void;
+  onDefineJapanese?: (term: string) => void;
 }) {
   const { ts } = useLang();
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -1103,7 +1276,9 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
                   <span className="mono" style={{ fontSize: '10px', color: 'var(--text-3)', marginRight: '10px', fontWeight: 700 }}>
                     {String(qi + 1).padStart(2, '0')}
                   </span>
-                  {eq.question}
+                  <DefinableArea onDefine={onDefine} onDefineJapanese={onDefineJapanese}>
+                    {eq.question}
+                  </DefinableArea>
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
                   {ov && !isEditing && (
@@ -1136,17 +1311,19 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
                 />
               ) : (
                 <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {eq.options.map((opt, oi) => {
-                    const state = !reveal
-                      ? (chosen === oi ? 'chosen' : 'idle')
-                      : (oi === Number(eq.correct) ? 'right' : (chosen === oi ? 'chosen' : 'idle'));
-                    return (
-                      <OptionBtn key={oi} letter={letterFor(oi)} text={opt}
-                        state={state as 'idle' | 'chosen' | 'right' | 'wrong'}
-                        color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi)}
-                        compact />
-                    );
-                  })}
+                  <DefinableArea onDefine={onDefine} onDefineJapanese={onDefineJapanese}>
+                    {eq.options.map((opt, oi) => {
+                      const state = !reveal
+                        ? (chosen === oi ? 'chosen' : 'idle')
+                        : (oi === Number(eq.correct) ? 'right' : (chosen === oi ? 'chosen' : 'idle'));
+                      return (
+                        <OptionBtn key={oi} letter={letterFor(oi)} text={opt}
+                          state={state as 'idle' | 'chosen' | 'right' | 'wrong'}
+                          color={color} disabled={submitted} onClick={() => handleAnswer(q.id, oi)}
+                          compact />
+                      );
+                    })}
+                  </DefinableArea>
                 </div>
               )}
 
@@ -1283,6 +1460,7 @@ function RedoResultsScreen({
 function ResultsScreen({
   result, color, isPractice = false,
   onRetry, onRedoWrong, onRetakeSetup, onStartRated, onExit,
+  onDefine, onDefineJapanese,
 }: {
   result: QuizResult; color: string;
   isPractice?: boolean;
@@ -1291,6 +1469,8 @@ function ResultsScreen({
   onRetakeSetup: () => void;
   onStartRated?: () => void;
   onExit?: () => void;
+  onDefine?: (term: string) => void;
+  onDefineJapanese?: (term: string) => void;
 }) {
   const { ts } = useLang();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -1443,7 +1623,13 @@ function ResultsScreen({
                 background: rq.wasCorrect ? 'rgba(46,160,67,0.04)' : 'rgba(248,81,73,0.04)',
               }}>
                 <button
-                  onClick={() => toggleExpand(rq.questionId)}
+                  onClick={() => {
+                    // Selecting question text to define it also fires this
+                    // button's click on mouseup — don't toggle in that case.
+                    const sel = window.getSelection();
+                    if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) return;
+                    toggleExpand(rq.questionId);
+                  }}
                   style={{
                     width: '100%', textAlign: 'left', background: 'none', border: 'none',
                     padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px',
@@ -1455,7 +1641,9 @@ function ResultsScreen({
                       <span className="mono" style={{ fontSize: '10px', color: 'var(--text-3)', marginRight: '6px' }}>
                         {String(i + 1).padStart(2, '0')}
                       </span>
-                      {rq.questionText}
+                      <DefinableArea onDefine={onDefine} onDefineJapanese={onDefineJapanese}>
+                        {rq.questionText}
+                      </DefinableArea>
                     </div>
                     {!rq.wasCorrect && (
                       <div style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.4 }}>
@@ -1476,6 +1664,7 @@ function ResultsScreen({
                 {isOpen && (
                   <div className="anim-fadein" style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     <div style={{ height: '1px', background: 'var(--border-light)', marginBottom: '8px' }} />
+                    <DefinableArea onDefine={onDefine} onDefineJapanese={onDefineJapanese}>
                     {rq.options.map((opt, oi) => {
                       const isCorrect = opt === rq.correctAnswer;
                       const isChosen = opt === rq.userAnswer;
@@ -1497,6 +1686,7 @@ function ResultsScreen({
                         </div>
                       );
                     })}
+                    </DefinableArea>
                     {rq.explanation && (
                       <div style={{ marginTop: '6px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(61,126,255,0.05)', border: '1px solid rgba(61,126,255,0.15)' }}>
                         <span style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.55 }}>{rq.explanation}</span>
@@ -1535,6 +1725,8 @@ export function QuizViewer({
   onExit,
   onQuestionEdit,
   onQuestionDelete,
+  onDefine,
+  onDefineJapanese,
 }: {
   questions: GeneratedQuizQuestion[];
   color: string;
@@ -1546,6 +1738,8 @@ export function QuizViewer({
   onExit?: () => void;
   onQuestionEdit?: (questionId: string, draft: EditDraft) => void;
   onQuestionDelete?: (questionId: string) => void;
+  onDefine?: (term: string) => void;
+  onDefineJapanese?: (term: string) => void;
 }) {
   const [phase, setPhase] = useState<Phase>(initialRedoResult ? 'redo' : 'setup');
   const [activeQuestions, setActiveQuestions] = useState<GeneratedQuizQuestion[]>(
@@ -1662,8 +1856,8 @@ export function QuizViewer({
   if (phase === 'playing') {
     const isPractice = quizMode === 'practice';
     return quizMode === 'test'
-      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} />
-      : <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} />;
+      ? <TestMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} onDefine={onDefine} onDefineJapanese={onDefineJapanese} />
+      : <FocusedMode key={activeQuestions.map(q => q.id).join('')} questions={activeQuestions} color={color} isPractice={isPractice} onDone={handlePlayDone} onQuestionSaved={handleQuestionSaved} onDefine={onDefine} onDefineJapanese={onDefineJapanese} />;
   }
 
   if (phase === 'results' && lastResult) {
@@ -1673,6 +1867,8 @@ export function QuizViewer({
         result={lastResult}
         color={color}
         isPractice={isPractice}
+        onDefine={onDefine}
+        onDefineJapanese={onDefineJapanese}
         onRetry={() => {
           setPhase('playing');
         }}
@@ -1696,6 +1892,8 @@ export function QuizViewer({
         color={color}
         isRedoMode
         onDone={(answerMap) => handleRedoDone(answerMap)}
+        onDefine={onDefine}
+        onDefineJapanese={onDefineJapanese}
       />
     );
   }

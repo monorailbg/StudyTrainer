@@ -2809,6 +2809,8 @@ export default function SubjectPage() {
                         return updated;
                       }));
                     }}
+                    onDefine={(term) => addToDictionary(term, activeQuiz.name, activeQuiz.id)}
+                    onDefineJapanese={(term) => addToJapaneseDictionary(term, activeQuiz.name, activeQuiz.id)}
                   />
                 </div>
               );
