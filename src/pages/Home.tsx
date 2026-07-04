@@ -262,6 +262,21 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
   );
 }
 
+// Calendar-day difference between a "YYYY-MM-DD" date string and today, both
+// in local time. `new Date('YYYY-MM-DD')` parses as UTC midnight — comparing
+// that directly against `Date.now()` (the current instant) is off by the
+// local UTC offset, e.g. an exam "today" in a UTC-negative timezone reads as
+// already past because UTC midnight of that date is still hours in the
+// future there. Building both sides as local midnight and comparing whole
+// days avoids that skew.
+function daysUntilLocal(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  const today = new Date();
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((target.getTime() - todayMidnight.getTime()) / 86_400_000);
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -344,11 +359,18 @@ export default function Home() {
     const today = new Date();
     const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
     const startOffset = seen.has(todayKey) ? 0 : 1;
+    // Step by calendar day via setDate (not by subtracting a fixed 86.4Ms),
+    // which stays correct across DST transitions — a fixed-ms step can land
+    // on the wrong calendar day (double-counting or skipping one) on the day
+    // clocks change, since that local day isn't exactly 24 hours long.
+    const cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    cursor.setDate(cursor.getDate() - startOffset);
     let count = 0;
-    for (let i = startOffset; i < 365; i++) {
-      const d = new Date(Date.now() - i * 86400000);
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      if (seen.has(key)) count++; else break;
+    for (let i = 0; i < 365; i++) {
+      const key = `${cursor.getFullYear()}-${cursor.getMonth()}-${cursor.getDate()}`;
+      if (!seen.has(key)) break;
+      count++;
+      cursor.setDate(cursor.getDate() - 1);
     }
     return count;
   }, [activityEvents]);
@@ -581,7 +603,7 @@ export default function Home() {
               <SectionLabel>{ts('Upcoming Exams')}</SectionLabel>
               <div className="flex gap-3 flex-wrap">
                 {upcoming.map((d, i) => {
-                  const diff = Math.ceil((new Date(d.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  const diff = daysUntilLocal(d.date);
                   const color = d.subject!.color;
                   return (
                     <Link
