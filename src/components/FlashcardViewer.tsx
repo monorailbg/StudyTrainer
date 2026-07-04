@@ -112,7 +112,7 @@ const RATINGS: { key: Rating; label: string; hint: string; color: string }[] = [
 
 // ── Card edit draft ───────────────────────────────────────────────────────────
 
-interface CardEditDraft {
+export interface CardEditDraft {
   front: string;
   back: string;
 }
@@ -245,13 +245,14 @@ function CardEditForm({
   );
 }
 
-export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQuiz, onBack }: {
+export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQuiz, onBack, onCardEdit }: {
   cards: GeneratedFlashcard[];
   color: string;
   subjectId?: string;
   onSessionEnd?: (reviewedCount: number) => void;
   onGoToQuiz?: () => void;
   onBack?: () => void;
+  onCardEdit?: (cardId: string, draft: CardEditDraft) => void;
 }) {
   const { ts } = useLang();
   const srsMode  = !!subjectId;
@@ -333,6 +334,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
   function saveCardEdit() {
     if (!card || !editCardDraft) return;
     setCardOverrides(prev => ({ ...prev, [card.id]: editCardDraft }));
+    onCardEdit?.(card.id, editCardDraft);
     setEditingCardId(null);
     setEditCardDraft(null);
   }
@@ -539,8 +541,9 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
             {displayCard!.topic}
           </span>
 
-          {/* Edit card button — non-vocab cards only */}
-          {!isVocabCard && !isEditingCard && (
+          {/* Edit card button — non-vocab cards only, and only when there's
+              somewhere to persist the edit (otherwise it silently reverts) */}
+          {!isVocabCard && !isEditingCard && onCardEdit && (
             <button
               onClick={startCardEdit}
               aria-label={ts('Edit this card')}

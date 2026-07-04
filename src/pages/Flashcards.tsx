@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllFlashcardSets, saveFlashcardSet, getFolders, type StoredFlashcardSet, type Folder } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudFlashcardSets, renameCloudFlashcardSet, getCloudFolders } from '../lib/cloudDb';
+import { isFirebaseConfigured, getAllCloudFlashcardSets, saveCloudFlashcardSet, renameCloudFlashcardSet, getCloudFolders } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { FlashcardViewer } from '../components/FlashcardViewer';
@@ -367,6 +367,13 @@ export default function Flashcards() {
               onSessionEnd={(n) => {
                 const name = activeSubject?.title ?? 'a subject';
                 record({ type: 'flashcards', subjectId: activeSet.subjectId, subjectName: name, detail: `Reviewed ${n} card${n !== 1 ? 's' : ''} in ${name}` });
+              }}
+              onCardEdit={(cardId, draft) => {
+                const updated = { ...activeSet, cards: activeSet.cards.map(c => c.id === cardId ? { ...c, front: draft.front, back: draft.back } : c) };
+                setActiveSet(updated);
+                setSets(prev => prev.map(s => s.id === updated.id ? updated : s));
+                if (isFirebaseConfigured) saveCloudFlashcardSet(updated).catch(() => {});
+                else saveFlashcardSet(updated).catch(() => {});
               }} />
           </div>
         ) : renderMain()}

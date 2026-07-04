@@ -2413,6 +2413,12 @@ export default function SubjectPage() {
                     onSessionEnd={(n) => recordActivity({ type: 'flashcards', subjectId: subject.id, subjectName: subject.title, detail: `Reviewed ${n} card${n !== 1 ? 's' : ''} in ${subject.title}` })}
                     onBack={() => setActiveSetId(null)}
                     onGoToQuiz={savedQuizzes.length > 0 ? () => { setView('quiz'); setActiveQuizId(savedQuizzes[0].id); } : undefined}
+                    onCardEdit={(cardId, draft) => {
+                      const updated = { ...activeSet, cards: activeSet.cards.map(c => c.id === cardId ? { ...c, front: draft.front, back: draft.back } : c) };
+                      setSavedFlashcardSets(prev => prev.map(s => s.id === updated.id ? updated : s));
+                      if (isFirebaseConfigured) saveCloudFlashcardSet({ ...updated, subjectId: id! }).catch(() => {});
+                      else saveFlashcardSet(updated).catch(() => {});
+                    }}
                   />
                 </div>
               );
