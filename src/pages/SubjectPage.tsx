@@ -1060,6 +1060,7 @@ export default function SubjectPage() {
     setFolders([]);
     setView('dashboard');
     setGenState({ status: 'idle' });
+    setActiveLevel(subject?.levels?.[0] ?? '');
 
     async function loadPersisted() {
       try {
