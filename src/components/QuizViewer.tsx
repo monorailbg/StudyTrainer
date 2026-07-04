@@ -89,7 +89,10 @@ function shuffleOptions(q: GeneratedQuizQuestion): GeneratedQuizQuestion {
     [indices[i], indices[j]] = [indices[j], indices[i]];
   }
   const newOptions = indices.map(i => q.options[i]);
-  const newCorrect = indices.indexOf(q.correct);
+  // q.correct can come back as a string index from the generator — the rest
+  // of this file defensively coerces with Number() before comparing; indexOf
+  // does strict equality, so a bare string here always misses and returns -1.
+  const newCorrect = indices.indexOf(Number(q.correct));
   return { ...q, options: newOptions, correct: newCorrect };
 }
 
