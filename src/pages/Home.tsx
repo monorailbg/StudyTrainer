@@ -10,7 +10,6 @@ import { useActivity } from '../store/useActivity';
 import type { SubjectDef } from '../data/subjects';
 import flashcardsData from '../data/flashcards.json';
 import quizData from '../data/quiz.json';
-import notesData from '../data/notes-config.json';
 import { getAllFlashcardSets, getAllNotes, getAllQuizResults, type StoredFlashcardSet, type StoredNote, type QuizResult } from '../lib/db';
 import { isFirebaseConfigured, getAllCloudFlashcardSets, getAllCloudNotes } from '../lib/cloudDb';
 import GlobeView from '../components/GlobeView';
@@ -269,7 +268,7 @@ export default function Home() {
   const { t, ts } = useLang();
   const { theme } = useTheme();
   const isLight = theme === 'light';
-  const { flashcardsStudied, flashcardsKnown, quizScores, notesRead, recentSubjects, removeRecentSubject } = useStore();
+  const { quizScores, notesRead, recentSubjects, removeRecentSubject } = useStore();
   const { allSubjects, coreSubjects, extendedSubjects } = useResolvedSubjects();
   const [managing, setManaging] = useState(false);
   const [heroView, setHeroView] = useState<'globe' | 'mindmap'>('globe');
@@ -314,14 +313,26 @@ export default function Home() {
     return map;
   }, [notesList, sets, notesRead, srsCards]);
 
-  const totalCards = flashcardsData.length;
-  const totalNotes = notesData.length;
+  // Flashcard progress actually lives in useSRS (per-card review state), not
+  // the legacy flashcardsStudied/flashcardsKnown lists in useStore — nothing
+  // ever writes to those anymore, so they'd always read as zero.
+  const globalCardStats = useMemo(() => {
+    const allCardIds = sets.flatMap(s => s.cards.map(c => c.id));
+    return subjectSrsStats(srsCards, allCardIds);
+  }, [sets, srsCards]);
+  const cardsStudied = globalCardStats.total - globalCardStats.unseen;
+  const totalCards = globalCardStats.total;
+  // Use the actual generated-notes count as the denominator — the previous
+  // notes-config.json count is a static, unrelated legacy config that can be
+  // smaller than the number of notes a user has actually read, which let
+  // this ratio exceed 100%.
+  const totalNotes = notesList.length;
   const avgScore = quizResults.length > 0
     ? Math.round(quizResults.reduce((a, r) => a + r.scorePercent, 0) / quizResults.length)
     : (quizScores.length > 0
       ? Math.round(quizScores.reduce((a, b) => a + (b.score / b.total) * 100, 0) / quizScores.length)
       : 0);
-  const knownPct = totalCards > 0 ? Math.round((flashcardsKnown.length / totalCards) * 100) : 0;
+  const knownPct = totalCards > 0 ? Math.round((globalCardStats.known / totalCards) * 100) : 0;
   const notesPct = totalNotes > 0 ? Math.round((notesRead.length   / totalNotes) * 100) : 0;
 
   const streak = useMemo(() => {
@@ -344,8 +355,8 @@ export default function Home() {
 
   const hasAnyProgress =
     streak > 0 ||
-    flashcardsStudied.length > 0 ||
-    flashcardsKnown.length > 0 ||
+    cardsStudied > 0 ||
+    globalCardStats.known > 0 ||
     notesRead.length > 0 ||
     quizResults.length > 0 ||
     quizScores.length > 0;
@@ -542,9 +553,9 @@ export default function Home() {
         {/* Stats strip — only shown once the user has recorded some activity */}
         {hasAnyProgress && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-10">
-            <StatChip index={0} label={t('stats_studied')} value={flashcardsStudied.length} color="#3D7EFF"
+            <StatChip index={0} label={t('stats_studied')} value={cardsStudied} color="#3D7EFF"
               icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="1.5" y="4.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><rect x="4" y="2.5" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>} />
-            <StatChip index={1} label={t('stats_known')}   value={flashcardsKnown.length}   progress={knownPct} color="#3D7EFF"
+            <StatChip index={1} label={t('stats_known')}   value={globalCardStats.known}   progress={knownPct} color="#3D7EFF"
               icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 8.2l1.8 1.8L11 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
             <StatChip index={2} label={t('stats_score')}   value={avgScore > 0 ? `${avgScore}%` : '—'} progress={avgScore || undefined} color="#D29922"
               spark={quizResults.length > 0 ? quizResults.slice(0, 20).reverse().map(r => r.scorePercent) : quizScores.map(q => Math.round((q.score / q.total) * 100))}
