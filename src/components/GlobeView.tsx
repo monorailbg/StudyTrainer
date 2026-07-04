@@ -532,6 +532,8 @@ export default function GlobeView({
     const labelEls = new Map<string, HTMLElement>();
 
     let cancelled = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let globeInstance: any = null;
 
     import('globe.gl').then(({ default: GlobeModule }) => {
       if (cancelled || !containerRef.current) return;
@@ -633,6 +635,7 @@ export default function GlobeView({
         });
 
       globe(el);
+      globeInstance = globe;
 
       const controls = globe.controls();
       controls.autoRotate      = true;
@@ -665,6 +668,14 @@ export default function GlobeView({
         (el as any).__globeCleanup();
         delete (el as any).__globeCleanup;
       }
+      // Removing the canvas from the DOM does NOT stop globe.gl's internal
+      // requestAnimationFrame loop or release its WebGL context — without
+      // this, every theme/company switch (which remounts this effect) leaks
+      // one more live WebGL context, and browsers cap how many can exist
+      // simultaneously; eventually a new Globe() silently fails to get a
+      // context and renders black.
+      if (globeInstance?._destructor) globeInstance._destructor();
+      globeInstance = null;
       while (el.firstChild) el.removeChild(el.firstChild);
     };
   }, [theme, activeCompanyId]); // eslint-disable-line react-hooks/exhaustive-deps
