@@ -4,6 +4,7 @@ import { useLang } from '../context/LanguageContext';
 import type { GeneratedQuizQuestion } from '../lib/generator';
 import { saveQuizResult, type QuizResult, type QuizResultQuestion } from '../lib/db';
 import { QuizAskAI } from './QuizAskAI';
+import { useToast } from './Toast';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1170,6 +1171,7 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
   onDefineJapanese?: (term: string) => void;
 }) {
   const { ts } = useLang();
+  const { toast } = useToast();
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const startTime = useRef(Date.now());
@@ -1178,6 +1180,9 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
   const [overrides, setOverrides] = useState<Record<string, EditDraft>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+  // Options as they were when editing started, so saveEdit can tell whether
+  // they actually changed instead of always clearing the user's answer.
+  const editOriginalOptionsRef = useRef<string[]>([]);
 
   function effectiveQ(q: GeneratedQuizQuestion): GeneratedQuizQuestion {
     const ov = overrides[q.id];
@@ -1186,6 +1191,7 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
 
   function startEdit(q: GeneratedQuizQuestion) {
     const eq = effectiveQ(q);
+    editOriginalOptionsRef.current = [...eq.options];
     setEditDraft({
       question: eq.question,
       options: [...eq.options],
@@ -1200,8 +1206,16 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
     if (!editDraft) return;
     setOverrides(prev => ({ ...prev, [qId]: editDraft }));
     onQuestionSaved?.(qId, editDraft);
-    // Clear any answer for this question since options may have changed
-    setAnswers(a => { const n = { ...a }; delete n[qId]; return n; });
+    const original = editOriginalOptionsRef.current;
+    const optionsChanged = original.length !== editDraft.options.length
+      || original.some((opt, i) => opt !== editDraft.options[i]);
+    if (optionsChanged) {
+      // The previously chosen index may no longer correspond to the same
+      // choice, so it can't be kept — but silently discarding it with no
+      // feedback made "Check Answers" quietly refuse to enable.
+      setAnswers(a => { const n = { ...a }; delete n[qId]; return n; });
+      toast('info', ts('Answer cleared'), ts('This question\'s options changed, so your previous answer for it was cleared.'));
+    }
     setEditingId(null);
     setEditDraft(null);
   }
