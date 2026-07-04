@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getAllNotes, getAllFlashcardSets, getAllQuizzes, getAllQuizResults } from '../lib/db';
+import { getAllCloudNotes, getAllCloudFlashcardSets, getAllCloudQuizzes, isFirebaseConfigured } from '../lib/cloudDb';
 import { enrichConcepts } from '../lib/depAlgorithms';
 import { useDependencies } from './useDependencies';
 import {
@@ -47,9 +48,9 @@ export const usePKG = create<PKGState>((set, get) => ({
   load: async () => {
     try {
       const [notes, flashcardSets, quizzes, quizResults] = await Promise.all([
-        getAllNotes(),
-        getAllFlashcardSets(),
-        getAllQuizzes(),
+        isFirebaseConfigured ? getAllCloudNotes() : getAllNotes(),
+        isFirebaseConfigured ? getAllCloudFlashcardSets() : getAllFlashcardSets(),
+        isFirebaseConfigured ? getAllCloudQuizzes() : getAllQuizzes(),
         getAllQuizResults(),
       ]);
       const getMastery = useDependencies.getState().getMastery;
