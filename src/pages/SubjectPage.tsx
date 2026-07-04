@@ -1417,12 +1417,22 @@ export default function SubjectPage() {
       }
     } else if (type === 'file') {
       setFiles(prev => prev.map(f => f.id === renaming.id ? { ...f, name } : f));
-      // Targeted update — only touches the name field, so it can't stamp a
-      // fresh createdAt over the original or send an undefined folderId
-      // (which Firestore rejects outright). No-ops for a local-only file
-      // that has no cloud doc yet, rather than creating a phantom record
-      // with an empty storageUrl that would block its later cloud backfill.
-      if (isFirebaseConfigured) renameCloudFile(renaming.id, name).catch(() => {});
+      if (isFirebaseConfigured) {
+        // Targeted update — only touches the name field, so it can't stamp a
+        // fresh createdAt over the original or send an undefined folderId
+        // (which Firestore rejects outright). No-ops for a local-only file
+        // that has no cloud doc yet, rather than creating a phantom record
+        // with an empty storageUrl that would block its later cloud backfill.
+        renameCloudFile(renaming.id, name).catch(() => {});
+      } else {
+        const file = files.find(f => f.id === renaming.id);
+        if (file?.rawFile) {
+          saveFile({
+            id: file.id, subjectId: id!, name, type: file.type, size: file.size,
+            level: file.level, blob: file.rawFile, folderId: file.folderId ?? null, wordCount: file.wordCount,
+          }).catch(() => {});
+        }
+      }
     } else {
       setSavedFlashcardSets(prev => prev.map(s => s.id === renaming.id ? { ...s, name } : s));
       if (isFirebaseConfigured) {
