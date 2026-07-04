@@ -118,10 +118,11 @@ async function callGeminiWithRetry(apiFn, maxRetries = 3, initialDelay = 1000, d
 
 // ── Gemini REST: single model call ────────────────────────────────────────
 
-async function fetchGeminiOnce(apiKey, model, contents, genConfig) {
+async function fetchGeminiOnce(apiKey, model, contents, genConfig, systemInstruction) {
   const url = `${GEMINI_BASE}/${model}:generateContent`;
   const body = { contents };
   if (genConfig && Object.keys(genConfig).length) body.generationConfig = genConfig;
+  if (systemInstruction) body.systemInstruction = { parts: [{ text: systemInstruction }] };
 
   const res = await fetch(url, {
     method: 'POST',
@@ -142,13 +143,13 @@ async function fetchGeminiOnce(apiKey, model, contents, genConfig) {
   return text;
 }
 
-async function callGeminiModel(apiKey, model, contents, genConfig, maxPerMinuteAttempts = 2, deadline = Infinity) {
+async function callGeminiModel(apiKey, model, contents, genConfig, maxPerMinuteAttempts = 2, deadline = Infinity, systemInstruction) {
   // 503 UNAVAILABLE gets exponential backoff + jitter via callGeminiWithRetry.
   // Per-minute 429s get their own inner loop, since the API tells us exactly
   // how long to wait rather than needing a doubling schedule.
   for (let attempt = 1; attempt <= maxPerMinuteAttempts; attempt++) {
     try {
-      return await callGeminiWithRetry(() => fetchGeminiOnce(apiKey, model, contents, genConfig), 3, 1000, deadline);
+      return await callGeminiWithRetry(() => fetchGeminiOnce(apiKey, model, contents, genConfig, systemInstruction), 3, 1000, deadline);
     } catch (err) {
       const msg = String(err?.message ?? err);
       if (msg.includes('429') && isPerMinuteLimit(msg) && attempt < maxPerMinuteAttempts) {
@@ -168,12 +169,12 @@ async function callGeminiModel(apiKey, model, contents, genConfig, maxPerMinuteA
 
 // ── Gemini REST: model-ladder for one key ─────────────────────────────────
 
-async function callGeminiKey(apiKey, contents, genConfig, label, deadline = Infinity) {
+async function callGeminiKey(apiKey, contents, genConfig, label, deadline = Infinity, systemInstruction) {
   let lastError;
 
   for (const model of GEMINI_MODELS) {
     try {
-      return await callGeminiModel(apiKey, model, contents, genConfig, 2, deadline);
+      return await callGeminiModel(apiKey, model, contents, genConfig, 2, deadline, systemInstruction);
     } catch (err) {
       lastError = err;
       const msg = String(err);
@@ -232,13 +233,13 @@ async function callGroq(groqKey, parts, temperature) {
 
 // ── Failover orchestrator ──────────────────────────────────────────────────
 
-async function generateWithFailover(parts, temperature, genConfig, deadline) {
+async function generateWithFailover(parts, temperature, genConfig, deadline, systemInstruction) {
   const { primary, backup, groq } = resolveKeys();
   const contents = [{ role: 'user', parts }];
 
   // ── Stage 1: Primary Gemini key ──────────────────────────────────────────
   try {
-    const text = await callGeminiKey(primary, contents, genConfig, 'GEMINI_PRIMARY', deadline);
+    const text = await callGeminiKey(primary, contents, genConfig, 'GEMINI_PRIMARY', deadline, systemInstruction);
     return text;
   } catch (err) {
     const msg = String(err);
@@ -256,7 +257,7 @@ async function generateWithFailover(parts, temperature, genConfig, deadline) {
   // ── Stage 2: Backup Gemini key ───────────────────────────────────────────
   if (backup) {
     try {
-      const text = await callGeminiKey(backup, contents, genConfig, 'GEMINI_BACKUP', deadline);
+      const text = await callGeminiKey(backup, contents, genConfig, 'GEMINI_BACKUP', deadline, systemInstruction);
       console.warn('[generate] ✅ Request served by GEMINI_BACKUP.');
       return text;
     } catch (err) {
@@ -288,7 +289,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
-  const { parts, temperature, maxOutputTokens, responseMimeType, responseSchema } = req.body ?? {};
+  const { parts, temperature, systemInstruction, maxOutputTokens, responseMimeType, responseSchema } = req.body ?? {};
 
   if (!Array.isArray(parts) || parts.length === 0) {
     return res.status(400).json({ error: 'Request body must include a non-empty "parts" array.' });
@@ -309,7 +310,10 @@ export default async function handler(req, res) {
   const deadline = Date.now() + FUNCTION_BUDGET_MS;
 
   try {
-    const text = await generateWithFailover(parts, temperature, Object.keys(genConfig).length ? genConfig : undefined, deadline);
+    const text = await generateWithFailover(
+      parts, temperature, Object.keys(genConfig).length ? genConfig : undefined, deadline,
+      typeof systemInstruction === 'string' && systemInstruction.trim() ? systemInstruction.trim() : undefined,
+    );
     return res.json({ text });
   } catch (err) {
     console.error('[generate] Fatal error:', err);
