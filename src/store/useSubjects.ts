@@ -65,7 +65,11 @@ export const useSubjects = create<SubjectsStore>()(
         set((s) => {
           const base = slugify(input.title) || 'subject';
           let id = base;
-          const taken = new Set([...ALL_SUBJECTS.map(x => x.id), ...s.customSubjects.map(x => x.id)]);
+          // Include deletedIds so re-creating a subject under a previously
+          // deleted title doesn't reuse its id — the resolved-subjects list
+          // filters deletedIds unconditionally, which would make the new
+          // subject invisible forever.
+          const taken = new Set([...ALL_SUBJECTS.map(x => x.id), ...s.customSubjects.map(x => x.id), ...s.deletedIds]);
           let n = 2;
           while (taken.has(id)) id = `${base}-${n++}`;
           const { lat, lng } = randomCoord();
