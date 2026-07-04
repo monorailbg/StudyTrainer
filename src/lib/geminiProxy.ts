@@ -1272,6 +1272,12 @@ export async function generateFromFile(
       const chunks = chunkPages(pageImages, PAGES_PER_CHUNK, MAX_CHUNK_B64);
       const chunkPrompt = flashcardFilePrompt(subjectTitle, options, true);
       const merged: GeneratedFlashcard[] = [];
+      // Each chunk is its own bounded request — if one chunk fails even after
+      // the retry layers are exhausted, skip just that chunk's contribution
+      // instead of discarding every chunk already generated successfully
+      // (mirrors generateQuizOrFlashcardsFromTextChunks below).
+      let failedChunks = 0;
+      let lastChunkError: string | undefined;
       for (let i = 0; i < chunks.length; i++) {
         onProgress?.(i + 1, chunks.length);
         if (i > 0) await sleep(CHUNK_CALL_STAGGER_MS);
@@ -1279,10 +1285,25 @@ export async function generateFromFile(
           ...chunks[i].map((p): InlineDataPart => ({ inline_data: { mime_type: p.mimeType, data: p.base64 } })),
           { text: chunkPrompt },
         ];
-        const text = await callProxy(chunkParts, { responseMimeType: 'application/json' });
-        const parsed = parseJSON(text) as Record<string, unknown>;
-        merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
+        try {
+          const text = await callProxy(chunkParts, { responseMimeType: 'application/json' });
+          const parsed = parseJSON(text) as Record<string, unknown>;
+          merged.push(...(processResult(parsed, 'flashcards', subjectTitle) as GeneratedFlashcard[]));
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[generateFromFile] Page chunk ${i + 1}/${chunks.length} failed, skipping:`, err);
+          failedChunks++;
+          lastChunkError = errMsg;
+        }
       }
+      if (merged.length === 0) {
+        throw new Error(
+          `Could not generate any flashcards (all ${chunks.length} batches failed)` +
+          (lastChunkError ? `: ${lastChunkError}` : '') +
+          '. Try again, or use a smaller document.',
+        );
+      }
+      if (failedChunks > 0) console.warn(`[generateFromFile] ${failedChunks}/${chunks.length} page batches failed — returning flashcards from the remaining ${chunks.length - failedChunks}.`);
       return (options.cardCount && options.cardCount !== 'all') ? merged.slice(0, options.cardCount) : merged;
     }
 
