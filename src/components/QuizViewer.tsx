@@ -50,13 +50,9 @@ function PracticeBanner({ text }: { text: string }) {
 function useCountUp(target: number, active: boolean, duration = 900) {
   const [val, setVal] = useState(0);
   const rafRef = useRef(0);
-  const prevTarget = useRef(-1);
 
-  useMemo(() => {
-    if (!active) { setVal(0); prevTarget.current = -1; return; }
-    if (target === prevTarget.current) return;
-    prevTarget.current = target;
-    cancelAnimationFrame(rafRef.current);
+  useEffect(() => {
+    if (!active) { setVal(0); return; }
     const start = performance.now();
     function tick(now: number) {
       const t = Math.min((now - start) / duration, 1);
@@ -65,8 +61,8 @@ function useCountUp(target: number, active: boolean, duration = 900) {
       if (t < 1) rafRef.current = requestAnimationFrame(tick);
     }
     rafRef.current = requestAnimationFrame(tick);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, active]);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, active, duration]);
 
   return val;
 }
