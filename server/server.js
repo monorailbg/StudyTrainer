@@ -340,7 +340,7 @@ app.post('/api/init-upload', async (req, res) => {
           'X-Goog-Upload-Command': 'start',
           'X-Goog-Upload-Header-Content-Length': String(size),
           'X-Goog-Upload-Header-Content-Type': mimeType,
-          'x-goog-api-key': GEMINI_API_KEY,
+          'x-goog-api-key': GEMINI_PRIMARY_KEY,
         },
         body: JSON.stringify({ file: { displayName: displayName ?? 'file' } }),
       },
