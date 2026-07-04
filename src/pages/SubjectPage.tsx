@@ -1358,7 +1358,15 @@ export default function SubjectPage() {
     if (activeQuizId === quizId) { setActiveQuizId(null); setRedoingResult(null); }
     if (!removed) return;
     const restore = () => setSavedQuizzes(prev => (prev.some(q => q.id === quizId) ? prev : [...prev, removed]));
-    deleteWithRollback(isFirebaseConfigured ? deleteCloudQuiz(quizId) : deleteQuiz(quizId), restore, removed.name);
+    if (isFirebaseConfigured) {
+      // Always wipe the local IndexedDB copy too (mirrors removeFile) so a
+      // quiz saved locally before cloud sync was enabled doesn't resurface
+      // via the local-only fallback used elsewhere (PKG, migration retry).
+      deleteQuiz(quizId).catch(() => {});
+      deleteWithRollback(deleteCloudQuiz(quizId), restore, removed.name);
+    } else {
+      deleteWithRollback(deleteQuiz(quizId), restore, removed.name);
+    }
   };
 
   const removeNote = (noteId: string) => {
@@ -1367,7 +1375,15 @@ export default function SubjectPage() {
     if (activeNoteId === noteId) setActiveNoteId(null);
     if (!removed) return;
     const restore = () => setSavedNotes(prev => (prev.some(n => n.id === noteId) ? prev : [...prev, removed]));
-    deleteWithRollback(isFirebaseConfigured ? deleteCloudNote(noteId) : deleteNote(noteId), restore, removed.name);
+    if (isFirebaseConfigured) {
+      // Always wipe the local IndexedDB copy too (mirrors removeFile) so a
+      // note saved locally before cloud sync was enabled doesn't resurface
+      // via the local-only fallback used elsewhere (PKG, migration retry).
+      deleteNote(noteId).catch(() => {});
+      deleteWithRollback(deleteCloudNote(noteId), restore, removed.name);
+    } else {
+      deleteWithRollback(deleteNote(noteId), restore, removed.name);
+    }
   };
 
   const removeSet = (setId: string) => {
@@ -1376,7 +1392,15 @@ export default function SubjectPage() {
     if (activeSetId === setId) setActiveSetId(null);
     if (!removed) return;
     const restore = () => setSavedFlashcardSets(prev => (prev.some(s => s.id === setId) ? prev : [...prev, removed]));
-    deleteWithRollback(isFirebaseConfigured ? deleteCloudFlashcardSet(setId) : deleteFlashcardSet(setId), restore, removed.name);
+    if (isFirebaseConfigured) {
+      // Always wipe the local IndexedDB copy too (mirrors removeFile) so a
+      // set saved locally before cloud sync was enabled doesn't resurface
+      // via the local-only fallback used elsewhere (PKG, migration retry).
+      deleteFlashcardSet(setId).catch(() => {});
+      deleteWithRollback(deleteCloudFlashcardSet(setId), restore, removed.name);
+    } else {
+      deleteWithRollback(deleteFlashcardSet(setId), restore, removed.name);
+    }
   };
 
   // ── Rename ─────────────────────────────────────────────────────────────────
