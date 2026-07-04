@@ -138,7 +138,7 @@ async function* streamGeminiModel(apiKey, model, prompt) {
   if (!gotAnyText) throw new Error('Empty streamed response from Gemini.');
 }
 
-async function* streamGeminiKey(apiKey, prompt, label) {
+async function* streamGeminiKey(apiKey, prompt, label, state) {
   let lastError;
   for (const model of GEMINI_MODELS) {
     try {
@@ -146,6 +146,12 @@ async function* streamGeminiKey(apiKey, prompt, label) {
       return;
     } catch (err) {
       lastError = err;
+      // Once part of an answer has already been streamed to the client,
+      // moving on to the next model would append a second, independent
+      // answer after the partial one instead of continuing it — surface the
+      // failure instead so the caller can end the stream with an error
+      // marker rather than silently corrupting the response.
+      if (state.wroteAny) throw err;
       const msg = String(err);
       const isDailyQuota = msg.includes('RESOURCE_EXHAUSTED') && !isPerMinuteLimit(msg);
       const isRetired    = msg.includes('404');
@@ -211,27 +217,34 @@ export default async function handler(req, res) {
     'X-Accel-Buffering': 'no',
   });
 
+  // Tracks whether any content has already been written to the client — once
+  // true, a provider/model failure must not fail over (that would append a
+  // second, independent answer after the partial one already streamed).
+  const state = { wroteAny: false };
+
   try {
     try {
-      for await (const chunk of streamGeminiKey(keys.primary, prompt, 'GEMINI_PRIMARY')) {
+      for await (const chunk of streamGeminiKey(keys.primary, prompt, 'GEMINI_PRIMARY', state)) {
         res.write(chunk);
+        state.wroteAny = true;
       }
       return res.end();
     } catch (err) {
       const msg = String(err);
-      if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg) && !isPerMinuteLimit(msg)) throw err;
+      if (state.wroteAny || (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg) && !isPerMinuteLimit(msg))) throw err;
       console.warn('[ask-ai] ⚠️  GEMINI_PRIMARY unavailable/rejected — failing over to GEMINI_BACKUP…');
     }
 
     if (keys.backup) {
       try {
-        for await (const chunk of streamGeminiKey(keys.backup, prompt, 'GEMINI_BACKUP')) {
+        for await (const chunk of streamGeminiKey(keys.backup, prompt, 'GEMINI_BACKUP', state)) {
           res.write(chunk);
+          state.wroteAny = true;
         }
         return res.end();
       } catch (err) {
         const msg = String(err);
-        if (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg) && !isPerMinuteLimit(msg)) throw err;
+        if (state.wroteAny || (!isQuotaExhausted(msg) && !isUnavailable(msg) && !isKeyRejected(msg) && !isPerMinuteLimit(msg))) throw err;
         console.warn('[ask-ai] ⚠️  GEMINI_BACKUP unavailable/rejected — failing over to GROQ_BACKUP…');
       }
     }
