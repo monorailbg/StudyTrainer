@@ -1058,6 +1058,7 @@ export default function SubjectPage() {
     setSidebarFilesExpanded(false);
     setSavedQuizzes([]);
     setActiveQuizId(null);
+    setRedoingResult(null);
     setSavedNotes([]);
     setActiveNoteId(null);
     setSavedFlashcardSets([]);
@@ -1339,7 +1340,7 @@ export default function SubjectPage() {
   const removeQuiz = (quizId: string) => {
     const removed = savedQuizzes.find(q => q.id === quizId);
     setSavedQuizzes(prev => prev.filter(q => q.id !== quizId));
-    if (activeQuizId === quizId) setActiveQuizId(null);
+    if (activeQuizId === quizId) { setActiveQuizId(null); setRedoingResult(null); }
     if (!removed) return;
     const restore = () => setSavedQuizzes(prev => (prev.some(q => q.id === quizId) ? prev : [...prev, removed]));
     deleteWithRollback(isFirebaseConfigured ? deleteCloudQuiz(quizId) : deleteQuiz(quizId), restore, removed.name);
@@ -1700,7 +1701,7 @@ export default function SubjectPage() {
         } else {
           await saveQuiz(quiz).catch(() => {});
         }
-        if (stillOnSubject()) { setSavedQuizzes(prev => [quiz, ...prev]); setActiveQuizId(quiz.id); }
+        if (stillOnSubject()) { setSavedQuizzes(prev => [quiz, ...prev]); setActiveQuizId(quiz.id); setRedoingResult(null); }
       } else if (selectedType === 'flashcards') {
         // Each generation is saved as its own flashcard set in the folder
         const cards = (results as GeneratedFlashcard[][]).flat();
@@ -1852,7 +1853,7 @@ export default function SubjectPage() {
           <button
             key={id}
             onClick={() => {
-              if (id === 'quiz') setActiveQuizId(null);
+              if (id === 'quiz') { setActiveQuizId(null); setRedoingResult(null); }
               if (id === 'notes') setActiveNoteId(null);
               if (id === 'flashcards') setActiveSetId(null);
               setView(id);
@@ -2086,7 +2087,7 @@ export default function SubjectPage() {
               label={ts('Quizzes')}
               sublabel={savedQuizzes.length > 0 ? ts('{n} saved', { n: savedQuizzes.length }) : ts('None yet')}
               active={view === 'quiz' && !activeQuizId}
-              onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setView('quiz'); setFullFocus(false); }}
+              onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setRedoingResult(null); setView('quiz'); setFullFocus(false); }}
             />
           </div>
 
@@ -2164,7 +2165,7 @@ export default function SubjectPage() {
                       secondary={avgQuizPct !== null ? `avg ${avgQuizPct}%` : savedQuizzes.length > 0 ? ts('updated {time}', { time: timeAgo(savedQuizzes[0].createdAt) }) : ts('Generate a quiz from files')}
                       inactive={savedQuizzes.length === 0}
                       progress={avgQuizPct}
-                      onClick={() => { setActiveQuizId(null); setView('quiz'); }}
+                      onClick={() => { setActiveQuizId(null); setRedoingResult(null); setView('quiz'); }}
                     />
                     <SectionCard
                       index={4} icon={<IconDict />} label={ts('Dictionary')} color="#7c3aed"
@@ -2479,7 +2480,7 @@ export default function SubjectPage() {
                     subjectId={subject.id}
                     onSessionEnd={(n) => recordActivity({ type: 'flashcards', subjectId: subject.id, subjectName: subject.title, detail: `Reviewed ${n} card${n !== 1 ? 's' : ''} in ${subject.title}` })}
                     onBack={() => setActiveSetId(null)}
-                    onGoToQuiz={savedQuizzes.length > 0 ? () => { setView('quiz'); setActiveQuizId(savedQuizzes[0].id); } : undefined}
+                    onGoToQuiz={savedQuizzes.length > 0 ? () => { setView('quiz'); setActiveQuizId(savedQuizzes[0].id); setRedoingResult(null); } : undefined}
                     onCardEdit={(cardId, draft) => {
                       const updated = { ...activeSet, cards: activeSet.cards.map(c => c.id === cardId ? { ...c, front: draft.front, back: draft.back } : c) };
                       setSavedFlashcardSets(prev => prev.map(s => s.id === updated.id ? updated : s));
@@ -2770,7 +2771,7 @@ export default function SubjectPage() {
                 <div>
                   <div className="subject-content-breadcrumb flex items-center justify-between mb-5">
                     <button
-                      onClick={() => { setActiveQuizId(null); setSidebarOpen(true); }}
+                      onClick={() => { setActiveQuizId(null); setRedoingResult(null); setSidebarOpen(true); }}
                       className="bg-transparent border-none text-xs font-semibold cursor-pointer p-0 flex items-center gap-1.5"
                       style={{ color: 'var(--text-2)' }}
                     >
@@ -2865,7 +2866,7 @@ export default function SubjectPage() {
                   const isRenaming = renaming?.id === quiz.id;
                   return (
                     <div
-                      onClick={() => { if (!isRenaming) { setActiveQuizId(quiz.id); setSidebarOpen(false); } }}
+                      onClick={() => { if (!isRenaming) { setActiveQuizId(quiz.id); setRedoingResult(null); setSidebarOpen(false); } }}
                       className="card-panel card-panel-lift p-4 flex items-center gap-3"
                       style={{ cursor: isRenaming ? 'default' : 'pointer' }}
                     >
