@@ -282,21 +282,26 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved, 
           <Toggle on={shuffle} color={color} onChange={() => setShuffle(s => !s)} label={ts('Shuffle questions')} />
         </div>
 
-        {/* Begin */}
+        {/* Begin — disabled with zero questions, otherwise Begin works and
+            then crashes on the first question (undefined) with a NaN score. */}
         <button
-          onClick={() => { saveLastMode(mode); onStart(testCount, shuffle, mode, listOverrides); }}
+          onClick={() => { if (total === 0) return; saveLastMode(mode); onStart(testCount, shuffle, mode, listOverrides); }}
+          disabled={total === 0}
           style={{
             display: 'block', margin: '0 auto', minWidth: '200px',
             height: '46px', padding: '0 40px', borderRadius: '999px',
-            background: color, color: '#fff', border: 'none',
-            fontSize: '14px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
-            boxShadow: `0 4px 24px ${color}40, 0 1px 0 rgba(255,255,255,0.12) inset`,
+            background: total === 0 ? 'var(--bg-elevated)' : color,
+            color: total === 0 ? 'var(--text-3)' : '#fff',
+            border: total === 0 ? '1px solid var(--border-base)' : 'none',
+            fontSize: '14px', fontWeight: 700, letterSpacing: '0.02em',
+            cursor: total === 0 ? 'not-allowed' : 'pointer',
+            boxShadow: total === 0 ? 'none' : `0 4px 24px ${color}40, 0 1px 0 rgba(255,255,255,0.12) inset`,
             transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.02)'; }}
+          onMouseEnter={e => { if (total > 0) (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.02)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
         >
-          {ts('Begin')} →
+          {total === 0 ? ts('No questions available') : `${ts('Begin')} →`}
         </button>
       </div>
     </div>
