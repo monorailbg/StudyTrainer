@@ -11,7 +11,7 @@
  */
 
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc,
+  collection, doc, getDocs, setDoc, updateDoc, deleteDoc,
   query, where,
   type Firestore,
 } from 'firebase/firestore';
@@ -149,20 +149,20 @@ export async function saveCloudFile(file: CloudFile): Promise<void> {
   await setDoc(doc(db(), 'uploadedFiles', file.id), file);
 }
 
-// Targeted read-modify-write that only touches the one field being changed
-// (mirrors renameCloudNote/renameCloudQuiz/renameCloudFlashcardSet) — unlike
-// reconstructing the whole document, this can't stamp a fresh createdAt over
-// the original or blank out other fields with undefined.
+// Atomic partial-field update — only touches the one field being changed, so
+// it can't stamp a fresh createdAt over the original or blank out other
+// fields with undefined. Unlike a getDoc-then-setDoc read-modify-write (the
+// previous approach here, and still how renameCloudNote/Quiz/FlashcardSet
+// worked until this fix), updateDoc doesn't race a concurrent edit to a
+// different field on this shared, no-auth database — there's no read to go
+// stale between the two round trips. Throws (and is caught by the caller)
+// if the doc doesn't exist yet — e.g. a local-only file with no cloud record.
 export async function renameCloudFile(fileId: string, name: string): Promise<void> {
-  const ref_ = doc(db(), 'uploadedFiles', fileId);
-  const snap = await getDoc(ref_);
-  if (snap.exists()) await setDoc(ref_, { ...snap.data(), name });
+  await updateDoc(doc(db(), 'uploadedFiles', fileId), { name });
 }
 
 export async function moveCloudFile(fileId: string, folderId: string | null): Promise<void> {
-  const ref_ = doc(db(), 'uploadedFiles', fileId);
-  const snap = await getDoc(ref_);
-  if (snap.exists()) await setDoc(ref_, { ...snap.data(), folderId });
+  await updateDoc(doc(db(), 'uploadedFiles', fileId), { folderId });
 }
 
 export async function getCloudFiles(subjectId: string): Promise<CloudFile[]> {
@@ -211,10 +211,10 @@ export async function deleteCloudNote(noteId: string): Promise<void> {
   await deleteDoc(doc(db(), 'notes', noteId));
 }
 
+// Atomic partial update — see renameCloudFile above for why this replaced a
+// getDoc-then-setDoc read-modify-write.
 export async function renameCloudNote(noteId: string, name: string): Promise<void> {
-  const ref_ = doc(db(), 'notes', noteId);
-  const snap = await getDoc(ref_);
-  if (snap.exists()) await setDoc(ref_, { ...snap.data(), name });
+  await updateDoc(doc(db(), 'notes', noteId), { name });
 }
 
 // ── Flashcard sets CRUD ────────────────────────────────────────────────────
@@ -237,10 +237,10 @@ export async function deleteCloudFlashcardSet(setId: string): Promise<void> {
   await deleteDoc(doc(db(), 'flashcardSets', setId));
 }
 
+// Atomic partial update — see renameCloudFile above for why this replaced a
+// getDoc-then-setDoc read-modify-write.
 export async function renameCloudFlashcardSet(setId: string, name: string): Promise<void> {
-  const ref_ = doc(db(), 'flashcardSets', setId);
-  const snap = await getDoc(ref_);
-  if (snap.exists()) await setDoc(ref_, { ...snap.data(), name });
+  await updateDoc(doc(db(), 'flashcardSets', setId), { name });
 }
 
 // ── Quizzes CRUD ───────────────────────────────────────────────────────────
@@ -263,10 +263,10 @@ export async function deleteCloudQuiz(quizId: string): Promise<void> {
   await deleteDoc(doc(db(), 'quizzes', quizId));
 }
 
+// Atomic partial update — see renameCloudFile above for why this replaced a
+// getDoc-then-setDoc read-modify-write.
 export async function renameCloudQuiz(quizId: string, name: string): Promise<void> {
-  const ref_ = doc(db(), 'quizzes', quizId);
-  const snap = await getDoc(ref_);
-  if (snap.exists()) await setDoc(ref_, { ...snap.data(), name });
+  await updateDoc(doc(db(), 'quizzes', quizId), { name });
 }
 
 // ── Quiz results CRUD ─────────────────────────────────────────────────────
