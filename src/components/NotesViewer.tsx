@@ -329,12 +329,18 @@ interface SectionCardProps {
   onCancelEdit: () => void;
   onSaveEdit: () => void;
   onDelete: () => void;
+  /** Section edit/delete require a real persistence callback (onNotesChange)
+   *  from the host page — without one, "editing" silently reverts and
+   *  "deleting" desyncs the understood-set from a section that's still
+   *  there. Hide the affordances entirely when there's nowhere for the
+   *  change to go. */
+  canEdit: boolean;
 }
 
 const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function SectionCard(
   {
     index, section, color, understood, collapsed, onToggleUnderstood, onToggleCollapsed,
-    isEditing, editDraft, onEditDraftChange, onStartEdit, onCancelEdit, onSaveEdit, onDelete,
+    isEditing, editDraft, onEditDraftChange, onStartEdit, onCancelEdit, onSaveEdit, onDelete, canEdit,
   },
   ref
 ) {
@@ -512,28 +518,32 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
               <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button
-            onClick={onStartEdit}
-            title={ts('Edit this section')}
-            style={actionBtnStyle}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-1)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
-          >
-            <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
-              <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <button
-            onClick={onDelete}
-            title={ts('Delete this section')}
-            style={actionBtnStyle}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#F97979'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,113,113,0.4)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
-          >
-            <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
-              <path d="M2.5 3.5h9M5.5 3.5V2a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1.5M6 6.5v4M8 6.5v4M3.5 3.5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+          {canEdit && (
+            <>
+              <button
+                onClick={onStartEdit}
+                title={ts('Edit this section')}
+                style={actionBtnStyle}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-1)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-base)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+              >
+                <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+                  <path d="M9.5 2.5l2 2L5 11H3v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <button
+                onClick={onDelete}
+                title={ts('Delete this section')}
+                style={actionBtnStyle}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#F97979'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(248,113,113,0.4)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+              >
+                <svg viewBox="0 0 14 14" width="12" height="12" fill="none">
+                  <path d="M2.5 3.5h9M5.5 3.5V2a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1.5M6 6.5v4M8 6.5v4M3.5 3.5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1101,6 +1111,7 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
               onCancelEdit={cancelEditSection}
               onSaveEdit={saveEditSection}
               onDelete={() => deleteSection(i)}
+              canEdit={!!onNotesChange}
             />
           ))}
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { getAllNotes, getFolders, type StoredNote, type DictionaryEntry, type Folder, saveDictionaryEntry } from '../lib/db';
-import { isFirebaseConfigured, getAllCloudNotes, getCloudFolders } from '../lib/cloudDb';
+import { getAllNotes, getFolders, saveNote, type StoredNote, type DictionaryEntry, type Folder, saveDictionaryEntry } from '../lib/db';
+import { isFirebaseConfigured, getAllCloudNotes, getCloudFolders, saveCloudNote } from '../lib/cloudDb';
 import { useResolvedSubjects } from '../store/useSubjects';
 import { useActivity } from '../store/useActivity';
 import { useStore } from '../store/useStore';
@@ -380,7 +380,14 @@ export default function Notes() {
                 }
               }}
               onAddToDictionary={addToEnglishDictionary}
-              onAddToJapaneseDictionary={addToJapaneseDictionary} />
+              onAddToJapaneseDictionary={addToJapaneseDictionary}
+              onNotesChange={updatedNote => {
+                const updated = { ...activeNote, note: updatedNote };
+                setActiveNote(updated);
+                setNotes(prev => prev.map(n => n.id !== activeNote.id ? n : updated));
+                if (isFirebaseConfigured) saveCloudNote(updated).catch(() => {});
+                else saveNote(updated).catch(() => {});
+              }} />
           </div>
         ) : renderMain()}
       </main>
