@@ -490,64 +490,79 @@ function processQuizQuestions(raw: unknown): GeneratedQuizQuestion[] {
 
 // ── Extraction-mode verification ─────────────────────────────────────────
 //
-// Defense-in-depth, independent of the prompt/system-instruction changes
-// above: extraction mode promises every question is traceable to the source
-// document, which makes it unusually easy to check mechanically. This
-// doesn't stop the model from hallucinating, but it stops a hallucinated
-// result from silently reaching the user disguised as real extracted
-// content — a question whose "correct" answer and cited passage can't be
-// found anywhere in the source almost certainly wasn't extracted from it.
+// Extraction mode promises the quiz is a verbatim copy of the source — not
+// a paraphrase, not a cleaned-up version, not a single word changed. An LLM
+// asked to "copy text exactly" can still subtly reword, re-punctuate, or
+// tidy up a sentence even under a strict instruction, so this doesn't rely
+// on the model's own transcription being trusted at face value: every
+// question's stem and its correct answer are re-derived directly from the
+// actual source text below, and only kept if they can be located there with
+// zero wording differences (whitespace-only tolerance, to absorb harmless
+// PDF-extraction line-wrap artifacts). What gets returned to the user is
+// the literal substring read back out of the source, not the model's copy
+// of it — so even if the model altered something, the app never shows it.
 
-function normalizeForMatch(s: string): string {
-  return s.toLowerCase().replace(/\s+/g, ' ').replace(/['"‘’“”]/g, '').trim();
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Pulls quoted spans out of a field (e.g. an explanation like `The document
-// states verbatim: "revenue of $512 billion"` quotes the actual source
-// sentence inside a longer sentence that isn't itself in the source).
-function extractQuotedSpans(text: string): string[] {
-  const spans: string[] = [];
-  const re = /["'“”‘’]([^"'“”‘’]{8,})["'“”‘’]/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text))) spans.push(m[1]);
-  return spans;
+// Locates `candidate` inside `source`, tolerating only whitespace
+// differences (extra/missing spaces or line breaks) between the two — any
+// actual wording difference (a changed, added, removed, or reordered word)
+// fails to match. Returns the *exact* substring from `source`, preserving
+// its original spacing/casing/punctuation, rather than the model's own copy
+// of the text.
+function findVerbatimSpan(candidate: string, source: string): string | null {
+  const tokens = candidate.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return null;
+  let re: RegExp;
+  try {
+    re = new RegExp(tokens.map(escapeRegExp).join('\\s+'));
+  } catch {
+    return null;
+  }
+  const match = re.exec(source);
+  return match ? match[0] : null;
 }
 
-function isVerifiableAgainstSource(q: GeneratedQuizQuestion, sourceNormalized: string): boolean {
-  const correctText = q.options?.[q.correct];
-  if (correctText) {
-    const correctNorm = normalizeForMatch(correctText);
-    if (correctNorm.length > 2 && sourceNormalized.includes(correctNorm)) return true;
-  }
-  for (const span of extractQuotedSpans(q.explanation ?? '')) {
-    if (sourceNormalized.includes(normalizeForMatch(span))) return true;
-  }
-  for (const span of extractQuotedSpans(q.question ?? '')) {
-    if (sourceNormalized.includes(normalizeForMatch(span))) return true;
-  }
-  return false;
-}
-
-// Drops questions that can't be traced back to the source, and fails the
-// whole batch (rather than quietly returning a thin, partially-hallucinated
-// quiz) if too large a fraction couldn't be verified — a high failure rate
-// signals a source-quality or extraction problem, not one unlucky question.
-function filterVerifiedExtractionQuestions(
+// Rebuilds each question's "question" and correct "options" entry from the
+// literal source text, dropping any question whose stem or correct answer
+// can't be found there character-for-character. Other (distractor) options
+// are left as the model returned them when no match is found, since
+// extraction mode legitimately invents distractors itself when the source
+// is prose with no pre-written options of its own (only the question and
+// its correct answer are required to prove verbatim fidelity to the
+// source). Fails the whole batch if too large a fraction couldn't be
+// verified — a high failure rate signals a source-quality or extraction
+// problem, not one unlucky question.
+function enforceVerbatimExtraction(
   questions: GeneratedQuizQuestion[],
   sourceText: string,
 ): GeneratedQuizQuestion[] {
-  const sourceNormalized = normalizeForMatch(sourceText);
-  const verified = questions.filter(q => isVerifiableAgainstSource(q, sourceNormalized));
-  const failed = questions.length - verified.length;
-  if (verified.length === 0 || failed / questions.length > 0.5) {
+  const kept: GeneratedQuizQuestion[] = [];
+  for (const q of questions) {
+    const questionMatch = findVerbatimSpan(q.question ?? '', sourceText);
+    if (!questionMatch) continue;
+    const correctText = q.options?.[q.correct];
+    if (!correctText) continue;
+    const correctMatch = findVerbatimSpan(correctText, sourceText);
+    if (!correctMatch) continue;
+    const options = q.options.map((opt, i) => {
+      if (i === q.correct) return correctMatch;
+      return findVerbatimSpan(opt, sourceText) ?? opt;
+    });
+    kept.push({ ...q, question: questionMatch, options });
+  }
+  const failed = questions.length - kept.length;
+  if (kept.length === 0 || failed / questions.length > 0.5) {
     throw new Error(
-      `Extraction produced ${failed}/${questions.length} question(s) that couldn't be matched back to the source document — this usually means the source text was unreadable or wasn't extracted faithfully. Try re-uploading a clearer copy of the file.`,
+      `Extraction produced ${failed}/${questions.length} question(s) whose wording couldn't be matched exactly to the source document — this usually means the source text was unreadable, or the model reworded content it should have copied verbatim. Try re-uploading a clearer copy of the file.`,
     );
   }
   if (failed > 0) {
-    console.warn(`[filterVerifiedExtractionQuestions] Dropped ${failed}/${questions.length} question(s) that couldn't be traced back to the source document.`);
+    console.warn(`[enforceVerbatimExtraction] Dropped ${failed}/${questions.length} question(s) whose wording didn't exactly match the source document.`);
   }
-  return verified;
+  return kept;
 }
 
 // Heuristic floor for "did extraction actually produce readable text, or
@@ -910,8 +925,9 @@ function quizExtractionPrompt(subject: string, opts: GenerateOptions, chunkExcer
   return `You are a verbatim content extractor for a ${subject} study tool.
 ${chunkExcerpt ? '\nNote: the text below is one excerpt of a larger document, split for processing — extract every pre-written question you find in THIS excerpt (and, if none exist, build verbatim-passage questions from it as described below); do not worry about the total count across the whole document, that is handled separately.\n' : ''}
 
-[CRITICAL: EXTRACTION MODE]
-- You are a strict text extractor, not a question writer. If the source document already contains pre-written multiple-choice questions (e.g. an exam paper, quiz sheet, or worksheet with its own lettered options), copy those questions, their options, and their answers EXACTLY as written — do NOT rephrase, alter, add to, or omit any text from the questions or options.
+[CRITICAL: EXTRACTION MODE — ZERO PARAPHRASING]
+- You are a text extractor, not a question writer, and not an editor. The "question" field is not a sentence you compose — it is a direct character-for-character copy of text that already exists in the source, with absolutely nothing added, removed, reworded, corrected, or reordered. This includes not fixing typos, not modernizing spelling, not adding punctuation that isn't there, and not adding any framing, instruction, or lead-in text of your own (no "According to the document...", no "What is...?", no anything that isn't itself copied from the source).
+- If the source document already contains pre-written multiple-choice questions (e.g. an exam paper, quiz sheet, or worksheet with its own lettered options), copy those questions, their options, and their answers EXACTLY as written.
 - Do NOT invent or generate new questions when the source already has its own. If the source document contains 6 pre-written questions, output exactly those 6 questions — not more, not fewer — even if that differs from the requested count below.
 - The requested count of ${count} questions below applies ONLY when the source document is prose (a textbook, article, notes) with no pre-existing questions of its own, in which case you build ${count} questions from verbatim passages as described.
 ${focus ? `Focus on passages related to: "${focus}".` : ''}
@@ -924,25 +940,24 @@ ${focus ? `Focus on passages related to: "${focus}".` : ''}
 
 For each question:
 1. If the document already presents this as a formatted multiple-choice question, copy the question text, every option, and the letter/position of the correct answer VERBATIM, character-for-character — do not touch the wording, option count, or order. The question text itself must exclude the "A) ... B) ... C) ..." option list — that list belongs only in the "options" array, per the TEXT CLEANING rule above.
-2. Otherwise, find a meaningful sentence or short passage in the document that contains a key term, figure, or fact, and quote that sentence or passage VERBATIM as the "question" field — do NOT alter, blank out, redact, or replace any word with "___" or any placeholder. The full original sentence must appear intact, unmodified.
-3. When building a question from prose (case 2), turn it into a question by appending a separate, short instruction after the quoted passage, e.g. ending with "What is the key term/figure described here?" — but the quoted text itself stays 100% unchanged.
-4. The correct answer (option at index "correct") must be the term, figure, or fact from that passage (or the document's own marked correct answer), copied verbatim from the document.
-5. If the source document itself presents this question as a pre-written multiple-choice item (e.g. an exam paper with its own lettered options A, B, C, D, E...), copy that document's own options VERBATIM and preserve its exact option count — do NOT reduce it to 4. Otherwise, when you must invent distractors yourself (case 2), write exactly three plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented out of thin air.
-6. The explanation must cite the exact sentence from the document where the answer appears.
+2. Otherwise, find a meaningful sentence or short passage in the document that contains a key term, figure, or fact, and use that sentence or passage VERBATIM, in full, as the entire "question" field — nothing before it, nothing after it, no appended question or instruction of any kind. Do NOT alter, blank out, redact, or replace any word with "___" or any placeholder; the multiple-choice options are what turns it into a question, not added wording. The full original sentence must appear intact, unmodified, and the "question" field must contain that sentence and only that sentence.
+3. The correct answer (option at index "correct") must be the term, figure, or fact from that passage (or the document's own marked correct answer), copied verbatim from the document.
+4. If the source document itself presents this question as a pre-written multiple-choice item (e.g. an exam paper with its own lettered options A, B, C, D, E...), copy that document's own options VERBATIM and preserve its exact option count — do NOT reduce it to 4. Otherwise, when you must invent distractors yourself (case 2), write exactly three plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented out of thin air.
+5. The explanation must quote the exact sentence from the document where the answer appears, inside quotation marks.
 
 Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full — but with any inline option list removed and relocated into the "options" array as described above.
 ${NO_PLACEHOLDER_RULE}
 
-Remember: every question, option, and explanation below must be traceable to text between "${SOURCE_FENCE_START}" and "${SOURCE_FENCE_END}" further down this message. If that region is empty or unreadable, return {"error": "${EMPTY_SOURCE_SENTINEL}"} instead of the schema below — never substitute your own knowledge for missing or unreadable source text.
+Remember: the "question" field and the correct "options" entry must be an EXACT character-for-character copy of text between "${SOURCE_FENCE_START}" and "${SOURCE_FENCE_END}" further down this message — no appended, prepended, or inserted wording of any kind, not even a short question or lead-in phrase. The app checks this automatically and silently discards any question it cannot match back to the source word-for-word, so any reworded content you produce will never reach the user anyway. If the fenced region is empty or unreadable, return {"error": "${EMPTY_SOURCE_SENTINEL}"} instead of the schema below — never substitute your own knowledge for missing or unreadable source text.
 
 Return ONLY the raw JSON object below — no markdown fences, no conversational introduction or conclusion, no commentary before or after the JSON, nothing but the object itself. The "options" array length must match the source document's own option count when the document presents a pre-written multiple-choice question (it may be 5 or more); only default to 4 total options when you are inventing the distractors yourself:
 {
   "questions": [
     {
-      "question": "The document states: \\"The company reported revenue of $512 billion in fiscal year 2023.\\" What figure does the document report as the company's fiscal year 2023 revenue?",
+      "question": "The company reported revenue of $512 billion in fiscal year 2023.",
       "options": ["$512 billion", "$480 billion", "$390 billion", "$620 billion"],
       "correct": 0,
-      "explanation": "The document states verbatim: 'The company reported revenue of $512 billion in fiscal year 2023.'"
+      "explanation": "The document states verbatim: \\"The company reported revenue of $512 billion in fiscal year 2023.\\""
     }
   ]
 }`;}
@@ -1309,7 +1324,7 @@ async function generateQuizOrFlashcardsFromTextChunks(
   // Extraction mode must preserve every distinct question the source
   // actually contains — trimming to totalCount would silently drop real
   // exam questions. "Generated" mode still honours the requested count.
-  if (isExtraction) return filterVerifiedExtractionQuestions(merged, extractedText);
+  if (isExtraction) return enforceVerbatimExtraction(merged, extractedText);
   return merged.slice(0, totalCount);
 }
 
@@ -1476,7 +1491,7 @@ export async function generateFromFile(
   // no text source to compare, so it's left to the prompt/system-instruction
   // safeguards above).
   if (isQuizExtraction && extractedText !== null) {
-    return filterVerifiedExtractionQuestions(result as GeneratedQuizQuestion[], extractedText);
+    return enforceVerbatimExtraction(result as GeneratedQuizQuestion[], extractedText);
   }
   return result;
 }
