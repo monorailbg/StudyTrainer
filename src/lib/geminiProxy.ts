@@ -488,6 +488,82 @@ function processQuizQuestions(raw: unknown): GeneratedQuizQuestion[] {
   }));
 }
 
+// ── Extraction-mode verification ─────────────────────────────────────────
+//
+// Defense-in-depth, independent of the prompt/system-instruction changes
+// above: extraction mode promises every question is traceable to the source
+// document, which makes it unusually easy to check mechanically. This
+// doesn't stop the model from hallucinating, but it stops a hallucinated
+// result from silently reaching the user disguised as real extracted
+// content — a question whose "correct" answer and cited passage can't be
+// found anywhere in the source almost certainly wasn't extracted from it.
+
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, ' ').replace(/['"‘’“”]/g, '').trim();
+}
+
+// Pulls quoted spans out of a field (e.g. an explanation like `The document
+// states verbatim: "revenue of $512 billion"` quotes the actual source
+// sentence inside a longer sentence that isn't itself in the source).
+function extractQuotedSpans(text: string): string[] {
+  const spans: string[] = [];
+  const re = /["'“”‘’]([^"'“”‘’]{8,})["'“”‘’]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) spans.push(m[1]);
+  return spans;
+}
+
+function isVerifiableAgainstSource(q: GeneratedQuizQuestion, sourceNormalized: string): boolean {
+  const correctText = q.options?.[q.correct];
+  if (correctText) {
+    const correctNorm = normalizeForMatch(correctText);
+    if (correctNorm.length > 2 && sourceNormalized.includes(correctNorm)) return true;
+  }
+  for (const span of extractQuotedSpans(q.explanation ?? '')) {
+    if (sourceNormalized.includes(normalizeForMatch(span))) return true;
+  }
+  for (const span of extractQuotedSpans(q.question ?? '')) {
+    if (sourceNormalized.includes(normalizeForMatch(span))) return true;
+  }
+  return false;
+}
+
+// Drops questions that can't be traced back to the source, and fails the
+// whole batch (rather than quietly returning a thin, partially-hallucinated
+// quiz) if too large a fraction couldn't be verified — a high failure rate
+// signals a source-quality or extraction problem, not one unlucky question.
+function filterVerifiedExtractionQuestions(
+  questions: GeneratedQuizQuestion[],
+  sourceText: string,
+): GeneratedQuizQuestion[] {
+  const sourceNormalized = normalizeForMatch(sourceText);
+  const verified = questions.filter(q => isVerifiableAgainstSource(q, sourceNormalized));
+  const failed = questions.length - verified.length;
+  if (verified.length === 0 || failed / questions.length > 0.5) {
+    throw new Error(
+      `Extraction produced ${failed}/${questions.length} question(s) that couldn't be matched back to the source document — this usually means the source text was unreadable or wasn't extracted faithfully. Try re-uploading a clearer copy of the file.`,
+    );
+  }
+  if (failed > 0) {
+    console.warn(`[filterVerifiedExtractionQuestions] Dropped ${failed}/${questions.length} question(s) that couldn't be traced back to the source document.`);
+  }
+  return verified;
+}
+
+// Heuristic floor for "did extraction actually produce readable text, or
+// just some short/garbled scrap." A scanned PDF whose text layer is empty
+// falls through to image rendering below — but nothing previously caught
+// the case where extraction succeeds with a handful of garbage characters
+// (bad encoding detection, corrupted text layer, etc.), which used to get
+// treated as legitimate source content and handed to the model as-is.
+function isExtractionTextUsable(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 30) return false;
+  const replacementCharCount = (trimmed.match(/�/g) ?? []).length;
+  if (replacementCharCount / trimmed.length > 0.05) return false;
+  return true;
+}
+
 // ── Generation options (same public interface as geminiGenerator.ts) ────────
 
 export interface GenerateOptions {
@@ -801,6 +877,33 @@ function difficultyInstruction(difficulty?: 'easy' | 'medium' | 'hard'): string 
   return `\nDifficulty level: ${DIFFICULTY_MAP[difficulty]}`;
 }
 
+// Fixed marker pair wrapped around the actual document content at every
+// call site that builds an extraction-mode request (see SOURCE_FENCE_START/
+// END below). Naming the region explicitly — rather than a loose "Document
+// content:\n..." concatenation — gives the model an unambiguous boundary for
+// "this and only this is your source," and lets the instructions and the
+// system prompt both refer to it by the same fixed name.
+const SOURCE_FENCE_START = '=== BEGIN SOURCE DOCUMENT ===';
+const SOURCE_FENCE_END   = '=== END SOURCE DOCUMENT ===';
+
+// The sentinel the model must return instead of a quiz when the fenced
+// source is empty, whitespace-only, or unreadable. Checked for explicitly at
+// every extraction-mode call site before the response is treated as a quiz.
+const EMPTY_SOURCE_SENTINEL = 'EMPTY_OR_UNREADABLE_SOURCE';
+
+// Extraction mode's anti-hallucination directive, carried in the request's
+// systemInstruction field rather than folded into the same user-turn text as
+// the document — a system instruction has independent standing from user
+// content, so this constraint can't get diluted by sitting in the same
+// paragraph as a long, unrelated document.
+function verbatimExtractionSystemInstruction(): string {
+  return `You are operating in STRICT VERBATIM EXTRACTION MODE for a study-quiz tool. These rules are absolute and override any other instinct to be helpful:
+1. You must not use any fact, name, figure, date, or claim that is not present, verbatim, inside the "${SOURCE_FENCE_START}" / "${SOURCE_FENCE_END}" markers in the user message. Falling back on your own pretrained knowledge to invent quiz content when the source is thin, unclear, or hard to parse is a critical failure of this task — not a helpful fallback.
+2. If the region between those markers is empty, contains only whitespace, or is unreadable (garbled characters, encoding artifacts, no coherent words or sentences), do NOT invent a quiz from general knowledge. Instead, output exactly this JSON object and nothing else: {"error": "${EMPTY_SOURCE_SENTINEL}"}
+3. Every question, option, and explanation you output must be traceable to specific text between those markers. If you cannot find source text to support a question, leave it out rather than filling the count with invented content.
+Follow the detailed formatting and extraction rules in the message that follows.`;
+}
+
 function quizExtractionPrompt(subject: string, opts: GenerateOptions, chunkExcerpt = false): string {
   const count  = opts.questionCount ?? 10;
   const focus  = opts.focusTopic?.trim();
@@ -829,6 +932,8 @@ For each question:
 
 Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full — but with any inline option list removed and relocated into the "options" array as described above.
 ${NO_PLACEHOLDER_RULE}
+
+Remember: every question, option, and explanation below must be traceable to text between "${SOURCE_FENCE_START}" and "${SOURCE_FENCE_END}" further down this message. If that region is empty or unreadable, return {"error": "${EMPTY_SOURCE_SENTINEL}"} instead of the schema below — never substitute your own knowledge for missing or unreadable source text.
 
 Return ONLY the raw JSON object below — no markdown fences, no conversational introduction or conclusion, no commentary before or after the JSON, nothing but the object itself. The "options" array length must match the source document's own option count when the document presents a pre-written multiple-choice question (it may be 5 or more); only default to 4 total options when you are inventing the distractors yourself:
 {
@@ -1163,10 +1268,22 @@ async function generateQuizOrFlashcardsFromTextChunks(
     try {
       const chunkPrompt = quizFilePrompt(subjectTitle, { ...options, questionCount: perChunkCount }, true);
       const text = await callProxy(
-        [{ text: `${chunkPrompt}\n\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}` }],
-        { responseMimeType: 'application/json' },
+        [{ text: `${chunkPrompt}\n\n${SOURCE_FENCE_START}\nDocument excerpt ${i + 1} of ${chunks.length}:\n${chunks[i]}\n${SOURCE_FENCE_END}` }],
+        {
+          responseMimeType: 'application/json',
+          systemInstruction: isExtraction ? verbatimExtractionSystemInstruction() : undefined,
+        },
       );
       const parsed = parseJSON(text) as Record<string, unknown>;
+      if (parsed['error'] === EMPTY_SOURCE_SENTINEL) {
+        // This excerpt had nothing readable to extract from — skip it like
+        // any other chunk failure rather than treating it as a hard error;
+        // other excerpts of the same document may still be fine.
+        console.warn(`[generateQuizOrFlashcardsFromTextChunks] Chunk ${i + 1}/${chunks.length} reported an empty/unreadable source excerpt, skipping.`);
+        failedChunks++;
+        lastChunkError = 'source excerpt was empty or unreadable';
+        continue;
+      }
       const questions = processResult(parsed, 'quiz', subjectTitle) as GeneratedQuizQuestion[];
       for (const q of questions) {
         const key = q.question.trim().toLowerCase();
@@ -1192,7 +1309,8 @@ async function generateQuizOrFlashcardsFromTextChunks(
   // Extraction mode must preserve every distinct question the source
   // actually contains — trimming to totalCount would silently drop real
   // exam questions. "Generated" mode still honours the requested count.
-  return isExtraction ? merged : merged.slice(0, totalCount);
+  if (isExtraction) return filterVerifiedExtractionQuestions(merged, extractedText);
+  return merged.slice(0, totalCount);
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -1223,7 +1341,7 @@ export async function generateFromFile(
       console.error('[generateFromFile] PDF text extraction failed for', file.name, err);
       throw err instanceof Error ? err : new Error(`Could not read "${file.name}" — invalid or corrupted PDF.`);
     }
-    if (extracted.trim()) {
+    if (isExtractionTextUsable(extracted)) {
       // Text-based PDF: embed extracted text — works for any file size.
       extractedText = extracted;
     } else if (file.size > LARGE_FILE_THRESHOLD) {
@@ -1333,17 +1451,34 @@ export async function generateFromFile(
   // generateNotesChunked, and large text sources via the chunked path above.
   const prompt = type === 'flashcards' ? flashcardFilePrompt(subjectTitle, options) : quizFilePrompt(subjectTitle, options);
 
+  const isQuizExtraction = type === 'quiz' && options.quizMode === 'extraction';
+
   if (extractedText !== null) {
-    parts = [{ text: `${prompt}\n\nDocument content:\n${extractedText}` }];
+    parts = [{ text: `${prompt}\n\n${SOURCE_FENCE_START}\n${extractedText}\n${SOURCE_FENCE_END}` }];
   } else if (parts) {
     parts = [...parts, { text: prompt }];
   }
 
   if (!parts) throw new Error('Could not prepare file content for generation.');
 
-  const text = await callProxy(parts, { responseMimeType: 'application/json' });
+  const text = await callProxy(parts, {
+    responseMimeType: 'application/json',
+    systemInstruction: isQuizExtraction ? verbatimExtractionSystemInstruction() : undefined,
+  });
   const parsed = parseJSON(text) as Record<string, unknown>;
-  return processResult(parsed, type, subjectTitle);
+  if (parsed['error'] === EMPTY_SOURCE_SENTINEL) {
+    throw new Error('This file appears to be empty or unreadable, so no questions could be extracted from it. Try a clearer scan or a different file.');
+  }
+  const result = processResult(parsed, type, subjectTitle);
+  // Extraction mode promises verbatim content — verify it before returning
+  // rather than trusting the model's compliance. Only possible when we have
+  // the actual extracted text to check against (the scanned-image path has
+  // no text source to compare, so it's left to the prompt/system-instruction
+  // safeguards above).
+  if (isQuizExtraction && extractedText !== null) {
+    return filterVerifiedExtractionQuestions(result as GeneratedQuizQuestion[], extractedText);
+  }
+  return result;
 }
 
 export async function generateFromTopic(
