@@ -1014,6 +1014,10 @@ export default function SubjectPage() {
   const [quizCustomInput, setQuizCustomInput] = useState('');
   const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [quizMode, setQuizMode] = useState<'generated' | 'extraction'>('generated');
+  // Extraction mode pulls existing text verbatim — difficulty has no meaning
+  // there, so every consumer of quizMode below gates on this one flag instead
+  // of re-deriving the comparison ad hoc.
+  const isQuizExtractionMode = quizMode === 'extraction';
   const [cardCount, setCardCount] = useState<number | 'all'>('all'); // 'all' = no limit; otherwise multiples of 5 up to 50
   const [flashcardMode, setFlashcardMode] = useState<'standard' | 'vocabulary'>('standard');
   const [focusTopic, setFocusTopic] = useState('');
@@ -1700,7 +1704,11 @@ export default function SubjectPage() {
         const result = await generateFromFile(fileForGen, selectedType, subject!.title, {
           cardCount,
           questionCount: quizCount,
-          difficulty: quizDifficulty,
+          // Omitted entirely (not just left undefined) when extracting —
+          // difficulty doesn't apply to verbatim extraction, and dropping the
+          // key here means the constraint holds regardless of what the UI
+          // state happens to contain by the time this request is built.
+          ...(selectedType === 'quiz' && !isQuizExtractionMode ? { difficulty: quizDifficulty } : {}),
           quizMode: selectedType === 'quiz' ? quizMode : undefined,
           focusTopic: focusTopic.trim() || undefined,
           notesDetail,
@@ -3249,7 +3257,13 @@ export default function SubjectPage() {
                       ] as const).map(m => {
                         const active = quizMode === m.key;
                         return (
-                          <button key={m.key} onClick={() => setQuizMode(m.key)}
+                          <button key={m.key} onClick={() => {
+                            setQuizMode(m.key);
+                            // Switching into extraction retires whatever difficulty
+                            // was picked — reset it now rather than leaving a stale
+                            // value in state for the row to reappear with later.
+                            if (m.key === 'extraction') setQuizDifficulty('medium');
+                          }}
                             className="h-8 flex-1 text-[11px] cursor-pointer transition-all duration-200"
                             style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
                             {m.label}
@@ -3303,31 +3317,33 @@ export default function SubjectPage() {
                       )}
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
-                    <div className="flex gap-1.5">
-                      {([
-                        { key: 'easy',   label: 'Easy',   activeBg: '#f0fdf4', activeText: '#15803d', activeBorder: '#bbf7d0' },
-                        { key: 'medium', label: 'Medium', activeBg: '#fffbeb', activeText: '#b45309', activeBorder: '#fde68a' },
-                        { key: 'hard',   label: 'Hard',   activeBg: '#fef2f2', activeText: '#b91c1c', activeBorder: '#fecaca' },
-                      ] as const).map(d => {
-                        const active = quizDifficulty === d.key;
-                        return (
-                          <button key={d.key} onClick={() => setQuizDifficulty(d.key)}
-                            className="h-8 flex-1 text-[12px] cursor-pointer transition-all duration-200"
-                            style={{
-                              borderRadius: '999px',
-                              background:  active ? d.activeBg   : (isLight ? '#ffffff' : 'transparent'),
-                              color:       active ? d.activeText : (isLight ? '#334155' : 'var(--text-2)'),
-                              border:      active ? `1px solid ${d.activeBorder}` : `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
-                              fontWeight:  active ? 700 : 600,
-                            }}>
-                            {d.label}
-                          </button>
-                        );
-                      })}
+                  {!isQuizExtractionMode && (
+                    <div>
+                      <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Difficulty</div>
+                      <div className="flex gap-1.5">
+                        {([
+                          { key: 'easy',   label: 'Easy',   activeBg: '#f0fdf4', activeText: '#15803d', activeBorder: '#bbf7d0' },
+                          { key: 'medium', label: 'Medium', activeBg: '#fffbeb', activeText: '#b45309', activeBorder: '#fde68a' },
+                          { key: 'hard',   label: 'Hard',   activeBg: '#fef2f2', activeText: '#b91c1c', activeBorder: '#fecaca' },
+                        ] as const).map(d => {
+                          const active = quizDifficulty === d.key;
+                          return (
+                            <button key={d.key} onClick={() => setQuizDifficulty(d.key)}
+                              className="h-8 flex-1 text-[12px] cursor-pointer transition-all duration-200"
+                              style={{
+                                borderRadius: '999px',
+                                background:  active ? d.activeBg   : (isLight ? '#ffffff' : 'transparent'),
+                                color:       active ? d.activeText : (isLight ? '#334155' : 'var(--text-2)'),
+                                border:      active ? `1px solid ${d.activeBorder}` : `1px solid ${isLight ? '#cbd5e1' : 'var(--border-base)'}`,
+                                fontWeight:  active ? 700 : 600,
+                              }}>
+                              {d.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div>
                     <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Topic focus</div>
                     <input type="text" value={focusTopic} onChange={e => setFocusTopic(e.target.value)} placeholder="e.g. Monetary policy" style={inputStyle} />
