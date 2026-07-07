@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLang } from '../context/LanguageContext';
 import type { GeneratedQuizQuestion } from '../lib/generator';
+import { ConfirmDialog } from './ConfirmDialog';
 
 // ── Manual quiz builder ───────────────────────────────────────────────────
 //
@@ -26,6 +27,15 @@ export function QuizBuilder({ color, onSave, onClose }: {
   const { ts } = useLang();
   const [name, setName] = useState('');
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  const hasUnsavedContent = name.trim().length > 0
+    || questions.some(q => q.question.trim() || q.options.some(o => o.trim()));
+
+  const requestClose = () => {
+    if (hasUnsavedContent) setConfirmClose(true);
+    else onClose();
+  };
 
   const updateQuestion = (qi: number, patch: Partial<DraftQuestion>) => {
     setQuestions(prev => prev.map((q, i) => (i === qi ? { ...q, ...patch } : q)));
@@ -90,7 +100,7 @@ export function QuizBuilder({ color, onSave, onClose }: {
         background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
       }}
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         onClick={e => e.stopPropagation()}
@@ -103,7 +113,7 @@ export function QuizBuilder({ color, onSave, onClose }: {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)' }}>{ts('Create your own quiz')}</div>
           <button
-            onClick={onClose}
+            onClick={requestClose}
             aria-label={ts('Close')}
             style={{
               width: '28px', height: '28px', borderRadius: '8px', cursor: 'pointer',
@@ -214,7 +224,7 @@ export function QuizBuilder({ color, onSave, onClose }: {
           </button>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
-              onClick={onClose}
+              onClick={requestClose}
               style={{
                 height: '36px', padding: '0 16px', borderRadius: '999px', cursor: 'pointer',
                 background: 'none', color: 'var(--text-2)', border: '1px solid var(--border-light)',
@@ -239,6 +249,16 @@ export function QuizBuilder({ color, onSave, onClose }: {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmClose}
+        title={ts('Discard this quiz?')}
+        message={ts("You haven't saved this quiz yet — closing now will lose everything you've entered.")}
+        confirmLabel={ts('Discard')}
+        cancelLabel={ts('Keep editing')}
+        onConfirm={onClose}
+        onCancel={() => setConfirmClose(false)}
+      />
     </div>
   );
 }

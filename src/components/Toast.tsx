@@ -45,17 +45,19 @@ const KIND: Record<ToastKind, { color: string; icon: React.ReactNode }> = {
 
 // ── Single toast (handles its own auto-dismiss) ─────────────────────────────────
 
+const AUTO_DISMISS_MS = 4200;
+
 function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) => void }) {
   const { color, icon } = KIND[item.kind];
   const { ts } = useLang();
   useEffect(() => {
     if (item.message) return;
-    const t = setTimeout(() => onDismiss(item.id), 4200);
+    const t = setTimeout(() => onDismiss(item.id), AUTO_DISMISS_MS);
     return () => clearTimeout(t);
   }, [item.id, item.message, onDismiss]);
 
   return (
-    <div className={`toast${item.leaving ? ' leaving' : ''}`} role="status" style={{ position: 'relative' }}>
+    <div className={`toast${item.leaving ? ' leaving' : ''}`} role="status" style={{ position: 'relative', overflow: 'hidden' }}>
       <span className="toast-accent" style={{ background: color }} />
       <span style={{ color, flexShrink: 0, marginTop: '1px' }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -64,6 +66,16 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
           <div style={{ fontSize: '12px', color: 'var(--text-2)', marginTop: '2px', lineHeight: 1.45 }}>{item.message}</div>
         )}
       </div>
+      {/* Time-to-dismiss hairline — only meaningful for toasts that actually
+          auto-dismiss (no message = shorter, non-critical confirmations). */}
+      {!item.message && !item.leaving && (
+        <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '2px', background: color + '25' }}>
+          <div style={{
+            height: '100%', background: color,
+            animation: `toast-countdown ${AUTO_DISMISS_MS}ms linear forwards`,
+          }} />
+        </div>
+      )}
       <button
         onClick={() => onDismiss(item.id)}
         aria-label={ts('Dismiss')}
@@ -90,7 +102,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toast = useCallback((kind: ToastKind, title: string, message?: string) => {
-    setItems(prev => [...prev, { id: Date.now() + Math.random(), kind, title, message }]);
+    setItems(prev => {
+      const next = [...prev, { id: Date.now() + Math.random(), kind, title, message }];
+      // Cap the visible stack at 3 — older toasts drop off rather than
+      // piling up indefinitely if several fire in quick succession.
+      return next.length > 3 ? next.slice(next.length - 3) : next;
+    });
   }, []);
 
   return (

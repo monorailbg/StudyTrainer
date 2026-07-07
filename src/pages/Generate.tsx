@@ -296,13 +296,26 @@ export default function Generate() {
 
       {/* Error */}
       {status === 'error' && (
-        <div className="bg-red-500/10 border border-red-500/25 rounded-2xl px-5 py-4 text-red-400 text-sm mb-6">
-          <div>{ts(friendlyError(error))}</div>
-          {error && (
-            <div className="mt-2 text-[11px] opacity-50 break-all" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-              {error.slice(0, 220)}
-            </div>
-          )}
+        <div className="bg-red-500/10 border border-red-500/25 rounded-2xl px-5 py-4 text-red-400 text-sm mb-6 flex items-start gap-3">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" className="flex-shrink-0 mt-0.5" aria-hidden="true">
+            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M8 5v3.5M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <div>{ts(friendlyError(error))}</div>
+            {error && (
+              <div className="mt-2 text-[11px] opacity-50 break-all" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                {error.slice(0, 220)}
+              </div>
+            )}
+            <button
+              onClick={handleGenerate}
+              className="mt-3 h-8 px-4 rounded-full text-xs font-semibold cursor-pointer border-0"
+              style={{ background: 'rgba(248,81,73,0.18)', color: '#F97979' }}
+            >
+              {ts('Retry')}
+            </button>
+          </div>
         </div>
       )}
 
