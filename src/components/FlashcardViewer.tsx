@@ -3,6 +3,7 @@ import type { GeneratedFlashcard } from '../lib/generator';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
 import { useLang } from '../context/LanguageContext';
 import type { Rating, CardState } from '../lib/srs';
+import { schedule } from '../lib/srs';
 
 // ── SRS state colours & chip ───────────────────────────────────────────────
 const STATE_COLOR: Record<CardState, string> = {
@@ -679,15 +680,39 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           onCancel={cancelCardEdit}
         />
       ) : (
-        <div
-          className="flashcard-card flip-card cursor-pointer mb-5"
-          style={{ width: cardW, minHeight: '320px' }}
-          onClick={flip}
-          role="button"
-          tabIndex={0}
-          aria-label={flipped ? ts('Showing answer — click to flip back') : ts('Showing question — click to reveal answer')}
-          onKeyDown={e => (e.key === 'Enter') && flip()}
-        >
+        <div className="relative mb-5" style={{ width: cardW, zIndex: 0 }}>
+          {/* Deck-stack illusion: offset ghost cards behind the active one,
+              hinting there's more to come without any extra DOM per card.
+              The wrapper's explicit zIndex:0 (with position:relative) is
+              required, not decorative — without it, this element doesn't
+              establish its own stacking context, and the negative z-index
+              ghosts below escape it to paint behind an ancestor's own
+              background instead of just behind the sibling card. */}
+          {(srsMode ? queue.length : cards.length - index) > 2 && (
+            <div aria-hidden="true" style={{
+              position: 'absolute', top: '24px', left: '5%', right: '5%', bottom: '-24px',
+              borderRadius: '20px',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
+              zIndex: -2,
+            }} />
+          )}
+          {(srsMode ? queue.length : cards.length - index) > 1 && (
+            <div aria-hidden="true" style={{
+              position: 'absolute', top: '12px', left: '2.5%', right: '2.5%', bottom: '-12px',
+              borderRadius: '20px',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
+              zIndex: -1,
+            }} />
+          )}
+          <div
+            className="flashcard-card flip-card cursor-pointer"
+            style={{ width: cardW, minHeight: '320px' }}
+            onClick={flip}
+            role="button"
+            tabIndex={0}
+            aria-label={flipped ? ts('Showing answer — click to flip back') : ts('Showing question — click to reveal answer')}
+            onKeyDown={e => (e.key === 'Enter') && flip()}
+          >
           <div
             className={`flip-card-inner${flipped ? ' flipped' : ''}`}
             style={suppressFlipAnim ? { transition: 'none' } : undefined}
@@ -752,6 +777,7 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
               )}
             </div>
           </div>
+          </div>
         </div>
       )}
 
@@ -761,20 +787,32 @@ export function FlashcardViewer({ cards, color, subjectId, onSessionEnd, onGoToQ
           flipped ? (
             <div>
               <div className="grid grid-cols-4 gap-2">
-                {RATINGS.map(r => (
-                  <button
-                    key={r.key}
-                    onClick={() => handleRate(r.key)}
-                    className="h-11 text-sm font-semibold cursor-pointer transition-transform duration-150"
-                    style={{ background: r.color + '1A', color: r.color, border: `1px solid ${r.color}55`, borderRadius: '12px' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
-                    aria-label={ts('Rate {label}', { label: ts(r.label) })}
-                  >
-                    {ts(r.label)}
-                    <span className="ml-1.5 text-[10px] opacity-60">{r.hint}</span>
-                  </button>
-                ))}
+                {RATINGS.map(r => {
+                  // Preview the interval this rating would produce, without
+                  // persisting anything — pure read of the scheduling engine
+                  // against the card's current SRS state (if any).
+                  const previewDays = schedule(srsCards[card.id], r.key).interval;
+                  const previewLabel = previewDays >= 30
+                    ? `${Math.round(previewDays / 30)}mo`
+                    : previewDays >= 1 ? `${previewDays}d` : '<1d';
+                  return (
+                    <button
+                      key={r.key}
+                      onClick={() => handleRate(r.key)}
+                      className="h-11 text-sm font-semibold cursor-pointer transition-transform duration-150 flex flex-col items-center justify-center gap-0.5"
+                      style={{ background: r.color + '1A', color: r.color, border: `1px solid ${r.color}55`, borderRadius: '12px' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+                      aria-label={ts('Rate {label}', { label: ts(r.label) })}
+                    >
+                      <span>
+                        {ts(r.label)}
+                        <span className="ml-1.5 text-[10px] opacity-60">{r.hint}</span>
+                      </span>
+                      <span className="text-[9px] font-normal opacity-60 mono">{previewLabel}</span>
+                    </button>
+                  );
+                })}
               </div>
               <div className="hidden md:block text-center mt-3 text-xs" style={{ color: 'var(--text-3)' }}>
                 {ts('How well did you recall this?')}{' '}
