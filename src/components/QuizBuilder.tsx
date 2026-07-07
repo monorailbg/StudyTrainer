@@ -95,6 +95,7 @@ export function QuizBuilder({ color, onSave, onClose }: {
 
   return (
     <div
+      className="modal-overlay"
       style={{
         position: 'fixed', inset: 0, zIndex: 60,
         background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
@@ -103,6 +104,7 @@ export function QuizBuilder({ color, onSave, onClose }: {
       onClick={requestClose}
     >
       <div
+        className="modal-sheet"
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: '680px', maxHeight: '86vh', overflowY: 'auto',

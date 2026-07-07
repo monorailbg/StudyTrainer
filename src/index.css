@@ -549,6 +549,40 @@ body.theme-light .md-textarea::placeholder {
   padding: 0 3px;
 }
 
+/* ── Modal → bottom sheet on mobile ─────────────────────────────────
+   Shared by QuizBuilder / CommandPalette / ConfirmDialog: the overlay
+   stays a centered flex container on desktop, but on narrow screens
+   the panel docks to the bottom edge with a drag-handle-style rounded
+   top and slides up instead of scaling in from center. */
+@media (max-width: 640px) {
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal-sheet {
+    max-width: 100% !important;
+    max-height: 88dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+    border-bottom: none !important;
+    animation: sheet-up 0.28s var(--ease-md-decelerate, ease-out) !important;
+  }
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Full-height-below-nav utility ──────────────────────────────────
+   calc(100vh - var(--nav-height)) with a progressive dvh upgrade —
+   dvh accounts for mobile browsers' collapsing address bar, so the
+   page doesn't jump/clip as chrome shows and hides on scroll. Browsers
+   without dvh support simply ignore the second declaration and keep
+   the vh one. */
+.h-fill-nav {
+  height: calc(100vh - var(--nav-height));
+  height: calc(100dvh - var(--nav-height));
+}
+
 /* ── Gradient text — hero numerals, page titles ──────────────────── */
 .text-gradient {
   background: var(--accent-gradient);

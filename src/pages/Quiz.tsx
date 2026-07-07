@@ -303,7 +303,7 @@ export default function Quiz() {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - var(--nav-height))', background: 'var(--bg-page)' }}>
+    <div className="h-fill-nav" style={{ display: 'flex', background: 'var(--bg-page)' }}>
       <aside className="hidden md:flex flex-col" style={{
         width: activeQuiz ? '0' : '220px', flexShrink: 0,
         borderRight: activeQuiz ? 'none' : '1px solid var(--border-light)',

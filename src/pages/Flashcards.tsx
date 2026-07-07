@@ -294,7 +294,7 @@ export default function Flashcards() {
   };
 
   return (
-    <div className={activeSet ? 'page-flashcards-session' : ''} style={{ display: 'flex', height: 'calc(100vh - var(--nav-height))', background: 'var(--bg-page)' }}>
+    <div className={`h-fill-nav${activeSet ? ' page-flashcards-session' : ''}`} style={{ display: 'flex', background: 'var(--bg-page)' }}>
 
       {/* Sidebar */}
       <aside className="flashcards-sidebar hidden md:flex flex-col" style={{

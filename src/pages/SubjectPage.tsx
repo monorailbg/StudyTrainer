@@ -121,27 +121,45 @@ const Spinner = ({ color }: { color: string }) => (
 // ── Sidebar item ───────────────────────────────────────────────────────────────
 
 function SidebarItem({
-  icon, label, sublabel, active, dot, dotColor, onClick,
+  icon, label, sublabel, count, active, dot, dotColor, accentColor, onClick,
 }: {
-  icon: React.ReactNode; label: string; sublabel?: string;
-  active: boolean; dot?: boolean; dotColor?: string;
+  icon: React.ReactNode; label: string; sublabel?: string; count?: number;
+  active: boolean; dot?: boolean; dotColor?: string; accentColor?: string;
   onClick: () => void;
 }) {
+  const accent = accentColor || 'var(--accent-primary)';
   return (
     <button
       onClick={onClick}
       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all duration-200 cursor-pointer border-none"
       style={{
+        position: 'relative',
         borderRadius: '14px',
         background: active ? 'var(--bg-elevated)' : 'transparent',
         color: active ? 'var(--text-1)' : 'var(--text-2)',
       }}
     >
+      {active && (
+        <span aria-hidden="true" style={{
+          position: 'absolute', left: '-1px', top: '20%', bottom: '20%', width: '3px',
+          borderRadius: '0 3px 3px 0', background: accent,
+        }} />
+      )}
       <span style={{ flexShrink: 0, color: active ? 'var(--text-1)' : 'var(--text-2)' }}>{icon}</span>
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-medium leading-tight truncate" style={{ fontFamily: "'Sora',sans-serif" }}>{label}</span>
         {sublabel && <span className="block text-[11px] mt-0.5 leading-tight" style={{ color: active ? 'var(--text-2)' : 'var(--text-3)' }}>{sublabel}</span>}
       </span>
+      {count !== undefined && (
+        <span className="mono" style={{
+          flexShrink: 0, fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px',
+          background: count > 0 ? accent + '18' : 'var(--bg-elevated)',
+          color: count > 0 ? accent : 'var(--text-3)',
+          border: `1px solid ${count > 0 ? accent + '30' : 'var(--border-base)'}`,
+        }}>
+          {count}
+        </span>
+      )}
       {dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor || 'var(--accent-primary)', boxShadow: `0 0 5px ${dotColor || 'var(--accent-primary)'}` }} />}
     </button>
   );
@@ -1871,7 +1889,7 @@ export default function SubjectPage() {
   const selectedLevelFileIds = selectedFileIds.filter(id => levelFiles.some(f => f.id === id));
 
   return (
-    <div className="subject-page-root" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--nav-height))' }}>
+    <div className="subject-page-root h-fill-nav" style={{ display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Header strip ────────────────────────────────────────────────────── */}
       <div className="subject-breadcrumb-strip flex items-center gap-3 flex-shrink-0 px-4 py-3 md:px-7 md:py-4" style={{
@@ -2009,6 +2027,7 @@ export default function SubjectPage() {
               icon={<IconDash />}
               label={ts('Overview')}
               sublabel={ts('Subject dashboard')}
+              accentColor={subject.color}
               active={view === 'dashboard'}
               onClick={() => { setActiveSidebarFileId(null); setView('dashboard'); setFullFocus(false); }}
             />
@@ -2142,28 +2161,32 @@ export default function SubjectPage() {
             <SidebarItem
               icon={<IconCards />}
               label={t('nav_flashcards')}
-              sublabel={savedFlashcardSets.length > 0 ? ts('{n} saved', { n: savedFlashcardSets.length }) : ts('None yet')}
+              count={savedFlashcardSets.length}
+              accentColor={subject.color}
               active={view === 'flashcards' && !activeSetId}
               onClick={() => { setActiveSidebarFileId(null); setActiveSetId(null); setView('flashcards'); setFullFocus(false); }}
             />
             <SidebarItem
               icon={<IconNote />}
               label={t('nav_notes')}
-              sublabel={savedNotes.length > 0 ? ts('{n} saved', { n: savedNotes.length }) : ts('None yet')}
+              count={savedNotes.length}
+              accentColor={subject.color}
               active={view === 'notes' && !activeNoteId}
               onClick={() => { setActiveSidebarFileId(null); setActiveNoteId(null); setView('notes'); setFullFocus(false); }}
             />
             <SidebarItem
               icon={<IconDict />}
               label={ts('Dictionary')}
-              sublabel={dictEntries.length > 0 ? ts('{n} terms', { n: dictEntries.length }) : ts('None yet')}
+              count={dictEntries.length}
+              accentColor={subject.color}
               active={view === 'dictionary'}
               onClick={() => { setActiveSidebarFileId(null); setView('dictionary'); setFullFocus(false); }}
             />
             <SidebarItem
               icon={<IconQuiz />}
               label={ts('Quizzes')}
-              sublabel={savedQuizzes.length > 0 ? ts('{n} saved', { n: savedQuizzes.length }) : ts('None yet')}
+              count={savedQuizzes.length}
+              accentColor={subject.color}
               active={view === 'quiz' && !activeQuizId}
               onClick={() => { setActiveSidebarFileId(null); setActiveQuizId(null); setRedoingResult(null); setView('quiz'); setFullFocus(false); }}
             />
@@ -2308,6 +2331,8 @@ export default function SubjectPage() {
                   background: subject.color + '18',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   margin: '0 auto 18px',
+                  transform: isDragging ? 'scale(1.1)' : 'scale(1)',
+                  transition: 'transform 0.3s var(--ease-spring, cubic-bezier(0.34,1.56,0.64,1))',
                 }}>
                   <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
                     <path d="M12 16V8M12 8l-4 4M12 8l4 4" stroke={subject.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3430,17 +3455,35 @@ export default function SubjectPage() {
                 }
               </button>
 
-              {isGenerating && !genRetryStatus && genProgress && (genProgress.total > 1 || genProgress.chunk) && (
-                <div className="mt-2 text-center text-[11px]" style={{ color: isLight ? '#64748b' : 'var(--text-2)' }}>
-                  {genProgress.total > 1 ? `File ${genProgress.current} of ${genProgress.total}` : 'Processing file'}
-                  {genProgress.chunk && genProgress.chunk.total > 1 && (
-                    genProgress.chunk.current >= genProgress.chunk.total
-                      ? ` — assembling final ${selectedType === 'flashcards' ? 'deck' : selectedType === 'quiz' ? 'quiz' : 'notes'}`
-                      : ` — processing section ${genProgress.chunk.current} of ${genProgress.chunk.total}`
-                  )}
-                  …
-                </div>
-              )}
+              {isGenerating && !genRetryStatus && genProgress && (genProgress.total > 1 || genProgress.chunk) && (() => {
+                // Overall completion across both axes: whole files done, plus
+                // fractional progress through the current file's chunks.
+                const fileFrac = (genProgress.current - 1) / genProgress.total;
+                const chunkFrac = genProgress.chunk && genProgress.chunk.total > 1
+                  ? Math.min(genProgress.chunk.current / genProgress.chunk.total, 1) / genProgress.total
+                  : 0;
+                const pct = Math.round(Math.min(1, fileFrac + chunkFrac + (genProgress.chunk ? 0 : 1 / genProgress.total)) * 100);
+                return (
+                  <div className="mt-2.5">
+                    <div style={{ height: '3px', borderRadius: '999px', background: 'var(--border-base)', overflow: 'hidden', marginBottom: '6px' }}>
+                      <div style={{
+                        height: '100%', width: `${pct}%`, borderRadius: '999px',
+                        background: subject.color,
+                        transition: 'width 400ms var(--ease-md-decelerate, ease-out)',
+                      }} />
+                    </div>
+                    <div className="text-center text-[11px]" style={{ color: isLight ? '#64748b' : 'var(--text-2)' }}>
+                      {genProgress.total > 1 ? `File ${genProgress.current} of ${genProgress.total}` : 'Processing file'}
+                      {genProgress.chunk && genProgress.chunk.total > 1 && (
+                        genProgress.chunk.current >= genProgress.chunk.total
+                          ? ` — assembling final ${selectedType === 'flashcards' ? 'deck' : selectedType === 'quiz' ? 'quiz' : 'notes'}`
+                          : ` — processing section ${genProgress.chunk.current} of ${genProgress.chunk.total}`
+                      )}
+                      …
+                    </div>
+                  </div>
+                );
+              })()}
 
               {genState.status === 'error' && (
                 <div className="mt-2 text-[11px] leading-relaxed" style={{ color: '#f87171' }}>
