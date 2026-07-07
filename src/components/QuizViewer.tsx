@@ -14,6 +14,27 @@ import { useToast } from './Toast';
 const letterFor = (index: number): string => String.fromCharCode(65 + index);
 const indexForLetter = (letter: string): number => letter.charCodeAt(0) - 65;
 
+// SVG replacements for ✅/❌/⏱ so results render consistently across
+// platforms instead of relying on the OS emoji font.
+const CheckIcon = ({ color = '#56D364', size = 12 }: { color?: string; size?: number }) => (
+  <svg viewBox="0 0 14 14" width={size} height={size} fill="none" aria-hidden="true">
+    <circle cx="7" cy="7" r="6" stroke={color} strokeWidth="1.3" />
+    <path d="M4.3 7.2l1.8 1.8L9.7 5" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const CrossIcon = ({ color = '#F97979', size = 12 }: { color?: string; size?: number }) => (
+  <svg viewBox="0 0 14 14" width={size} height={size} fill="none" aria-hidden="true">
+    <circle cx="7" cy="7" r="6" stroke={color} strokeWidth="1.3" />
+    <path d="M5 5l4 4M9 5l-4 4" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+const ClockIcon = ({ color = 'var(--text-2)', size = 12 }: { color?: string; size?: number }) => (
+  <svg viewBox="0 0 14 14" width={size} height={size} fill="none" aria-hidden="true">
+    <circle cx="7" cy="7" r="6" stroke={color} strokeWidth="1.3" />
+    <path d="M7 3.5V7l2.5 1.5" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 // Per-question edit draft — sits on top of AI-generated data
 export interface EditDraft {
   question: string;
@@ -159,10 +180,19 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved, 
     setListEditDraft(null);
   }
 
-  const MODES: { id: QuizMode; title: string; desc: string }[] = [
-    { id: 'focused',  title: 'Focused',  desc: 'One question at a time' },
-    { id: 'test',     title: 'Test',     desc: 'All questions, submit at end' },
-    { id: 'practice', title: 'Practice', desc: 'No pressure — results not saved' },
+  const MODES: { id: QuizMode; title: string; desc: string; icon: React.ReactNode }[] = [
+    {
+      id: 'focused', title: 'Focused', desc: 'One question at a time',
+      icon: <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><circle cx="7" cy="7" r="5" strokeWidth="1.3" stroke="currentColor"/><circle cx="7" cy="7" r="1.6" fill="currentColor"/></svg>,
+    },
+    {
+      id: 'test', title: 'Test', desc: 'All questions, submit at end',
+      icon: <svg viewBox="0 0 14 14" width="12" height="12" fill="none"><rect x="2" y="2" width="10" height="10" rx="2" strokeWidth="1.3" stroke="currentColor"/><path d="M4.5 7h5M4.5 4.5h5M4.5 9.5h3" strokeWidth="1.1" strokeLinecap="round" stroke="currentColor"/></svg>,
+    },
+    {
+      id: 'practice', title: 'Practice', desc: 'No pressure — results not saved',
+      icon: <svg viewBox="0 0 12 12" width="10" height="10" fill="none"><circle cx="6" cy="6" r="4.5" strokeWidth="1.1" stroke="currentColor" /></svg>,
+    },
   ];
 
   return (
@@ -209,7 +239,15 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved, 
                 background: mode === m.id ? color + '12' : 'var(--bg-surface)',
                 cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
               }}>
-                {m.id === 'practice' && (
+                {mode === m.id ? (
+                  <span style={{
+                    position: 'absolute', top: '8px', right: '8px',
+                    width: '16px', height: '16px', borderRadius: '50%',
+                    background: color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg viewBox="0 0 10 10" width="8" height="8" fill="none"><path d="M2 5.2l2 2L8 3" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
+                ) : m.id === 'practice' && (
                   <span style={{
                     position: 'absolute', top: '8px', right: '8px',
                     padding: '2px 6px', borderRadius: '999px',
@@ -220,11 +258,9 @@ function SetupScreen({ questions, color, onStart, initialMode, onQuestionSaved, 
                   </span>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
-                  {m.id === 'practice' && (
-                    <svg viewBox="0 0 12 12" width="10" height="10" fill="none" style={{ flexShrink: 0 }}>
-                      <circle cx="6" cy="6" r="4.5" stroke={mode === m.id ? color : 'var(--text-2)'} strokeWidth="1.1" />
-                    </svg>
-                  )}
+                  <span style={{ flexShrink: 0, color: mode === m.id ? color : 'var(--text-2)', display: 'flex' }}>
+                    {m.icon}
+                  </span>
                   <span style={{ fontSize: '12px', fontWeight: 700, color: mode === m.id ? color : 'var(--text-2)' }}>
                     {ts(m.title)}
                   </span>
@@ -1296,13 +1332,32 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
         })}
       </div>
 
+      {/* Spacer so the sticky bar below never overlaps the last question card. */}
+      {answered > 0 && <div style={{ height: '76px' }} />}
+
       {answered > 0 && (
-        <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{
+          position: 'sticky', bottom: '16px', zIndex: 5,
+          marginTop: '20px', display: 'flex', alignItems: 'center', gap: '16px',
+          padding: '12px 16px', borderRadius: '16px',
+          background: 'var(--bg-surface)', border: '1px solid var(--border-base)',
+          boxShadow: 'var(--shadow-2, 0 10px 24px rgba(0,0,0,0.3))',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ height: '4px', borderRadius: '999px', background: 'var(--border-base)', overflow: 'hidden', marginBottom: '6px' }}>
+              <div style={{
+                width: `${(answered / questions.length) * 100}%`, height: '100%', borderRadius: '999px',
+                background: answered === questions.length ? color : 'var(--text-3)',
+                transition: 'width 250ms ease, background 250ms ease',
+              }} />
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{ts('{answered} / {total} answered', { answered, total: questions.length })}</span>
+          </div>
           <button
             onClick={submit}
             disabled={answered < questions.length}
             style={{
-              height: '42px', padding: '0 28px', borderRadius: '999px',
+              height: '42px', padding: '0 28px', borderRadius: '999px', flexShrink: 0,
               background: answered === questions.length ? color : 'var(--bg-elevated)',
               color: answered === questions.length ? '#fff' : 'var(--text-2)',
               border: 'none', fontSize: '13px', fontWeight: 700,
@@ -1314,9 +1369,6 @@ function TestMode({ questions, color, isPractice = false, onDone, onQuestionSave
           >
             {ts('Check Answers')}
           </button>
-          {answered < questions.length && (
-            <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>{ts('{answered} / {total} answered', { answered, total: questions.length })}</span>
-          )}
         </div>
       )}
     </div>
@@ -1488,16 +1540,16 @@ function ResultsScreen({
         {/* Stat pills */}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {[
-            { icon: '✅', label: ts('Correct'), val: result.correctAnswers, c: '#56D364' },
-            { icon: '❌', label: ts('Wrong'), val: result.incorrectAnswers, c: '#F97979' },
-            { icon: '⏱', label: ts('Time'), val: formatTime(result.timeTakenSeconds), c: 'var(--text-2)' },
+            { icon: <CheckIcon color="#56D364" />, label: ts('Correct'), val: result.correctAnswers, c: '#56D364' },
+            { icon: <CrossIcon color="#F97979" />, label: ts('Wrong'), val: result.incorrectAnswers, c: '#F97979' },
+            { icon: <ClockIcon />, label: ts('Time'), val: formatTime(result.timeTakenSeconds), c: 'var(--text-2)' },
           ].map(p => (
             <div key={p.label} style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '5px 12px', borderRadius: '999px',
               background: 'var(--bg-elevated)', border: '1px solid var(--border-base)',
             }}>
-              <span style={{ fontSize: '11px' }}>{p.icon}</span>
+              <span style={{ display: 'flex' }}>{p.icon}</span>
               <span style={{ fontSize: '11px', fontWeight: 700, color: p.c }}>{p.val}</span>
               <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>{p.label}</span>
             </div>
@@ -1541,7 +1593,8 @@ function ResultsScreen({
                 background: 'rgba(210,153,34,0.15)', color: '#D29922',
                 border: '1px solid rgba(210,153,34,0.4)',
                 fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-                transition: 'all 0.15s',
+                transition: 'background 0.15s',
+                animation: 'correctbounce 0.5s ease-in-out 0.4s 2',
               }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(210,153,34,0.25)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(210,153,34,0.15)'; }}
@@ -1594,7 +1647,7 @@ function ResultsScreen({
                     padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px',
                   }}
                 >
-                  <span style={{ fontSize: '12px', marginTop: '1px' }}>{rq.wasCorrect ? '✅' : '❌'}</span>
+                  <span style={{ marginTop: '1px', display: 'flex' }}>{rq.wasCorrect ? <CheckIcon /> : <CrossIcon />}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-1)', fontWeight: 500, lineHeight: 1.45, marginBottom: '2px' }}>
                       <span className="mono" style={{ fontSize: '10px', color: 'var(--text-3)', marginRight: '6px' }}>
