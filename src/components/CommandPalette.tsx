@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useResolvedSubjects } from '../store/useSubjects';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 // ── Quick-jump command palette (Cmd/Ctrl+K) ─────────────────────────────
 //
@@ -37,6 +38,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
 
   const staticItems: Item[] = useMemo(() => [
     { id: 'p-dashboard',  label: ts('Dashboard'),       to: '/' },
@@ -112,6 +114,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       }}
     >
       <div
+        ref={trapRef}
         role="dialog"
         aria-modal="true"
         aria-label={ts('Quick jump')}

@@ -1,4 +1,5 @@
 import { useLang } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 // ── Shared confirm dialog ────────────────────────────────────────────────
 //
@@ -21,6 +22,7 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   const { ts } = useLang();
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
   if (!open) return null;
 
   return (
@@ -34,6 +36,7 @@ export function ConfirmDialog({
       }}
     >
       <div
+        ref={trapRef}
         role="alertdialog"
         aria-modal="true"
         aria-label={title}

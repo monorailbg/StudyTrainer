@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLang } from '../context/LanguageContext';
 import type { GeneratedQuizQuestion } from '../lib/generator';
 import { ConfirmDialog } from './ConfirmDialog';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 // ── Manual quiz builder ───────────────────────────────────────────────────
 //
@@ -36,6 +37,8 @@ export function QuizBuilder({ color, onSave, onClose }: {
     if (hasUnsavedContent) setConfirmClose(true);
     else onClose();
   };
+
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
 
   const updateQuestion = (qi: number, patch: Partial<DraftQuestion>) => {
     setQuestions(prev => prev.map((q, i) => (i === qi ? { ...q, ...patch } : q)));
@@ -104,8 +107,13 @@ export function QuizBuilder({ color, onSave, onClose }: {
       onClick={requestClose}
     >
       <div
+        ref={trapRef}
         className="modal-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={ts('Create your own quiz')}
         onClick={e => e.stopPropagation()}
+        onKeyDown={e => { if (e.key === 'Escape') requestClose(); }}
         style={{
           width: '100%', maxWidth: '680px', maxHeight: '86vh', overflowY: 'auto',
           background: 'var(--bg-surface)', border: '1px solid var(--border-base)',
