@@ -109,6 +109,55 @@
   :root { --nav-height: 60px; }
 }
 
+:root {
+  /* ── Spacing scale ─────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* ── Radius scale ──────────────────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* ── Elevation (dark) ──────────────────────────────────────────── */
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.24), 0 1px 2px rgba(0,0,0,0.30);
+  --shadow-2: 0 10px 24px -6px rgba(0,0,0,0.45), 0 4px 8px -2px rgba(0,0,0,0.35);
+  --shadow-3: 0 24px 60px -12px rgba(0,0,0,0.65), 0 8px 20px -4px rgba(0,0,0,0.5);
+  --shadow-inset-top: inset 0 1px 0 rgba(255,255,255,0.06);
+
+  /* ── Semantic status tokens ────────────────────────────────────── */
+  --success: #2EA043;
+  --success-bg: rgba(46,160,67,0.10);
+  --success-border: rgba(46,160,67,0.30);
+  --warning: #D29922;
+  --warning-bg: rgba(210,153,34,0.10);
+  --warning-border: rgba(210,153,34,0.30);
+  --danger: #F85149;
+  --danger-bg: rgba(248,81,73,0.10);
+  --danger-border: rgba(248,81,73,0.30);
+  --info: #3D7EFF;
+  --info-bg: rgba(61,126,255,0.10);
+  --info-border: rgba(61,126,255,0.30);
+
+  /* ── Accent gradient ───────────────────────────────────────────── */
+  --accent-gradient: linear-gradient(135deg, #3D7EFF 0%, #7C6FFF 100%);
+}
+
+body.theme-light {
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-2: 0 10px 20px -5px rgba(15,23,42,0.08), 0 4px 6px -2px rgba(15,23,42,0.05);
+  --shadow-3: 0 24px 50px -12px rgba(15,23,42,0.18), 0 8px 20px -4px rgba(15,23,42,0.10);
+  --shadow-inset-top: inset 0 1px 0 rgba(255,255,255,0.6);
+  --accent-gradient: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+}
+
 body.theme-light {
   --bg-page:     #EDE8DC;
   --bg-nav:      #E8E2D5;
@@ -488,6 +537,14 @@ body.theme-light .md-textarea::placeholder {
   color: #93B8FF;
   border-radius: 3px;
   padding: 0 3px;
+}
+
+/* ── Gradient text — hero numerals, page titles ──────────────────── */
+.text-gradient {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* ── Monospace / tabular numbers ─────────────────────────────────── */

@@ -2,6 +2,7 @@ import { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { CommandPalette } from './CommandPalette';
 
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
@@ -415,19 +416,26 @@ function GenerateButton() {
 
 // ── HUD glass style ────────────────────────────────────────────────────────────
 
-function glassStyle(dark: boolean): React.CSSProperties {
+// Once the page has scrolled past a few pixels, the pill firms up (higher
+// opacity + stronger shadow) so it reads clearly against content instead of
+// blending into whatever scrolled underneath it.
+function glassStyle(dark: boolean, scrolled = false): React.CSSProperties {
   return dark ? {
-    background:              'rgba(10, 17, 34, 0.45)',
+    background:              scrolled ? 'rgba(10, 17, 34, 0.72)' : 'rgba(10, 17, 34, 0.45)',
     backdropFilter:          'blur(12px) saturate(140%)',
     WebkitBackdropFilter:    'blur(12px) saturate(140%)',
     border:                  '1px solid rgba(255, 255, 255, 0.06)',
-    boxShadow:               '0 4px 30px rgba(0, 0, 0, 0.40), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
+    boxShadow: scrolled
+      ? '0 8px 34px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.06)'
+      : '0 4px 30px rgba(0, 0, 0, 0.40), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
   } : {
-    background:              'rgba(245, 243, 238, 0.60)',
+    background:              scrolled ? 'rgba(245, 243, 238, 0.85)' : 'rgba(245, 243, 238, 0.60)',
     backdropFilter:          'blur(14px) saturate(160%)',
     WebkitBackdropFilter:    'blur(14px) saturate(160%)',
     border:                  '1px solid rgba(0, 0, 0, 0.06)',
-    boxShadow:               '0 4px 30px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.80)',
+    boxShadow: scrolled
+      ? '0 8px 30px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.85)'
+      : '0 4px 30px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.80)',
   };
 }
 
@@ -452,6 +460,7 @@ export default function Navbar() {
   const { theme } = useTheme();
   const dark = theme === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const prevPath = useRef(pathname);
@@ -459,6 +468,33 @@ export default function Navbar() {
     prevPath.current = pathname;
     if (menuOpen) setMenuOpen(false);
   }
+
+  // Global Cmd/Ctrl+K opens the quick-jump command palette from anywhere.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(o => !o);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Firms up the glass pill once the page has scrolled a little.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 8);
+        raf = 0;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
+  }, []);
 
   const separatorColor = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
   const hamburgerBg    = menuOpen
@@ -487,13 +523,21 @@ export default function Navbar() {
       }}>
         {/* Glass HUD pill */}
         <div style={{
-          ...glassStyle(dark),
+          ...glassStyle(dark, scrolled),
+          position: 'relative',
           maxWidth: '1400px', margin: '0 auto', height: '100%',
           borderRadius: isMobile ? '16px' : '9999px',
           padding: isMobile ? '0 10px' : '0 14px',
           display: 'flex', alignItems: 'center', gap: '10px',
           transition: 'background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease',
         }}>
+          {dark && (
+            <span aria-hidden="true" style={{
+              position: 'absolute', left: '10%', right: '10%', bottom: 0, height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(61,126,255,0.35), transparent)',
+              pointerEvents: 'none',
+            }} />
+          )}
 
           {/* Logo */}
           <Link
@@ -532,6 +576,23 @@ export default function Navbar() {
 
           {/* Right-side controls */}
           <div className="hidden md:flex items-center flex-shrink-0" style={{ gap: '8px', marginLeft: 'auto' }}>
+            <button
+              onClick={() => setPaletteOpen(true)}
+              aria-label={ts('Quick jump (Ctrl+K)')}
+              className="hidden lg:flex items-center gap-1.5 cursor-pointer transition-all duration-200"
+              style={{
+                height: '30px', padding: '0 10px', borderRadius: '999px',
+                background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'}`,
+                color: dark ? 'rgba(255,255,255,0.55)' : '#64748b',
+              }}
+            >
+              <svg viewBox="0 0 18 18" width="12" height="12" fill="none">
+                <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M12.2 12.2L16 16" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+              <kbd style={{ fontSize: '10px', fontFamily: "'JetBrains Mono', monospace" }}>⌘K</kbd>
+            </button>
             <GenerateButton />
             <ThemeToggle />
             <LangToggle />
@@ -649,6 +710,8 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </>
   );
 }

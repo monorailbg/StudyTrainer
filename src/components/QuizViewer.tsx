@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLang } from '../context/LanguageContext';
 import type { GeneratedQuizQuestion } from '../lib/generator';
 import { saveQuizResult, type QuizResult, type QuizResultQuestion } from '../lib/db';
+import { useCountUp } from '../lib/useCountUp';
 import { QuizAskAI } from './QuizAskAI';
 import { useToast } from './Toast';
 
@@ -46,26 +47,6 @@ function PracticeBanner({ text }: { text: string }) {
       <span style={{ fontSize: '12px', lineHeight: 1.4 }}>{text}</span>
     </div>
   );
-}
-
-function useCountUp(target: number, active: boolean, duration = 900) {
-  const [val, setVal] = useState(0);
-  const rafRef = useRef(0);
-
-  useEffect(() => {
-    if (!active) { setVal(0); return; }
-    const start = performance.now();
-    function tick(now: number) {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - (1 - t) * (1 - t);
-      setVal(Math.round(eased * target));
-      if (t < 1) rafRef.current = requestAnimationFrame(tick);
-    }
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [target, active, duration]);
-
-  return val;
 }
 
 function formatTime(s: number): string {

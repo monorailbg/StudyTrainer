@@ -16,6 +16,7 @@ import GlobeView from '../components/GlobeView';
 import MindMap from '../components/MindMap';
 import { ManageSubjects } from '../components/ManageSubjects';
 import { SubjectIcon } from '../data/subjectIcons';
+import { useCountUp } from '../lib/useCountUp';
 
 // ── Per-subject progress ───────────────────────────────────────────────────────
 
@@ -90,6 +91,14 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
   label: string; value: string | number; progress?: number; color?: string;
   icon?: React.ReactNode; spark?: number[]; index?: number;
 }) {
+  // Count up from 0 whenever the value is a plain number or a "N%" string —
+  // anything else (e.g. the "—" empty-state dash) is shown as-is.
+  const numericMatch = typeof value === 'number' ? value : /^(\d+)%$/.exec(value)?.[1];
+  const numericTarget = numericMatch !== undefined ? Number(numericMatch) : null;
+  const suffix = typeof value === 'string' && /%$/.test(value) ? '%' : '';
+  const counted = useCountUp(numericTarget ?? 0, numericTarget !== null, 700);
+  const displayValue = numericTarget !== null ? `${counted}${suffix}` : value;
+
   return (
     <div
       className="card-panel anim-rise"
@@ -111,7 +120,7 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
         )}
       </div>
       <div className="flex items-end justify-between gap-2">
-        <div className="mono text-2xl leading-none" style={{ color: 'var(--text-1)' }}>{value}</div>
+        <div className="mono text-2xl leading-none" style={{ color: 'var(--text-1)' }}>{displayValue}</div>
         {spark && spark.length >= 2 && <Sparkline points={spark} color={color} />}
       </div>
       {progress !== undefined && (
@@ -119,6 +128,67 @@ function StatChip({ label, value, progress, color = '#3D7EFF', icon, spark, inde
           <div style={{ width: `${Math.max(0, Math.min(100, progress))}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 1s cubic-bezier(0,0,0.2,1)' }} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Streak: 7-day dot row instead of a bare number ─────────────────────────
+
+const STREAK_DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+function StreakDots({ streak, last7Days, index = 0 }: { streak: number; last7Days: boolean[]; index?: number }) {
+  const color = '#F97316';
+  const today = new Date().getDay();
+  return (
+    <div
+      className="card-panel anim-rise"
+      style={{
+        ['--d' as string]: `${index * 60}ms`,
+        padding: '16px 18px',
+        background: `radial-gradient(120% 120% at 100% 0%, ${color}0E 0%, var(--bg-surface) 55%)`,
+        position: 'relative', overflow: 'hidden',
+      }}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="text-[9px] font-semibold uppercase tracking-[0.13em]" style={{ color: 'var(--text-2)' }}>
+          Streak
+        </div>
+        <span style={{
+          color, width: '26px', height: '26px', borderRadius: '8px', background: color + '18',
+          border: `1px solid ${color}2A`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          animation: streak >= 3 ? 'correctbounce 1.8s ease-in-out infinite' : undefined,
+        }}>
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none">
+            <path d="M8 13.5c-2.5 0-4-1.8-4-3.5 0-1.2.5-2 1.2-2.8C5.5 8 6 9 6 9c0-1.8.6-3.5 2-5 .3 1.5.8 2 1.5 3.2.4-.6.5-1.5.5-2C11 6.5 12 8 12 10c0 2-1.5 3.5-4 3.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+          </svg>
+        </span>
+      </div>
+      <div className="mono text-2xl leading-none mb-2.5" style={{ color: 'var(--text-1)' }}>
+        {streak > 0 ? `${streak}d` : '—'}
+      </div>
+      <div className="flex items-center justify-between gap-1">
+        {last7Days.map((active, i) => {
+          const dayIdx = (today - 6 + i + 7) % 7;
+          const isToday = i === last7Days.length - 1;
+          return (
+            <div key={i} className="flex flex-col items-center gap-1" style={{ flex: 1 }}>
+              <div
+                title={active ? 'Active' : 'No activity'}
+                style={{
+                  width: '100%', maxWidth: '16px', aspectRatio: '1', borderRadius: '5px',
+                  background: active ? color : 'var(--border-base)',
+                  opacity: active ? 1 : 0.5,
+                  boxShadow: isToday && active ? `0 0 0 2px ${color}40` : 'none',
+                  transition: 'transform 150ms ease',
+                }}
+              />
+              <span style={{ fontSize: '8px', color: 'var(--text-3)', fontWeight: isToday ? 700 : 500 }}>
+                {STREAK_DAY_LETTERS[dayIdx]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -375,6 +445,24 @@ export default function Home() {
     return count;
   }, [activityEvents]);
 
+  // Last 7 calendar days (oldest first, today last) — used by the streak
+  // dot row instead of just a bare "Nd" number.
+  const last7Days = useMemo(() => {
+    const seen = new Set<string>();
+    for (const e of activityEvents) {
+      const d = new Date(e.timestamp);
+      seen.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    }
+    const today = new Date();
+    const days: boolean[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      d.setDate(d.getDate() - i);
+      days.push(seen.has(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`));
+    }
+    return days;
+  }, [activityEvents]);
+
   const hasAnyProgress =
     streak > 0 ||
     cardsStudied > 0 ||
@@ -584,9 +672,7 @@ export default function Home() {
               icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><polyline points="2,11 6,7 9,9 14,4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>} />
             <StatChip index={3} label={t('stats_notes')}   value={notesRead.length}         progress={notesPct} color="#2EA043"
               icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>} />
-            <StatChip index={4} label={ts('Streak')} value={streak > 0 ? `${streak}d` : '—'} color="#F97316"
-              icon={<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 13.5c-2.5 0-4-1.8-4-3.5 0-1.2.5-2 1.2-2.8C5.5 8 6 9 6 9c0-1.8.6-3.5 2-5 .3 1.5.8 2 1.5 3.2.4-.6.5-1.5.5-2C11 6.5 12 8 12 10c0 2-1.5 3.5-4 3.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>}
-            />
+            <StreakDots index={4} streak={streak} last7Days={last7Days} />
           </div>
         )}
 
@@ -605,6 +691,10 @@ export default function Home() {
                 {upcoming.map((d, i) => {
                   const diff = daysUntilLocal(d.date);
                   const color = d.subject!.color;
+                  // Urgency overrides the subject's own color as the exam
+                  // approaches — a countdown three days out should read as
+                  // urgent regardless of which subject it belongs to.
+                  const urgencyColor = diff <= 2 ? 'var(--danger)' : diff <= 13 ? 'var(--warning)' : color;
                   return (
                     <Link
                       key={d.subjectId}
@@ -614,17 +704,17 @@ export default function Home() {
                         ['--d' as string]: `${i * 50}ms`,
                         display: 'flex', alignItems: 'center', gap: '11px',
                         padding: '11px 16px', borderRadius: '14px',
-                        background: 'var(--bg-surface)', border: `1px solid ${color}30`,
+                        background: 'var(--bg-surface)', border: `1px solid ${urgencyColor}30`,
                         transition: 'transform 0.2s ease, border-color 0.2s ease',
                       }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = color + '60'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = color + '30'; }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.borderColor = urgencyColor + '60'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = urgencyColor + '30'; }}
                     >
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{d.subject!.title}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '2px' }}>
-                          {d.date.replace(/-/g, '/')} · <span style={{ color, fontWeight: 600 }}>{diff > 0 ? ts('{n} days left', { n: diff }) : diff === 0 ? ts('Today') : ts('{n} days ago', { n: -diff })}</span>
+                          {d.date.replace(/-/g, '/')} · <span style={{ color: urgencyColor, fontWeight: 600 }}>{diff > 0 ? ts('{n} days left', { n: diff }) : diff === 0 ? ts('Today') : ts('{n} days ago', { n: -diff })}</span>
                         </div>
                       </div>
                     </Link>
