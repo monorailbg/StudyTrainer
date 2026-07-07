@@ -524,6 +524,16 @@ body.theme-light .md-textarea::placeholder {
 }
 .anim-option-pulse { animation: option-select-pulse 200ms ease; }
 
+/* ── Check-mark draw-in — "understood" toggles, confirmation ticks ──── */
+@keyframes check-draw {
+  from { stroke-dashoffset: 12; }
+  to   { stroke-dashoffset: 0; }
+}
+.anim-check-draw {
+  stroke-dasharray: 12;
+  animation: check-draw 280ms var(--ease-md-decelerate, ease-out) forwards;
+}
+
 /* ── Page transition — keyed per route ───────────────────────────── */
 @keyframes pagein {
   from { opacity: 0; transform: translateY(8px); }

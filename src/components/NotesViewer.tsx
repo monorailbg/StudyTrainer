@@ -511,11 +511,17 @@ const SectionCard = forwardRef<HTMLDivElement, SectionCardProps>(function Sectio
               background: understood ? 'rgba(72,199,142,0.15)' : 'transparent',
               color: understood ? 'rgba(72,199,142,0.90)' : 'var(--text-3)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.15s',
+              transition: 'background 0.15s, border-color 0.15s, color 0.15s, transform 0.2s var(--ease-spring, ease-out)',
+              transform: understood ? 'scale(1.08)' : 'scale(1)',
             }}
           >
             <svg viewBox="0 0 12 12" width="12" height="12" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                key={understood ? 'on' : 'off'}
+                d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
+                pathLength={12}
+                className={understood ? 'anim-check-draw' : undefined}
+              />
             </svg>
           </button>
           {canEdit && (
@@ -927,6 +933,20 @@ export function NotesViewer({ notes, color = '#3D7EFF', noteId, noteTitle, scrol
 
   return (
     <div style={{ position: 'relative' }} onMouseUp={handleSelectionEnd} onTouchEnd={handleSelectionEnd} onClick={handleAnnotationClick}>
+      {/* Reading progress — only for a real saved note (noteId set), not the
+          small embedded preview Generate.tsx renders with no note to track. */}
+      {noteId && (
+        <div aria-hidden="true" style={{
+          position: 'fixed', top: 'var(--nav-height)', left: 0, right: 0, zIndex: 45,
+          height: '2px', background: 'transparent', pointerEvents: 'none',
+        }}>
+          <div style={{
+            height: '100%', width: `${scrollPct * 100}%`,
+            background: color, boxShadow: `0 0 8px ${color}80`,
+            transition: 'width 100ms linear',
+          }} />
+        </div>
+      )}
       {toolbar && (
         <AnnotationToolbar
           rect={toolbar.rect}
