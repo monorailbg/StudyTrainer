@@ -39,6 +39,7 @@ import { generateDefinition, generateJapaneseDefinition } from '../lib/geminiPro
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { NotesViewer } from '../components/NotesViewer';
 import { QuizViewer } from '../components/QuizViewer';
+import { QuizBuilder } from '../components/QuizBuilder';
 import { DictionaryView } from '../components/DictionaryView';
 import { FlashcardProgressDashboard, QuizProgressDashboard } from '../components/ProgressDashboard';
 import { useSRS, subjectSrsStats } from '../store/useSRS';
@@ -1027,6 +1028,7 @@ export default function SubjectPage() {
   const [customPrompt, setCustomPrompt] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [savedQuizzes, setSavedQuizzes] = useState<StoredQuiz[]>([]);
+  const [showQuizBuilder, setShowQuizBuilder] = useState(false);
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [quizHistory, setQuizHistory] = useState<QuizResult[]>([]);
   const [redoingResult, setRedoingResult] = useState<QuizResult | null>(null);
@@ -1354,6 +1356,27 @@ export default function SubjectPage() {
     setSelectedFileIds(prev =>
       prev.includes(fileId) ? prev.filter(fid => fid !== fileId) : [...prev, fileId]
     );
+  };
+
+  const createManualQuiz = (name: string, questions: GeneratedQuizQuestion[]) => {
+    const quiz: StoredQuiz = {
+      id: `quiz-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      subjectId: id!,
+      name,
+      createdAt: Date.now(),
+      questions,
+    };
+    if (isFirebaseConfigured) {
+      // Fall back to the local copy if the cloud write fails — same
+      // don't-silently-lose-content policy as generated quizzes above.
+      saveCloudQuiz({ ...quiz, subjectId: id! }).catch(() => { saveQuiz(quiz).catch(() => {}); });
+    } else {
+      saveQuiz(quiz).catch(() => {});
+    }
+    setSavedQuizzes(prev => [quiz, ...prev]);
+    setShowQuizBuilder(false);
+    setActiveQuizId(quiz.id);
+    setRedoingResult(null);
   };
 
   const removeQuiz = (quizId: string) => {
@@ -2909,8 +2932,27 @@ export default function SubjectPage() {
               );
             }
 
+            const createQuizButton = (
+              <button
+                onClick={() => setShowQuizBuilder(true)}
+                className="flex items-center gap-2 h-9 px-5 text-xs font-semibold border cursor-pointer transition-all duration-300"
+                style={{ borderRadius: '999px', background: subject.color + '18', color: subject.color, borderColor: subject.color + '35' }}
+              >
+                <IconPlus /> {ts('Create your own quiz')}
+              </button>
+            );
+            const builderModal = showQuizBuilder && (
+              <QuizBuilder color={subject.color} onSave={createManualQuiz} onClose={() => setShowQuizBuilder(false)} />
+            );
+
             if (savedQuizzes.length === 0) {
-              return <EmptyState color={subject.color} onUpload={() => setView('upload')} />;
+              return (
+                <>
+                  <div className="flex justify-end mb-4">{createQuizButton}</div>
+                  <EmptyState color={subject.color} onUpload={() => setView('upload')} />
+                  {builderModal}
+                </>
+              );
             }
 
             const totalCorrect = quizHistory.reduce((a, r) => a + r.correctAnswers, 0);
@@ -2920,6 +2962,8 @@ export default function SubjectPage() {
 
             return (
               <>
+              <div className="flex justify-end mb-4">{createQuizButton}</div>
+              {builderModal}
               <QuizProgressDashboard
                 stats={{
                   totalAttempts: quizHistory.length,
