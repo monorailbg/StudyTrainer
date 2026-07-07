@@ -525,16 +525,17 @@ function findVerbatimSpan(candidate: string, source: string): string | null {
   return match ? match[0] : null;
 }
 
-// Rebuilds each question's "question" and correct "options" entry from the
-// literal source text, dropping any question whose stem or correct answer
-// can't be found there character-for-character. Other (distractor) options
-// are left as the model returned them when no match is found, since
-// extraction mode legitimately invents distractors itself when the source
-// is prose with no pre-written options of its own (only the question and
-// its correct answer are required to prove verbatim fidelity to the
-// source). Fails the whole batch if too large a fraction couldn't be
-// verified — a high failure rate signals a source-quality or extraction
-// problem, not one unlucky question.
+// Rebuilds every field of each question — the "question" stem and EVERY
+// option, correct answer and distractors alike — from the literal source
+// text. A question is kept only if all of them can be located in the source
+// character-for-character (whitespace differences aside); what gets returned
+// is always the substring read back out of the source, never the model's own
+// copy. Distractors are held to the same standard as the correct answer:
+// extraction mode is a 1:1 copy of the file, so an option that doesn't exist
+// anywhere in the file has no business appearing in the quiz. Fails the
+// whole batch if too large a fraction couldn't be verified — a high failure
+// rate signals a source-quality or extraction problem, not one unlucky
+// question.
 function enforceVerbatimExtraction(
   questions: GeneratedQuizQuestion[],
   sourceText: string,
@@ -543,14 +544,15 @@ function enforceVerbatimExtraction(
   for (const q of questions) {
     const questionMatch = findVerbatimSpan(q.question ?? '', sourceText);
     if (!questionMatch) continue;
-    const correctText = q.options?.[q.correct];
-    if (!correctText) continue;
-    const correctMatch = findVerbatimSpan(correctText, sourceText);
-    if (!correctMatch) continue;
-    const options = q.options.map((opt, i) => {
-      if (i === q.correct) return correctMatch;
-      return findVerbatimSpan(opt, sourceText) ?? opt;
-    });
+    if (!q.options?.[q.correct]) continue;
+    const options: string[] = [];
+    let allOptionsVerbatim = true;
+    for (const opt of q.options) {
+      const optMatch = findVerbatimSpan(opt, sourceText);
+      if (!optMatch) { allOptionsVerbatim = false; break; }
+      options.push(optMatch);
+    }
+    if (!allOptionsVerbatim) continue;
     kept.push({ ...q, question: questionMatch, options });
   }
   const failed = questions.length - kept.length;
@@ -915,7 +917,7 @@ function verbatimExtractionSystemInstruction(): string {
   return `You are operating in STRICT VERBATIM EXTRACTION MODE for a study-quiz tool. These rules are absolute and override any other instinct to be helpful:
 1. You must not use any fact, name, figure, date, or claim that is not present, verbatim, inside the "${SOURCE_FENCE_START}" / "${SOURCE_FENCE_END}" markers in the user message. Falling back on your own pretrained knowledge to invent quiz content when the source is thin, unclear, or hard to parse is a critical failure of this task — not a helpful fallback.
 2. If the region between those markers is empty, contains only whitespace, or is unreadable (garbled characters, encoding artifacts, no coherent words or sentences), do NOT invent a quiz from general knowledge. Instead, output exactly this JSON object and nothing else: {"error": "${EMPTY_SOURCE_SENTINEL}"}
-3. Every question, option, and explanation you output must be traceable to specific text between those markers. If you cannot find source text to support a question, leave it out rather than filling the count with invented content.
+3. Every question stem and every option (correct answer AND distractors) you output must be an exact, character-for-character copy of text that appears between those markers — never your own wording, however plausible. If you cannot find source text to support a question, leave it out rather than filling the count with invented content.
 Follow the detailed formatting and extraction rules in the message that follows.`;
 }
 
@@ -942,13 +944,13 @@ For each question:
 1. If the document already presents this as a formatted multiple-choice question, copy the question text, every option, and the letter/position of the correct answer VERBATIM, character-for-character — do not touch the wording, option count, or order. The question text itself must exclude the "A) ... B) ... C) ..." option list — that list belongs only in the "options" array, per the TEXT CLEANING rule above.
 2. Otherwise, find a meaningful sentence or short passage in the document that contains a key term, figure, or fact, and use that sentence or passage VERBATIM, in full, as the entire "question" field — nothing before it, nothing after it, no appended question or instruction of any kind. Do NOT alter, blank out, redact, or replace any word with "___" or any placeholder; the multiple-choice options are what turns it into a question, not added wording. The full original sentence must appear intact, unmodified, and the "question" field must contain that sentence and only that sentence.
 3. The correct answer (option at index "correct") must be the term, figure, or fact from that passage (or the document's own marked correct answer), copied verbatim from the document.
-4. If the source document itself presents this question as a pre-written multiple-choice item (e.g. an exam paper with its own lettered options A, B, C, D, E...), copy that document's own options VERBATIM and preserve its exact option count — do NOT reduce it to 4. Otherwise, when you must invent distractors yourself (case 2), write exactly three plausible alternatives drawn verbatim from elsewhere in the document or closely related concepts — never invented out of thin air.
+4. If the source document itself presents this question as a pre-written multiple-choice item (e.g. an exam paper with its own lettered options A, B, C, D, E...), copy that document's own options VERBATIM and preserve its exact option count — do NOT reduce it to 4. Otherwise, when the source is prose with no pre-written options (case 2), pick exactly three distractors that are OTHER terms, figures, or phrases copied verbatim from elsewhere in the same document — every single option, distractors included, must be an exact copy of text that exists in the document. Never write an option of your own, not even a plausible one.
 5. The explanation must quote the exact sentence from the document where the answer appears, inside quotation marks.
 
 Never use a blank, underscore, or cloze placeholder anywhere in the "question" field. The quoted passage must read exactly as written in the source document, in full — but with any inline option list removed and relocated into the "options" array as described above.
 ${NO_PLACEHOLDER_RULE}
 
-Remember: the "question" field and the correct "options" entry must be an EXACT character-for-character copy of text between "${SOURCE_FENCE_START}" and "${SOURCE_FENCE_END}" further down this message — no appended, prepended, or inserted wording of any kind, not even a short question or lead-in phrase. The app checks this automatically and silently discards any question it cannot match back to the source word-for-word, so any reworded content you produce will never reach the user anyway. If the fenced region is empty or unreadable, return {"error": "${EMPTY_SOURCE_SENTINEL}"} instead of the schema below — never substitute your own knowledge for missing or unreadable source text.
+Remember: the "question" field and EVERY entry in "options" — the correct answer and all distractors — must each be an EXACT character-for-character copy of text between "${SOURCE_FENCE_START}" and "${SOURCE_FENCE_END}" further down this message — no appended, prepended, or inserted wording of any kind, not even a short question or lead-in phrase. The app checks every field automatically and silently discards any question whose stem or options it cannot match back to the source word-for-word, so any reworded or invented content you produce will never reach the user anyway. If the fenced region is empty or unreadable, return {"error": "${EMPTY_SOURCE_SENTINEL}"} instead of the schema below — never substitute your own knowledge for missing or unreadable source text.
 
 Return ONLY the raw JSON object below — no markdown fences, no conversational introduction or conclusion, no commentary before or after the JSON, nothing but the object itself. The "options" array length must match the source document's own option count when the document presents a pre-written multiple-choice question (it may be 5 or more); only default to 4 total options when you are inventing the distractors yourself:
 {
