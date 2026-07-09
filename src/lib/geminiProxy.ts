@@ -932,7 +932,7 @@ ${chunkExcerpt ? '\nNote: the text below is one excerpt of a larger document, sp
 - If the source document already contains pre-written multiple-choice questions (e.g. an exam paper, quiz sheet, or worksheet with its own lettered options), copy those questions, their options, and their answers EXACTLY as written.
 - Do NOT invent or generate new questions when the source already has its own. If the source document contains 6 pre-written questions, output exactly those 6 questions — not more, not fewer — even if that differs from the requested count below.
 - The requested count of ${count} questions below applies ONLY when the source document is prose (a textbook, article, notes) with no pre-existing questions of its own, in which case you build ${count} questions from verbatim passages as described.
-${focus ? `Focus on passages related to: "${focus}".` : ''}
+${focus ? `- Topic focus is a preference, not a filter: when the document is prose with no pre-written questions of its own, prefer passages related to "${focus}" among the ones you select. Never let this cause you to skip, omit, or exclude any pre-written question the source already contains — those are extracted in full regardless of topic, per the rule above. Do not force-fit unrelated passages to this topic either; if the document doesn't contain material on "${focus}", extract what is actually present instead.` : ''}
 
 [CRITICAL: TEXT CLEANING]
 - The "question" field must contain ONLY the question stem or fill-in-the-blank sentence itself — never the answer choices.
