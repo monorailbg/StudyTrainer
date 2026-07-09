@@ -1029,8 +1029,6 @@ export default function SubjectPage() {
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [genRetryStatus, setGenRetryStatus] = useState<string | null>(null);
   const [quizCount, setQuizCount] = useState(10);
-  const [quizCountIsCustom, setQuizCountIsCustom] = useState(false);
-  const [quizCustomInput, setQuizCustomInput] = useState('');
   const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [quizMode, setQuizMode] = useState<'generated' | 'extraction'>('generated');
   // Extraction mode pulls existing text verbatim — difficulty has no meaning
@@ -3342,48 +3340,27 @@ export default function SubjectPage() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', marginBottom: '5px', fontWeight: 600 }}>Questions per file</div>
-                    <div className="flex gap-1.5 flex-wrap items-center">
-                      {[5, 10, 15, 20].map(n => {
-                        const active = !quizCountIsCustom && quizCount === n;
-                        return (
-                          <button key={n} onClick={() => { setQuizCountIsCustom(false); setQuizCount(n); }}
-                            className="h-8 w-10 text-[12px] cursor-pointer transition-all duration-200"
-                            style={{ borderRadius: '999px', ...(active ? activePill : inactivePill) }}>
-                            {n}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => {
-                          setQuizCountIsCustom(true);
-                          setQuizCustomInput(String(quizCount));
-                        }}
-                        className="h-8 px-3 text-[12px] cursor-pointer transition-all duration-200"
-                        style={{ borderRadius: '999px', ...(quizCountIsCustom ? activePill : inactivePill) }}>
-                        Custom
-                      </button>
-                      {quizCountIsCustom && (
-                        <input
-                          type="number"
-                          min={1}
-                          max={100}
-                          value={quizCustomInput}
-                          onChange={e => {
-                            const raw = e.target.value;
-                            setQuizCustomInput(raw);
-                            const n = parseInt(raw, 10);
-                            if (!isNaN(n) && n >= 1 && n <= 100) setQuizCount(n);
-                          }}
-                          onBlur={() => {
-                            const n = parseInt(quizCustomInput, 10);
-                            if (isNaN(n) || n < 1) { setQuizCustomInput('1'); setQuizCount(1); }
-                            else if (n > 100) { setQuizCustomInput('100'); setQuizCount(100); }
-                          }}
-                          autoFocus
-                          style={{ ...inputStyle, width: '60px', height: '32px', padding: '0 8px', textAlign: 'center', boxSizing: 'border-box', borderRadius: '8px' }}
-                        />
-                      )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '10px', color: isLight ? '#475569' : 'var(--text-2)', fontWeight: 600 }}>Questions per file</div>
+                      <div style={{
+                        fontSize: '14px', fontWeight: 700, fontFamily: "'Sora', sans-serif",
+                        color: '#2563eb', transition: 'color 0.15s ease',
+                      }}>
+                        {quizCount}
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min={1} max={100} step={1}
+                      value={quizCount}
+                      onChange={e => setQuizCount(Number(e.target.value))}
+                      style={{ width: '100%', accentColor: '#2563eb', cursor: 'pointer', display: 'block' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: isLight ? '#94a3b8' : 'var(--text-3)', userSelect: 'none' }}>
+                      <span>1</span>
+                      <span>25</span>
+                      <span>50</span>
+                      <span>100</span>
                     </div>
                   </div>
                   {!isQuizExtractionMode && (
